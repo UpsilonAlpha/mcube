@@ -13,10 +13,9 @@ from typing import Dict, Any
 from pathlib import Path
 from datetime import datetime
 
-
 import numpy as np
 from rdkit import Chem
-from openmm.app import PDBFile, Topology
+from openmm.app import PDBFile, Topology, ForceField
 
 from ash import (
     Fragment,
@@ -26,65 +25,30 @@ from ash import (
 )
 
 # ==============================
-# Constants
-# ==============================
-
-RESIDUE_VARIANTS = {"A": {80: "HIE"}}
-#RESIDUE_VARIANTS = {}
-
-
-METALS = {
-    "ZN",# "MG","MN","FE","CO","NI","CU","CD","CA","NA","K","CS","RB","SR","BA"
-}
-
-BACKBONE_ATOMS = {
-    "N", "H", "H1", "H2", "H3",
-    "CA", "HA", "HA2", "HA3",
-    "C", "O", "OXT",
-}
-
-AMINO_ACIDS = {
-    "ALA","ARG","ASN","ASP","CYS","GLN","GLU","GLY",
-    "HIS","ILE","LEU","LYS","MET","PHE","PRO","SER",
-    "THR","TRP","TYR","VAL",
-}
-
-DONOR_ATOMS = {
-    "N","O","S",
-    "ND1","NE2","OE1","OE2","OD1","OD2",
-    "OG","OG1","SG","SD",
-}
-
-
-
-# ==============================
 # Utility
 # ==============================
 
+
 def save_result(
     result: Dict[str, Any],
-    args,
-    filename: str = "results.yaml",
+    filename: str = "config.yaml",
     section: str = None,
 ) -> str:
     """
-    Clean, merge, and save results into a shared YAML file.
+    Append pipeline stage outputs to a shared YAML file.
 
-    - Removes non-serializable objects
-    - Stores inputs + metadata
-    - Merges into existing YAML (no overwrite)
-    - Supports sectioned pipeline output (preprocess/md/qmmm)
+    Assumes:
+    - "inputs" already exist in YAML
+    - Each stage only writes its own results
 
     Parameters
     ----------
     result : dict
-        Output from run()
-    args : argparse.Namespace
-        CLI arguments
+        Outputs from a pipeline stage
     filename : str
         YAML file path
     section : str
-        Section name (e.g. "preprocess", "md", "qmmm")
+        Stage name ("preprocess", "md", "qmmm")
 
     Returns
     -------
@@ -95,64 +59,43 @@ def save_result(
     path = Path(filename)
 
     # ==============================
-    # 1. Clean result (YAML-safe)
+    # 1. Clean result
     # ==============================
     clean_result = {}
 
     for k, v in result.items():
 
-        # primitive types
         if isinstance(v, (str, int, float, bool)) or v is None:
             clean_result[k] = v
 
-        # containers
         elif isinstance(v, (list, dict)):
             clean_result[k] = v
 
-        # sets -> lists
         elif isinstance(v, set):
             clean_result[k] = sorted(v)
 
-        # skip non-serializable objects
         else:
-            continue
+            continue  # skip non-serializable objects
 
     # ==============================
-    # 2. Serialize args
-    # ==============================
-    args_dict = vars(args).copy()
-
-    # normalize metals
-    if "metals" in args_dict and args_dict["metals"] is not None:
-        args_dict["metals"] = [m.upper() for m in args_dict["metals"]]
-
-    # ==============================
-    # 3. Build payload
+    # 2. Stage payload
     # ==============================
     payload = {
-        "inputs": args_dict,
         "results": clean_result,
-        "metadata": {
-            "timestamp": datetime.now().isoformat(),
-            "mode": getattr(args, "mode", None),
-            "command": getattr(args, "command", None),
-        },
+        "timestamp": datetime.now().isoformat(),
     }
 
     # ==============================
-    # 4. Load existing YAML
+    # 3. Load existing YAML
     # ==============================
     if path.exists():
-        try:
-            with open(path, "r") as f:
-                data = yaml.safe_load(f) or {}
-        except yaml.YAMLError:
-            data = {}
+        with open(path, "r") as f:
+            data = yaml.safe_load(f) or {}
     else:
         data = {}
 
     # ==============================
-    # 5. Merge into section
+    # 4. Merge into section
     # ==============================
     if section:
         data.setdefault(section, {})
@@ -161,10 +104,9 @@ def save_result(
         data.update(payload)
 
     # ==============================
-    # 6. Atomic write
+    # 5. Atomic write
     # ==============================
     path.parent.mkdir(parents=True, exist_ok=True)
-
     tmp_path = path.with_suffix(".tmp")
 
     with open(tmp_path, "w") as f:
@@ -177,7 +119,8 @@ def save_result(
 
     tmp_path.replace(path)
 
-    print(f"[INFO] Results updated → {path}")
+    print(f"[INFO] Updated → {path} [{section}]")
+
     return str(path)
 
 
@@ -207,13 +150,14 @@ def load_section(filename: str, section: str) -> Dict[str, Any]:
 # Ligand Preparation
 # ==============================
 
-def merge_ligand(protein_pdb: str, ligand_file: str, model: int = 1, charge: int = 0) -> Dict[str, Any]:
-    if ligand_file.endswith(".pdbqt"):
+def merge_ligand(protein_pdb: str, ligand: str, model: int = 1, charge: int = 0) -> Dict[str, Any]:
+    filename = Path(ligand).stem
+    if ligand.endswith(".pdbqt"):
 
         smiles, idx, coords = None, [], []
         model_index = 0
 
-        with open(ligand_file) as f:
+        with open(ligand) as f:
             for line in f:
                 if model_index != model:
                     if line.startswith("MODEL"):
@@ -235,51 +179,64 @@ def merge_ligand(protein_pdb: str, ligand_file: str, model: int = 1, charge: int
 
         mol = Chem.MolFromSmiles(smiles)
         mapping = {idx[i]-1: idx[i+1]-1 for i in range(0, len(idx), 2)}
-
         conf = Chem.Conformer(mol.GetNumAtoms())
         for i in range(mol.GetNumAtoms()):
             conf.SetAtomPosition(i, coords[mapping[i]])
-
         mol.AddConformer(conf)
         mol = Chem.AddHs(mol, addCoords=True)
-
-        Chem.MolToMolFile(mol, "ligand.mol")
+        Chem.MolToMolFile(mol, f"{filename}.mol")
 
         small_molecule_parameterizer(
             forcefield_option="OpenFF",
-            molfile="ligand.mol",
+            molfile=f"{filename}.mol",
             charge=charge,
+            resname=filename
         )
+        ligand_xmlfile = Path(f"openff_{filename}.xml").resolve().as_posix()
 
-        merge_pdb_files(protein_pdb, "LIG.pdb")
-        return "merged.pdb"
+        merge_pdb_files(protein_pdb, f"{filename}.pdb")
+        protein_pdb = "merged.pdb"
 
-    elif ligand_file.endswith(".pdb"):
-        mol = Chem.MolFromPDBFile(ligand_file)
-        mol = Chem.AddHs(mol, addCoords=True)
-        Chem.MolToMolFile(mol, "ligand.mol")
+    elif ligand.endswith(".pdb"):
+        filename = Path(ligand).stem
+        print("Transforming PDB to .mol file")
+        mol = Chem.MolFromPDBFile(ligand, removeHs=False)
+        #mol = Chem.AddHs(mol, addCoords=True)
+        Chem.MolToMolFile(mol, f"{filename}.mol", includeStereo=True)
 
+        small_molecule_parameterizer(forcefield_option="OpenFF", pdbfile=f"{filename}.mol", charge=charge, resname=filename)
+        merge_pdb_files(protein_pdb, f"{filename}.pdb")
+        protein_pdb = "merged.pdb"
+        ligand_xmlfile = Path(f"openff_{filename}.xml").resolve().as_posix()
+
+    elif ligand.endswith(".mol"):
+        filename = Path(ligand).stem
         
-        small_molecule_parameterizer( forcefield_option="OpenFF", molfile="ligand.mol", charge=charge)
-
-        return protein_pdb
+        #mol = Chem.MolFromMolFile(ligand, removeHs=False, sanitize=False)
+        #Chem.MolToMolFile(mol, f"{filename}.mol")
+        small_molecule_parameterizer(forcefield_option="OpenFF", molfile=f"{filename}.mol", charge=charge, resname=filename)
+        merge_pdb_files(protein_pdb, f"{filename}.pdb")
+        protein_pdb = "merged.pdb"
+        ligand_xmlfile = Path(f"openff_{filename}.xml").resolve().as_posix()
 
     else:
-        print("Not a valid file format for ligand: Choose either .pdbqt or .mol")
+        print("Not a valid file format for ligand: Choose either .pdbqt or .pdb or .mol")
     
+    return protein_pdb, ligand_xmlfile
+
 # ==============================
 # Coordination
 # ==============================
 
 def find_coordinators(
     pdb_file: str,
-    cutoff: float = 2.6,
-    metals=METALS,
-    exclude_residues=None,
+    inputs=None,
 ):
     pdb = PDBFile(pdb_file)
     topology = pdb.topology
     atoms = list(topology.atoms())
+    exclude_residues=inputs.get("exclude_residues")
+    cutoff = inputs.get("cutoff")
 
     coords = np.array([[p.x, p.y, p.z] for p in pdb.positions]) * 10.0  # nm → Å
 
@@ -291,7 +248,7 @@ def find_coordinators(
     resnames = [a.residue.name for a in atoms]
     chains = [a.residue.chain.id for a in atoms]
 
-    metal_idx = [i for i, e in enumerate(elems) if e.upper() in metals]
+    metal_idx = [i for i, e in enumerate(elems) if e.upper() in inputs.get("metals")]
 
     qm_atoms = set()
     boundary_excluded = set()
@@ -312,7 +269,7 @@ def find_coordinators(
                 continue
 
             # donor atom filter
-            if all(d not in names[i] for d in DONOR_ATOMS):
+            if all(d not in names[i] for d in inputs.get("donor_atoms")):
                 continue
 
             dist = np.linalg.norm(coords[i] - coords[m])
@@ -354,69 +311,68 @@ def find_coordinators(
 
 def run(args) -> Dict[str, Any]:
 
+    preprocess = load_section(args.config, "preprocess")
+    inputs = preprocess.get("inputs")
 
-    result: Dict[str, Any] = {}
-
-
-
-    metals = {m.upper() for m in args.metals}
-
-    if args.ligand:
-        print("[STEP] Preparing ligand...")
-        pdb_file = merge_ligand(args.input, args.ligand, args.model, args.charge)
-        extraxmlfile = "openff_LIG.xml"
-        result["ligand_xml"] = Path(extraxmlfile).resolve().as_posix()
+    if inputs.get("forcefields"):
+        forcefields = inputs.get("forcefields")
     else:
-        extraxmlfile=None
-        result["ligand_xml"] = False
-        pdb_file = args.input
+        forcefields = ["amber14/protein.ff14SB.xml, amber14/tip3p.xml"]
 
-    result["merged_pdb"] = Path(pdb_file).resolve().as_posix()
+    if inputs.get("ligand"):
+        print("[STEP] Preparing ligand...")
+        pdb_file, ligand_xmlfile = merge_ligand(inputs.get("protein_pdb"), inputs.get("ligand"), inputs.get("model"), inputs.get("charge"))
+    else:
+        ligand_xmlfile = inputs.get("ligand_xmlfile")
+        pdb_file = inputs.get("protein_pdb")
 
+    if ligand_xmlfile:
+        forcefields.append(ligand_xmlfile)
 
-    if not args.skip_solvate:
+    if not inputs.get("skip_solvate"):
         print("[STEP] Solvating system...")
-        if args.implicit:
+        print(forcefields)
+        forcefield_obj = ForceField(*forcefields)
+
+        if inputs.get("implicit"):
             modeller, fragment = OpenMM_Modeller(
                 pdbfile=pdb_file,
                 implicit=True,
-                forcefield="Amber14",
-                implicit_solvent_xmlfile="implicit/gbn2.xml",
-                residue_variants=RESIDUE_VARIANTS,
+                forcefield_object=forcefield_obj,
+                residue_variants=inputs.get("residue_variants"),
                 use_higher_occupancy=True,
-                extraxmlfile=extraxmlfile,
             )
         else:
             modeller, fragment = OpenMM_Modeller(
                 pdbfile=pdb_file,
-                forcefield="Amber14",
+                forcefield_object=forcefield_obj,
                 watermodel="tip3p",
                 pH=8.0,
                 solvent_padding=10.0,
                 ionicstrength=0.1,
                 pos_iontype='Na+',
                 neg_iontype='Cl-',
-                residue_variants=RESIDUE_VARIANTS,
+                residue_variants=inputs.get("residue_variants"),
                 use_higher_occupancy=True,
-                extraxmlfile=extraxmlfile,
             )
         
         pdb_file = Path("finalsystem.pdb").resolve().as_posix()
             
     else:
-        pdb_file = args.input
-
-    result["processed_pdb"] = Path(pdb_file).resolve().as_posix()
-
-
+        pdb_file = inputs.get("protein_pdb")
 
     print("[STEP] Detecting coordination constraints...")
-    qm_residues, constraints = find_coordinators(pdb_file, args.cutoff, metals=metals)
-    result["qm_residues"] = qm_residues
-    result["constraints"] = constraints
-
+    qm_residues, constraints = find_coordinators(pdb_file, inputs)
     
-    save_result(result, args, filename="../results.json", section="preprocess")
-    
+    save_result(
+        {
+            "ligand_xml": ligand_xmlfile,
+            "processed_pdb": Path(pdb_file).resolve().as_posix(),
+            "qm_residues": qm_residues,
+            "constraints": constraints
+        },
+        filename=args.config,
+        section="preprocess"
+    )    
 
-    return result
+    return

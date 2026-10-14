@@ -70,10 +70,10 @@ def run(args):
     result: Dict[str, Any] = {}
 
     if args.qmmm:
-        qmmm = load_section(args.input, "qmmm")
-        md = load_section(args.input, "md")
+        qmmm = load_section(args.config, "qmmm")
+        md = load_section(args.config, "md")
 
-        pdbfile = md["results"]["lastframe"]
+        pdbfile = qmmm["results"]["lastframe"]
         trajectory = qmmm["results"]["trajfile"]
         optimization = qmmm["results"]["xyztraj"]
 
@@ -186,9 +186,9 @@ def run(args):
 
         hbond_analysis = HydrogenBondAnalysis(
             u,
-            donors_sel="(protein or resname SUB) and (name N* or name O* or name S*) ",
-            hydrogens_sel="(protein or resname SUB) and name H*",
-            acceptors_sel="(protein or resname SUB) and (name O* or name N* or name S*)",
+            donors_sel="(protein or resname LIG) and (name N* or name O* or name S*) ",
+            hydrogens_sel="(protein or resname LIG) and name H*",
+            acceptors_sel="(protein or resname LIG) and (name O* or name N* or name S*)",
             d_a_cutoff=3.2,
             d_h_a_angle_cutoff=150,
         )

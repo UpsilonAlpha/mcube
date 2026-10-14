@@ -1,0 +1,153 @@
+preprocess:
+  inputs:
+    protein_pdb: ../PROTEIN.pdb
+    residue_variants: {A: {80: HIE}}
+    ligand: LIG.pdb
+    model:
+    charge: -1
+    cutoff: 2.6
+    metals:
+    - ZN
+    - MG
+    - MN
+    - FE
+    - CO
+    - NI
+    - CU
+    - CD
+    - CS
+    - RB
+    - SR
+    - BA
+    default_forcefields:
+    - amber14/protein.ff14SB.xml
+    - amber14/tip3p.xml
+    skip_solvate: false
+    implicit: true
+    backbone_atoms:
+    - N
+    - H
+    - H1
+    - H2
+    - H3
+    - CA
+    - HA
+    - HA2
+    - HA3
+    - C
+    - O
+    - OXT
+    amino_acids:
+    - ALA
+    - ARG
+    - ASN
+    - ASP
+    - CYS
+    - GLN
+    - GLU
+    - GLY
+    - HIS
+    - ILE
+    - LEU
+    - LYS
+    - MET
+    - PHE
+    - PRO
+    - SER
+    - THR
+    - TRP
+    - TYR
+    - VAL
+    donor_atoms:
+    - N
+    - O
+    - S
+    - ND1
+    - NE2
+    - OE1
+    - OE2
+    - OD1
+    - OD2
+    - OG
+    - OG1
+    - SG
+    - SD
+  results:
+    ligand_xml: /scratch/user/uquadhik/KARI_loweps/preprocess_results/openff_NAI.xml
+    processed_pdb: /scratch/user/uquadhik/KARI_loweps/preprocess_results/finalsystem.pdb
+    qm_residues:
+      B:
+        1: MG
+        2: MG
+        3: MG
+      A:
+        191: ASP
+        195: GLU
+        253: ASP
+      D:
+        1: MG
+      C:
+        253: ASP
+    constraints:
+    - - 5154
+      - 2918
+    - - 5155
+      - 2919
+    - - 5155
+      - 2979
+    - - 5156
+      - 3876
+    - - 10289
+      - 9033
+  timestamp: '2026-05-10T13:56:26.009613'
+md:
+  inputs:
+    cores: 8
+    temp: 300
+    npt_timestep: 0.001
+    nvt_timestep: 0.004
+    nvt_time: 500
+    skip_npt: true
+    skip_nvt: false
+    implicit: true
+    implicit_eps: 20
+    gentle: true
+qmmm:
+  inputs:
+    cores: 1
+    temp": 300
+    timestep: 0.001
+    time: 50
+    charge: 2
+    mult: 1
+    implicit: false
+    skip_equilibrate: false
+    skip_optimize: false
+  results:
+    ligand_xml: /scratch/user/uquadhik/KARI_loweps/preprocess_results/openff_NAI.xml
+    processed_pdb: /scratch/user/uquadhik/KARI_loweps/preprocess_results/finalsystem.pdb
+    qm_residues:
+      B:
+        1: MG
+        2: MG
+        3: MG
+      A:
+        191: ASP
+        195: GLU
+        253: ASP
+      D:
+        1: MG
+      C:
+        253: ASP
+    constraints:
+    - - 5154
+      - 2918
+    - - 5155
+      - 2919
+    - - 5155
+      - 2979
+    - - 5156
+      - 3876
+    - - 10289
+      - 9033
+  timestamp: '2026-05-10T13:52:12.901302'
