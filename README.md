@@ -70,6 +70,8 @@ Results are written back with `yaml.safe_dump`, so comments in the config are lo
 | `metals` | required | Element symbols treated as metals |
 | `cutoff` | required | Metal–donor distance cutoff (Å) |
 | `donor_elements` | `[N, O, S]` | Elements that count as metal donors (matched on element, not atom name) |
+| `extra_qm_residues` | none | `{chain: [resid, ...]}`: residues added to the QM region on top of the metal's coordination sphere (e.g. catalytic Lys/Arg) |
+| `constraint_exclude_residues` | none | `{chain: [resid, ...]}`: residues whose metal–donor distance is left unconstrained during MD (e.g. the substrate) |
 | `exclude_residues` | none | `{chain: [resid, ...]}`: coordinating residues left out of the QM region. Their metal–donor bond constraints are still applied in classical MD. Not the same as `boundary_excluded`, which lists the non-amino-acid QM atoms that ASH should not place link atoms on. |
 | `backbone_atoms` | standard backbone | Atoms of amino-acid QM residues that stay in MM |
 | `amino_acids` | 20 standard + Amber variants | Residues cut at CA–CB. Any other residue (metals, ligands, waters) is put fully into the QM region and excluded from boundary detection. |
@@ -161,6 +163,8 @@ Both scripts are in `scripts/`:
 - `plot_md_data.py <data.csv>`: plots temperature (plus density and volume for NPT) from an OpenMM CSV
 - `plot_rmsd_via_mdtraj.py <traj.dcd> <topology.pdb>`: plots RMSD of the protein heavy atoms
 - `make_residues_contiguous.py <reactant.pdb> [product.pdb ...]`: makes each residue's atoms contiguous in the reference PDB (readers split interleaved residues into fragments) and applies the same atom permutation to the other files, so atom i still matches atom i. Writes `*_contig.pdb`.
+- `move_proton.py <in.pdb> <out.pdb> --resname R --proton H --to N [--extract lig.pdb]`: moves a proton to another atom in the same residue without changing the atom order, updates CONECT, and can write the residue alone for re-parameterisation
+- `select_nac_frames.py <topology.pdb> <traj.dcd>`: picks near-attack frames by nucleophile–C distance and Nu–C=O angle, writing a CSV plus full-system PDBs
 - `build_product_box.py <reactant_solvated.pdb> <product_solute.pdb> <out.pdb>`: builds a solvated NEB product in the reactant's water box. NEB endpoints must share every atom, waters included, so solvating reactant and product separately does not work. The product solute must have the same atoms in the same order as the reactant solute. The script aligns on the non-reactive solute atoms and reports water clashes. QM/MM-optimise both endpoints before running NEB.
 
 ## Notes and limitations
