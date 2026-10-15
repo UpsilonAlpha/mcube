@@ -188,6 +188,12 @@ Crystal reference: `CSR_ligand/CSR_nontruncated_1metal.pdb` (user: the His orien
     - The Zn–water (HOH485, 4257) constraint is dropped, so the carbonyl can displace that water from its Zn site.
   - **Run:** minimisation, gentle warm-up, NPT box equilibration, then **1 ns NVT, all restrained**.
 - **Job:** 29848762 (`CSR_crystal/MD_restrained.slurm`, 16 CPUs, 16 GB, 24 h), output in `CSR_crystal/md_restrained/`. Two CSVs record the geometry per frame: `attack/nac_geometry.csv` (OH⁻–C4x distance, attack angle) and `zn_o2x/nac_geometry.csv` (Zn–O2x).
+- **Unrestrained follow-up prepared, not yet submitted** (2026-10-15):
+  - Files: `CSR_crystal/config_unrestrained.yaml` and `MD_unrestrained.slurm`.
+  - Start structure: `md_restrained/NVTtrajectory_lastframe.pdb` (OpenMM-written, so names and CONECT records are preserved).
+  - Settings: no restraints, the same four Zn constraints at their end-point distances, no warm-up and no NPT (box already equilibrated), then 2 ns NVT with frames every 2 ps.
+  - Analysis: up to 10 attack-ready frames after the first 100 ps, plus the Zn–O2x distance per frame.
+  - To be submitted only after the restrained run is checked.
 - **Next:** check that Zn–O2x reaches ~2.2 Å and the water leaves the Zn. Then run unrestrained MD from the restrained end point, to test whether the carbonyl coordination holds without restraints, and pick attack-ready frames from that run (D16).
 - **ASH quirk:** OpenMMTheory only adds user constraints given as `[i, j]` pairs, which take the current distance. Entries given as `[i, j, d]` are silently ignored, because `add_bondconstraints` sits inside the "missing distance" branch.
 
