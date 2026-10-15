@@ -3,6 +3,7 @@ preprocess:
     protein_pdb: ../PROTEIN.pdb
     residue_variants: {A: {80: HIE}}
     ligand: LIG.pdb
+    ligand_resname: LIG
     model:
     charge: -1
     cutoff: 2.6
@@ -24,6 +25,10 @@ preprocess:
     - amber14/tip3p.xml
     skip_solvate: false
     implicit: true
+    # pH: 8.0               # default 8.0 explicit, 7.0 implicit
+    # solvent_padding: 10.0 # Angstrom, explicit only
+    # ionic_strength: 0.1   # M, explicit only
+    # exclude_residues: {A: [80]}  # chain -> resids left out of the QM region
     backbone_atoms:
     - N
     - H
@@ -72,34 +77,6 @@ preprocess:
     - OG1
     - SG
     - SD
-  results:
-    ligand_xml: /scratch/user/uquadhik/KARI_loweps/preprocess_results/openff_NAI.xml
-    processed_pdb: /scratch/user/uquadhik/KARI_loweps/preprocess_results/finalsystem.pdb
-    qm_residues:
-      B:
-        1: MG
-        2: MG
-        3: MG
-      A:
-        191: ASP
-        195: GLU
-        253: ASP
-      D:
-        1: MG
-      C:
-        253: ASP
-    constraints:
-    - - 5154
-      - 2918
-    - - 5155
-      - 2919
-    - - 5155
-      - 2979
-    - - 5156
-      - 3876
-    - - 10289
-      - 9033
-  timestamp: '2026-05-10T13:56:26.009613'
 md:
   inputs:
     cores: 8
@@ -107,6 +84,7 @@ md:
     npt_timestep: 0.001
     nvt_timestep: 0.004
     nvt_time: 500
+    traj_frequency: 1000
     skip_npt: true
     skip_nvt: false
     implicit: true
@@ -115,39 +93,23 @@ md:
 qmmm:
   inputs:
     cores: 1
-    temp": 300
+    temp: 300
     timestep: 0.001
     time: 50
+    traj_frequency: 50
     charge: 2
     mult: 1
-    implicit: false
+    implicit: true
+    xtb_method: GFN2
     skip_equilibrate: false
     skip_optimize: false
-  results:
-    ligand_xml: /scratch/user/uquadhik/KARI_loweps/preprocess_results/openff_NAI.xml
-    processed_pdb: /scratch/user/uquadhik/KARI_loweps/preprocess_results/finalsystem.pdb
-    qm_residues:
-      B:
-        1: MG
-        2: MG
-        3: MG
-      A:
-        191: ASP
-        195: GLU
-        253: ASP
-      D:
-        1: MG
-      C:
-        253: ASP
-    constraints:
-    - - 5154
-      - 2918
-    - - 5155
-      - 2919
-    - - 5155
-      - 2979
-    - - 5156
-      - 3876
-    - - 10289
-      - 9033
-  timestamp: '2026-05-10T13:52:12.901302'
+    actradius: 0                # >0: optimise atoms within this radius (Angstrom) of actregion_origin
+    # actregion_origin: 5154    # atom index; default: first non-standard QM atom
+    singlepoint: true           # PySCF QM/MM single point + cube files
+    sp_functional: wb97x-v
+    sp_basis: def2-svp
+neb:
+  inputs:
+    images: 8
+    numfreq: true
+    # actradius / actregion_origin default to the qmmm values
