@@ -170,7 +170,7 @@ def run(args):
         hydrophobic = u.select_atoms("resname ALA VAL LEU ILE MET PHE TRP PRO")
 
         metals = u.select_atoms(f"name {' '.join(args.metals)}")
-        donors = u.select_atoms("name N* O* S*")
+        donors = u.select_atoms("element N O S")
 
         # Precompute aromatic atoms per residue
         rings = []
@@ -249,7 +249,7 @@ def run(args):
             coord_residues = set()
 
             # ---- Coordination bonds ----
-            donor_atoms = u.select_atoms("name N* O* S*")
+            donor_atoms = u.select_atoms("element N O S")
             for m in metals:
                 distances = np.linalg.norm(donor_atoms.positions - m.position, axis=1)
                 nearby = donor_atoms[distances < args.cutoff]

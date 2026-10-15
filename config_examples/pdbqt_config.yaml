@@ -63,20 +63,7 @@ preprocess:
     - TRP
     - TYR
     - VAL
-    donor_atoms:
-    - N
-    - O
-    - S
-    - ND1
-    - NE2
-    - OE1
-    - OE2
-    - OD1
-    - OD2
-    - OG
-    - OG1
-    - SG
-    - SD
+    donor_elements: [N, O, S]   # elements that can coordinate a metal
 md:
   inputs:
     cores: 32

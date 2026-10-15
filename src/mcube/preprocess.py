@@ -256,8 +256,10 @@ def find_coordinators(
 
     metal_idx = [i for i, e in enumerate(elems) if e.upper() in inputs.get("metals")]
 
-    qm_atoms = set()
-    boundary_excluded = set()
+    donor_elements = {e.upper() for e in inputs.get("donor_elements") or ["N", "O", "S"]}
+    if inputs.get("donor_atoms"):
+        print("[WARNING] donor_atoms is no longer used; donors are chosen by element (donor_elements)")
+
     qm_residue_dict = {}  # OpenMM-style: {"A": {80: "HIS"}}
     bondconstraints = []
 
@@ -275,7 +277,7 @@ def find_coordinators(
                 continue
 
             # donor atom filter
-            if all(d not in names[i] for d in inputs.get("donor_atoms")):
+            if elems[i].upper() not in donor_elements:
                 continue
 
             dist = np.linalg.norm(coords[i] - coords[m])
@@ -294,7 +296,7 @@ def find_coordinators(
             
             bondconstraints.append([m, idx])
 
-            # Skip excluded residues
+            # Excluded residues keep their bond constraint but are left out of the QM region
             if exclude_residues and chain in exclude_residues:
                 if resid in exclude_residues[chain]:
                     continue

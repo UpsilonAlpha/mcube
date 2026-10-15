@@ -67,8 +67,8 @@ Results are written back with `yaml.safe_dump`, so comments in the config are lo
 | `ionic_strength` | 0.1 | NaCl concentration in M (explicit only) |
 | `metals` | required | Element symbols treated as metals |
 | `cutoff` | required | Metal–donor distance cutoff (Å) |
-| `donor_atoms` | required | Atom-name substrings counted as donors. `N`, `O`, `S` match any atom whose name contains them. |
-| `exclude_residues` | none | `{chain: [resid, ...]}`: coordinating residues left out of the QM region. Their bond constraints are kept. |
+| `donor_elements` | `[N, O, S]` | Elements that count as metal donors (matched on element, not atom name) |
+| `exclude_residues` | none | `{chain: [resid, ...]}`: coordinating residues left out of the QM region. Their metal–donor bond constraints are still applied in classical MD. Not the same as `boundary_excluded`, which lists the non-amino-acid QM atoms that ASH should not place link atoms on. |
 | `backbone_atoms` | standard backbone | Atoms of amino-acid QM residues that stay in MM |
 | `amino_acids` | 20 standard + Amber variants | Residues cut at CA–CB. Any other residue (metals, ligands, waters) is put fully into the QM region and excluded from boundary detection. |
 
