@@ -22,6 +22,8 @@ def build_parser():
 
     p3 = subparsers.add_parser("qmmm", help="Run QM/MM")
     p3.add_argument("config", help="Input yaml file")
+    p3.add_argument("--pdb", help="Starting structure (overrides qmmm.inputs.pdb_file)")
+    p3.add_argument("--section", default="qmmm", help="Config section to write results to")
 
     # =========================================================
     # NEB

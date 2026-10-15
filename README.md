@@ -116,7 +116,9 @@ Minimisation always runs. Metal–donor `constraints` are applied as fixed-dista
 | `singlepoint` | `true` | PySCF QM/MM single point (RKS/UKS from `mult`), plus `density.cube`, `mep.cube`, `HOMO.cube` and `LUMO.cube` |
 | `sp_functional`, `sp_basis` | `wb97x-v`, `def2-svp` | Single-point level of theory |
 
-`results`: `qm_atoms`, `boundary_excluded`, `trajfile`, `lastframe`, `opttraj`, `cubes`.
+`results` (section `qmmm`, or `--section NAME`): `qm_atoms`, `boundary_excluded`, `trajfile`, `lastframe`, `opttraj`, `optimized_pdb` (`QM_MM_optimized.pdb`, the full optimised system, usable as an NEB endpoint), `cubes`.
+
+`mcube qmmm config.yaml --pdb other.pdb --section qmmm_product` runs the same inputs on another structure (e.g. each NEB endpoint) without overwriting the other run's results.
 
 ### `neb.inputs` (optional section)
 

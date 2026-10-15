@@ -16,6 +16,9 @@ from __future__ import annotations
 from typing import Dict, Any
 from pathlib import Path
 
+from openmm import unit
+from openmm.app import PDBFile
+
 from .preprocess import (
     save_result,
     load_section,
@@ -54,14 +57,15 @@ def run(args) -> Dict[str, Any]:
     inputs = qmmm.get("inputs")
     if inputs is None:
         raise KeyError(f"No qmmm.inputs section in {args.config}")
+    # Results go to this section, so several structures (e.g. NEB endpoints) can share one config
+    section = getattr(args, "section", None) or "qmmm"
+    md_results = md.get("results") or {}
 
-    pdb_file = inputs.get("pdb_file")
-    if pdb_file is None:
-        pdb_file = md["results"].get("lastframe")
+    pdb_file = getattr(args, "pdb", None) or inputs.get("pdb_file") or md_results.get("lastframe")
 
     forcefields = inputs.get("forcefields")
     if forcefields is None:
-        forcefields = md["results"].get("forcefields")
+        forcefields = md_results.get("forcefields")
 
     implicit = inputs.get("implicit", (md.get("inputs") or {}).get("implicit", False))
 
@@ -82,7 +86,7 @@ def run(args) -> Dict[str, Any]:
         "qm_atoms": qm_atoms,
         "boundary_excluded": boundary_excluded,
     }
-    save_result(result, filename=args.config, section="qmmm")
+    save_result(result, filename=args.config, section=section)
 
     xtb = xTBTheory(xtbmethod=inputs.get("xtb_method", "GFN2"), numcores=inputs.get("cores"),
                     runmode=inputs.get("xtb_runmode", "inputfile"))
@@ -116,7 +120,7 @@ def run(args) -> Dict[str, Any]:
 
         result["trajfile"] = Path("QM_MM.dcd").resolve().as_posix()
         result["lastframe"] = Path("QM_MM_lastframe.pdb").resolve().as_posix()
-        save_result(result, filename=args.config, section="qmmm")
+        save_result(result, filename=args.config, section=section)
 
     if not inputs.get("skip_optimize"):
 
@@ -147,8 +151,12 @@ def run(args) -> Dict[str, Any]:
         Optimizer(fragment=fragment, theory=qmmm_theory, ActiveRegion=True, actatoms=actatoms, maxiter=200,
             constraints=waterconstraints, charge=inputs.get("charge") , mult=inputs.get("mult") )
 
+        # Full optimised system with the MM topology, e.g. as an NEB endpoint
+        with open("QM_MM_optimized.pdb", "w") as f:
+            PDBFile.writeFile(mm.topology, fragment.coords * unit.angstrom, f, keepIds=True)
         result["opttraj"] = Path("geometric_OPTtraj_Full.xyz").resolve().as_posix()
-        save_result(result, filename=args.config, section="qmmm")
+        result["optimized_pdb"] = Path("QM_MM_optimized.pdb").resolve().as_posix()
+        save_result(result, filename=args.config, section=section)
 
     if inputs.get("singlepoint", True):
         # QM/MM single point on the current (optimised) geometry: CA-CB cuts get link atoms and
@@ -188,6 +196,6 @@ def run(args) -> Dict[str, Any]:
 
         result["cubes"] = [Path(f).resolve().as_posix() for f in
                            ("density.cube", "mep.cube", "HOMO.cube", "LUMO.cube")]
-        save_result(result, filename=args.config, section="qmmm")
+        save_result(result, filename=args.config, section=section)
 
     return result
