@@ -162,7 +162,8 @@ Crystal reference: `CSR_ligand/CSR_nontruncated_1metal.pdb` (user: the His orien
   - For a **one-zinc** site, the supported picture is that Asp120 sits in the second shell and orients/activates the Zn-bound OH⁻ through a strong H-bond: "coordinating through the hydroxide". This is supported for mono-Zn **B1** (BcII) and consistent with the CSR-1 6NC5 geometry, but **not shown for B3-RQK/CSR-1 specifically**.
   - Direct Asp coordination is the two-zinc (Zn2) role, or the μ-carboxylate role in nucleases.
 - **Implication for the model:** in `csr_crystal_start.pdb`, Asp92 OD2 is 2.80 Å from the Zn, inside the 3.0 Å cutoff. Preprocess will treat it as a Zn ligand and **constrain Zn–OD2 at 2.80 Å** during MM, which goes against this picture.
-  - Proposed: add Asp92 to `constraint_exclude_residues` (chain A) and keep it in the QM region (`extra_qm_residues`), so MM relaxation decides between H-bond and coordination. Pending user approval.
+  - **Decision (user, 2026-10-15): keep Asp92 as preprocess finds it**, i.e. treated as a Zn ligand and constrained at 2.80 Å during MM relaxation and MD. It is in the QM region either way, and no constraints apply in QM/MM, where the H-bond vs coordination question is decided.
+  - Alternative not taken: add Asp92 to `constraint_exclude_residues` so MM relaxation decides between H-bond and coordination.
   - Check after MD whether the Asp92···HO–Zn H-bond holds.
 
 ## Force field and protonation
