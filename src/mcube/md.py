@@ -7,8 +7,8 @@ import json
 from pathlib import Path
 from typing import Any, Dict
 
-from openmm import XmlSerializer
-from openmm.app import PDBFile, Topology, ForceField
+from openmm import XmlSerializer, unit
+from openmm.app import PDBFile, ForceField, CutoffNonPeriodic, HBonds
 
 from ash import *
 
@@ -27,6 +27,8 @@ def run(args) -> Dict[str, Any]:
     preprocess = load_section(args.config, "preprocess")
     md = load_section(args.config, "md")
     inputs = md.get("inputs")
+    if inputs is None:
+        raise KeyError(f"No md.inputs section in {args.config}")
 
     constraints = inputs.get("constraints")
     if constraints is None:
@@ -43,6 +45,7 @@ def run(args) -> Dict[str, Any]:
     default_forcefields = inputs.get("default_forcefields")
     if default_forcefields is None:
         default_forcefields = preprocess["inputs"]["default_forcefields"]
+    default_forcefields = list(default_forcefields)
 
 
     if ligand_forcefields:
@@ -53,7 +56,17 @@ def run(args) -> Dict[str, Any]:
         pdb = PDBFile(pdb_file)
         topology = pdb.topology
         forcefield = ForceField(*default_forcefields)
-        system = forcefield.createSystem(topology, soluteDielectric=1.0, solventDielectric=inputs.get("implicit_eps"))
+        # ASH cannot change constraints or the nonbonded method of a system read from
+        # xmlsystemfile, so they have to be set here.
+        system = forcefield.createSystem(
+            topology,
+            nonbondedMethod=CutoffNonPeriodic,
+            nonbondedCutoff=2.0 * unit.nanometer,
+            constraints=HBonds,
+            hydrogenMass=1.5 * unit.amu,
+            soluteDielectric=1.0,
+            solventDielectric=inputs.get("implicit_eps"),
+        )
 
         # Assuming 'system' is your OpenMM System object
         with open('system.xml', 'w') as output:
@@ -87,14 +100,19 @@ def run(args) -> Dict[str, Any]:
     print("[STEP] Minimization...")
     OpenMM_Opt(fragment=fragment, theory=mm, maxiter=500, tolerance=1)
     result["minimized"] = Path("frag-minimized.pdb").resolve().as_posix()
+    save_result(result, filename=args.config, section="md")
 
     if inputs.get("gentle"):
         Gentle_warm_up_MD(theory=mm, fragment=fragment, time_steps=[0.0005,0.001,0.004],
                     steps=[10,50,10000], temperatures=[1,10,300])
         result["gentle"] = Path("warmup_MD_cycle2_lastframe.pdb").resolve().as_posix()
         fragment = Fragment(pdbfile=result["gentle"])
+        save_result(result, filename=args.config, section="md")
 
-    if not inputs.get("skip_npt"):
+    if inputs.get("implicit") and not inputs.get("skip_npt"):
+        print("[INFO] Implicit solvent has no periodic box: skipping NPT equilibration")
+
+    if not inputs.get("skip_npt") and not inputs.get("implicit"):
         print("[STEP] NPT Equilibration...")
         OpenMM_box_equilibration(
             fragment=fragment,
@@ -118,7 +136,7 @@ def run(args) -> Dict[str, Any]:
             theory=mm,
             timestep=inputs.get("nvt_timestep"),
             simulation_time=inputs.get("nvt_time"),
-            traj_frequency=inputs.get("nvt_time"),
+            traj_frequency=inputs.get("traj_frequency", 1000),
             temperature=inputs.get("temp"),
             integrator='LangevinMiddleIntegrator',
             coupling_frequency=1,
@@ -127,16 +145,21 @@ def run(args) -> Dict[str, Any]:
             datafilename="nvtsim.csv",
         )
     
-        print("[STEP] Reimaging trajectory...")
-        MDtraj_imagetraj(
-            "NVTtrajectory.dcd",
-            "NVTtrajectory_lastframe.pdb",
-            format='DCD',
-        )
-
-        result["trajfile"] = Path("NVTtrajectory_imaged.dcd").resolve().as_posix()
-        result["lastframe"] = Path("NVTtrajectory_lastframe_imaged.pdb").resolve().as_posix()
         result["csv"] = Path("nvtsim.csv").resolve().as_posix()
+
+        if inputs.get("implicit"):
+            # No unit cell to reimage into
+            result["trajfile"] = Path("NVTtrajectory.dcd").resolve().as_posix()
+            result["lastframe"] = Path("NVTtrajectory_lastframe.pdb").resolve().as_posix()
+        else:
+            print("[STEP] Reimaging trajectory...")
+            MDtraj_imagetraj(
+                "NVTtrajectory.dcd",
+                "NVTtrajectory_lastframe.pdb",
+                format='DCD',
+            )
+            result["trajfile"] = Path("NVTtrajectory_imaged.dcd").resolve().as_posix()
+            result["lastframe"] = Path("NVTtrajectory_lastframe_imaged.pdb").resolve().as_posix()
 
     print("[DONE] Workflow complete")
     save_result(result,  filename=args.config, section="md")

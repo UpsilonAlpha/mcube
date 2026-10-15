@@ -9,7 +9,7 @@ import argparse
 import yaml
 import os
 import shutil
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
 from pathlib import Path
 from datetime import datetime
 
@@ -150,8 +150,22 @@ def load_section(filename: str, section: str) -> Dict[str, Any]:
 # Ligand Preparation
 # ==============================
 
-def merge_ligand(protein_pdb: str, ligand: str, model: int = 1, charge: int = 0) -> Dict[str, Any]:
-    filename = Path(ligand).stem
+def ligand_resname(inputs: Dict[str, Any]) -> str:
+    """Residue name used for the ligand: `ligand_resname` input, else the ligand file stem."""
+    if inputs.get("ligand_resname"):
+        return inputs["ligand_resname"]
+    if inputs.get("ligand"):
+        return Path(inputs["ligand"]).stem
+    return "LIG"
+
+
+def merge_ligand(protein_pdb: str, ligand: str, model: int = 1, charge: int = 0,
+                 resname: str = None) -> Tuple[str, str]:
+    filename = resname or Path(ligand).stem
+    if len(filename) > 3:
+        print(f"[WARNING] Ligand residue name '{filename}' is longer than 3 characters and will be "
+              "truncated in PDB files, so it may not match the generated XML template. "
+              "Set `ligand_resname` in the preprocess inputs.")
     if ligand.endswith(".pdbqt"):
 
         smiles, idx, coords = None, [], []
@@ -198,30 +212,22 @@ def merge_ligand(protein_pdb: str, ligand: str, model: int = 1, charge: int = 0)
         protein_pdb = "merged.pdb"
 
     elif ligand.endswith(".pdb"):
-        filename = Path(ligand).stem
-        print("Transforming PDB to .mol file")
-        mol = Chem.MolFromPDBFile(ligand, removeHs=False)
-        #mol = Chem.AddHs(mol, addCoords=True)
-        Chem.MolToMolFile(mol, f"{filename}.mol", includeStereo=True)
-
-        small_molecule_parameterizer(forcefield_option="OpenFF", pdbfile=f"{filename}.mol", charge=charge, resname=filename)
+        # ASH perceives bond orders from the PDB with RDKit DetermineBonds(charge),
+        # so the PDB must contain explicit hydrogens.
+        small_molecule_parameterizer(forcefield_option="OpenFF", pdbfile=ligand, charge=charge, resname=filename)
         merge_pdb_files(protein_pdb, f"{filename}.pdb")
         protein_pdb = "merged.pdb"
         ligand_xmlfile = Path(f"openff_{filename}.xml").resolve().as_posix()
 
     elif ligand.endswith(".mol"):
-        filename = Path(ligand).stem
-        
-        #mol = Chem.MolFromMolFile(ligand, removeHs=False, sanitize=False)
-        #Chem.MolToMolFile(mol, f"{filename}.mol")
-        small_molecule_parameterizer(forcefield_option="OpenFF", molfile=f"{filename}.mol", charge=charge, resname=filename)
+        small_molecule_parameterizer(forcefield_option="OpenFF", molfile=ligand, charge=charge, resname=filename)
         merge_pdb_files(protein_pdb, f"{filename}.pdb")
         protein_pdb = "merged.pdb"
         ligand_xmlfile = Path(f"openff_{filename}.xml").resolve().as_posix()
 
     else:
-        print("Not a valid file format for ligand: Choose either .pdbqt or .pdb or .mol")
-    
+        raise ValueError(f"Not a valid file format for ligand {ligand}: choose .pdbqt, .pdb or .mol")
+
     return protein_pdb, ligand_xmlfile
 
 # ==============================
@@ -306,22 +312,95 @@ def find_coordinators(
     return qm_residue_dict, bondconstraints
 
 
+# ==============================
+# QM Region
+# ==============================
 
+BACKBONE_ATOMS = {
+    "N", "H", "H1", "H2", "H3",
+    "CA", "HA", "HA2", "HA3",
+    "C", "O", "OXT",
+}
+
+# Includes Amber protonation/disulfide variants so they are cut at CA-CB like
+# standard residues instead of being put fully into the QM region.
+AMINO_ACIDS = {
+    "ALA","ARG","ASN","ASP","CYS","GLN","GLU","GLY",
+    "HIS","ILE","LEU","LYS","MET","PHE","PRO","SER",
+    "THR","TRP","TYR","VAL",
+    "HID","HIE","HIP","HSD","HSE","HSP","CYX","CYM",
+    "ASH","GLH","LYN",
+}
+
+
+def build_qm_region(
+    pdb_file: str,
+    qm_residue_dict: Dict[str, Dict[int, str]],
+    backbone_atoms=BACKBONE_ATOMS,
+    amino_acids=AMINO_ACIDS,
+):
+    pdb = PDBFile(pdb_file)
+    topology = pdb.topology
+
+    qm_residue_dict = {
+        chain: {str(k): v for k, v in residues.items()}
+        for chain, residues in qm_residue_dict.items()
+    }
+
+    qm_atoms = set()
+    boundary_excluded = set()
+
+    print("\n===== QM Region Construction =====")
+
+    for res in topology.residues():
+        chain = res.chain.id
+        resid = res.id.strip()
+
+        if chain in qm_residue_dict and resid in qm_residue_dict[chain]:
+            print(f"[QM] Including residue {res.name} {chain}:{resid}")
+
+            for atom in res.atoms():
+                if atom.name not in backbone_atoms:
+                    qm_atoms.add(atom.index)
+
+                if res.name not in amino_acids:
+                    qm_atoms.add(atom.index)
+                    boundary_excluded.add(atom.index)
+
+    print(f"\n[INFO] QM atoms: {len(qm_atoms)}")
+    print(f"[INFO] Boundary excluded atoms: {len(boundary_excluded)}")
+
+    return sorted(qm_atoms), sorted(boundary_excluded)
+
+
+def qm_region_settings(inputs: Dict[str, Any]) -> Dict[str, Any]:
+    """backbone_atoms / amino_acids overrides from the preprocess inputs."""
+    return {
+        "backbone_atoms": set(inputs.get("backbone_atoms") or BACKBONE_ATOMS),
+        "amino_acids": set(inputs.get("amino_acids") or AMINO_ACIDS),
+    }
 
 
 def run(args) -> Dict[str, Any]:
 
     preprocess = load_section(args.config, "preprocess")
     inputs = preprocess.get("inputs")
+    if inputs is None:
+        raise KeyError(f"No preprocess.inputs section in {args.config}")
 
-    if inputs.get("forcefields"):
-        forcefields = inputs.get("forcefields")
-    else:
-        forcefields = ["amber14/protein.ff14SB.xml, amber14/tip3p.xml"]
+    # `default_forcefields` is the documented key (also read by md); `forcefields` is accepted for older configs
+    forcefields = list(
+        inputs.get("default_forcefields")
+        or inputs.get("forcefields")
+        or ["amber14/protein.ff14SB.xml", "amber14/tip3p.xml"]
+    )
+
+    resname = ligand_resname(inputs)
 
     if inputs.get("ligand"):
         print("[STEP] Preparing ligand...")
-        pdb_file, ligand_xmlfile = merge_ligand(inputs.get("protein_pdb"), inputs.get("ligand"), inputs.get("model"), inputs.get("charge"))
+        pdb_file, ligand_xmlfile = merge_ligand(inputs.get("protein_pdb"), inputs.get("ligand"), inputs.get("model"),
+                                                inputs.get("charge"), resname=resname)
     else:
         ligand_xmlfile = inputs.get("ligand_xmlfile")
         pdb_file = inputs.get("protein_pdb")
@@ -339,6 +418,7 @@ def run(args) -> Dict[str, Any]:
                 pdbfile=pdb_file,
                 implicit=True,
                 forcefield_object=forcefield_obj,
+                pH=inputs.get("pH", 7.0),
                 residue_variants=inputs.get("residue_variants"),
                 use_higher_occupancy=True,
             )
@@ -347,32 +427,35 @@ def run(args) -> Dict[str, Any]:
                 pdbfile=pdb_file,
                 forcefield_object=forcefield_obj,
                 watermodel="tip3p",
-                pH=8.0,
-                solvent_padding=10.0,
-                ionicstrength=0.1,
+                pH=inputs.get("pH", 8.0),
+                solvent_padding=inputs.get("solvent_padding", 10.0),
+                ionicstrength=inputs.get("ionic_strength", 0.1),
                 pos_iontype='Na+',
                 neg_iontype='Cl-',
                 residue_variants=inputs.get("residue_variants"),
                 use_higher_occupancy=True,
             )
-        
+
         pdb_file = Path("finalsystem.pdb").resolve().as_posix()
-            
-    else:
-        pdb_file = inputs.get("protein_pdb")
+
+    # With skip_solvate, pdb_file stays as protein_pdb, or merged.pdb if a ligand was merged in
 
     print("[STEP] Detecting coordination constraints...")
     qm_residues, constraints = find_coordinators(pdb_file, inputs)
-    
-    save_result(
-        {
-            "ligand_xml": ligand_xmlfile,
-            "processed_pdb": Path(pdb_file).resolve().as_posix(),
-            "qm_residues": qm_residues,
-            "constraints": constraints
-        },
-        filename=args.config,
-        section="preprocess"
-    )    
 
-    return
+    print("[STEP] Building QM region...")
+    # Atom indices refer to processed_pdb; OpenMM keeps atom order through MD, so qmmm/neb reuse them
+    qm_atoms, boundary_excluded = build_qm_region(pdb_file, qm_residues, **qm_region_settings(inputs))
+
+    result = {
+        "ligand_xml": ligand_xmlfile,
+        "ligand_resname": resname if inputs.get("ligand") else None,
+        "processed_pdb": Path(pdb_file).resolve().as_posix(),
+        "qm_residues": qm_residues,
+        "qm_atoms": qm_atoms,
+        "boundary_excluded": boundary_excluded,
+        "constraints": constraints,
+    }
+    save_result(result, filename=args.config, section="preprocess")
+
+    return result

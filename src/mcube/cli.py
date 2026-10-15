@@ -28,9 +28,9 @@ def build_parser():
     # =========================================================
     p4 = subparsers.add_parser("neb", help="Nudged elastic band simulation")
 
-    p4.add_argument("input", help="Input yaml file")
-    p4.add_argument("--product", help="Product PDB file")
-    p4.add_argument("--reactant", help="Reactant PDB file")
+    p4.add_argument("config", help="Input yaml file")
+    p4.add_argument("--product", required=True, help="Product PDB file")
+    p4.add_argument("--reactant", required=True, help="Reactant PDB file")
     p4.add_argument("--cores", type=int, default=int(os.environ.get("SLURM_CPUS_PER_TASK", 1)))
 
 

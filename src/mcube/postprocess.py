@@ -12,12 +12,14 @@ import polars as pl
 import matplotlib.pyplot as plt
 import os
 from pathlib import Path
+from typing import Any, Dict
 from ash import *
 import mdtraj
 
 from .preprocess import (
     save_result,
     load_section,
+    ligand_resname,
 )
 
 # =========================
@@ -69,13 +71,16 @@ def run(args):
 
     result: Dict[str, Any] = {}
 
+    preprocess = load_section(args.config, "preprocess")
+    lig = (preprocess.get("results") or {}).get("ligand_resname") or ligand_resname(preprocess.get("inputs") or {})
+
     if args.qmmm:
         qmmm = load_section(args.config, "qmmm")
         md = load_section(args.config, "md")
 
         pdbfile = qmmm["results"]["lastframe"]
         trajectory = qmmm["results"]["trajfile"]
-        optimization = qmmm["results"]["xyztraj"]
+        optimization = qmmm["results"]["opttraj"]
 
         u = mda.Universe(pdbfile, optimization)
 
@@ -87,7 +92,7 @@ def run(args):
                 W.write(u)
 
     else:
-        md = load_section(args.input, "md")
+        md = load_section(args.config, "md")
         pdbfile = md["results"]["lastframe"]
         trajectory = md["results"]["trajfile"]
         csv = md["results"]["csv"]
@@ -151,11 +156,11 @@ def run(args):
 
 
 
-    if args.redraw == False:
-        # Load system
-        u = mda.Universe(pdbfile, trajectory)
+    # Load system (also needed for RMSF when redrawing)
+    u = mda.Universe(pdbfile, trajectory)
+    protein = u.select_atoms("protein")
 
-        protein = u.select_atoms("protein")
+    if args.redraw == False:
 
         # Define atom groups
         acidic = u.select_atoms("resname ASP GLU and name OD1 OD2 OE1 OE2")
@@ -186,9 +191,9 @@ def run(args):
 
         hbond_analysis = HydrogenBondAnalysis(
             u,
-            donors_sel="(protein or resname LIG) and (name N* or name O* or name S*) ",
-            hydrogens_sel="(protein or resname LIG) and name H*",
-            acceptors_sel="(protein or resname LIG) and (name O* or name N* or name S*)",
+            donors_sel=f"(protein or resname {lig}) and (name N* or name O* or name S*) ",
+            hydrogens_sel=f"(protein or resname {lig}) and name H*",
+            acceptors_sel=f"(protein or resname {lig}) and (name O* or name N* or name S*)",
             d_a_cutoff=3.2,
             d_h_a_angle_cutoff=150,
         )
@@ -407,7 +412,7 @@ def run(args):
         elif resname in ["ZN", "MG", "FE", "CU"]:  # adjust for your system
             node_type[n] = "#b3ffb3"
 
-        elif resname in ["LIG", "SUB"]:  # your ligand naming
+        elif resname in [lig, "LIG", "SUB"]:  # ligand
             node_type[n] = "#d9b3ff"
 
         else:
@@ -460,6 +465,7 @@ def run(args):
     result["rmsf_pdb"] = Path("rmsf_bfactor.pdb").resolve().as_posix()
     result["network_graph"] = Path("interaction_network.png").resolve().as_posix()
     result["network_csv"] = Path("interaction_network.csv").resolve().as_posix()
+    save_result(result, filename=args.config, section="postprocess")
 
 
     return output_pdb

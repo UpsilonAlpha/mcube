@@ -3,89 +3,47 @@
 QM/MM workflow (xTB) with automatic QM region selection.
 
 Pipeline:
-1. Generate onechain PDB from trajectory
-2. Select QM residues (metal coordination)
+1. Take the last MD frame (or a user-supplied PDB)
+2. Select QM atoms (metal coordination, from preprocess)
 3. Build QM/MM system
 4. Run short QM/MM MD
+5. QM/MM geometry optimisation (optionally with an active region)
+6. Optional PySCF QM/MM single point with density, MEP and HOMO/LUMO cube files
 """
 
 from __future__ import annotations
 
-import argparse
-import os
-from typing import List, Set, Dict, Any, Tuple
-from openmm.app import PDBFile
+from typing import Dict, Any
 from pathlib import Path
-from pyscf import gto, dft
-
 
 from .preprocess import (
     save_result,
     load_section,
+    build_qm_region,
+    qm_region_settings,
 )
 
 from ash import *
 
 
-# ==============================
-# Constants
-# ==============================
+def resolve_qm_region(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file: str):
+    """
+    QM atoms and boundary-excluded atoms, in order of preference:
+    1. `qm_residues` given in this stage's inputs (rebuilt on pdb_file)
+    2. `qm_atoms` / `boundary_excluded` indices saved by preprocess
+    3. `qm_residues` saved by preprocess (configs from before indices were saved)
+    """
+    settings = qm_region_settings(preprocess.get("inputs") or {})
+    results = preprocess.get("results") or {}
 
-BACKBONE_ATOMS = {
-    "N", "H", "H1", "H2", "H3",
-    "CA", "HA", "HA2", "HA3",
-    "C", "O", "OXT",
-}
+    if inputs.get("qm_residues") is not None:
+        return build_qm_region(pdb_file, inputs["qm_residues"], **settings)
 
-AMINO_ACIDS = {
-    "ALA","ARG","ASN","ASP","CYS","GLN","GLU","GLY",
-    "HIS","ILE","LEU","LYS","MET","PHE","PRO","SER",
-    "THR","TRP","TYR","VAL",
-}
+    if results.get("qm_atoms") is not None:
+        print(f"[INFO] Using {len(results['qm_atoms'])} QM atoms saved by preprocess")
+        return results["qm_atoms"], results.get("boundary_excluded", [])
 
-
-# ==============================
-# QM Region Builder
-# ==============================
-def build_qm_region(
-    pdb_file: str,
-    qm_residue_dict: Dict[str, Dict[int, str]],
-    backbone_atoms=BACKBONE_ATOMS,
-    amino_acids=AMINO_ACIDS,
-):
-    pdb = PDBFile(pdb_file)
-    topology = pdb.topology
-
-    qm_residue_dict = {
-        chain: {str(k): v for k, v in residues.items()}
-        for chain, residues in qm_residue_dict.items()
-    }
-
-    qm_atoms = set()
-    boundary_excluded = set()
-
-    print("\n===== QM Region Construction =====")
-
-    for res in topology.residues():
-        chain = res.chain.id
-        resid = res.id.strip()   # ← FIXED
-
-        if chain in qm_residue_dict and resid in qm_residue_dict[chain]:
-            print(f"[QM] Including residue {res.name} {chain}:{resid}")
-
-            for atom in res.atoms():
-                if atom.name not in backbone_atoms:
-                    qm_atoms.add(atom.index)
-
-                if res.name not in amino_acids:
-                    qm_atoms.add(atom.index)
-                    boundary_excluded.add(atom.index)
-
-    print(f"\n[INFO] QM atoms: {len(qm_atoms)}")
-    print(f"[INFO] Boundary excluded atoms: {len(boundary_excluded)}")
-
-    return sorted(qm_atoms), sorted(boundary_excluded)
-
+    return build_qm_region(pdb_file, results["qm_residues"], **settings)
 
 
 def run(args) -> Dict[str, Any]:
@@ -94,6 +52,8 @@ def run(args) -> Dict[str, Any]:
     md = load_section(args.config, "md")
     qmmm = load_section(args.config, "qmmm")
     inputs = qmmm.get("inputs")
+    if inputs is None:
+        raise KeyError(f"No qmmm.inputs section in {args.config}")
 
     pdb_file = inputs.get("pdb_file")
     if pdb_file is None:
@@ -103,37 +63,31 @@ def run(args) -> Dict[str, Any]:
     if forcefields is None:
         forcefields = md["results"].get("forcefields")
 
-    qm_residues = inputs.get("qm_residues")
-    if qm_residues is None:
-        qm_residues = preprocess["results"].get("qm_residues")
-
-    print(qm_residues)
+    implicit = inputs.get("implicit", (md.get("inputs") or {}).get("implicit", False))
 
     print("[STEP] Building MM system...")
     mm = OpenMMTheory(
         xmlfiles=forcefields,
         pdbfile=pdb_file,
         autoconstraints=None,
-        periodic=True,
+        periodic=not implicit,
         rigidwater=False,
     )
 
     fragment = Fragment(pdbfile=pdb_file)
 
     print("[STEP] Building QM region...")
-    qm_atoms, boundary_excluded = build_qm_region(pdb_file, qm_residues)
-    save_result(
-        {
-            "qm_atoms": qm_atoms,
-            "boundary_excluded": boundary_excluded,
-        },
-        filename=args.config,
-        section="qmmm"
-    )
+    qm_atoms, boundary_excluded = resolve_qm_region(inputs, preprocess, pdb_file)
+    result: Dict[str, Any] = {
+        "qm_atoms": qm_atoms,
+        "boundary_excluded": boundary_excluded,
+    }
+    save_result(result, filename=args.config, section="qmmm")
 
-    xtb = xTBTheory(xtbmethod="GFN2", numcores=inputs.get("cores"))
+    xtb = xTBTheory(xtbmethod=inputs.get("xtb_method", "GFN2"), numcores=inputs.get("cores"),
+                    runmode=inputs.get("xtb_runmode", "inputfile"))
 
-    qmmm = QMMMTheory(
+    qmmm_theory = QMMMTheory(
         qm_theory=xtb,
         mm_theory=mm,
         fragment=fragment,
@@ -148,10 +102,10 @@ def run(args) -> Dict[str, Any]:
         print("[STEP] Running QM/MM MD...")
         OpenMM_MD(
             fragment=fragment,
-            theory=qmmm,
+            theory=qmmm_theory,
             timestep=inputs.get("timestep"),
             simulation_time=inputs.get("time"),
-            traj_frequency=inputs.get("time"),
+            traj_frequency=inputs.get("traj_frequency", 1000),
             temperature=inputs.get("temp"),
             integrator='LangevinMiddleIntegrator',
             trajfilename="QM_MM",
@@ -160,65 +114,80 @@ def run(args) -> Dict[str, Any]:
             mult=inputs.get("mult"),
         )
 
-        save_result(
-            {
-                "trajfile": Path("QM_MM.dcd").resolve().as_posix(),
-                "lastframe": Path("QM_MM_lastframe.pdb").resolve().as_posix(),
-            },
-            filename=args.config,
-            section="qmmm"
-        )
+        result["trajfile"] = Path("QM_MM.dcd").resolve().as_posix()
+        result["lastframe"] = Path("QM_MM_lastframe.pdb").resolve().as_posix()
+        save_result(result, filename=args.config, section="qmmm")
 
     if not inputs.get("skip_optimize"):
-        
-        fragment = Fragment(pdbfile="QM_MM_lastframe.pdb")
 
-        if inputs.get("actradius") != 0:
-            actregiondefine(mmtheory=mm, fragment=fragment, radius=inputs.get("actradius") , originatom=boundary_excluded[0])
+        # Start from the QM/MM MD end point if there is one, else from pdb_file
+        if Path("QM_MM_lastframe.pdb").exists():
+            fragment = Fragment(pdbfile="QM_MM_lastframe.pdb")
+
+        if inputs.get("actradius"):
+            originatom = inputs.get("actregion_origin")
+            if originatom is None:
+                if not boundary_excluded:
+                    raise ValueError("actradius is set but there is no actregion_origin and no "
+                                     "non-standard QM residue to centre the active region on")
+                originatom = boundary_excluded[0]
+            actregiondefine(mmtheory=mm, fragment=fragment, radius=inputs.get("actradius"), originatom=originatom)
             actatoms = read_intlist_from_file("active_atoms")
         else:
-            actatoms=qm_atoms
+            actatoms = qm_atoms
 
         waterconlist = getwaterconstraintslist(openmmtheoryobject=mm, atomlist=actatoms, watermodel='tip3p')
         waterconstraints = {'bond': waterconlist}
 
+        # geomeTRIC appends to its trajectory files, so remove any left from earlier runs
+        for f in ("geometric_OPTtraj_Full.xyz", "geometric_OPTtraj_QMregion.xyz"):
+            Path(f).unlink(missing_ok=True)
+
         print("[STEP] Running QM/MM Optimisation...")
-        Optimizer(fragment=fragment, theory=qmmm, ActiveRegion=True, actatoms=actatoms, maxiter=200,
+        Optimizer(fragment=fragment, theory=qmmm_theory, ActiveRegion=True, actatoms=actatoms, maxiter=200,
             constraints=waterconstraints, charge=inputs.get("charge") , mult=inputs.get("mult") )
 
-        save_result(
-            {"opttraj": Path("geometric_OPTtraj_Full.xyz").resolve().as_posix()},
-            filename=args.config,
-            section="qmmm"
+        result["opttraj"] = Path("geometric_OPTtraj_Full.xyz").resolve().as_posix()
+        save_result(result, filename=args.config, section="qmmm")
+
+    if inputs.get("singlepoint", True):
+        # QM/MM single point on the current (optimised) geometry: CA-CB cuts get link atoms and
+        # the MM environment enters as point charges. No continuum solvation: ASH's PySCF
+        # interface ignores it when point charges are present.
+        mult = inputs.get("mult")
+        pyscf = PySCFTheory(scf_type="RKS" if mult == 1 else "UKS",
+                            functional=inputs.get("sp_functional", "wb97x-v"),
+                            basis=inputs.get("sp_basis", "def2-svp"),
+                            numcores=inputs.get("cores"))
+        qmmm_sp = QMMMTheory(
+            qm_theory=pyscf,
+            mm_theory=mm,
+            fragment=fragment,
+            qmatoms=qm_atoms,
+            excludeboundaryatomlist=boundary_excluded,
+            embedding="electrostatic",
+            printlevel=1,
         )
+        print("[STEP] Running PySCF QM/MM single point...")
+        Singlepoint(theory=qmmm_sp, fragment=fragment, charge=inputs.get("charge"), mult=mult)
 
-    with open("geometric_OPTtraj_QMregion.xyz") as f:
-        lines = f.readlines()
+        mol = pyscf.mol
+        mf = pyscf.mf
+        dm = mf.make_rdm1()
+        if mult != 1:
+            dm = dm[0] + dm[1]  # total density from alpha + beta
+        pyscf.cubegen_density(mol, "density.cube", dm)
+        pyscf.cubegen_mep(mol, "mep.cube", dm)
 
-    natoms = int(lines[0].strip())
-    block_size = natoms + 2
+        # Alpha orbitals for UKS
+        mo_coeff = mf.mo_coeff if mult == 1 else mf.mo_coeff[0]
+        homo = mol.nelec[0] - 1
+        lumo = mol.nelec[0]
+        pyscf.cubegen_orbital(mol, "HOMO.cube", mo_coeff[:, homo])
+        pyscf.cubegen_orbital(mol, "LUMO.cube", mo_coeff[:, lumo])
 
-    last_frame = lines[-block_size:]
+        result["cubes"] = [Path(f).resolve().as_posix() for f in
+                           ("density.cube", "mep.cube", "HOMO.cube", "LUMO.cube")]
+        save_result(result, filename=args.config, section="qmmm")
 
-    with open("OPTtraj_lastframe.xyz", "w") as f:
-        f.writelines(last_frame)
-
-    pyscf = PySCFTheory(scf_type="RKS", functional="wb97x-v", basis="def2-svp", solvation="ddCOSMO", solvation_eps=78)
-    qm_region = Fragment(xyzfile="OPTtraj_lastframe.xyz")
-    Singlepoint(theory=pyscf, fragment=qm_region, charge=inputs.get("charge"), mult=inputs.get("mult"))
-
-    mol = pyscf.mol
-    mf = pyscf.mf
-    dm = mf.make_rdm1()
-    pyscf.cubegen_density(mol, "density.cube", dm)
-    pyscf.cubegen_mep(mol, "mep.cube", dm)
-
-    homo = mf.nelec[0] - 1
-    lumo = mf.nelec[0]
-    pyscf.cubegen_orbital(mol, "HOMO.cube", mf.mo_coeff[:, homo])
-
-    pyscf.cubegen_orbital(mol, "LUMO.cube", mf.mo_coeff[:, lumo])
-
-    return
-
-
+    return result
