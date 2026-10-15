@@ -12,7 +12,7 @@ from openmm.app import PDBFile, Topology, ForceField
 
 from ash import *
 
-from preprocess import (
+from .preprocess import (
     save_result,
     load_section,
 )

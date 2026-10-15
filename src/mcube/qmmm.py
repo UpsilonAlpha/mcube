@@ -19,7 +19,7 @@ from pathlib import Path
 from pyscf import gto, dft
 
 
-from preprocess import (
+from .preprocess import (
     save_result,
     load_section,
 )

@@ -5,16 +5,8 @@ Unified pipeline for protein/ligand preprocessing, MD, and QM/MM.
 
 from __future__ import annotations
 import argparse
+import importlib
 import os
-from pathlib import Path
-from typing import Any, Dict
-
-# Import local workflows
-import preprocess
-import md
-import qmmm
-import postprocess
-import neb
 
 
 def build_parser():
@@ -69,23 +61,10 @@ def main():
     # =========================================================
     # DISPATCH
     # =========================================================
-    if args.command == "preprocess":
-        result = preprocess.run(args)
-
-    elif args.command == "md":
-        result = md.run(args)
-
-    elif args.command == "qmmm":
-        result = qmmm.run(args)
-    
-    elif args.command == "postprocess":
-        result = postprocess.run(args)
-
-    elif args.command == "neb":
-        result = neb.run(args)
-
-    else:
-        parser.error("Unknown command")
+    # Stage modules are imported lazily so that e.g. `preprocess` does not
+    # require pyscf or MDAnalysis to be importable.
+    stage = importlib.import_module(f".{args.command}", package=__package__)
+    result = stage.run(args)
 
     # =========================================================
     # OUTPUT

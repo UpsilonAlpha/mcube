@@ -5,12 +5,12 @@ import os
 from typing import List, Set, Dict, Any, Tuple
 from openmm.app import PDBFile
 
-from preprocess import (
+from .preprocess import (
     save_result,
     load_section,
 )
 
-from qmmm import build_qm_region
+from .qmmm import build_qm_region
 from ash import *
 
 

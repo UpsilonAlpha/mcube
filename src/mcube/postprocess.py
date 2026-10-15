@@ -15,7 +15,7 @@ from pathlib import Path
 from ash import *
 import mdtraj
 
-from preprocess import (
+from .preprocess import (
     save_result,
     load_section,
 )

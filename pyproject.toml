@@ -1,17 +1,33 @@
 [project]
-name = "M3BL"
-version = "0.1.0"
-description = "MBL MD/QMMM pipeline"
+name = "mcube"
+version = "0.2.0"
+description = "Protein/ligand MD, QM/MM and NEB pipeline built on ASH"
 authors = [{name = "Upsilon"}]
+requires-python = ">=3.10"
+# ASH itself is not on PyPI: install it from git (see README / environment.yml).
+# OpenMM, RDKit, OpenFF, pdbfixer and xtb are best installed from conda-forge.
 dependencies = [
     "numpy",
+    "pyyaml",
     "rdkit",
     "openmm",
+    "mdtraj",
+    "MDAnalysis",
+    "polars",
+    "networkx",
+    "matplotlib",
 ]
 
+[project.optional-dependencies]
+# Needed only for the PySCF single point at the end of `mcube qmmm`
+pyscf = ["pyscf"]
+
 [project.scripts]
-pipeline = "pipeline.cli:main"
+mcube = "mcube.cli:main"
 
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
