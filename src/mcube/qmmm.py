@@ -179,6 +179,46 @@ def clean_geometric_files():
         Path(f).unlink(missing_ok=True)
 
 
+def last_traj_frame(xyzfile: str, natoms: int):
+    """Coordinates (Å) and energy of the last frame of ASH's geometric_OPTtraj_Full.xyz,
+    read from the end of the file (it holds the full system at every step)."""
+    path = Path(xyzfile)
+    with open(path, "rb") as f:
+        f.seek(0, 2)
+        size = f.tell()
+        f.seek(max(0, size - (natoms + 2) * 120))
+        lines = f.read().decode().splitlines()
+    block = lines[-(natoms + 2):]
+    if len(block) != natoms + 2 or block[0].strip() != str(natoms):
+        raise ValueError(f"Could not read the last {natoms}-atom frame of {xyzfile}")
+    coords = np.array([[float(x) for x in line.split()[1:4]] for line in block[2:]])
+    words = block[1].split()
+    energy = float(words[words.index("Energy") + 1]) if "Energy" in words else None
+    return coords, energy
+
+
+def optimize(fragment, theory, actatoms, inputs, constraints, constrainvalue, maxiter):
+    """
+    ASH/geomeTRIC optimisation that survives running out of steps: geomeTRIC
+    raises at maxiter and ASH then leaves the fragment at its start, so on
+    non-convergence the fragment is set to the last step of the trajectory.
+    Returns (energy, converged).
+    """
+    try:
+        opt = Optimizer(fragment=fragment, theory=theory, ActiveRegion=True, actatoms=actatoms,
+                        maxiter=maxiter, constraints=constraints, constrainvalue=constrainvalue,
+                        charge=inputs.get("charge"), mult=inputs.get("mult"))
+    except Exception as e:
+        if type(e).__name__ != "GeomOptNotConvergedError":
+            raise
+        print(f"[WARNING] Optimisation not converged in {maxiter} steps; keeping its last geometry")
+        coords, energy = last_traj_frame("geometric_OPTtraj_Full.xyz", fragment.numatoms)
+        fragment.coords = coords
+        return energy, False
+    energy = getattr(opt, "energy", None)
+    return (float(energy) if energy is not None else None), True
+
+
 def write_pdb(mm, coords, filename: str) -> str:
     """Full system with the MM topology (keeps residue names/ids, e.g. for NEB endpoints)."""
     with open(filename, "w") as f:
@@ -262,15 +302,16 @@ def run(args) -> Dict[str, Any]:
         clean_geometric_files()
 
         print("[STEP] Running QM/MM Optimisation...")
-        opt = Optimizer(fragment=fragment, theory=qmmm_theory, ActiveRegion=True, actatoms=actatoms,
-                        maxiter=inputs.get("opt_maxiter", 200), constraints=constraints,
-                        constrainvalue=constrainvalue, charge=inputs.get("charge"), mult=inputs.get("mult"))
+        energy, converged = optimize(fragment, qmmm_theory, actatoms, inputs, constraints, constrainvalue,
+                                     inputs.get("opt_maxiter", 200))
 
-        # Full optimised system with the MM topology, e.g. as an NEB endpoint
+        # Full optimised system with the MM topology, e.g. as an NEB endpoint. If the
+        # optimisation ran out of steps, this is its last geometry (converged: false).
         result["opttraj"] = Path("geometric_OPTtraj_Full.xyz").resolve().as_posix()
         result["optimized_pdb"] = write_pdb(mm, fragment.coords, "QM_MM_optimized.pdb")
-        if getattr(opt, "energy", None) is not None:
-            result["opt_energy"] = float(opt.energy)
+        result["converged"] = converged
+        if energy is not None:
+            result["opt_energy"] = energy
         save_result(result, filename=args.config, section=section)
 
     if inputs.get("singlepoint", True):

@@ -50,7 +50,7 @@ The config file has one section per stage, and each section has `inputs` (writte
 - [`pdbqt_config.yaml`](config_examples/pdbqt_config.yaml): explicit solvent, docked ligand from a PDBQT
 - [`implicit_config.yaml`](config_examples/implicit_config.yaml): implicit solvent (GBn2), ligand from a PDB
 
-Results are written back with `yaml.safe_dump`, so comments in the config are lost the first time a stage saves its results.
+Results are written back with `yaml.safe_dump`, so comments in the config are lost the first time a stage saves its results. Writes are locked (POSIX), so several jobs can run stages on one config at once as long as each writes its own `--section`.
 
 **Atom selectors.** Wherever an input takes atoms (`md` `constraints`/`restraints`; `actregion_origin`, `opt_constraints`; scan `atoms`/`constraints`; ts `hessian_atoms`/`monitor`; neb `hessian_atoms`/`partial_hessian_atoms`), each atom can be a 0-based index or a `"chain:resid:atom"` string matched against the stage's structure, e.g. `"B:1:ZN"` or `"A:88:NE2"`. Numbers in the same entry (distances, force constants) are left alone, so `restraints: [["B:1:ZN", "C:1:O2x", 2.2, 20.0]]` works. Selectors keep a config valid when the solvent box (and so every index after the solute) changes, and make configs readable for new systems. The resolved indices are printed.
 
@@ -123,13 +123,13 @@ Minimisation always runs. Metal–donor `constraints` are applied as fixed-dista
 | `skip_equilibrate` | `false` | Skip QM/MM MD |
 | `skip_optimize` | `false` | Skip QM/MM optimisation |
 | `opt_constraints` | none | Bond constraints during the optimisation: `[[i, j], …]` holds the starting distance, `[[i, j, d_Å], …]` sets it. Atoms must be in the active region. Active-region waters are always kept rigid. |
-| `opt_maxiter` | 200 | Optimisation steps (geomeTRIC stops with an error if not converged) |
+| `opt_maxiter` | 200 | Optimisation steps. If they run out, the last geometry is kept as `QM_MM_optimized.pdb` and `converged: false` is recorded. |
 | `actradius` | 0 | If > 0, optimise all atoms within this radius (Å) of `actregion_origin`. Otherwise only the QM atoms move. |
 | `actregion_origin` | first non-standard QM atom | Atom index at the centre of the active region |
 | `singlepoint` | `true` | PySCF QM/MM single point (RKS/UKS from `mult`), plus `density.cube`, `mep.cube`, `HOMO.cube` and `LUMO.cube` |
 | `sp_functional`, `sp_basis` | `wb97x-v`, `def2-svp` | Single-point level of theory |
 
-`results` (section `qmmm`, or `--section NAME`): `qm_atoms`, `boundary_excluded`, `trajfile`, `lastframe`, `opttraj`, `optimized_pdb` (`QM_MM_optimized.pdb`, the full optimised system, usable as an NEB endpoint), `opt_energy` (Eh), `opt_constraints` (with the distances used), `cubes`.
+`results` (section `qmmm`, or `--section NAME`): `qm_atoms`, `boundary_excluded`, `trajfile`, `lastframe`, `opttraj`, `optimized_pdb` (`QM_MM_optimized.pdb`, the full optimised system, usable as an NEB endpoint), `opt_energy` (Eh), `converged`, `opt_constraints` (with the distances used), `cubes`.
 
 `mcube qmmm config.yaml --pdb other.pdb --section qmmm_product` runs the same inputs on another structure (e.g. each NEB endpoint) without overwriting the other run's results. `--actatoms FILE` (qmmm, scan, neb and ts) reuses an active-atom list such as the reactant run's `active_atoms`, so both NEB endpoints and the NEB share one active region.
 
@@ -219,13 +219,15 @@ See [docs/running-on-bunya.md](docs/running-on-bunya.md) for thread and memory s
 
 ## Standalone scripts
 
-Both scripts are in `scripts/`:
+All are in `scripts/`:
 
 - `plot_md_data.py <data.csv>`: plots temperature (plus density and volume for NPT) from an OpenMM CSV
 - `plot_rmsd_via_mdtraj.py <traj.dcd> <topology.pdb>`: plots RMSD of the protein heavy atoms
 - `make_residues_contiguous.py <reactant.pdb> [product.pdb ...]`: makes each residue's atoms contiguous in the reference PDB (readers split interleaved residues into fragments) and applies the same atom permutation to the other files, so atom i still matches atom i. Writes `*_contig.pdb`.
 - `move_proton.py <in.pdb> <out.pdb> --resname R --proton H --to N [--extract lig.pdb]`: moves a proton to another atom in the same residue without changing the atom order, updates CONECT, and can write the residue alone for re-parameterisation
 - `select_nac_frames.py <topology.pdb> <traj.dcd>`: picks near-attack frames by nucleophile–C distance and Nu–C=O angle, writing a CSV plus full-system PDBs
+- `extract_frames.py <topology.pdb> <traj.dcd> --frames 300 400 -1`: writes chosen frames as full-system PDBs (same atom order and ids, the frame's own box in CRYST1), e.g. as `mcube qmmm --pdb` inputs
+- `site_report.py <topology.pdb> <traj.dcd> [--metal SEL] [--pair A B] [--angle A B C] [--rmsd-sel SEL]`: metal coordination shell (bound fraction, distances), chosen distances/angles and RMSD over a trajectory (or a single PDB as the trajectory). Atoms as mdtraj selections, `chain:resid:atom` or indices.
 - `build_product_box.py <reactant_solvated.pdb> <product_solute.pdb> <out.pdb>`: builds a solvated NEB product in the reactant's water box. NEB endpoints must share every atom, waters included, so solvating reactant and product separately does not work. The product solute must have the same atoms in the same order as the reactant solute. The script aligns on the non-reactive solute atoms and reports water clashes. QM/MM-optimise both endpoints before running NEB.
 
 ## Notes and limitations

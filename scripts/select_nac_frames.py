@@ -82,6 +82,9 @@ def main():
     omm_top = PDBFile(args.topology).topology
     for i in sorted(chosen):
         name = out / f"nac_frame{i:05d}.pdb"
+        # The frame's own (NPT-equilibrated) box, not the topology file's
+        if traj.unitcell_vectors is not None:
+            omm_top.setPeriodicBoxVectors(traj.unitcell_vectors[i] * unit.nanometer)
         with open(name, "w") as f:
             PDBFile.writeFile(omm_top, traj.xyz[i] * 10.0 * unit.angstrom, f, keepIds=True)
         print(f"  frame {i} (t = {traj.time[i]:.0f} ps): d = {dist[i]:.2f} A, angle = {angle[i]:.0f} deg -> {name}")

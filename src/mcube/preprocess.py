@@ -9,9 +9,15 @@ import argparse
 import yaml
 import os
 import shutil
+from contextlib import contextmanager
 from typing import Dict, Any, Tuple
 from pathlib import Path
 from datetime import datetime
+
+try:
+    import fcntl
+except ImportError:  # Windows: no locking (single-user use)
+    fcntl = None
 
 import numpy as np
 from rdkit import Chem
@@ -86,43 +92,61 @@ def save_result(
         "timestamp": datetime.now().isoformat(),
     }
 
-    # ==============================
-    # 3. Load existing YAML
-    # ==============================
-    if path.exists():
-        with open(path, "r") as f:
-            data = yaml.safe_load(f) or {}
-    else:
-        data = {}
-
-    # ==============================
-    # 4. Merge into section
-    # ==============================
-    if section:
-        data.setdefault(section, {})
-        data[section].update(payload)
-    else:
-        data.update(payload)
-
-    # ==============================
-    # 5. Atomic write
-    # ==============================
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = path.with_suffix(".tmp")
 
-    with open(tmp_path, "w") as f:
-        yaml.safe_dump(
-            data,
-            f,
-            sort_keys=False,
-            default_flow_style=False,
-        )
+    # Read-modify-write under a lock, so several jobs (e.g. one QM/MM run per
+    # snapshot, each with its own --section) can share one config file
+    with _locked(path):
+        # ==============================
+        # 3. Load existing YAML
+        # ==============================
+        if path.exists():
+            with open(path, "r") as f:
+                data = yaml.safe_load(f) or {}
+        else:
+            data = {}
 
-    tmp_path.replace(path)
+        # ==============================
+        # 4. Merge into section
+        # ==============================
+        if section:
+            data.setdefault(section, {})
+            data[section].update(payload)
+        else:
+            data.update(payload)
+
+        # ==============================
+        # 5. Atomic write
+        # ==============================
+        tmp_path = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+
+        with open(tmp_path, "w") as f:
+            yaml.safe_dump(
+                data,
+                f,
+                sort_keys=False,
+                default_flow_style=False,
+            )
+
+        tmp_path.replace(path)
 
     print(f"[INFO] Updated → {path} [{section}]")
 
     return str(path)
+
+
+@contextmanager
+def _locked(path: Path):
+    """Exclusive lock on `<config>.lock` (POSIX; no-op where fcntl is missing)."""
+    if fcntl is None:
+        yield
+        return
+    with open(path.with_name(path.name + ".lock"), "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
 
 
 def load_section(filename: str, section: str) -> Dict[str, Any]:
