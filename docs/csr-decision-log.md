@@ -337,6 +337,16 @@ Each intermediate is built in the shared box (D4) and optimised, then confirmed 
 - IRC: the default is a quasi-IRC. The structure is displaced ±0.15 Å along the imaginary mode and each side is minimised. This shows which minima the TS connects, but it is not a true mass-weighted IRC path. Sella's IRC is available (`irc_method: sella`) but expensive with an 8 Å active region.
 - Revisit: the IRC method, if a smooth path is needed for DFT single points (use NEB images instead, or Sella with a smaller active region); and whether to run NEB with rigid waters.
 
+**D27 – Restrained NVT outcome, and a QM/MM probe before snapshot selection.** (2026-10-16, user decision)
+- Evidence: job 29848762 (restrained warm-up, NPT, 1 ns NVT) finished normally; `scripts/site_report.py`, `md_restrained/site*/`.
+  - Protein: CA RMSD ~1 Å, stable. Meropenem moved 3.7 Å on average from the start (the restraint pulled it onto the Zn); about 1.3 Å over the second half.
+  - Carbonyl on the Zn: Zn–O2x 1.79–2.19 Å (mean 1.97). The restraint target was 2.2 Å.
+  - **HOH485 did not leave**: Zn–O 1.72–1.95 Å (mean 1.83). Too short, an artefact of the nonbonded MM Zn²⁺. The water H-bonds both Asp92 oxygens (2.8 Å). The Zn has 5 ligands within 2.5 Å (His88, His164, OH⁻, O2x, water), plus Asp92 constrained at 2.80 Å.
+  - **No near-attack geometry**: OH⁻–C4x 3.21–3.86 Å (mean 3.52; target 3.0) at an O01–C4x–O2x angle of 24–54°, not 95–120°. The OH⁻ and O2x are cis on the Zn (O01···O2x 2.67 Å), so the OH⁻ sits beside the carbonyl O, not over the C4x face. The water is no better placed (O···C4x 3.9 Å, 24°). 0 of 500 frames meet the D16 criteria.
+- Decision: before changing the MM protocol, QM/MM-optimise (no restraints, no metal constraints, rigid waters, 8 Å active region around the Zn, up to 300 steps) frames 300, 400 and 499 (300–499 ps) as a probe. This removes the MM Zn artefacts and shows whether the water stays and how the OH⁻/carbonyl arrangement relaxes. Job 29893675 (array, `qmmm_probe/`, results in sections `qmmm_probe_f00300/00400/00499`).
+- Alternative, not taken yet: rerun the restrained MD with an attack-geometry restraint and a restraint moving the water off the Zn (biased).
+- Revisit: after the probe, whether the reactant is a cis OH⁻/carbonyl Zn complex (then attack needs the OH⁻ to rotate over the carbonyl face, which a scan will show), and whether HOH485 belongs in the Michaelis complex.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
