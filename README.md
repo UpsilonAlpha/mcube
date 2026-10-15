@@ -118,7 +118,7 @@ Minimisation always runs. Metal–donor `constraints` are applied as fixed-dista
 
 `results` (section `qmmm`, or `--section NAME`): `qm_atoms`, `boundary_excluded`, `trajfile`, `lastframe`, `opttraj`, `optimized_pdb` (`QM_MM_optimized.pdb`, the full optimised system, usable as an NEB endpoint), `cubes`.
 
-`mcube qmmm config.yaml --pdb other.pdb --section qmmm_product` runs the same inputs on another structure (e.g. each NEB endpoint) without overwriting the other run's results.
+`mcube qmmm config.yaml --pdb other.pdb --section qmmm_product` runs the same inputs on another structure (e.g. each NEB endpoint) without overwriting the other run's results. `--actatoms FILE` (qmmm and neb) reuses an active-atom list such as the reactant run's `active_atoms`, so both NEB endpoints and the NEB share one active region.
 
 ### `neb.inputs` (optional section)
 

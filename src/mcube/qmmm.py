@@ -128,7 +128,10 @@ def run(args) -> Dict[str, Any]:
         if Path("QM_MM_lastframe.pdb").exists():
             fragment = Fragment(pdbfile="QM_MM_lastframe.pdb")
 
-        if inputs.get("actradius"):
+        if getattr(args, "actatoms", None):
+            # Reuse another run's active region (e.g. the reactant's for the product)
+            actatoms = read_intlist_from_file(args.actatoms)
+        elif inputs.get("actradius"):
             originatom = inputs.get("actregion_origin")
             if originatom is None:
                 if not boundary_excluded:

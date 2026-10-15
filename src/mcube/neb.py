@@ -74,7 +74,9 @@ def run(args) -> Dict[str, Any]:
 
     # Active region: atoms within actradius of the origin atom, else just the QM atoms
     actradius = neb_inputs.get("actradius", qmmm_inputs.get("actradius"))
-    if actradius:
+    if getattr(args, "actatoms", None):
+        actatoms = read_intlist_from_file(args.actatoms)
+    elif actradius:
         originatom = neb_inputs.get("actregion_origin", qmmm_inputs.get("actregion_origin"))
         if originatom is None:
             if not boundary_excluded:

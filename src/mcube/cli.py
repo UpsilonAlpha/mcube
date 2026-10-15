@@ -24,6 +24,7 @@ def build_parser():
     p3.add_argument("config", help="Input yaml file")
     p3.add_argument("--pdb", help="Starting structure (overrides qmmm.inputs.pdb_file)")
     p3.add_argument("--section", default="qmmm", help="Config section to write results to")
+    p3.add_argument("--actatoms", help="File of active-atom indices (e.g. another run's active_atoms)")
 
     # =========================================================
     # NEB
@@ -33,6 +34,7 @@ def build_parser():
     p4.add_argument("config", help="Input yaml file")
     p4.add_argument("--product", required=True, help="Product PDB file")
     p4.add_argument("--reactant", required=True, help="Reactant PDB file")
+    p4.add_argument("--actatoms", help="File of active-atom indices (e.g. the reactant's active_atoms)")
     p4.add_argument("--cores", type=int, default=int(os.environ.get("SLURM_CPUS_PER_TASK", 1)))
 
 
