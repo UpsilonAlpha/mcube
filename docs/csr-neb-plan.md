@@ -111,15 +111,27 @@ See "TS refinement and IRC" below. Run on each climbing image:
 - **Asp92:** does it H-bond the OH⁻ or coordinate the Zn (D24)?
 - **Later:** one Zn vs two Zn (P3), and the Δ1 product (P4).
 
-## mcube changes needed before steps 4–6
+## mcube support for steps 3–6
 
-1. **Constrained QM/MM optimisation:** `qmmm.inputs.opt_constraints`, passed to the ASH/geomeTRIC `Optimizer`.
-2. **Relaxed scan:** `qmmm.inputs.scan` (atom pair, start, end, number of points). Outputs the energy per point and an optimised PDB per point.
-3. **NEB settings from the config:** `neb.inputs.images`, `CI`, `maxiter` and the convergence tolerances, instead of the hard-coded 8 images.
-4. **TS refinement and IRC:** a new stage or a neb option, using ASH's geomeTRIC TS optimisation with a QM-region partial Hessian and Sella IRC.
-5. **DFT/MM single points along paths:** PySCF on GPU, which needs gpu4pyscf in a separate env.
+Implemented (decision log D26; see the README for every key):
 
-These are tracked on a separate session card ("mcube: constrained QM/MM opts, relaxed scans, TS/IRC").
+1. **Constrained QM/MM optimisation:** `qmmm.inputs.opt_constraints`, `[[i, j]]` (hold) or `[[i, j, d]]` (set).
+2. **Relaxed scan:** `mcube scan config.yaml --pdb R.pdb --section scan_attack --actatoms active_atoms`, with `atoms`, `start`, `end` and `points` in the section. Writes `scan_XX.pdb` and `scan_energies.csv`.
+3. **NEB settings from the config:** `neb.inputs` (or a per-step section given with `--section`): `images` (12), `CI`, `maxiter`, tolerances, interpolation, springs, `method: nebts`. Writes `saddlepoint.pdb`.
+4. **TS refinement and IRC:** `mcube ts config.yaml --pdb saddlepoint.pdb --section ts_attack --actatoms active_atoms`. Runs the TS optimisation with a partial Hessian over `hessian_atoms`, a frequency check, and a quasi-IRC along the imaginary mode (or Sella), with `monitor` distances reported.
+
+Still to do: **DFT/MM single points along paths**, PySCF on GPU (needs gpu4pyscf in a separate env).
+
+Example for step 4a on snapshot 1:
+
+```yaml
+scan_attack_s1:
+  inputs: {atoms: [4255, 4208], start: 3.0, end: 1.45, points: 16}
+ts_attack_s1:
+  inputs:
+    hessian_atoms: [4203, 4208, 4209, 4255, 4256]   # Zn, C4x, O2x, O01, H03; add N1x and neighbours (look up indices)
+    monitor: [[4255, 4208], [4203, 4209]]   # OH–C4x, Zn–O2x
+```
 
 ## Cost estimate (to be measured)
 

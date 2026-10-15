@@ -328,6 +328,15 @@ Each intermediate is built in the shared box (D4) and optimised, then confirmed 
 
 **D19 – The Δ2 enamine product comes first; the Δ1 imine (C2 protonation) later.** (user decision)
 
+**D26 – How scans, NEB and TS/IRC are run in mcube.** (2026-10-15; settings in the config, as the user asked)
+- Relaxed scans (`mcube scan`): one bond distance per scan, stepped from the reactant. Each point is optimised from the previous one with that distance fixed (geomeTRIC `$set`). Active-region waters stay rigid throughout, as in the `qmmm` minimisations.
+- NEB: every NEB setting lives in the config (`neb.inputs`, or a per-step section). The default is 12 images (previously hard-coded 8), with CI on and ASH's convergence defaults (max force on the climbing image 0.026 Eh/Å, RMS 0.013). The option `method: nebts` runs ASH's NEB+TS.
+- TS refinement (`mcube ts`): a geomeTRIC TS optimisation, using an exact Hessian over `hessian_atoms` (the reacting atoms and their neighbours) and a unit Hessian for the rest of the active region. This is the same scheme as ASH's NEBTS.
+  - Waters are held rigid here too, so the TS and the minima share one potential. The NEB images themselves have flexible waters (KNARR takes no constraints).
+- Frequencies: "one imaginary frequency" is judged with a −50 cm⁻¹ threshold. Smaller imaginary modes from a partial Hessian are reported separately as noise.
+- IRC: the default is a quasi-IRC. The structure is displaced ±0.15 Å along the imaginary mode and each side is minimised. This shows which minima the TS connects, but it is not a true mass-weighted IRC path. Sella's IRC is available (`irc_method: sella`) but expensive with an 8 Å active region.
+- Revisit: the IRC method, if a smooth path is needed for DFT single points (use NEB images instead, or Sella with a smaller active region); and whether to run NEB with rigid waters.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

@@ -5,8 +5,10 @@ A pipeline for protein–ligand systems, often metalloproteins, built on [ASH](h
 1. **preprocess**: ligand parameterisation (OpenFF), protonation and solvation (explicit or implicit), metal-coordination bond constraints and QM-region selection
 2. **md**: OpenMM minimisation, optional gentle warm-up, NPT box equilibration and production MD
 3. **qmmm**: xTB/MM MD and geometry optimisation, with an optional PySCF QM/MM single point and cube files
-4. **neb**: QM/MM nudged elastic band between a reactant and a product, with a frequency check on the saddle point
-5. **postprocess**: MD data plots, RMSD, RMSF (as B-factors) and a residue interaction network
+4. **scan**: relaxed QM/MM distance scan (builds intermediates/products in the reactant's box)
+5. **neb**: QM/MM nudged elastic band between a reactant and a product (optionally NEB + TS optimisation), with a frequency check on the saddle point
+6. **ts**: TS optimisation with a partial Hessian, frequency check and IRC (quasi-IRC along the TS mode, or Sella)
+7. **postprocess**: MD data plots, RMSD, RMSF (as B-factors) and a residue interaction network
 
 All stages read one YAML config file and write their results back into it, so each stage picks up the outputs of the stages before it.
 
@@ -31,13 +33,15 @@ pip install -e .
 mcube preprocess config.yaml
 mcube md config.yaml
 mcube qmmm config.yaml
-mcube neb config.yaml --reactant reactant.pdb --product product.pdb [--cores N]
+mcube scan config.yaml --pdb reactant.pdb --section scan_attack [--actatoms active_atoms]
+mcube neb config.yaml --reactant reactant.pdb --product product.pdb [--section neb_step1] [--actatoms active_atoms] [--cores N]
+mcube ts config.yaml --pdb saddlepoint.pdb [--section ts_step1] [--actatoms active_atoms]
 mcube postprocess config.yaml [--qmmm] [--redraw] [--cutoff 2.6] [--metals ZN MG] [--occupancy 0.1]
 ```
 
 `python -m mcube ...` also works. Every stage writes its files to the current directory, so run each stage from its own working directory. Paths saved in `results` are absolute, so later stages can be run from anywhere.
 
-`--cores` defaults to `$SLURM_CPUS_PER_TASK` (or 1). The `md` and `qmmm` stages take their core count from `cores` in the config instead.
+`--cores` defaults to `$SLURM_CPUS_PER_TASK` (or 1). The `md`, `qmmm`, `scan` and `ts` stages take their core count from `cores` in the config instead.
 
 ## Config file
 
@@ -116,26 +120,76 @@ Minimisation always runs. Metal–donor `constraints` are applied as fixed-dista
 | `traj_frequency` | 1000 | QM/MM MD save interval (steps) |
 | `skip_equilibrate` | `false` | Skip QM/MM MD |
 | `skip_optimize` | `false` | Skip QM/MM optimisation |
+| `opt_constraints` | none | Bond constraints during the optimisation: `[[i, j], …]` holds the starting distance, `[[i, j, d_Å], …]` sets it. Atoms must be in the active region. Active-region waters are always kept rigid. |
+| `opt_maxiter` | 200 | Optimisation steps (geomeTRIC stops with an error if not converged) |
 | `actradius` | 0 | If > 0, optimise all atoms within this radius (Å) of `actregion_origin`. Otherwise only the QM atoms move. |
 | `actregion_origin` | first non-standard QM atom | Atom index at the centre of the active region |
 | `singlepoint` | `true` | PySCF QM/MM single point (RKS/UKS from `mult`), plus `density.cube`, `mep.cube`, `HOMO.cube` and `LUMO.cube` |
 | `sp_functional`, `sp_basis` | `wb97x-v`, `def2-svp` | Single-point level of theory |
 
-`results` (section `qmmm`, or `--section NAME`): `qm_atoms`, `boundary_excluded`, `trajfile`, `lastframe`, `opttraj`, `optimized_pdb` (`QM_MM_optimized.pdb`, the full optimised system, usable as an NEB endpoint), `cubes`.
+`results` (section `qmmm`, or `--section NAME`): `qm_atoms`, `boundary_excluded`, `trajfile`, `lastframe`, `opttraj`, `optimized_pdb` (`QM_MM_optimized.pdb`, the full optimised system, usable as an NEB endpoint), `opt_energy` (Eh), `opt_constraints` (with the distances used), `cubes`.
 
-`mcube qmmm config.yaml --pdb other.pdb --section qmmm_product` runs the same inputs on another structure (e.g. each NEB endpoint) without overwriting the other run's results. `--actatoms FILE` (qmmm and neb) reuses an active-atom list such as the reactant run's `active_atoms`, so both NEB endpoints and the NEB share one active region.
+`mcube qmmm config.yaml --pdb other.pdb --section qmmm_product` runs the same inputs on another structure (e.g. each NEB endpoint) without overwriting the other run's results. `--actatoms FILE` (qmmm, scan, neb and ts) reuses an active-atom list such as the reactant run's `active_atoms`, so both NEB endpoints and the NEB share one active region.
+
+`scan`, `neb` and `ts` use `qmmm.inputs` for `charge`, `mult`, `xtb_method`, `forcefields`, `cores` (scan, ts), the QM region and (unless overridden) `actradius`/`actregion_origin`. Each reads its own base section's `inputs` (`scan`, `neb`, `ts`), overridden by the inputs of the `--section` it writes its results to, so several scans or steps can live in one config:
+
+```yaml
+scan:
+  inputs: {points: 16, opt_maxiter: 200}
+scan_attack:            # mcube scan config.yaml --pdb R.pdb --section scan_attack --actatoms active_atoms
+  inputs: {atoms: [4255, 4208], start: 3.0, end: 1.45}
+```
+
+### `scan.inputs`
+
+| Key | Default | Description |
+| --- | --- | --- |
+| `atoms` | required | `[i, j]`: the distance scanned (0-based indices) |
+| `start` | current distance | First value (Å) |
+| `end` | required | Last value (Å) |
+| `points` | 10 | Number of points, both ends included |
+| `constraints` | none | Extra bonds held during the scan, `[[i, j]]` or `[[i, j, d]]` |
+| `opt_maxiter` | 200 | Optimisation steps per point |
+| `pdb_file` | `qmmm.results.optimized_pdb` | Starting structure (or `--pdb`) |
+
+Each point is optimised from the previous one with the scanned distance fixed. Writes `scan_XX.pdb` (full system) and `scan_energies.csv`; `results` (`points` with target/actual distance, energy, kcal/mol relative to point 0, PDB; `max_point`) are saved after every point, so a stopped scan can be continued from its last PDB with a new `start`.
 
 ### `neb.inputs` (optional section)
 
 | Key | Default | Description |
 | --- | --- | --- |
-| `images` | 8 | Number of NEB images |
+| `images` | 12 | Number of NEB images |
+| `method` | `neb` | `nebts`: ASH NEBTS, a loose NEB-CI then a geomeTRIC TS optimisation of the climbing image |
+| `CI`, `maxiter`, `conv_type`, `tol_scale`, `tol_max_fci`, `tol_rms_fci`, `tol_turn_on_ci`, `cichange_freqcheck`, `free_end`, `interpolation`, `idpp_maxiter`, `idpp_springconst`, `restart_file`, `TS_guess_file` | ASH | Passed to ASH's `NEB`/`NEBTS` (ASH defaults: CI on, 100 iterations, tol_max_fci 0.026 / tol_rms_fci 0.013 Eh/Å for NEB, 0.10 / 0.05 for NEBTS, IDPP interpolation) |
+| `springconst`, `springconst2`, `energy_weighted`, `zoom` | ASH | NEB only |
+| `hessian_for_TS`, `partial_hessian_atoms`, `partial_npoint_choice`, `modelhessian`, `tsmode_tangent_threshold`, `OptTS_maxiter`, `OptTS_convergence_setting`, `OptTS_conv_criteria`, `OptTS_coordsystem` | `hessian_for_TS: partial`, else ASH | NEBTS only |
 | `actradius`, `actregion_origin` | qmmm values | Active region. With no radius, only the QM atoms move. |
-| `numfreq` | `true` | Numerical frequencies (QM atoms only) on the saddle point |
+| `numfreq` | `true` | Numerical frequencies on the saddle point |
+| `hessian_atoms` | QM atoms | Atoms in the frequency calculation (cost ≈ 6 gradients per atom) |
 
-`neb` uses `qmmm.inputs` for `charge`, `mult`, `xtb_method`, `forcefields` and the QM region. `--cores` is split between images that run in parallel and xTB within each image.
+`--cores` is split between images that run in parallel and xTB within each image.
 
-`results`: `qm_atoms`, `saddlepoint_xyz`, `saddlepoint_energy`, `frequencies`.
+`results` (section `neb` or `--section`): `qm_atoms`, `method`, `images`, `options`, `mep_energies`, `saddlepoint_xyz`, `saddlepoint_pdb` (full system, the input for `mcube ts`), `saddlepoint_energy`, `frequencies`, `imaginary_frequencies`.
+
+### `ts.inputs` (optional section)
+
+| Key | Default | Description |
+| --- | --- | --- |
+| `pdb_file` | `neb.results.saddlepoint_pdb` | TS guess (or `--pdb`) |
+| `hessian_atoms` | QM atoms | Atoms with an exact (numerical) Hessian, for the TS optimisation and the frequency check. The reacting atoms and their neighbours are enough; cost ≈ 3 (npoint 1) or 6 (npoint 2) gradients per atom. |
+| `monitor` | none | `[[i, j], …]` distances reported for the guess, the TS and both IRC ends |
+| `tsopt` | `true` | geomeTRIC TS optimisation; the rest of the active region's Hessian comes from `modelhessian` (`unit`, `Almloef`, `Lindh`, `Schlegel`, `xtb`) |
+| `tsopt_maxiter`, `convergence_setting` | 100, geomeTRIC default | |
+| `hessian_npoint`, `freq_npoint` | 1, 2 | One- or two-sided displacements for the TS-optimisation Hessian and the frequency check |
+| `freq` | `true` | Frequencies at the TS. A TS has exactly one imaginary frequency; the atoms moving most in that mode are reported. |
+| `freq_workers` | 1 | Displacements run in parallel (xTB `library` mode, `cores` split between them) |
+| `imag_threshold` | 50 | Imaginary frequencies smaller than this (cm⁻¹) are reported separately as numerical noise |
+| `irc` | `true` | Follow the TS downhill both ways |
+| `irc_method` | `mode` | `mode`: displace ±`irc_step` Å (largest atom displacement) along the imaginary mode and minimise each side. `sella`: Sella IRC on the active region (`irc_dx`; needs `sella`, expensive for a large active region). |
+| `opt_maxiter` | 300 | Steps per IRC minimisation |
+| `rigid_water` | `true` | Keep active-region waters rigid, as in the `qmmm` minimisations |
+
+`results`: `ts_pdb` (`ts_optimized.pdb`), `ts_energy`, `guess_imaginary`, `imaginary_frequencies`, `small_imaginary`, `lowest_frequencies`, `ts_mode_atoms`, monitored distances, and `irc.forward/reverse` (`irc_*.pdb`, energy, barrier = E(TS) − E(end) in kcal/mol, distances).
 
 ## Outputs by stage
 
@@ -144,7 +198,9 @@ Minimisation always runs. Metal–donor `constraints` are applied as fixed-dista
 | preprocess | `<resname>.mol/.pdb`, `openff_<resname>.xml`, `merged.pdb`, `finalsystem.pdb` |
 | md | `frag-minimized.pdb`, `warmup_MD_cycle*`, `relaxbox_NPT.dcd`, `nptsim.csv`, `NVTtrajectory(.dcd, _imaged.dcd, _lastframe(_imaged).pdb)`, `nvtsim.csv`, `system.xml` (implicit) |
 | qmmm | `QM_MM.dcd`, `QM_MM_lastframe.pdb`, `active_atoms`, `geometric_OPTtraj_Full.xyz`, `geometric_OPTtraj_QMregion.xyz`, `*.cube` |
-| neb | ASH NEB files, `saddlepoint.xyz` |
+| scan | `scan_XX.pdb`, `scan_energies.csv`, `active_atoms` |
+| neb | ASH NEB files, `saddlepoint.xyz`, `saddlepoint.pdb` |
+| ts | `Hessian_partial_TS`, `ts_optimized.pdb`, `irc_forward.pdb`, `irc_reverse.pdb`, `irc_*_opttraj.xyz` (or Sella's `sella_*.xyz`) |
 | postprocess | `Temperature.png`, `Density.png`, `BoxVolume.png`, `RMSD.png`, `interaction_network.csv/.png`, `rmsf_bfactor.pdb` |
 
 ## postprocess

@@ -7,14 +7,18 @@ Pipeline:
 2. Select QM atoms (metal coordination, from preprocess)
 3. Build QM/MM system
 4. Run short QM/MM MD
-5. QM/MM geometry optimisation (optionally with an active region)
+5. QM/MM geometry optimisation (optionally with an active region and with
+   user bond constraints, `opt_constraints`)
 6. Optional PySCF QM/MM single point with density, MEP and HOMO/LUMO cube files
 """
 
 from __future__ import annotations
 
-from typing import Dict, Any
+import copy
+from typing import Dict, Any, List, Optional
 from pathlib import Path
+
+import numpy as np
 
 from openmm import unit
 from openmm.app import PDBFile
@@ -49,6 +53,129 @@ def resolve_qm_region(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_fi
     return build_qm_region(pdb_file, results["qm_residues"], **settings)
 
 
+# ==============================
+# Helpers shared by the QM/MM stages (qmmm, scan, neb, ts)
+# ==============================
+
+def stage_inputs(config: str, base: str, section: Optional[str] = None) -> Dict[str, Any]:
+    """Inputs of the `base` section, overridden by those of `section` if it has any
+    (e.g. scan_attack.inputs over scan.inputs)."""
+    inputs = dict(load_section(config, base).get("inputs") or {})
+    if section and section != base:
+        inputs.update(load_section(config, section).get("inputs") or {})
+    return inputs
+
+
+def mm_settings(qmmm_inputs: Dict[str, Any], md: Dict[str, Any]):
+    """Force-field files and implicit-solvent flag: qmmm.inputs, else what md used."""
+    forcefields = qmmm_inputs.get("forcefields")
+    if forcefields is None:
+        forcefields = (md.get("results") or {}).get("forcefields")
+    implicit = qmmm_inputs.get("implicit", (md.get("inputs") or {}).get("implicit", False))
+    return forcefields, implicit
+
+
+def make_mm(forcefields, pdb_file: str, implicit: bool, cores: int):
+    return OpenMMTheory(
+        xmlfiles=forcefields,
+        pdbfile=pdb_file,
+        autoconstraints=None,
+        periodic=not implicit,
+        rigidwater=False,
+        numcores=cores,  # OpenMM CPU threads; ASH defaults to 1
+    )
+
+
+def make_qmmm(qmmm_inputs: Dict[str, Any], mm, fragment, qm_atoms, boundary_excluded,
+              cores: int, runmode: Optional[str] = None):
+    xtb = xTBTheory(xtbmethod=qmmm_inputs.get("xtb_method", "GFN2"), numcores=cores,
+                    runmode=runmode or qmmm_inputs.get("xtb_runmode", "inputfile"))
+    return QMMMTheory(
+        qm_theory=xtb,
+        mm_theory=mm,
+        fragment=fragment,
+        qmatoms=qm_atoms,
+        excludeboundaryatomlist=boundary_excluded,
+        embedding="electrostatic",
+        printlevel=1,
+    )
+
+
+def resolve_actatoms(actatoms_file, inputs: Dict[str, Any], mm, fragment, qm_atoms, boundary_excluded) -> List[int]:
+    """Active region: an active_atoms file (e.g. the reactant's), else all atoms within
+    `actradius` of `actregion_origin`, else just the QM atoms."""
+    if actatoms_file:
+        return read_intlist_from_file(actatoms_file)
+    if inputs.get("actradius"):
+        originatom = inputs.get("actregion_origin")
+        if originatom is None:
+            if not boundary_excluded:
+                raise ValueError("actradius is set but there is no actregion_origin and no "
+                                 "non-standard QM residue to centre the active region on")
+            originatom = boundary_excluded[0]
+        actregiondefine(mmtheory=mm, fragment=fragment, radius=inputs.get("actradius"), originatom=originatom)
+        return read_intlist_from_file("active_atoms")
+    return list(qm_atoms)
+
+
+def distance(coords, i: int, j: int) -> float:
+    return float(np.linalg.norm(np.asarray(coords[i]) - np.asarray(coords[j])))
+
+
+def bond_constraints(pairs, coords) -> List[list]:
+    """[[i, j]] or [[i, j, d]] -> [[i, j, d]]; a missing d is the current distance (Å)."""
+    out = []
+    for p in pairs or []:
+        i, j = int(p[0]), int(p[1])
+        d = float(p[2]) if len(p) > 2 and p[2] is not None else round(distance(coords, i, j), 4)
+        out.append([i, j, d])
+    return out
+
+
+def check_in_active(pairs, actatoms, what: str = "constraint"):
+    """geomeTRIC only sees the active region, so constrained atoms must be in it."""
+    act = set(int(a) for a in actatoms)
+    missing = sorted({int(a) for p in pairs for a in p[:2]} - act)
+    if missing:
+        raise ValueError(f"{what} atoms {missing} are not in the active region")
+
+
+def water_constraints(mm, actatoms) -> List[list]:
+    """O-H and H-H pairs of active-region TIP3P waters (kept rigid during optimisation)."""
+    return [[int(p[0]), int(p[1])] for p in
+            getwaterconstraintslist(openmmtheoryobject=mm, atomlist=actatoms, watermodel='tip3p')]
+
+
+def optimizer_constraints(water_pairs, user_pairs, coords):
+    """
+    Constraints dict and constrainvalue flag for ASH's Optimizer.
+
+    Without user constraints this is the original behaviour: the waters' bonds are
+    frozen ($freeze). With user constraints geomeTRIC's $set block needs a value for
+    every bond, so the waters are held at their current lengths, and so are user pairs
+    given without a value. A fresh list is returned each time because ASH converts the
+    indices to active-region indices in place.
+    """
+    if not user_pairs:
+        return {'bond': copy.deepcopy(water_pairs)}, False
+    bonds = bond_constraints(water_pairs, coords) + bond_constraints(user_pairs, coords)
+    return {'bond': bonds}, True
+
+
+def clean_geometric_files():
+    """geomeTRIC appends to its trajectory files, so remove any left from earlier runs."""
+    for f in ("geometric_OPTtraj_Full.xyz", "geometric_OPTtraj_QMregion.xyz"):
+        Path(f).unlink(missing_ok=True)
+
+
+def write_pdb(mm, coords, filename: str) -> str:
+    """Full system with the MM topology (keeps residue names/ids, e.g. for NEB endpoints)."""
+    with open(filename, "w") as f:
+        PDBFile.writeFile(mm.topology, np.asarray(coords) * unit.angstrom, f, keepIds=True)
+    return Path(filename).resolve().as_posix()
+
+
+
 def run(args) -> Dict[str, Any]:
 
     preprocess = load_section(args.config, "preprocess")
@@ -63,21 +190,10 @@ def run(args) -> Dict[str, Any]:
 
     pdb_file = getattr(args, "pdb", None) or inputs.get("pdb_file") or md_results.get("lastframe")
 
-    forcefields = inputs.get("forcefields")
-    if forcefields is None:
-        forcefields = md_results.get("forcefields")
-
-    implicit = inputs.get("implicit", (md.get("inputs") or {}).get("implicit", False))
+    forcefields, implicit = mm_settings(inputs, md)
 
     print("[STEP] Building MM system...")
-    mm = OpenMMTheory(
-        xmlfiles=forcefields,
-        pdbfile=pdb_file,
-        autoconstraints=None,
-        periodic=not implicit,
-        rigidwater=False,
-        numcores=inputs.get("cores", 1),  # OpenMM CPU threads; ASH defaults to 1
-    )
+    mm = make_mm(forcefields, pdb_file, implicit, inputs.get("cores", 1))
 
     fragment = Fragment(pdbfile=pdb_file)
 
@@ -89,19 +205,7 @@ def run(args) -> Dict[str, Any]:
     }
     save_result(result, filename=args.config, section=section)
 
-    xtb = xTBTheory(xtbmethod=inputs.get("xtb_method", "GFN2"), numcores=inputs.get("cores"),
-                    runmode=inputs.get("xtb_runmode", "inputfile"))
-
-    qmmm_theory = QMMMTheory(
-        qm_theory=xtb,
-        mm_theory=mm,
-        fragment=fragment,
-        qmatoms=qm_atoms,
-        excludeboundaryatomlist=boundary_excluded,
-        embedding="electrostatic",
-        printlevel=1,
-    )
-
+    qmmm_theory = make_qmmm(inputs, mm, fragment, qm_atoms, boundary_excluded, inputs.get("cores"))
 
     if not inputs.get("skip_equilibrate"):
         print("[STEP] Running QM/MM MD...")
@@ -129,37 +233,32 @@ def run(args) -> Dict[str, Any]:
         if Path("QM_MM_lastframe.pdb").exists():
             fragment = Fragment(pdbfile="QM_MM_lastframe.pdb")
 
-        if getattr(args, "actatoms", None):
-            # Reuse another run's active region (e.g. the reactant's for the product)
-            actatoms = read_intlist_from_file(args.actatoms)
-        elif inputs.get("actradius"):
-            originatom = inputs.get("actregion_origin")
-            if originatom is None:
-                if not boundary_excluded:
-                    raise ValueError("actradius is set but there is no actregion_origin and no "
-                                     "non-standard QM residue to centre the active region on")
-                originatom = boundary_excluded[0]
-            actregiondefine(mmtheory=mm, fragment=fragment, radius=inputs.get("actradius"), originatom=originatom)
-            actatoms = read_intlist_from_file("active_atoms")
-        else:
-            actatoms = qm_atoms
+        # An active_atoms file reuses another run's active region (e.g. the reactant's for the product)
+        actatoms = resolve_actatoms(getattr(args, "actatoms", None), inputs, mm, fragment,
+                                    qm_atoms, boundary_excluded)
 
-        waterconlist = getwaterconstraintslist(openmmtheoryobject=mm, atomlist=actatoms, watermodel='tip3p')
-        waterconstraints = {'bond': waterconlist}
+        # Optional bond constraints: [[i, j]] holds the current distance, [[i, j, d_Å]] sets it
+        user_pairs = inputs.get("opt_constraints") or []
+        check_in_active(user_pairs, actatoms, "opt_constraints")
+        constraints, constrainvalue = optimizer_constraints(water_constraints(mm, actatoms), user_pairs,
+                                                            fragment.coords)
+        if user_pairs:
+            result["opt_constraints"] = bond_constraints(user_pairs, fragment.coords)
+            print("[INFO] Bond constraints (i, j, Å): " + ", ".join(
+                f"{i}-{j} {d:.3f}" for i, j, d in result["opt_constraints"]))
 
-        # geomeTRIC appends to its trajectory files, so remove any left from earlier runs
-        for f in ("geometric_OPTtraj_Full.xyz", "geometric_OPTtraj_QMregion.xyz"):
-            Path(f).unlink(missing_ok=True)
+        clean_geometric_files()
 
         print("[STEP] Running QM/MM Optimisation...")
-        Optimizer(fragment=fragment, theory=qmmm_theory, ActiveRegion=True, actatoms=actatoms, maxiter=200,
-            constraints=waterconstraints, charge=inputs.get("charge") , mult=inputs.get("mult") )
+        opt = Optimizer(fragment=fragment, theory=qmmm_theory, ActiveRegion=True, actatoms=actatoms,
+                        maxiter=inputs.get("opt_maxiter", 200), constraints=constraints,
+                        constrainvalue=constrainvalue, charge=inputs.get("charge"), mult=inputs.get("mult"))
 
         # Full optimised system with the MM topology, e.g. as an NEB endpoint
-        with open("QM_MM_optimized.pdb", "w") as f:
-            PDBFile.writeFile(mm.topology, fragment.coords * unit.angstrom, f, keepIds=True)
         result["opttraj"] = Path("geometric_OPTtraj_Full.xyz").resolve().as_posix()
-        result["optimized_pdb"] = Path("QM_MM_optimized.pdb").resolve().as_posix()
+        result["optimized_pdb"] = write_pdb(mm, fragment.coords, "QM_MM_optimized.pdb")
+        if getattr(opt, "energy", None) is not None:
+            result["opt_energy"] = float(opt.energy)
         save_result(result, filename=args.config, section=section)
 
     if inputs.get("singlepoint", True):

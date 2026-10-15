@@ -35,7 +35,26 @@ def build_parser():
     p4.add_argument("--product", required=True, help="Product PDB file")
     p4.add_argument("--reactant", required=True, help="Reactant PDB file")
     p4.add_argument("--actatoms", help="File of active-atom indices (e.g. the reactant's active_atoms)")
+    p4.add_argument("--section", default="neb",
+                    help="Config section for results; its inputs override neb.inputs")
     p4.add_argument("--cores", type=int, default=int(os.environ.get("SLURM_CPUS_PER_TASK", 1)))
+
+    # =========================================================
+    # RELAXED SCAN / TS REFINEMENT + IRC
+    # =========================================================
+    p6 = subparsers.add_parser("scan", help="Relaxed QM/MM distance scan")
+    p6.add_argument("config", help="Input yaml file")
+    p6.add_argument("--pdb", help="Starting structure (e.g. the reactant's QM_MM_optimized.pdb)")
+    p6.add_argument("--section", default="scan",
+                    help="Config section defining the scan (its inputs override scan.inputs) and receiving results")
+    p6.add_argument("--actatoms", help="File of active-atom indices (e.g. the reactant's active_atoms)")
+
+    p7 = subparsers.add_parser("ts", help="TS optimisation, frequency check and IRC")
+    p7.add_argument("config", help="Input yaml file")
+    p7.add_argument("--pdb", help="TS guess (e.g. the NEB's saddlepoint.pdb)")
+    p7.add_argument("--section", default="ts",
+                    help="Config section for results; its inputs override ts.inputs")
+    p7.add_argument("--actatoms", help="File of active-atom indices (e.g. the reactant's active_atoms)")
 
 
     # =========================================================
