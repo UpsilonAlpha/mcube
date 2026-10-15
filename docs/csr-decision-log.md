@@ -172,6 +172,25 @@ Crystal reference: `CSR_ligand/CSR_nontruncated_1metal.pdb` (user: the His orien
   - Alternative not taken: add Asp92 to `constraint_exclude_residues` so MM relaxation decides between H-bond and coordination.
   - Check after MD whether the Asp92···HO–Zn H-bond holds.
 
+**D25 – Pull meropenem's β-lactam carbonyl onto the Zn with restrained MM.** (user, 2026-10-15)
+- **Problem:** in `CSR_crystal/preprocess_results/finalsystem.pdb` the inherited pose points the hydroxyethyl side chain at the Zn:
+  - O1x is 3.13 Å from the Zn; the β-lactam carbonyl O2x is **5.43 Å** away.
+  - The OH⁻ sits almost on the Zn–O2x line, 0.92 Å from its midpoint.
+  - OH⁻–C4x is 3.47 Å at 79°.
+- **Assumption (user):** the β-lactam carbonyl O coordinates the Zn (< 3 Å) in the Michaelis complex. There is no CSR-1 substrate complex to confirm it; it's by analogy with other MBLs.
+- **Decision (user):** reuse mcube's md stage and let restrained MM move the substrate, rather than re-docking or conformer placement.
+  - mcube change: `md.inputs.restraints` is passed to ASH `OpenMMTheory(restraints=…)` as an OpenMM HarmonicBondForce, active through minimisation, warm-up, NPT and NVT.
+- **Settings in `CSR_crystal/config.yaml`** (atom indices are 0-based in `finalsystem.pdb`):
+  - **Restraints**, k = 20 kcal/mol/Å²:
+    - Zn(4203)–O2x(4209) → 2.2 Å;
+    - OH⁻ O01(4255)–C4x(4208) → 3.0 Å.
+  - **Constraints** (fixed at the starting distance): Zn–His164 NE2 (2451), Zn–OH⁻ (4255), Zn–His88 NE2 (1349) and Zn–Asp92 OD2 (1414).
+    - The Zn–water (HOH485, 4257) constraint is dropped, so the carbonyl can displace that water from its Zn site.
+  - **Run:** minimisation, gentle warm-up, NPT box equilibration, then **1 ns NVT, all restrained**.
+- **Job:** 29848762 (`CSR_crystal/MD_restrained.slurm`, 16 CPUs, 16 GB, 24 h), output in `CSR_crystal/md_restrained/`. Two CSVs record the geometry per frame: `attack/nac_geometry.csv` (OH⁻–C4x distance, attack angle) and `zn_o2x/nac_geometry.csv` (Zn–O2x).
+- **Next:** check that Zn–O2x reaches ~2.2 Å and the water leaves the Zn. Then run unrestrained MD from the restrained end point, to test whether the carbonyl coordination holds without restraints, and pick attack-ready frames from that run (D16).
+- **ASH quirk:** OpenMMTheory only adds user constraints given as `[i, j]` pairs, which take the current distance. Entries given as `[i, j, d]` are silently ignored, because `add_bondconstraints` sits inside the "missing distance" branch.
+
 ## Force field and protonation
 
 **D6 – Force fields.** (inherited, 2026-10-15)
