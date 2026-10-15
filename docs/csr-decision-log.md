@@ -188,13 +188,19 @@ Crystal reference: `CSR_ligand/CSR_nontruncated_1metal.pdb` (user: the His orien
     - The Zn–water (HOH485, 4257) constraint is dropped, so the carbonyl can displace that water from its Zn site.
   - **Run:** minimisation, gentle warm-up, NPT box equilibration, then **1 ns NVT, all restrained**.
 - **Job:** 29848762 (`CSR_crystal/MD_restrained.slurm`, 16 CPUs, 16 GB, 24 h), output in `CSR_crystal/md_restrained/`. Two CSVs record the geometry per frame: `attack/nac_geometry.csv` (OH⁻–C4x distance, attack angle) and `zn_o2x/nac_geometry.csv` (Zn–O2x).
-- **Unrestrained follow-up prepared, not yet submitted** (2026-10-15):
+- **Correction (user, 2026-10-15): no unrestrained MM MD is ever run.** It would break the Zn coordination geometry. Every MM stage keeps the metal site constrained or restrained (the purpose of the mcube pipeline). The Zn site only relaxes freely in QM/MM.
+  - The attack-ready snapshots come from the **restrained** NVT. The QM/MM optimisation (no restraints) removes the restraint bias.
+  - Full plan: [csr-neb-plan.md](csr-neb-plan.md).
+- **Superseded, do not run:** an unrestrained follow-up was prepared on 2026-10-15 but never submitted:
   - Files: `CSR_crystal/config_unrestrained.yaml` and `MD_unrestrained.slurm`.
   - Start structure: `md_restrained/NVTtrajectory_lastframe.pdb` (OpenMM-written, so names and CONECT records are preserved).
   - Settings: no restraints, the same four Zn constraints at their end-point distances, no warm-up and no NPT (box already equilibrated), then 2 ns NVT with frames every 2 ps.
   - Analysis: up to 10 attack-ready frames after the first 100 ps, plus the Zn–O2x distance per frame.
   - To be submitted only after the restrained run is checked.
-- **Next:** check that Zn–O2x reaches ~2.2 Å and the water leaves the Zn. Then run unrestrained MD from the restrained end point, to test whether the carbonyl coordination holds without restraints, and pick attack-ready frames from that run (D16).
+- **Next:**
+  1. Check that Zn–O2x reaches ~2.2 Å, OH⁻–C4x ~3.0 Å at 95–120°, and that HOH485 leaves the Zn.
+  2. Select ≥ 5 attack-ready snapshots from the restrained NVT.
+  3. Run a QM/MM reactant optimisation (`mcube qmmm`) per snapshot.
 - **ASH quirk:** OpenMMTheory only adds user constraints given as `[i, j]` pairs, which take the current distance. Entries given as `[i, j, d]` are silently ignored, because `add_bondconstraints` sits inside the "missing distance" branch.
 
 ## Force field and protonation
@@ -295,7 +301,7 @@ Crystal reference: `CSR_ligand/CSR_nontruncated_1metal.pdb` (user: the His orien
 
 ## Mechanism and path protocol
 
-**D16 – Snapshots must be lined up for attack.** (2026-10-15, user decision)
+**D16 – Snapshots must be lined up for attack.** (2026-10-15, user decision; sampling source updated by D25: snapshots come from the restrained NVT, never from unrestrained MD)
 - Evidence: in the current reactant, O01–C4x is 3.81 Å and the O01–C4x–O2x angle is 51°. The hydroxide lies beside the carbonyl O rather than on the Bürgi–Dunitz trajectory.
 - Decision: minimise, warm up, equilibrate at constant pressure, then run 2 ns at constant volume (4 fs steps), saving a frame every 2 ps. Keep frames with O01–C4x ≤ 3.2 Å and O01–C4x–O2x at 95–120°. If fewer than 5 qualify, consult before adding restraints.
 - Alternative: a flat-bottom restraint, which is biased.
