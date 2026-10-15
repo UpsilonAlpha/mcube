@@ -70,6 +70,7 @@ Results are written back with `yaml.safe_dump`, so comments in the config are lo
 | `metals` | required | Element symbols treated as metals |
 | `cutoff` | required | Metal–donor distance cutoff (Å) |
 | `donor_elements` | `[N, O, S]` | Elements that count as metal donors (matched on element, not atom name) |
+| `require_his_variants` | `false` | Fail if any histidine has no tautomer in `residue_variants`. A warning is printed either way. |
 | `extra_qm_residues` | none | `{chain: [resid, ...]}`: residues added to the QM region on top of the metal's coordination sphere (e.g. catalytic Lys/Arg) |
 | `constraint_exclude_residues` | none | `{chain: [resid, ...]}`: residues whose metal–donor distance is left unconstrained during MD (e.g. the substrate) |
 | `exclude_residues` | none | `{chain: [resid, ...]}`: coordinating residues left out of the QM region. Their metal–donor bond constraints are still applied in classical MD. Not the same as `boundary_excluded`, which lists the non-amino-acid QM atoms that ASH should not place link atoms on. |

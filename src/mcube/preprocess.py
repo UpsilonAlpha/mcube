@@ -417,6 +417,24 @@ def qm_region_settings(inputs: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def check_his_variants(pdb_file: str, inputs: Dict[str, Any]) -> None:
+    """
+    List histidines whose tautomer is not set in `residue_variants` (pdbfixer would pick
+    one by itself). With `require_his_variants: true` this is an error.
+    """
+    variants = inputs.get("residue_variants") or {}
+    missing = []
+    for res in PDBFile(pdb_file).topology.residues():
+        if res.name in ("HIS", "HID", "HIE", "HIP") and int(res.id) not in (variants.get(res.chain.id) or {}):
+            missing.append(f"{res.chain.id}:{res.id}")
+    if missing:
+        msg = (f"Histidine tautomer not set in residue_variants for {', '.join(missing)} "
+               "(pdbfixer will choose one)")
+        if inputs.get("require_his_variants"):
+            raise ValueError(msg)
+        print(f"[WARNING] {msg}")
+
+
 def run(args) -> Dict[str, Any]:
 
     preprocess = load_section(args.config, "preprocess")
@@ -445,6 +463,8 @@ def run(args) -> Dict[str, Any]:
 
     if ligand_xmlfile:
         forcefields.append(ligand_xmlfile)
+
+    check_his_variants(pdb_file, inputs)
 
     if not inputs.get("skip_solvate"):
         print("[STEP] Solvating system...")
