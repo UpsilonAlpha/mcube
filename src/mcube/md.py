@@ -22,44 +22,30 @@ from .preprocess import (
 # Unified run() function
 # ==============================
 
-def run(args) -> Dict[str, Any]:
-    result: Dict[str, Any] = {}
-
-    preprocess = load_section(args.config, "preprocess")
-    md = load_section(args.config, "md")
-    inputs = md.get("inputs")
-    if inputs is None:
-        raise KeyError(f"No md.inputs section in {args.config}")
-
-    constraints = inputs.get("constraints")
-    if constraints is None:
-        constraints = preprocess["results"]["constraints"]
-    # Harmonic distance restraints [[i, j, distance_A, k_kcal_per_mol_A2], ...], e.g. to pull a
-    # substrate into place during equilibration. Constraints stay as [i, j] pairs (current distance).
-    restraints = inputs.get("restraints") or None
-    if restraints:
-        print(f"[INFO] {len(restraints)} distance restraints: {restraints}")
-
-    pdb_file = inputs.get("pdb_file")
-    if pdb_file is None:
-        pdb_file = preprocess["results"]["processed_pdb"]
-
-    # Atoms may be named as "chain:resid:atom" instead of indices
-    constraints = resolve_atoms(constraints, pdb_file)
-    restraints = resolve_atoms(restraints, pdb_file)
-    
+def md_forcefields(inputs: Dict[str, Any], preprocess: Dict[str, Any]) -> list:
+    """Force-field XML files: md.inputs overrides, else preprocess defaults + ligand XML."""
     ligand_forcefields = inputs.get("ligand_xml")
     if ligand_forcefields is None:
-        ligand_forcefields = preprocess["results"]["ligand_xml"]
-    
+        ligand_forcefields = (preprocess.get("results") or {}).get("ligand_xml")
+
     default_forcefields = inputs.get("default_forcefields")
     if default_forcefields is None:
         default_forcefields = preprocess["inputs"]["default_forcefields"]
     default_forcefields = list(default_forcefields)
 
-
     if ligand_forcefields:
         default_forcefields.append(ligand_forcefields)
+    return default_forcefields
+
+
+def build_md_theory(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file: str,
+                    constraints, restraints, cores=None):
+    """
+    The classical system used by the md stage (and reused by ramd): force fields,
+    HBond constraints, rigid water, 1.5 amu hydrogens, metal-site bond constraints
+    and optional harmonic restraints. Returns (OpenMMTheory, force-field list).
+    """
+    default_forcefields = md_forcefields(inputs, preprocess)
 
     if inputs.get("implicit"):
         default_forcefields.append("implicit/gbn2.xml")
@@ -86,7 +72,7 @@ def run(args) -> Dict[str, Any]:
             xmlsystemfile="system.xml",
             pdbfile=pdb_file,
             periodic=False,
-            numcores=inputs.get("cores"),
+            numcores=cores,
             autoconstraints='HBonds',
             constraints=constraints,
             restraints=restraints,
@@ -99,12 +85,46 @@ def run(args) -> Dict[str, Any]:
             xmlfiles=default_forcefields,
             pdbfile=pdb_file,
             periodic=True,
-            numcores=inputs.get("cores"),
+            numcores=cores,
             autoconstraints='HBonds',
             constraints=constraints,
             restraints=restraints,
             rigidwater=True,
         )
+    return mm, default_forcefields
+
+
+def md_constraints(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file: str):
+    """Metal-site bond constraints: md.inputs.constraints, else those found by preprocess."""
+    constraints = inputs.get("constraints")
+    if constraints is None:
+        constraints = (preprocess.get("results") or {}).get("constraints")
+    # Atoms may be named as "chain:resid:atom" instead of indices
+    return resolve_atoms(constraints, pdb_file)
+
+
+def run(args) -> Dict[str, Any]:
+    result: Dict[str, Any] = {}
+
+    preprocess = load_section(args.config, "preprocess")
+    md = load_section(args.config, "md")
+    inputs = md.get("inputs")
+    if inputs is None:
+        raise KeyError(f"No md.inputs section in {args.config}")
+
+    pdb_file = inputs.get("pdb_file")
+    if pdb_file is None:
+        pdb_file = preprocess["results"]["processed_pdb"]
+
+    constraints = md_constraints(inputs, preprocess, pdb_file)
+    # Harmonic distance restraints [[i, j, distance_A, k_kcal_per_mol_A2], ...], e.g. to pull a
+    # substrate into place during equilibration. Constraints stay as [i, j] pairs (current distance).
+    restraints = resolve_atoms(inputs.get("restraints") or None, pdb_file)
+    if restraints:
+        print(f"[INFO] {len(restraints)} distance restraints: {restraints}")
+
+    mm, default_forcefields = build_md_theory(inputs, preprocess, pdb_file, constraints, restraints,
+                                              cores=inputs.get("cores"))
 
     fragment = Fragment(pdbfile=pdb_file)
     result["forcefields"] = default_forcefields

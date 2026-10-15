@@ -8,7 +8,8 @@ A pipeline for protein–ligand systems, often metalloproteins, built on [ASH](h
 4. **scan**: relaxed QM/MM distance scan (builds intermediates/products in the reactant's box)
 5. **neb**: QM/MM nudged elastic band between a reactant and a product (optionally NEB + TS optimisation), with a frequency check on the saddle point
 6. **ts**: TS optimisation with a partial Hessian, frequency check and IRC (quasi-IRC along the TS mode, or Sella)
-7. **postprocess**: MD data plots, RMSD, RMSF (as B-factors) and a residue interaction network
+7. **ramd**: τRAMD relative residence times (random acceleration MD on the md stage's system, bootstrapped τ per replica)
+8. **postprocess**: MD data plots, RMSD, RMSF (as B-factors) and a residue interaction network
 
 All stages read one YAML config file and write their results back into it, so each stage picks up the outputs of the stages before it.
 
@@ -36,12 +37,13 @@ mcube qmmm config.yaml
 mcube scan config.yaml --pdb reactant.pdb --section scan_attack [--actatoms active_atoms]
 mcube neb config.yaml --reactant reactant.pdb --product product.pdb [--section neb_step1] [--actatoms active_atoms] [--cores N]
 mcube ts config.yaml --pdb saddlepoint.pdb [--section ts_step1] [--actatoms active_atoms]
+mcube ramd config.yaml [--section ramd_complexA] [--replicas 0 1] [--analyse]
 mcube postprocess config.yaml [--qmmm] [--redraw] [--cutoff 2.6] [--metals ZN MG] [--occupancy 0.1]
 ```
 
 `python -m mcube ...` also works. Every stage writes its files to the current directory, so run each stage from its own working directory. Paths saved in `results` are absolute, so later stages can be run from anywhere.
 
-`--cores` defaults to `$SLURM_CPUS_PER_TASK` (or 1). The `md`, `qmmm`, `scan` and `ts` stages take their core count from `cores` in the config instead.
+`--cores` defaults to `$SLURM_CPUS_PER_TASK` (or 1). The `md`, `qmmm`, `scan`, `ts` and `ramd` stages take their core count from `cores` in the config instead.
 
 ## Config file
 
@@ -193,6 +195,46 @@ Each point is optimised from the previous one with the scanned distance fixed. W
 
 `results`: `ts_pdb` (`ts_optimized.pdb`), `ts_energy`, `guess_imaginary`, `imaginary_frequencies`, `small_imaginary`, `lowest_frequencies`, `ts_mode_atoms`, monitored distances, and `irc.forward/reverse` (`irc_*.pdb`, energy, barrier = E(TS) − E(end) in kcal/mol, distances).
 
+### `ramd.inputs` (τRAMD)
+
+Random acceleration MD (Lüdemann et al. 2000) with the τRAMD protocol (Kokh et al., *JCTC* 2018; GROMACS implementation, Kokh et al. 2020). A constant force acts on the binder's centre of mass along a random direction; every `eval_interval` the binder COM displacement *relative to the receptor COM* is checked, and if it is below `rmin` a new direction is drawn. A trajectory ends when the binder–receptor COM distance reaches `max_distance`. Each replica starts with its own unbiased equilibration (new velocities, optionally its own snapshot), then runs `trajectories` RAMD runs with new velocities. τ per replica is the time at which half of its trajectories have dissociated (mean of the medians of random 80% subsets, as `tauRAMD.py`); τ is the mean over replicas.
+
+The system is the **md stage's** (same force fields, HBond constraints, rigid water, 1.5 amu hydrogens and metal-site constraints), so a metal site stays held as in every MM stage. md restraints are not applied. A constraint or restraint that ties the binder to anything else is refused, because it would prevent unbinding.
+
+| Key | Default | Description |
+| --- | --- | --- |
+| `binder` | required | `{chain: [resid, …]}`, `{chain: all}` (e.g. a binder protein) or a list of atoms (indices or `chain:resid:atom`) |
+| `receptor` | everything else except water and monatomic ions | Same format |
+| `force` | 14 | Force magnitude, kcal/mol/Å (= 585.76 kJ/mol/nm). **Keep it the same for every complex you compare.** |
+| `eval_interval` | 0.1 | ps between direction checks |
+| `rmin` | 0.025 | Å of binder COM motion (relative to the receptor COM) per check below which the direction is redrawn |
+| `max_distance` | receptor radius + binder radius + `exit_margin` | Binder–receptor COM distance (Å) that counts as dissociated. Must be below half the box. |
+| `exit_margin` | 10 | Å added to the summed radii for the automatic `max_distance` |
+| `replicas`, `trajectories` | 4, 15 | Protocol size (≥ 4 replicas × ≥ 10–15 trajectories) |
+| `equil_time` | 100 | ps of unbiased MD per replica before its RAMD runs |
+| `max_time` | 10000 | ps per trajectory; runs that do not dissociate are kept as censored at this time |
+| `pdb_file` | `md.results.lastframe` | Start structure |
+| `replica_pdbs` | none | One start structure per replica (e.g. from `scripts/extract_frames.py`) |
+| `timestep`, `temp` | `md.inputs.nvt_timestep`, `md.inputs.temp` | ps, K |
+| `friction` | 1.0 | Langevin friction, 1/ps (the thermostat strongly affects dissociation times; keep it fixed) |
+| `pressure` | 1.0 | bar, Monte Carlo barostat (explicit solvent); `null` for NVT |
+| `remove_cm_motion` | `true` | Keep the system's CMMotionRemover |
+| `constraints` | md constraints | Override the metal-site constraints |
+| `restraints` | none | Harmonic restraints, as in md |
+| `platform`, `properties` | fastest available | OpenMM platform (`CUDA`, `OpenCL`, `CPU`) and its properties (e.g. `{Precision: mixed}`) |
+| `cores` | `md.inputs.cores` | CPU threads (CPU platform) |
+| `seed` | 2026 | Base seed for velocities and directions (per replica and trajectory) |
+| `traj_interval` | 0 | ps between DCD frames of each RAMD trajectory (0: none) |
+| `exit_pdb` | `true` | Write the last frame of each trajectory |
+| `bootstrap_rounds`, `bootstrap_fraction` | 5000, 0.8 | τ bootstrap |
+| `min_trajectories` | 10 | Warn below this many trajectories per replica |
+
+Box size is the main cost: the binder must not reach the receptor's periodic image before it counts as dissociated, so the box edge should exceed `max_distance` + both radii + the cutoff (a warning says by how much). Set `preprocess.solvent_padding` for this before `md`.
+
+Work is restartable and can be split: each replica uses `replica_RR/` (`equilibrated.xml`, `traj_TT_end.pdb`), stop times go to `ramd_times.csv` (one row per trajectory, file-locked), finished trajectories are skipped, and `--replicas 2` runs one replica (one SLURM array task each). `--analyse` re-analyses the CSV, which can also come from another engine (columns `replica`, `trajectory`, `time_ps`, `dissociated`; set `times_csv`).
+
+`results`: `tau_ps`, `tau_sd_ps` (spread over replicas), `mean_bootstrap_sd_ps`, per-replica `tau_ps`/`sd_ps`/`median_ps`/`ks` (KS distance to the Poisson CDF 1 − exp(−t/τ); 0.1–0.2 is typical), and `warnings` (too few replicas or trajectories, replica scatter above the bootstrap error, τ < 100 ps, censored majority, large KS).
+
 ## Outputs by stage
 
 | Stage | Main files |
@@ -202,6 +244,7 @@ Each point is optimised from the previous one with the scanned distance fixed. W
 | qmmm | `QM_MM.dcd`, `QM_MM_lastframe.pdb`, `active_atoms`, `geometric_OPTtraj_Full.xyz`, `geometric_OPTtraj_QMregion.xyz`, `*.cube` |
 | scan | `scan_XX.pdb`, `scan_energies.csv`, `active_atoms` |
 | neb | ASH NEB files, `saddlepoint.xyz`, `saddlepoint.pdb` |
+| ramd | `ramd_times.csv`, `replica_RR/equilibrated.xml`, `replica_RR/equilibration.dcd`, `replica_RR/traj_TT_end.pdb` (and `traj_TT.dcd`) |
 | ts | `Hessian_partial_TS`, `ts_optimized.pdb`, `irc_forward.pdb`, `irc_reverse.pdb`, `irc_*_opttraj.xyz` (or Sella's `sella_*.xyz`) |
 | postprocess | `Temperature.png`, `Density.png`, `BoxVolume.png`, `RMSD.png`, `interaction_network.csv/.png`, `rmsf_bfactor.pdb` |
 
