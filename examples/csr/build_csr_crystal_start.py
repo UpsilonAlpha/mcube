@@ -8,10 +8,12 @@ Decisions (see docs/csr-decision-log.md, D21-D23):
   with explicit His tautomers.
 - Zn and its waters: taken from PDB 6NC5 (CSR-1 Q121H/K254H, Arg118 kept;
   numbering = crystal - 29) by CA superposition. Zn_alpha (His87/His163 NE2
-  + two waters) is used; Zn_beta and adventitious Zn are not. The water not
-  bridging to Zn_beta becomes OH- (H pointed at the nearest acceptor); the
-  other is kept as a Zn-bound water. (The deposited Zn of the crystal model
-  clashes with Asp120/Lys254 and is discarded.)
+  + two waters) is used; Zn_beta and adventitious Zn are not (one Zn only).
+  The water that bridges to Zn_beta in 6NC5 (HOH493; 2.97 A from C4x) becomes
+  the OH- nucleophile (H pointed at the nearest acceptor); the other (HOH485)
+  is kept as a Zn-bound water. Zn + both waters are then moved as a rigid
+  unit so Zn-NE2 matches 6NC5 (His116 2.22, His192 2.09 A). (The deposited Zn
+  of the crystal model clashes with Asp120/Lys254 and is discarded.)
 - Meropenem: pose from the processed model (residue numbers -28),
   superposed on CA atoms, then the smallest rigid-body shift that clears
   contacts and puts C4x 3.0-3.2 A from the OH- O at a 100-115 deg
@@ -119,15 +121,31 @@ def main():
     print(f"Site Zn_alpha {zn_a['chain']}{zn_a['rid']}; waters: " + ", ".join(
         f"HOH{w['rid']} ({'bridging to Zn_beta' if w in bridging else 'terminal'})" for w in wats))
     assert len(terminal) == 1 and len(bridging) == 1, "expected one terminal and one bridging water"
-    zn = tf(zn_a["xyz"])
-    oh_o = tf(terminal[0]["xyz"])
-    wat_o = tf(bridging[0]["xyz"])
+    # 6NC5 Zn-NE2 distances, used as targets after transplanting
+    site_d = [np.linalg.norm(zn_a["xyz"] - n) for n in s_nes]
+    zn0, oh0, wat0 = tf(zn_a["xyz"]), tf(bridging[0]["xyz"]), tf(terminal[0]["xyz"])
+    unit = np.array([zn0, oh0, wat0])
+    ucen = unit.mean(0)
+
+    def unit_place(x):
+        return (unit - ucen) @ Rotation.from_rotvec(x[:3]).as_matrix().T + ucen + x[3:]
+
+    def unit_cost(x):
+        z = unit_place(x)[0]
+        c = sum((np.linalg.norm(z - n) - d) ** 2 for n, d in zip(nes, site_d))
+        return c + 0.02 * np.mean(np.sum((unit_place(x) - unit) ** 2, axis=1))
+    ux = minimize(unit_cost, np.zeros(6), method="Powell", options={"xtol": 1e-6, "ftol": 1e-10}).x
+    zn, oh_o, wat_o = unit_place(ux)
+    print(f"Zn+waters rigid refit: Zn moved {np.linalg.norm(zn - zn0):.2f} A, waters "
+          f"{np.linalg.norm(oh_o - oh0):.2f}/{np.linalg.norm(wat_o - wat0):.2f} A; targets His116 "
+          f"{site_d[0]:.2f}, His192 {site_d[1]:.2f} A (6NC5)")
+    print(f"Metals written: 1 Zn (site structure had {len(zns)}; Zn_beta and others discarded)")
     # OH- hydrogen towards the nearest acceptor O (protein or the other water), else away from Zn
     acc = [a["xyz"] for a in prot if a["el"] == "O"] + [wat_o]
     acc = [x for x in acc if 2.4 < np.linalg.norm(x - oh_o) < 3.2]
     target = min(acc, key=lambda x: np.linalg.norm(x - oh_o)) if acc else oh_o + (oh_o - zn)
     oh_h = oh_o + 0.97 * (target - oh_o) / np.linalg.norm(target - oh_o)
-    for label, x in (("Zn", zn), ("OH- O", oh_o), ("water O", wat_o)):
+    for label, x in (("Zn", zn), ("OH- O (HOH493)", oh_o), ("water O (HOH485)", wat_o)):
         close = sorted((np.linalg.norm(a["xyz"] - x), f"{a['res']}{a['rid']}:{a['name']}") for a in prot)[:4]
         print(f"  {label}: " + ", ".join(f"{n} {d:.2f}" for d, n in close))
     asp_o = min(asp_os, key=lambda o: np.linalg.norm(o - oh_o))
