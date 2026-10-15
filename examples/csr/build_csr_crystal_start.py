@@ -55,6 +55,7 @@ def read_pdb(path):
             seen.add(key)
             atoms.append(dict(line=line, serial=int(line[6:11]), name=line[12:16].strip(), alt=line[16],
                               res=line[17:20].strip(), chain=line[21], rid=int(line[22:26]),
+                              occ=float(line[54:60] or 1.0),
                               xyz=np.array([float(line[30:38]), float(line[38:46]), float(line[46:54])]),
                               el=(line[76:78].strip() or line[12:16].strip()[0]).upper()))
         elif line.startswith("CONECT"):
@@ -87,9 +88,17 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
 
     orig, _ = read_pdb(args.original)
-    prot = [a for a in orig if a["chain"] == "A" and a["res"] not in ("HOH", "ZN") and a["el"] != "H"
-            and a["alt"] in (" ", "A")]
-    print(f"Protein heavy atoms kept: {len(prot)} (H, waters, metals and altloc B removed)")
+    prot = [a for a in orig if a["chain"] == "A" and a["res"] not in ("HOH", "ZN") and a["el"] != "H"]
+    # Keep one conformer per residue: the altloc with the highest total occupancy
+    best_alt = {}
+    for a in prot:
+        if a["alt"] != " ":
+            best_alt.setdefault(a["rid"], {}).setdefault(a["alt"], 0.0)
+            best_alt[a["rid"]][a["alt"]] += a["occ"]
+    best_alt = {r: max(alts, key=alts.get) for r, alts in best_alt.items()}
+    prot = [a for a in prot if a["alt"] == " " or a["alt"] == best_alt.get(a["rid"])]
+    print(f"Protein heavy atoms kept: {len(prot)} (H, waters and metals removed); altlocs kept: "
+          + ", ".join(f"{r}{best_alt[r]}" for r in sorted(best_alt)))
 
     def get(rid, name):
         hits = [a for a in prot if a["rid"] == rid and a["name"] == name]
