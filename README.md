@@ -150,6 +150,10 @@ By default, postprocess analyses the MD trajectory (`md.results`). With `--qmmm`
 - **Interaction network** with H-bonds (protein and ligand), salt bridges (< 4 Å), π–π (< 5 Å), cation–π (< 6 Å) and metal coordination (`--cutoff`). Edges whose occupancy is above `--occupancy` are kept. `--redraw` redraws the plot from `interaction_network.csv` without recomputing. `--spring_constant` and `--iterations` control the layout.
 - **RMSF** of Cα atoms after alignment, written as B-factors to `rmsf_bfactor.pdb`
 
+## Running on Bunya
+
+See [docs/running-on-bunya.md](docs/running-on-bunya.md) for thread and memory settings, queue behaviour, system-preparation problems we hit, and the NEB endpoint workflow.
+
 ## Standalone scripts
 
 Both scripts are in `scripts/`:
