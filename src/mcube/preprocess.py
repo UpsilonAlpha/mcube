@@ -271,6 +271,8 @@ def find_coordinators(
     topology = pdb.topology
     atoms = list(topology.atoms())
     exclude_residues=inputs.get("exclude_residues")
+    # Residues whose metal-donor distance is left free (no bond constraint) during MD
+    constraint_exclude = inputs.get("constraint_exclude_residues") or {}
     cutoff = inputs.get("cutoff")
 
     coords = np.array([[p.x, p.y, p.z] for p in pdb.positions]) * 10.0  # nm → Å
@@ -322,8 +324,11 @@ def find_coordinators(
 
         print("Coordinating residues:")
         for (chain, resid, resn), (dist, idx, aname) in sorted_res:
-            
-            bondconstraints.append([m, idx])
+
+            if resid in (constraint_exclude.get(chain) or []):
+                print(f"[INFO] No bond constraint for {resn} {chain}:{resid} ({aname}) (constraint_exclude_residues)")
+            else:
+                bondconstraints.append([m, idx])
 
             # Excluded residues keep their bond constraint but are left out of the QM region
             if exclude_residues and chain in exclude_residues:
@@ -475,6 +480,19 @@ def run(args) -> Dict[str, Any]:
 
     print("[STEP] Detecting coordination constraints...")
     qm_residues, constraints = find_coordinators(pdb_file, inputs)
+
+    # Residues added to the QM region beyond the metal's coordination sphere
+    extra = inputs.get("extra_qm_residues") or {}
+    if extra:
+        topology = PDBFile(pdb_file).topology
+        for chain, resids in extra.items():
+            for res in topology.residues():
+                if res.chain.id == chain and int(res.id) in resids:
+                    qm_residues.setdefault(chain, {})[int(res.id)] = res.name
+                    print(f"[INFO] Extra QM residue {res.name} {chain}:{res.id}")
+            missing = set(resids) - {int(r) for c, rs in qm_residues.items() if c == chain for r in rs}
+            if missing:
+                raise ValueError(f"extra_qm_residues: chain {chain} residues {sorted(missing)} not found in {pdb_file}")
 
     print("[STEP] Building QM region...")
     # Atom indices refer to processed_pdb; OpenMM keeps atom order through MD, so qmmm/neb reuse them
