@@ -52,6 +52,8 @@ The config file has one section per stage, and each section has `inputs` (writte
 
 Results are written back with `yaml.safe_dump`, so comments in the config are lost the first time a stage saves its results.
 
+**Atom selectors.** Wherever an input takes atoms (`md` `constraints`/`restraints`; `actregion_origin`, `opt_constraints`; scan `atoms`/`constraints`; ts `hessian_atoms`/`monitor`; neb `hessian_atoms`/`partial_hessian_atoms`), each atom can be a 0-based index or a `"chain:resid:atom"` string matched against the stage's structure, e.g. `"B:1:ZN"` or `"A:88:NE2"`. Numbers in the same entry (distances, force constants) are left alone, so `restraints: [["B:1:ZN", "C:1:O2x", 2.2, 20.0]]` works. Selectors keep a config valid when the solvent box (and so every index after the solute) changes, and make configs readable for new systems. The resolved indices are printed.
+
 ### `preprocess.inputs`
 
 | Key | Default | Description |

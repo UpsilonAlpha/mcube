@@ -148,6 +148,64 @@ def load_section(filename: str, section: str) -> Dict[str, Any]:
 
 
 # ==============================
+# Atom selectors
+# ==============================
+
+def resolve_atoms(value, topology):
+    """
+    Replace atom selectors in a config value by 0-based atom indices.
+
+    An atom can be given as an index (int) or as "chain:resid:atom", e.g. "B:1:ZN"
+    or "A:88:NE2", matched against `topology` (an OpenMM Topology or a PDB file).
+    Lists are resolved element by element, so constraint/restraint entries such as
+    ["B:1:ZN", "C:1:O2x", 2.2, 20.0] keep their numbers. This lets configs name
+    atoms instead of hard-coding indices that change with every system.
+    """
+    if not _has_selector(value):
+        return value
+    if isinstance(topology, (str, Path)):
+        topology = PDBFile(str(topology)).topology
+    lookup = {}
+    for atom in topology.atoms():
+        res = atom.residue
+        lookup.setdefault((res.chain.id, res.id.strip(), atom.name), atom.index)
+
+    def resolve(v):
+        if isinstance(v, str):
+            parts = [p.strip() for p in v.split(":")]
+            if len(parts) != 3:
+                raise ValueError(f"Atom selector {v!r} must be 'chain:resid:atom', e.g. 'A:88:NE2'")
+            if tuple(parts) not in lookup:
+                raise ValueError(f"No atom {v!r} (chain {parts[0]}, residue {parts[1]}, atom {parts[2]}) "
+                                 "in the structure")
+            return lookup[tuple(parts)]
+        if isinstance(v, (list, tuple)):
+            return [resolve(x) for x in v]
+        return v
+
+    resolved = resolve(value)
+    print(f"[INFO] Atom selectors resolved: {value} -> {resolved}")
+    return resolved
+
+
+def _has_selector(value) -> bool:
+    if isinstance(value, str):
+        return True
+    if isinstance(value, (list, tuple)):
+        return any(_has_selector(v) for v in value)
+    return False
+
+
+def resolve_atom_inputs(inputs: Dict[str, Any], topology, keys) -> Dict[str, Any]:
+    """Copy of `inputs` with the atom selectors under `keys` replaced by indices."""
+    out = dict(inputs)
+    for k in keys:
+        if out.get(k) is not None:
+            out[k] = resolve_atoms(out[k], topology)
+    return out
+
+
+# ==============================
 # Ligand Preparation
 # ==============================
 

@@ -28,6 +28,7 @@ from .preprocess import (
     load_section,
     build_qm_region,
     qm_region_settings,
+    resolve_atom_inputs,
 )
 
 from ash import *
@@ -56,6 +57,16 @@ def resolve_qm_region(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_fi
 # ==============================
 # Helpers shared by the QM/MM stages (qmmm, scan, neb, ts)
 # ==============================
+
+# Input keys that hold atoms; each atom may be an index or a "chain:resid:atom" selector
+ATOM_KEYS = ("actregion_origin", "opt_constraints", "atoms", "constraints", "hessian_atoms",
+             "partial_hessian_atoms", "monitor")
+
+
+def resolve_stage_atoms(inputs: Dict[str, Any], mm) -> Dict[str, Any]:
+    """Atom selectors in a stage's inputs -> indices, using the MM topology."""
+    return resolve_atom_inputs(inputs, mm.topology, ATOM_KEYS)
+
 
 def stage_inputs(config: str, base: str, section: Optional[str] = None) -> Dict[str, Any]:
     """Inputs of the `base` section, overridden by those of `section` if it has any
@@ -194,6 +205,7 @@ def run(args) -> Dict[str, Any]:
 
     print("[STEP] Building MM system...")
     mm = make_mm(forcefields, pdb_file, implicit, inputs.get("cores", 1))
+    inputs = resolve_stage_atoms(inputs, mm)
 
     fragment = Fragment(pdbfile=pdb_file)
 

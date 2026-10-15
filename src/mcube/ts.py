@@ -20,8 +20,8 @@ taken from `ts.inputs`):
 
     ts_attack:
       inputs:
-        hessian_atoms: [4203, 4208, 4209, 4210, 4255, 4256]  # default: the QM atoms
-        monitor: [[4255, 4208], [4208, 4210]]   # distances to report at TS and endpoints
+        hessian_atoms: ["B:1:ZN", "C:1:C4x", "C:1:O2x", "C:2:O01"]  # default: the QM atoms
+        monitor: [["C:2:O01", "C:1:C4x"]]   # distances to report at TS and endpoints
         tsopt: true
         tsopt_maxiter: 100
         convergence_setting: null    # geomeTRIC preset, e.g. GAU
@@ -63,6 +63,7 @@ from .qmmm import (
     optimizer_constraints,
     clean_geometric_files,
     write_pdb,
+    resolve_stage_atoms,
 )
 
 from ash import *
@@ -94,6 +95,8 @@ def run(args) -> Dict[str, Any]:
     print("[STEP] Building MM system...")
     mm = make_mm(forcefields, pdb_file, implicit, cores)
     fragment = Fragment(pdbfile=pdb_file, charge=charge, mult=mult)
+    inputs = resolve_stage_atoms(inputs, mm)
+    qmmm_inputs = resolve_stage_atoms(qmmm_inputs, mm)
 
     print("[STEP] Building QM region...")
     qm_atoms, boundary_excluded = resolve_qm_region(qmmm_inputs, preprocess, pdb_file)

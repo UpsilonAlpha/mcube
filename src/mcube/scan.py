@@ -12,7 +12,7 @@ anything not given there is taken from `scan.inputs`):
 
     scan_attack:
       inputs:
-        atoms: [4255, 4208]   # 0-based atom indices i, j
+        atoms: ["C:2:O01", "C:1:C4x"]   # i, j: "chain:resid:atom" or 0-based indices
         start: 3.0            # Å; default: the current distance
         end: 1.45             # Å
         points: 16            # including both ends
@@ -46,6 +46,7 @@ from .qmmm import (
     bond_constraints,
     clean_geometric_files,
     write_pdb,
+    resolve_stage_atoms,
 )
 
 from ash import *
@@ -62,7 +63,6 @@ def run(args) -> Dict[str, Any]:
 
     if "atoms" not in inputs or "end" not in inputs:
         raise KeyError(f"{section}.inputs needs `atoms: [i, j]` and `end` (and usually `points`)")
-    i, j = (int(a) for a in inputs["atoms"])
     npoints = int(inputs.get("points", 10))
     if npoints < 2:
         raise ValueError("points must be at least 2")
@@ -79,6 +79,9 @@ def run(args) -> Dict[str, Any]:
     print("[STEP] Building MM system...")
     mm = make_mm(forcefields, pdb_file, implicit, cores)
     fragment = Fragment(pdbfile=pdb_file)
+    inputs = resolve_stage_atoms(inputs, mm)
+    qmmm_inputs = resolve_stage_atoms(qmmm_inputs, mm)
+    i, j = (int(a) for a in inputs["atoms"])
 
     print("[STEP] Building QM region...")
     qm_atoms, boundary_excluded = resolve_qm_region(qmmm_inputs, preprocess, pdb_file)

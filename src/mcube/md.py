@@ -15,6 +15,7 @@ from ash import *
 from .preprocess import (
     save_result,
     load_section,
+    resolve_atoms,
 )
 
 # ==============================
@@ -42,6 +43,10 @@ def run(args) -> Dict[str, Any]:
     pdb_file = inputs.get("pdb_file")
     if pdb_file is None:
         pdb_file = preprocess["results"]["processed_pdb"]
+
+    # Atoms may be named as "chain:resid:atom" instead of indices
+    constraints = resolve_atoms(constraints, pdb_file)
+    restraints = resolve_atoms(restraints, pdb_file)
     
     ligand_forcefields = inputs.get("ligand_xml")
     if ligand_forcefields is None:

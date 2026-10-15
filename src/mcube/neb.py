@@ -25,6 +25,7 @@ from .qmmm import (
     make_qmmm,
     resolve_actatoms,
     write_pdb,
+    resolve_stage_atoms,
 )
 from ash import *
 
@@ -69,6 +70,8 @@ def run(args) -> Dict[str, Any]:
 
     print("[STEP] Building MM system...")
     mm = make_mm(forcefields, args.reactant, implicit, theory_cores)  # OpenMM threads per image
+    neb_inputs = resolve_stage_atoms(neb_inputs, mm)
+    qmmm_inputs = resolve_stage_atoms(qmmm_inputs, mm)
 
     print("[STEP] Building QM region...")
     qm_atoms, boundary_excluded = resolve_qm_region(qmmm_inputs, preprocess, args.reactant)
