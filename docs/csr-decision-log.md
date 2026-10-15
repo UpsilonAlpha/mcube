@@ -100,6 +100,23 @@ Crystal reference: `CSR_ligand/CSR_nontruncated_1metal.pdb` (user: the His orien
   - Its refined hydrogens give HID for 116, 140 and 192, and HIE for 81 and 178.
 - Decision pending (user): the Zn coordination model, whether to take the Zn/water positions from 6NC5, and whether to truncate the N-terminus.
 
+**D23 – Rebuilt starting complex `CSR_crystal`.** (user decisions, 2026-10-15)
+- Supersedes the `CSR_ligand` model (D5, D21). MD job 29840911 was cancelled.
+- Builder: `examples/csr/build_csr_crystal_start.py`. Output: `/scratch/user/uquadhik/CSR_crystal/preprocess_results/csr_crystal_start.pdb` and `mer_crystal.pdb`, plus `CSR_crystal/config.yaml`.
+- **Protein:** heavy atoms of the crystal model `CSR_hydrolysed/CSR_nontruncated_1metal_original.pdb`.
+  - H stripped, altloc A kept, waters and metals removed, full length kept (user).
+  - **Crystal (depositor) numbering:** His116, Arg118, Asp120, His192 (= BBL His196), Lys254 (= BBL Lys263). Our earlier working files used these numbers minus 28.
+  - Two malformed or duplicated header records at the top of that file are skipped. The file itself is left untouched.
+- **Zn site from PDB 6NC5** (CSR-1 Q121H/K254H with Arg118 kept, 2.07 Å; numbering = crystal − 29), superposed on 256 Cα (RMSD 0.58 Å). It follows the literature (D22) rather than Arg coordination.
+  - **One Zn only:** 6NC5's Zn_α. Zn_β and the adventitious Zn are discarded (user).
+  - Zn_α and its two waters were moved as a rigid unit (Zn by 0.38 Å) so Zn–NE2 matches 6NC5: His116 2.22 Å, His192 2.09 Å.
+  - **Nucleophile OH⁻ = 6NC5 HOH493** (user). In 6NC5 this water bridges to Zn_β. Here it H-bonds Asp120 OD2 (2.84 Å) and Lys254 NZ (2.63 Å), and its H points to the nearest acceptor.
+  - **HOH485** stays as a Zn-bound water, next to Arg118 NH1 (2.76 Å; CD 2.71 Å, a slightly tight contact).
+  - Asp120 OD2 is 2.80 Å from the Zn, inside the 3.0 Å cutoff, so preprocess counts it as a Zn ligand and constrains it during MD. Revisit after inspection.
+- **Meropenem:** pose from the processed model (`CSR_ligand/CSR_nontruncated_1metal.pdb`, identical protein, Cα RMSD 0.000 Å after +28 renumbering). Rigid-body shift towards OH⁻ with C4x 3.0–3.2 Å at 100–115°; contacts down to ~2.2 Å are left for MM minimisation (user).
+- **His tautomers** (from the crystal model's refined H): 81 HIE, 116 HID, 140 HID, 178 HIE, 192 HID. `require_his_variants: true`.
+- **QM region:** extra residues Arg118 and Lys254. Expected QM charge +2: Zn²⁺, OH⁻, Asp120⁻ if coordinated, His×2, meropenem 0, Arg⁺, Lys⁺, water 0. Check after preprocess.
+
 ## Force field and protonation
 
 **D6 – Force fields.** (inherited, 2026-10-15)

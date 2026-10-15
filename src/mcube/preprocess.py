@@ -417,6 +417,24 @@ def qm_region_settings(inputs: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def check_residue_numbering(pdb_file: str) -> None:
+    """
+    ASH/pdbfixer renumber residues 1..N within each chain, and residue_variants,
+    extra_qm_residues and the exclusion options are matched against those numbers.
+    Require the input to already be numbered that way so the numbers mean the same thing.
+    """
+    bad = []
+    for chain in PDBFile(pdb_file).topology.chains():
+        ids = [int(r.id) for r in chain.residues()]
+        if ids != list(range(1, len(ids) + 1)):
+            bad.append(f"{chain.id} (starts at {ids[0]}, {len(ids)} residues)")
+    if bad:
+        raise ValueError(
+            f"Residues in {pdb_file} are not numbered 1..N within each chain: {', '.join(bad)}. "
+            "ASH renumbers them that way, so residue_variants / extra_qm_residues / exclusions would "
+            "refer to different residues. Renumber the input (and the config) first.")
+
+
 def check_his_variants(pdb_file: str, inputs: Dict[str, Any]) -> None:
     """
     List histidines whose tautomer is not set in `residue_variants` (pdbfixer would pick
@@ -464,6 +482,7 @@ def run(args) -> Dict[str, Any]:
     if ligand_xmlfile:
         forcefields.append(ligand_xmlfile)
 
+    check_residue_numbering(pdb_file)
     check_his_variants(pdb_file, inputs)
 
     if not inputs.get("skip_solvate"):

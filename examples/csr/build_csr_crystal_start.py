@@ -35,8 +35,11 @@ OFFSET = 28          # processed numbering + 28 = crystal numbering
 SITE_OFFSET = 29     # 6NC5 numbering + 29 = crystal numbering
 HIS_ZN = (116, 192)  # His whose NE2 binds Zn (crystal numbering)
 ASP = 120
-HIS_VARIANTS = {81: "HIE", 116: "HID", 140: "HID", 178: "HIE", 192: "HID"}  # from crystal riding H
-EXTRA_QM = [118, 254]  # Arg118 (=Arg90), Lys254 (=Lys226)
+HIS_VARIANTS = {81: "HIE", 116: "HID", 140: "HID", 178: "HIE", 192: "HID"}  # from crystal riding H (crystal numbering)
+EXTRA_QM = [118, 254]  # Arg118, Lys254 (crystal numbering)
+# ASH renumbers residues 1..N per chain, so the output PDB and config use
+# model numbering = crystal numbering - RENUM (the chain has no gaps).
+RENUM = 28
 
 
 def read_pdb(path):
@@ -221,7 +224,7 @@ def main():
         prev = a["chain"]
         serial += 1
         l = a["line"]
-        lines.append(f"ATOM  {serial:5d}{l[11:16]} {l[17:54]}  1.00  0.00          {a['el']:>2}")
+        lines.append(f"ATOM  {serial:5d}{l[11:16]} {l[17:22]}{a['rid'] - RENUM:4d}{l[26:54]}  1.00  0.00          {a['el']:>2}")
     lines.append("TER")
     rec("HETATM", "ZN", "ZN", "B", 1, zn, "ZN")
     lines.append("TER")
@@ -249,6 +252,10 @@ def main():
             for s, bs in sorted(bonds.items()) if s in renum]
     (out / "mer_crystal.pdb").write_text("\n".join(lig + ["END"]) + "\n")
     print(f"Wrote {out / 'csr_crystal_start.pdb'} ({serial} atoms) and {out / 'mer_crystal.pdb'} ({len(mer)} atoms)")
+    first = prot[0]["rid"]
+    assert [a["rid"] for a in prot if a["name"] == "CA"] == list(range(first, first + len({a["rid"] for a in prot}))),         "chain A has gaps; constant renumbering offset not valid"
+    print(f"Chain A renumbered: model = crystal - {RENUM} (crystal {first}-{prot[-1]['rid']} -> model "
+          f"{first - RENUM}-{prot[-1]['rid'] - RENUM})")
     print(f"Zn: His116 {np.linalg.norm(zn - nes[0]):.2f}, His192 {np.linalg.norm(zn - nes[1]):.2f}, "
           f"Asp120 {min(np.linalg.norm(zn - o) for o in asp_os):.2f}, Arg118 NH1 {np.linalg.norm(zn - get(118, 'NH1')):.2f} A; "
           f"OH: Zn-O {np.linalg.norm(oh_o - zn):.2f}, O..Asp {np.linalg.norm(oh_o - asp_o):.2f} A; "
@@ -261,8 +268,9 @@ def main():
         here = out.parent.resolve().as_posix()
         i = c["preprocess"]["inputs"]
         i.update(protein_pdb="./csr_crystal_start.pdb", ligand="./mer_crystal.pdb", merge_ligand=False,
-                 ligand_resname="MER", residue_variants={"A": HIS_VARIANTS}, require_his_variants=True,
-                 extra_qm_residues={"A": EXTRA_QM}, constraint_exclude_residues={"C": [1]}, cutoff=3.0)
+                 ligand_resname="MER", residue_variants={"A": {k - RENUM: v for k, v in HIS_VARIANTS.items()}},
+                 require_his_variants=True, extra_qm_residues={"A": [r - RENUM for r in EXTRA_QM]},
+                 constraint_exclude_residues={"C": [1]}, cutoff=3.0)
         i.pop("donor_atoms", None)
         i["donor_elements"] = ["N", "O", "S"]
         for sec in c.values():
