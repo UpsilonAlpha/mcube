@@ -44,9 +44,32 @@ Keep `cores:` in `config.yaml` equal to `--cpus-per-task`. The `md` and `qmmm` s
 | --- | --- | --- | --- |
 | `mcube preprocess` (CSR, ~41k atoms after solvation) | 64 GB | 0.7 GB | 4 GB |
 | Other CPU jobs on this account (`tri`, `s2b`, `step2`, `infill`) | 24–64 GB | 3–4 GB | ~2× the measured peak |
-| `mcube qmmm` optimisation (xTB + OpenMM, ~41k atoms, 8 Å active region) | 16 GB | still to be measured (see below) | — |
+| `mcube qmmm` optimisation (xTB + OpenMM, ~41k atoms, 8 Å active region) | 16 GB | 0.91 GB (`sstat` MaxRSS), 0.94 GB in `top` | 4 GB |
 
 Memory requests have been 10–100× larger than needed. Smaller requests fit on more nodes and start sooner.
+
+## Measured: QM/MM geometry optimisation (job 29837804)
+
+The run: CSR reactant, 41,377 atoms, 71 QM atoms (GFN2-xTB, electrostatic embedding), 431 active atoms (8 Å around the Zn), geomeTRIC (ASH default TRIC coordinates), 8 CPUs, `cores: 8`, on node bun133. Measured during steps 3–5 with `srun --overlap top` (8 samples, 2 s apart) and `sstat`.
+
+- **CPU:**
+  - The Python (`mcube`) process ran at 720–780% in 7 of 8 samples.
+  - A separate `xtb` process (ASH's default `inputfile` runmode) ran at about 540% in 1 sample.
+  - So the job keeps roughly 7.5 of 8 cores busy, and the OpenMM thread fix (commit 380d193) works.
+  - Most of each step is spent in the Python process (OpenMM and geomeTRIC's linear algebra), not in xTB.
+- **Memory:** 0.91 GB peak, about 6% of the 16 GB requested. 4 GB is plenty.
+- **Speed:**
+  - Roughly 60–70 s per optimisation step.
+  - The job reached step 5 after 8 min 16 s, including about 1.1 min of preprocessing and the setup.
+  - The 200-step cap allows up to about 4 h per endpoint, about 8 h for reactant plus product, inside the 12 h limit.
+  - If the optimisation hits the cap without converging, the endpoint is not a true minimum.
+
+Things to try next time (not yet tested):
+
+- **MM-minimise the solvated box before QM/MM.** The first geomeTRIC step lowered the energy by about 7 Eh, almost all of it MM energy (−84.2 → −91.4 Eh), and the step-0 maximum gradient was 47.8 au. The freshly placed waters are strained, and relaxing them costs expensive QM/MM steps. A quick OpenMM minimisation with the QM atoms frozen would remove that.
+- **Try HDLC instead of TRIC coordinates for large active regions.** TRIC on hundreds of active atoms means large linear algebra every step, which fits the Python process dominating. The `Optimizer` in ASH takes a `coordsystem` argument. Benchmark both on the same system before switching.
+- **Try `xtb_runmode: library`.** It avoids writing and reading files every step. It probably saves little here, because xTB isn't the bottleneck.
+- **Set `PYTHONUNBUFFERED=1` in job scripts.** Python buffers output when writing to a file, so the `.out` showed nothing from the QM/MM stage while it was running. Follow progress in `geometric_OPTtraj.log` and `optimization_energies.log` in the run directory, or set this variable.
 
 ## Queueing
 
@@ -60,16 +83,28 @@ Memory requests have been 10–100× larger than needed. Smaller requests fit on
 ## Checking a running job
 
 ```bash
-srun --jobid=<id> --overlap top -b -n 1 -u $USER   # threads actually busy (%CPU ≈ 100 × threads)
+srun --jobid=<id> --overlap --mem=10M -n1 top -b -n 8 -d 2 -u $USER   # threads busy (%CPU ≈ 100 × threads)
 sstat -j <id>.batch -o MaxRSS,AveCPU               # memory so far
 seff <id>                                          # after it finishes
 ```
 
-If `top` shows a Python process at about 100% while `cores` > 1, something is running single-threaded.
+- **Give the `srun` step a small `--mem`.** Without it, the step asks for memory that the job has already allocated and fails with "Memory required by task is not available".
+- **Take several samples.** In ASH's default mode xTB runs as a separate, short-lived `xtb` process, so one snapshot can miss it.
+- **Look for single-threaded work.** If `top` shows a Python process at about 100% while `cores` > 1, something is running on one thread.
 
 ## GPUs (not used yet)
 
 Bunya's GPU partition is AMD MI355X (`-p gpu_rocm --gres=gpu:mi355x:1 --qos=gpu`), with at most 4 concurrent jobs per user. OpenMM MD would be far faster there, but it needs OpenMM's HIP platform. mcube always uses `platform='CPU'`, and the HIP plugin hasn't been checked in the ASH env. Adding a `platform:` key to `md.inputs` would be the next step for long production MD. QM/MM runs on the CPU either way because of xTB, so keep those on `general`.
+
+## Future option: FMO-xTB for large QM regions
+
+FMO-xTB, the fragment molecular orbital method with GFN1-xTB, makes QM regions of thousands of atoms affordable (Einsele & Mitrić, [arXiv:2606.28022](https://arxiv.org/abs/2606.28022), 2026). It supports FMO2/FMO3, analytic gradients, covalent cuts via hybrid orbital projection, and elements up to Rn.
+
+- **Where it lives:** only in the group's Rust program DIALECT ([dialect-rs/DIALECT-rs](https://github.com/dialect-rs/DIALECT-rs), LGPL-3.0). It isn't in ASH or xtb/tblite as of October 2026.
+- **How it runs:** command line, `dialect <file.xyz>` with a `dialect.toml` (`method = "xtb"`, `[fmo] enabled = true`). A `jobtype = "grad"` run writes the energy to `dialect.out` and the gradient to `gs_gradient.npy`.
+- **No electrostatic embedding:** DIALECT has no external point charges, so an ASH wrapper (`DIALECTTheory`) could do gas-phase/cluster calculations or mechanical-embedding QM/MM only.
+- **Other limits:** fragments are closed-shell, and only GFN1 is available (mcube uses GFN2).
+- **Not worth it for CSR:** the QM region is ~70 atoms, which plain xTB handles easily. Revisit if a project needs a QM region of hundreds to thousands of atoms. Electrostatic embedding would first need point-charge support added to DIALECT.
 
 ## Preparing systems: problems we hit
 
