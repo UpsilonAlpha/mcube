@@ -55,6 +55,30 @@ Atom names used below:
   - how the substrate and OH⁻ were placed (crystal structures don't resolve H, and usually not the Michaelis complex);
   - how the hydrolysed product was built.
 
+**D21 – The current model's Zn site has drifted from the crystal structure.** (found 2026-10-15; open)
+
+Crystal reference: `CSR_ligand/CSR_nontruncated_1metal.pdb` (user: the His orientation and geometry to preserve).
+
+| Zn ligand | Crystal | `ligand_lastframe` / MD job 29840911 |
+| --- | --- | --- |
+| His164 NE2 | **1.73 Å** (bound) | **4.56 Å** (not bound) |
+| His88 NE2 | 2.65 Å | 2.77 Å |
+| Asp92 | OD2 3.23 Å | OD2 2.40 / OD1 2.60 Å (bidentate) |
+| Water / OH⁻ | water O 3.23 Å | OH⁻ 2.34 Å |
+| Meropenem | amide O1x 3.03 Å; β-lactam O2x 4.90 Å | β-lactam O2x 2.55 Å |
+
+- Neither His is flipped. NE2 faces the Zn for both His88 and His164 in both structures, so both are **HID**, matching the config.
+- Problems in the crystal file itself:
+  - Every His has HE2, including the Zn-facing NE2 of His88 and His164. His164 HE2 is **0.76 Å** from the Zn, so the H atoms came from a tool's default, not from the experiment.
+  - Zn–His164 NE2 is 1.73 Å, too short (usually ~2.0–2.1 Å).
+  - The Zn-site water is **1.52 Å** from Asp92 OD2, a physically impossible clash. Possibly a left-over from removing a second metal ("1metal").
+- Other crystal features:
+  - Meropenem is already a zwitterion there (COO⁻, NH₂⁺), consistent with D13.
+  - The carboxylate is 4.0–4.7 Å from Lys226 NZ.
+  - Water–C4x is 3.62 Å, at an 82° approach angle.
+- Consequence: the MD started from `ligand_lastframe_zw.pdb` doesn't keep the crystal's His164 coordination.
+- Revisit: **yes, decide**. Either rebuild the starting complex from the crystal heavy atoms (strip H, fix the water/Asp92 clash, decide the OH⁻ position, constrain His88/His164/Asp92 to the Zn during MM), or justify the drifted site.
+
 ## Force field and protonation
 
 **D6 – Force fields.** (inherited, 2026-10-15)
@@ -119,6 +143,17 @@ Atom names used below:
   - Mainline tblite (v0.7.0, Jul 2026) has no g-xTB, and its only external potential is a uniform electric field. No ORCA g-xTB support was found.
   - Mechanical embedding isn't acceptable here. Imhof et al. found electrostatic stabilisation of the transition state by the protein to be central, and our QM region carries charge +2.
 - Where g-xTB can be used now: cluster models without MM (gas phase, or its preliminary GBE/COSMO solvation, which its README says is unstable for gradients). That makes it a fast reference for the GFN2-xTB cluster benchmark (P1), alongside a few DFT points to validate g-xTB itself for the Zn site.
+- **DFT/MM with PySCF** (checked 2026-10-15 on Bunya with `scripts/check_pyscf_dft.py`):
+  - The ASH env has PySCF 2.13.0 with libxc 7.0.0. ωB97M-V (`wb97m_v`) is recognised as a range-separated hybrid with VV10 non-local correlation.
+  - The analytic RKS gradient with density fitting, VV10 and MM point charges matches finite differences: 9×10⁻⁸ Eh/Bohr on a QM atom and 1.5×10⁻⁹ on an MM charge.
+  - ASH's `PySCFTheory` supports electrostatic embedding and point-charge gradients, density fitting (`densityfit`), seminumerical exchange (`sgx`) and a GPU mode (`platform='GPU'` via gpu4pyscf).
+  - gpu4pyscf isn't installed. Bunya has NVIDIA GPUs (`gpu_cuda`: A100, H100, L40S; `gpu_sxm`: H100), so GPU DFT is possible. No ORCA module was found.
+- Cost: a full ωB97M-V/MM NEB on CPU (105 QM atoms, about 12 images × 50–150 iterations = 600–1800 gradients) is impractical. On GPU it's plausible, but needs a timing benchmark first.
+- Proposed (2026-10-15):
+  1. GFN2-xTB/MM paths for exploration.
+  2. ωB97M-V/def2-SVP/MM, with gpu4pyscf on an H100: re-optimise the endpoints, re-converge the NEB from the xTB path, transition-state optimisation, QM-region frequencies and IRC.
+  3. ωB97M-V/def2-TZVP(D)/MM single points.
+  Install gpu4pyscf in a separate env to protect the ASH env's PySCF version. Benchmark one gradient first.
 - Watch for: `$pcem` support in g-xTB. Then update ASH's `gxTBTheory` to v2 (`xtb --gxtb`, analytic gradients, point charges) and switch the QM/MM.
 
 **D10 – QM charge and multiplicity.**
