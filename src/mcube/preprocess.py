@@ -15,6 +15,7 @@ from datetime import datetime
 
 import numpy as np
 from rdkit import Chem
+from rdkit.Chem import AllChem, rdDetermineBonds
 from openmm.app import PDBFile, Topology, ForceField
 
 from ash import (
@@ -159,8 +160,43 @@ def ligand_resname(inputs: Dict[str, Any]) -> str:
     return "LIG"
 
 
+def ligand_mol_from_pdb(ligand: str, charge: int, smiles: str = None) -> Chem.Mol:
+    """
+    Read a ligand PDB with explicit hydrogens, taking connectivity only from its CONECT
+    records (no distance-based bonding, which adds spurious bonds in strained geometries).
+    Bond orders come from the `smiles` template if given, else from RDKit DetermineBondOrders.
+    """
+    mol = Chem.MolFromPDBFile(ligand, removeHs=False, sanitize=False, proximityBonding=False)
+    if mol is None:
+        raise ValueError(f"RDKit could not read {ligand}")
+    if mol.GetNumBonds() == 0:
+        raise ValueError(f"{ligand} has no CONECT records; bonds are needed to parameterise it")
+
+    if smiles:
+        template = Chem.AddHs(Chem.MolFromSmiles(smiles))
+        try:
+            mol = AllChem.AssignBondOrdersFromTemplate(template, mol)
+        except ValueError as e:
+            raise ValueError(f"ligand_smiles does not match the atoms/bonds of {ligand} "
+                             "(check hydrogens and protonation)") from e
+    else:
+        rdDetermineBonds.DetermineBondOrders(mol, charge=charge)
+
+    Chem.SanitizeMol(mol)
+    Chem.AssignStereochemistryFrom3D(mol)
+    if Chem.GetFormalCharge(mol) != charge:
+        raise ValueError(f"{ligand} has formal charge {Chem.GetFormalCharge(mol)} but charge is {charge}")
+    # Printed so the bond-order assignment can be checked
+    print("[INFO] Ligand SMILES:", Chem.MolToSmiles(Chem.RemoveHs(mol)))
+    return mol
+
+
 def merge_ligand(protein_pdb: str, ligand: str, model: int = 1, charge: int = 0,
-                 resname: str = None) -> Tuple[str, str]:
+                 resname: str = None, smiles: str = None, merge: bool = True) -> Tuple[str, str]:
+    """
+    Parameterise the ligand with OpenFF and (if merge) merge it into protein_pdb.
+    With merge=False the ligand is assumed to be in protein_pdb already.
+    """
     filename = resname or Path(ligand).stem
     if len(filename) > 3:
         print(f"[WARNING] Ligand residue name '{filename}' is longer than 3 characters and will be "
@@ -199,34 +235,27 @@ def merge_ligand(protein_pdb: str, ligand: str, model: int = 1, charge: int = 0,
         mol.AddConformer(conf)
         mol = Chem.AddHs(mol, addCoords=True)
         Chem.MolToMolFile(mol, f"{filename}.mol")
-
-        small_molecule_parameterizer(
-            forcefield_option="OpenFF",
-            molfile=f"{filename}.mol",
-            charge=charge,
-            resname=filename
-        )
-        ligand_xmlfile = Path(f"openff_{filename}.xml").resolve().as_posix()
-
-        merge_pdb_files(protein_pdb, f"{filename}.pdb")
-        protein_pdb = "merged.pdb"
+        small_molecule_parameterizer(forcefield_option="OpenFF", molfile=f"{filename}.mol", charge=charge,
+                                     resname=filename)
 
     elif ligand.endswith(".pdb"):
-        # ASH perceives bond orders from the PDB with RDKit DetermineBonds(charge),
-        # so the PDB must contain explicit hydrogens.
-        small_molecule_parameterizer(forcefield_option="OpenFF", pdbfile=ligand, charge=charge, resname=filename)
-        merge_pdb_files(protein_pdb, f"{filename}.pdb")
-        protein_pdb = "merged.pdb"
-        ligand_xmlfile = Path(f"openff_{filename}.xml").resolve().as_posix()
+        # Needs explicit hydrogens and CONECT records
+        mol = ligand_mol_from_pdb(ligand, charge, smiles)
+        Chem.MolToMolFile(mol, f"{filename}.sdf")
+        small_molecule_parameterizer(forcefield_option="OpenFF", sdffile=f"{filename}.sdf", charge=charge,
+                                     resname=filename)
 
     elif ligand.endswith(".mol"):
         small_molecule_parameterizer(forcefield_option="OpenFF", molfile=ligand, charge=charge, resname=filename)
-        merge_pdb_files(protein_pdb, f"{filename}.pdb")
-        protein_pdb = "merged.pdb"
-        ligand_xmlfile = Path(f"openff_{filename}.xml").resolve().as_posix()
 
     else:
         raise ValueError(f"Not a valid file format for ligand {ligand}: choose .pdbqt, .pdb or .mol")
+
+    ligand_xmlfile = Path(f"openff_{filename}.xml").resolve().as_posix()
+
+    if merge:
+        merge_pdb_files(protein_pdb, f"{filename}.pdb")
+        protein_pdb = "merged.pdb"
 
     return protein_pdb, ligand_xmlfile
 
@@ -402,7 +431,9 @@ def run(args) -> Dict[str, Any]:
     if inputs.get("ligand"):
         print("[STEP] Preparing ligand...")
         pdb_file, ligand_xmlfile = merge_ligand(inputs.get("protein_pdb"), inputs.get("ligand"), inputs.get("model"),
-                                                inputs.get("charge"), resname=resname)
+                                                inputs.get("charge"), resname=resname,
+                                                smiles=inputs.get("ligand_smiles"),
+                                                merge=inputs.get("merge_ligand", True))
     else:
         ligand_xmlfile = inputs.get("ligand_xmlfile")
         pdb_file = inputs.get("protein_pdb")

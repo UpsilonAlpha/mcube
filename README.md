@@ -53,7 +53,9 @@ Results are written back with `yaml.safe_dump`, so comments in the config are lo
 | Key | Default | Description |
 | --- | --- | --- |
 | `protein_pdb` | required | Protein PDB file |
-| `ligand` | none | `.pdbqt` (Meeko output with `REMARK SMILES`/`SMILES IDX`), `.pdb` (with explicit hydrogens; ASH perceives bond orders) or `.mol` |
+| `ligand` | none | `.pdbqt` (Meeko output with `REMARK SMILES`/`SMILES IDX`), `.pdb` (explicit hydrogens and CONECT records required) or `.mol` |
+| `ligand_smiles` | none | `.pdb` ligands only: SMILES (with charges and stereo) used as a bond-order template. Recommended. Without it RDKit guesses bond orders and can pick unphysical resonance forms (e.g. enolate/S⁺ for carbapenems). Connectivity always comes from CONECT, never from distances. The SMILES actually used is printed. |
+| `merge_ligand` | `true` | `false` if `protein_pdb` already contains the ligand: it is parameterised but not merged in again |
 | `ligand_resname` | ligand file stem | Ligand residue name. Use at most 3 characters. |
 | `model` | | PDBQT model (pose) number, starting at 1 |
 | `charge` | | Ligand formal charge |
