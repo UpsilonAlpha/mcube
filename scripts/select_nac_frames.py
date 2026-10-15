@@ -72,7 +72,7 @@ def main():
     # Spread the chosen frames out in time: closest to ideal first, then enforce separation
     ideal = np.abs(angle[ok] - 107.0) / 10.0 + np.abs(dist[ok] - 2.9)
     chosen = []
-    for i in ok[np.argsort(ideal)]:
+    for i in (ok[np.argsort(ideal)] if args.n > 0 else []):  # --n 0: only write the CSV
         if all(abs(i - j) >= args.min_separation for j in chosen):
             chosen.append(int(i))
         if len(chosen) == args.n:
@@ -85,7 +85,7 @@ def main():
         with open(name, "w") as f:
             PDBFile.writeFile(omm_top, traj.xyz[i] * 10.0 * unit.angstrom, f, keepIds=True)
         print(f"  frame {i} (t = {traj.time[i]:.0f} ps): d = {dist[i]:.2f} A, angle = {angle[i]:.0f} deg -> {name}")
-    if len(chosen) < 5:
+    if args.n > 0 and len(chosen) < 5:
         print("[WARNING] Fewer than 5 NAC frames; consider longer sampling or a restraint (see decision log D16).")
 
 
