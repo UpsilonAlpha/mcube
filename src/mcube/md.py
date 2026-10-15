@@ -33,6 +33,11 @@ def run(args) -> Dict[str, Any]:
     constraints = inputs.get("constraints")
     if constraints is None:
         constraints = preprocess["results"]["constraints"]
+    # Harmonic distance restraints [[i, j, distance_A, k_kcal_per_mol_A2], ...], e.g. to pull a
+    # substrate into place during equilibration. Constraints stay as [i, j] pairs (current distance).
+    restraints = inputs.get("restraints") or None
+    if restraints:
+        print(f"[INFO] {len(restraints)} distance restraints: {restraints}")
 
     pdb_file = inputs.get("pdb_file")
     if pdb_file is None:
@@ -79,6 +84,7 @@ def run(args) -> Dict[str, Any]:
             numcores=inputs.get("cores"),
             autoconstraints='HBonds',
             constraints=constraints,
+            restraints=restraints,
             nonbondedMethod_noPBC='CutoffNonPeriodic',
             nonbonded_cutoff_noPBC=20,
         )
@@ -91,11 +97,13 @@ def run(args) -> Dict[str, Any]:
             numcores=inputs.get("cores"),
             autoconstraints='HBonds',
             constraints=constraints,
+            restraints=restraints,
             rigidwater=True,
         )
 
     fragment = Fragment(pdbfile=pdb_file)
     result["forcefields"] = default_forcefields
+    result["restraints"] = restraints
 
     print("[STEP] Minimization...")
     OpenMM_Opt(fragment=fragment, theory=mm, maxiter=500, tolerance=1)

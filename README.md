@@ -93,6 +93,8 @@ Results are written back with `yaml.safe_dump`, so comments in the config are lo
 | `skip_nvt` | `false` | Skip production MD |
 | `nvt_timestep`, `nvt_time` | | Production timestep and length (ps) |
 | `traj_frequency` | 1000 | Production trajectory save interval (steps) |
+| `constraints` | from preprocess | Fixed distances as `[[i, j], …]`, taken from the starting geometry. Override to drop or add pairs. (ASH silently ignores `[i, j, d]` entries with an explicit distance.) |
+| `restraints` | none | Harmonic distance restraints `[[i, j, d_Å, k_kcal/mol/Å²], …]`, active during minimisation, warm-up, NPT and NVT. Use them to pull a substrate into place, then run again without them. |
 
 Minimisation always runs. Metal–donor `constraints` are applied as fixed-distance OpenMM constraints.
 
