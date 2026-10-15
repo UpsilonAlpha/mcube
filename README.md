@@ -154,6 +154,7 @@ Both scripts are in `scripts/`:
 
 - `plot_md_data.py <data.csv>`: plots temperature (plus density and volume for NPT) from an OpenMM CSV
 - `plot_rmsd_via_mdtraj.py <traj.dcd> <topology.pdb>`: plots RMSD of the protein heavy atoms
+- `make_residues_contiguous.py <reactant.pdb> [product.pdb ...]`: makes each residue's atoms contiguous in the reference PDB (readers split interleaved residues into fragments) and applies the same atom permutation to the other files, so atom i still matches atom i. Writes `*_contig.pdb`.
 - `build_product_box.py <reactant_solvated.pdb> <product_solute.pdb> <out.pdb>`: builds a solvated NEB product in the reactant's water box. NEB endpoints must share every atom, waters included, so solvating reactant and product separately does not work. The product solute must have the same atoms in the same order as the reactant solute. The script aligns on the non-reactive solute atoms and reports water clashes. QM/MM-optimise both endpoints before running NEB.
 
 ## Notes and limitations
