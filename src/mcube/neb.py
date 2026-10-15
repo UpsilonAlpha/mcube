@@ -43,6 +43,7 @@ def run(args) -> Dict[str, Any]:
         autoconstraints=None,
         periodic=not implicit,
         rigidwater=False,
+        numcores=theory_cores,  # OpenMM CPU threads per image; ASH defaults to 1
     )
 
     print("[STEP] Building QM region...")

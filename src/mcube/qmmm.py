@@ -76,6 +76,7 @@ def run(args) -> Dict[str, Any]:
         autoconstraints=None,
         periodic=not implicit,
         rigidwater=False,
+        numcores=inputs.get("cores", 1),  # OpenMM CPU threads; ASH defaults to 1
     )
 
     fragment = Fragment(pdbfile=pdb_file)
