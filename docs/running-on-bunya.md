@@ -92,9 +92,24 @@ seff <id>                                          # after it finishes
 - **Take several samples.** In ASH's default mode xTB runs as a separate, short-lived `xtb` process, so one snapshot can miss it.
 - **Look for single-threaded work.** If `top` shows a Python process at about 100% while `cores` > 1, something is running on one thread.
 
-## GPUs (not used yet)
+## GPUs
 
-Bunya's GPU partition is AMD MI355X (`-p gpu_rocm --gres=gpu:mi355x:1 --qos=gpu`), with at most 4 concurrent jobs per user. OpenMM MD would be far faster there, but it needs OpenMM's HIP platform. mcube always uses `platform='CPU'`, and the HIP plugin hasn't been checked in the ASH env. Adding a `platform:` key to `md.inputs` would be the next step for long production MD. QM/MM runs on the CPU either way because of xTB, so keep those on `general`.
+Checked 2026-10-16 with `sinfo` and `sacctmgr`:
+- **NVIDIA:** `gpu_cuda` (A100, H100, L40S; also MIG slices) and `gpu_sxm` (H100 SXM).
+- **AMD:** `gpu_rocm` (MI210, MI300X, MI355X).
+- **Access:** our account has QOS `gpu` (at most 4 GPUs and 256 CPUs per user), `sxm` (4 GPUs), `mig` and `debug` (1 h).
+
+The ASH env has OpenMM 8.4 built against CUDA 13.1. Its platforms are Reference, CPU and **CUDA**. The HIP plugin fails to load (no ROCm libraries), so use the NVIDIA partitions:
+
+```bash
+#SBATCH --partition=gpu_cuda
+#SBATCH --qos=gpu
+#SBATCH --gres=gpu:1          # or gpu:h100:1 / gpu:a100:1
+```
+
+- **Classical stages on the GPU:** `md.inputs.platform: CUDA` (with `properties: {Precision: mixed}`) runs the md stage there. `ramd.inputs.platform` does the same for RAMD.
+- **QM/MM stays on the CPU:** xTB has no GPU code, so keep QM/MM jobs on `general`.
+- **Job script:** `scripts/ramd_gpu.slurm` runs preprocess → md → ramd on one GPU. It first checks that OpenMM can open a CUDA context, which fails if a node's driver is older than CUDA 13.1 needs.
 
 ## Future option: FMO-xTB for large QM regions
 

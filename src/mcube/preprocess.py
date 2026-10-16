@@ -599,8 +599,13 @@ def run(args) -> Dict[str, Any]:
 
     # With skip_solvate, pdb_file stays as protein_pdb, or merged.pdb if a ligand was merged in
 
-    print("[STEP] Detecting coordination constraints...")
-    qm_residues, constraints = find_coordinators(pdb_file, inputs)
+    if inputs.get("metals"):
+        print("[STEP] Detecting coordination constraints...")
+        qm_residues, constraints = find_coordinators(pdb_file, inputs)
+    else:
+        # e.g. protein–protein complexes: no metal site to hold, no metal QM region
+        print("[INFO] No metals given: no coordination constraints and no metal QM region")
+        qm_residues, constraints = {}, []
 
     # Residues added to the QM region beyond the metal's coordination sphere
     extra = inputs.get("extra_qm_residues") or {}

@@ -51,6 +51,7 @@ The config file has one section per stage, and each section has `inputs` (writte
 
 - [`pdbqt_config.yaml`](config_examples/pdbqt_config.yaml): explicit solvent, docked ligand from a PDBQT
 - [`implicit_config.yaml`](config_examples/implicit_config.yaml): implicit solvent (GBn2), ligand from a PDB
+- [`protein_protein_ramd.yaml`](config_examples/protein_protein_ramd.yaml): protein–protein complex without metals, md and τRAMD on a GPU (`scripts/ramd_gpu.slurm`)
 
 Results are written back with `yaml.safe_dump`, so comments in the config are lost the first time a stage saves its results. Writes are locked (POSIX), so several jobs can run stages on one config at once as long as each writes its own `--section`.
 
@@ -75,8 +76,8 @@ Results are written back with `yaml.safe_dump`, so comments in the config are lo
 | `pH` | 8.0 explicit / 7.0 implicit | Protonation pH |
 | `solvent_padding` | 10.0 | Water padding in Å (explicit only) |
 | `ionic_strength` | 0.1 | NaCl concentration in M (explicit only) |
-| `metals` | required | Element symbols treated as metals |
-| `cutoff` | required | Metal–donor distance cutoff (Å) |
+| `metals` | none | Element symbols treated as metals. Empty or absent (e.g. protein–protein complexes): no coordination constraints and no QM region. |
+| `cutoff` | required with `metals` | Metal–donor distance cutoff (Å) |
 | `donor_elements` | `[N, O, S]` | Elements that count as metal donors (matched on element, not atom name) |
 | `require_his_variants` | `false` | Fail if any histidine has no tautomer in `residue_variants`. A warning is printed either way. |
 | `extra_qm_residues` | none | `{chain: [resid, ...]}`: residues added to the QM region on top of the metal's coordination sphere (e.g. catalytic Lys/Arg) |
@@ -93,6 +94,7 @@ Results are written back with `yaml.safe_dump`, so comments in the config are lo
 | --- | --- | --- |
 | `pdb_file`, `constraints`, `ligand_xml`, `default_forcefields` | from preprocess | Overrides |
 | `cores` | | OpenMM CPU threads |
+| `platform`, `properties` | `CPU` | OpenMM platform, e.g. `CUDA` with `{Precision: mixed}` on a GPU node (see `docs/running-on-bunya.md`) |
 | `temp` | | Temperature (K) |
 | `implicit` | `false` | GBn2 implicit solvent. Uses HBond constraints, 1.5 amu hydrogen mass and a 2 nm cutoff. NPT and reimaging are skipped. |
 | `implicit_eps` | | Solvent dielectric for implicit solvent |

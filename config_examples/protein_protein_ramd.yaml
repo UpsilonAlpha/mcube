@@ -1,0 +1,42 @@
+# Protein–protein complex, no metals: preprocess -> md (GPU) -> τRAMD (GPU)
+# Run with scripts/ramd_gpu.slurm. Replace COMPLEX.pdb, the chains and the His tautomers.
+preprocess:
+  inputs:
+    protein_pdb: COMPLEX.pdb            # both chains, residues numbered 1..N per chain
+    default_forcefields:
+    - amber14/protein.ff14SB.xml
+    - amber14/tip3p.xml
+    residue_variants: {}                # His tautomers, e.g. {A: {57: HIE}, B: {12: HID}}
+    require_his_variants: false         # true: fail if any His has no tautomer set
+    metals: []                          # none: no metal constraints, no QM region
+    pH: 7.4
+    # The box must let the binder leave without meeting the receptor's periodic image:
+    # roughly box edge > max_distance + receptor radius + binder radius + 10 Å.
+    # mcube ramd prints the required size; raise this if it warns.
+    solvent_padding: 20.0
+    ionic_strength: 0.15
+md:
+  inputs:
+    platform: CUDA
+    properties: {Precision: mixed}
+    cores: 8
+    temp: 300
+    gentle: true
+    npt_timestep: 0.002
+    nvt_timestep: 0.004                 # 1.5 amu hydrogens + HBond constraints
+    nvt_time: 1000                      # ps
+    traj_frequency: 2500
+ramd:
+  inputs:
+    binder: {B: all}                    # the chain that leaves
+    # receptor: {A: all}                # default: everything else except water/ions
+    force: 14.0                         # kcal/mol/Å; keep fixed across the whole comparison set
+    platform: CUDA
+    properties: {Precision: mixed}
+    # Short first test; the full protocol is >= 4 replicas x 15 trajectories
+    replicas: 1
+    trajectories: 2
+    equil_time: 100                     # ps per replica
+    max_time: 2000                      # ps per trajectory (censored if not dissociated)
+    timestep: 0.004
+    traj_interval: 10                   # ps between DCD frames (0: none)

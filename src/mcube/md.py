@@ -73,6 +73,8 @@ def build_md_theory(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file
             pdbfile=pdb_file,
             periodic=False,
             numcores=cores,
+            platform=inputs.get("platform", "CPU"),  # e.g. CUDA on a GPU node
+            properties=inputs.get("properties"),
             autoconstraints='HBonds',
             constraints=constraints,
             restraints=restraints,
@@ -86,6 +88,8 @@ def build_md_theory(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file
             pdbfile=pdb_file,
             periodic=True,
             numcores=cores,
+            platform=inputs.get("platform", "CPU"),  # e.g. CUDA on a GPU node
+            properties=inputs.get("properties"),
             autoconstraints='HBonds',
             constraints=constraints,
             restraints=restraints,
@@ -99,8 +103,8 @@ def md_constraints(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file:
     constraints = inputs.get("constraints")
     if constraints is None:
         constraints = (preprocess.get("results") or {}).get("constraints")
-    # Atoms may be named as "chain:resid:atom" instead of indices
-    return resolve_atoms(constraints, pdb_file)
+    # Atoms may be named as "chain:resid:atom" instead of indices; none (e.g. no metals) -> None
+    return resolve_atoms(constraints, pdb_file) or None
 
 
 def run(args) -> Dict[str, Any]:

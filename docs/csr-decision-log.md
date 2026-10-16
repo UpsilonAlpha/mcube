@@ -345,6 +345,11 @@ Each intermediate is built in the shared box (D4) and optimised, then confirmed 
   - **No near-attack geometry**: OH⁻–C4x 3.21–3.86 Å (mean 3.52; target 3.0) at an O01–C4x–O2x angle of 24–54°, not 95–120°. The OH⁻ and O2x are cis on the Zn (O01···O2x 2.67 Å), so the OH⁻ sits beside the carbonyl O, not over the C4x face. The water is no better placed (O···C4x 3.9 Å, 24°). 0 of 500 frames meet the D16 criteria.
 - Decision: before changing the MM protocol, QM/MM-optimise (no restraints, no metal constraints, rigid waters, 8 Å active region around the Zn, up to 300 steps) frames 300, 400 and 499 (300–499 ps) as a probe. This removes the MM Zn artefacts and shows whether the water stays and how the OH⁻/carbonyl arrangement relaxes. Job 29893675 (array, `qmmm_probe/`, results in sections `qmmm_probe_f00300/00400/00499`).
 - Alternative, not taken yet: rerun the restrained MD with an attack-geometry restraint and a restraint moving the water off the Zn (biased).
+- Probe results, frames 300 and 400 (both converged in ~25 min on 8 CPUs; frame 499 still running):
+  - **Asp92 binds the Zn directly** in QM/MM (OD2 2.09–2.11 Å; held at 2.80 Å in MM). This bears on D24 and on the MM constraint value.
+  - HOH485 stays on the Zn (2.12–2.15 Å, normal length once the MM artefact is gone).
+  - The carbonyl stays on the Zn in frame 300 (O2x 2.17 Å, 6-coordinate Zn), but **leaves it in frame 400**, where the OH⁻ proton H-bonds O2x instead (H03···O2x 1.82 Å; 5-coordinate Zn).
+  - Neither frame approaches attack: OH⁻–C4x 3.65 / 3.83 Å, O01–C4x–O2x 30° / 17°. The OH⁻ stays beside the carbonyl O.
 - Revisit: after the probe, whether the reactant is a cis OH⁻/carbonyl Zn complex (then attack needs the OH⁻ to rotate over the carbonyl face, which a scan will show), and whether HOH485 belongs in the Michaelis complex.
 
 ## Resources (see `running-on-bunya.md`)
