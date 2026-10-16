@@ -365,6 +365,33 @@ Each intermediate is built in the shared box (D4) and optimised, then confirmed 
   - Monitored at every point: Zn–O2x, C4x–N1x, H03···O2x, Zn–O01 and C4x–O2x.
   - Job 29919076 in `scan_attack_f400/`, config section `scan_attack_f400`.
   - It is a driven path from a non-NAC start, so its maximum is an upper bound on the barrier, not a TS energy.
+  - **Cancelled** after 11 min (superseded by D28).
+
+**D28 – Redo with the plain mcube pipeline: carbonyl constrained like any Zn ligand, QM/MM MD before optimising.** (2026-10-16, user decision; supersedes the restrained-MD route of D25 and the optimisation-only probe of D27)
+- Why (user):
+  - The carbonyl must be treated exactly like the His and Asp ligands. preprocess should pick it up within the Zn cutoff and constrain it, with no hand-written restraints or exclusions.
+  - The QM/MM stage must run a QM/MM MD equilibration before the optimisation, as in `CSR_ligand`/`CSR_hydrolysed` `MM.slurm` (preprocess → md → qmmm).
+- What the earlier run actually had:
+  - D15/D25 excluded the substrate from the constraints (`constraint_exclude_residues: {C: [1]}`) and used a harmonic Zn–O2x restraint (2.2 Å, k = 20). That held O2x at 1.8–2.2 Å through NPT and NVT (2.5 Å after minimisation).
+  - Asp92 was constrained at 2.80 Å in every MM stage; it only moved, to 2.1 Å, in the unconstrained QM/MM optimisation.
+  - `qmmm.inputs.skip_equilibrate` was `true`.
+- Setup in `/scratch/user/uquadhik/CSR_crystal_v2` (CSR_crystal kept for comparison):
+  - `protein_pdb`: the restrained NVT end point with bulk water and ions removed (`scripts/strip_solvent.py`, HOH485 kept), so the carbonyl starts on the Zn.
+  - preprocess inputs: as CSR_crystal, minus `constraint_exclude_residues`.
+  - md inputs: as CSR_crystal (gentle warm-up, NPT, 1 ns NVT), minus the hand-set constraints and restraints.
+  - qmmm inputs: `skip_equilibrate: false`, 50 ps QM/MM MD at 1 fs (as CSR_hydrolysed), then optimisation (`actradius 8` around the Zn, 300 steps); 16 cores.
+- preprocess (cutoff 3.0 Å) constrains six Zn ligands at their start distances:
+  - HOH485 O 1.79 Å;
+  - **meropenem O2x 1.94 Å**;
+  - His164 NE2 2.09 Å;
+  - OH⁻ O01 2.14 Å;
+  - His88 NE2 2.22 Å;
+  - Asp92 OD2 2.79 Å.
+  QM region 119 atoms; same atom indices as CSR_crystal.
+- Asp92: kept at 2.80 Å in MM only (user); free in QM/MM.
+- Job 29920397 (`MM.slurm`: md → qmmm, 16 CPUs, 10-day limit).
+- Note: the HOH485 and O2x distances are frozen at values from the restrained run (1.79 and 1.94 Å), which are short because of the nonbonded MM Zn. The QM/MM MD releases them.
+- Revisit: the QM/MM MD cost (50,000 xTB/MM steps; estimated 3–6 days); NAC frame selection from the QM/MM trajectory.
 - Revisit: after the probe, whether the reactant is a cis OH⁻/carbonyl Zn complex (then attack needs the OH⁻ to rotate over the carbonyl face, which a scan will show), and whether HOH485 belongs in the Michaelis complex.
 
 ## Resources (see `running-on-bunya.md`)
