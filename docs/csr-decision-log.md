@@ -350,6 +350,16 @@ Each intermediate is built in the shared box (D4) and optimised, then confirmed 
   - HOH485 stays on the Zn (2.12–2.15 Å, normal length once the MM artefact is gone).
   - The carbonyl stays on the Zn in frame 300 (O2x 2.17 Å, 6-coordinate Zn), but **leaves it in frame 400**, where the OH⁻ proton H-bonds O2x instead (H03···O2x 1.82 Å; 5-coordinate Zn).
   - Neither frame approaches attack: OH⁻–C4x 3.65 / 3.83 Å, O01–C4x–O2x 30° / 17°. The OH⁻ stays beside the carbonyl O.
+- Frame 499 (2026-10-16): **not converged** in 300 steps (2 h 9 min; the last geometry was kept, `converged: false`). It ends like frame 400:
+  - the carbonyl is off the Zn (O2x 3.54 Å), with H03···O2x 1.77 Å;
+  - the Zn is 5-coordinate (His88, His164, Asp92 2.10 Å, OH⁻, HOH485);
+  - OH⁻–C4x is 3.82 Å at 13°.
+- Every optimisation step was checked (`site_report.py` on `geometric_OPTtraj_Full.xyz`; 88 + 153 + 301 steps). **No step reaches an attack geometry** (≤ 3.2 Å and 95–120°), either for the OH⁻ (angle never above 41°) or for HOH485 (angle never above 69°; it came within 2.88 Å of C4x once in frame 499).
+- Summary over the 3 frames:
+  - Asp92 binds the Zn in all three.
+  - HOH485 stays bound in all three.
+  - The carbonyl leaves the Zn in 2 of 3, its O taking an H-bond from the OH⁻ instead.
+  - The restrained-MM arrangement (OH⁻ cis to the carbonyl O on the Zn) does not relax towards attack.
 - Revisit: after the probe, whether the reactant is a cis OH⁻/carbonyl Zn complex (then attack needs the OH⁻ to rotate over the carbonyl face, which a scan will show), and whether HOH485 belongs in the Michaelis complex.
 
 ## Resources (see `running-on-bunya.md`)
