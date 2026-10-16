@@ -360,6 +360,11 @@ Each intermediate is built in the shared box (D4) and optimised, then confirmed 
   - HOH485 stays bound in all three.
   - The carbonyl leaves the Zn in 2 of 3, its O taking an H-bond from the OH⁻ instead.
   - The restrained-MM arrangement (OH⁻ cis to the carbonyl O on the Zn) does not relax towards attack.
+- Next (user decision, 2026-10-16): a relaxed O01–C4x scan from the converged frame-400 structure, to test whether attack from this arrangement is feasible at all.
+  - Setup: 3.80 → 1.45 Å in 25 points (−0.098 Å per step), at most 200 steps per point, the frame-400 active region (486 atoms).
+  - Monitored at every point: Zn–O2x, C4x–N1x, H03···O2x, Zn–O01 and C4x–O2x.
+  - Job 29919076 in `scan_attack_f400/`, config section `scan_attack_f400`.
+  - It is a driven path from a non-NAC start, so its maximum is an upper bound on the barrier, not a TS energy.
 - Revisit: after the probe, whether the reactant is a cis OH⁻/carbonyl Zn complex (then attack needs the OH⁻ to rotate over the carbonyl face, which a scan will show), and whether HOH485 belongs in the Michaelis complex.
 
 ## Resources (see `running-on-bunya.md`)
