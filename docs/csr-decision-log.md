@@ -391,7 +391,10 @@ Each intermediate is built in the shared box (D4) and optimised, then confirmed 
 - Asp92: kept at 2.80 Å in MM only (user); free in QM/MM.
 - Job 29920397 (`MM.slurm`: md → qmmm, 16 CPUs, 10-day limit).
 - Note: the HOH485 and O2x distances are frozen at values from the restrained run (1.79 and 1.94 Å), which are short because of the nonbonded MM Zn. The QM/MM MD releases them.
-- Revisit: the QM/MM MD cost (50,000 xTB/MM steps; estimated 3–6 days); NAC frame selection from the QM/MM trajectory.
+- QM/MM relaxation (user, 2026-10-16): the QM/MM MD is expected to relax the site a little; that is its purpose. It must still keep the bond geometry of everything in the QM region. Check QM-region bonds when picking frames.
+- **NAC frames come from the QM/MM MD equilibration** (user), not from MM MD. They are picked with `scripts/select_nac_frames.py`: OH⁻ O01–C4x ≤ 3.2 Å, O01–C4x–O2x 95–120°, spread out in time.
+  - `qmmm.inputs.traj_frequency` was set to 50 (every 50 fs, ~1,000 frames over 50 ps) before the qmmm stage started; at 1,000 it would have saved only 50 frames.
+- Revisit: the QM/MM MD cost (50,000 xTB/MM steps; estimated 3–6 days).
 - Revisit: after the probe, whether the reactant is a cis OH⁻/carbonyl Zn complex (then attack needs the OH⁻ to rotate over the carbonyl face, which a scan will show), and whether HOH485 belongs in the Michaelis complex.
 
 ## Resources (see `running-on-bunya.md`)
