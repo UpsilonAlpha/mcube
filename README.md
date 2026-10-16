@@ -155,7 +155,8 @@ scan_attack:            # mcube scan config.yaml --pdb R.pdb --section scan_atta
 | `end` | required | Last value (Å) |
 | `points` | 10 | Number of points, both ends included |
 | `constraints` | none | Extra bonds held during the scan, `[[i, j]]` or `[[i, j, d]]` |
-| `opt_maxiter` | 200 | Optimisation steps per point |
+| `opt_maxiter` | 200 | Optimisation steps per point. A point that runs out keeps its last geometry, is marked `converged: false`, and the scan continues. |
+| `monitor` | none | Distances `[[i, j], …]` reported at every point (CSV and results) |
 | `pdb_file` | `qmmm.results.optimized_pdb` | Starting structure (or `--pdb`) |
 
 Each point is optimised from the previous one with the scanned distance fixed. Writes `scan_XX.pdb` (full system) and `scan_energies.csv`; `results` (`points` with target/actual distance, energy, kcal/mol relative to point 0, PDB; `max_point`) are saved after every point, so a stopped scan can be continued from its last PDB with a new `start`.

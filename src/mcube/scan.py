@@ -17,6 +17,7 @@ anything not given there is taken from `scan.inputs`):
         end: 1.45             # Å
         points: 16            # including both ends
         constraints: []       # extra bonds held during the scan, [[i, j]] or [[i, j, d]]
+        monitor: []           # distances [[i, j], ...] reported at every point
         opt_maxiter: 200
 
 Charge, multiplicity, force fields, xTB settings, cores and the active region
@@ -47,6 +48,7 @@ from .qmmm import (
     clean_geometric_files,
     write_pdb,
     resolve_stage_atoms,
+    optimize,
 )
 
 from ash import *
@@ -92,6 +94,7 @@ def run(args) -> Dict[str, Any]:
                                 qm_atoms, boundary_excluded)
     extra = inputs.get("constraints") or []
     check_in_active([[i, j]] + list(extra), actatoms, "scan")
+    monitor = [[int(a), int(b)] for a, b in (inputs.get("monitor") or [])]
 
     d0 = distance(fragment.coords, i, j)
     start = float(inputs.get("start", d0))
@@ -112,7 +115,8 @@ def run(args) -> Dict[str, Any]:
     }
     csvfile = Path("scan_energies.csv")
     with open(csvfile, "w", newline="") as f:
-        csv.writer(f).writerow(["point", "target_A", "distance_A", "energy_Eh", "rel_kcal_mol", "pdb"])
+        csv.writer(f).writerow(["point", "target_A", "distance_A", "energy_Eh", "rel_kcal_mol", "converged"]
+                               + [f"d_{a}_{b}" for a, b in monitor] + ["pdb"])
 
     e_first = None
     for n, d in enumerate(targets):
@@ -120,10 +124,10 @@ def run(args) -> Dict[str, Any]:
         clean_geometric_files()
         # Fresh lists each time: ASH rewrites the indices to active-region indices in place
         constraints = {'bond': [list(c) for c in held] + [[i, j, d]]}
-        opt = Optimizer(fragment=fragment, theory=qmmm_theory, ActiveRegion=True, actatoms=actatoms,
-                        maxiter=inputs.get("opt_maxiter", 200), constraints=constraints,
-                        constrainvalue=True, charge=charge, mult=mult)
-        energy = float(opt.energy)
+        # A point that runs out of steps keeps its last geometry (converged: false) and the scan goes on
+        energy, converged = optimize(fragment, qmmm_theory, actatoms, {"charge": charge, "mult": mult},
+                                     constraints, True, inputs.get("opt_maxiter", 200))
+        energy = float(energy)
         if e_first is None:
             e_first = energy
         pdb = write_pdb(mm, fragment.coords, f"scan_{n:02d}.pdb")
@@ -132,12 +136,17 @@ def run(args) -> Dict[str, Any]:
             "distance": round(distance(fragment.coords, i, j), 4),
             "energy": energy,
             "rel_kcal_mol": round((energy - e_first) * HARTREE_TO_KCAL, 3),
+            "converged": converged,
+            "monitor": {f"{a}-{b}": round(distance(fragment.coords, a, b), 3) for a, b in monitor},
             "pdb": pdb,
         }
         result["points"].append(point)
         with open(csvfile, "a", newline="") as f:
             csv.writer(f).writerow([n, point["target"], point["distance"], f"{energy:.8f}",
-                                    point["rel_kcal_mol"], pdb])
+                                    point["rel_kcal_mol"], converged]
+                                   + list(point["monitor"].values()) + [pdb])
+        print(f"[INFO] Point {n}: {point['distance']:.3f} Å, {point['rel_kcal_mol']:+.2f} kcal/mol"
+              f"{'' if converged else ' (NOT converged)'}; {point['monitor']}")
         # Saved after every point so a stopped job keeps what it finished
         result["energies_csv"] = csvfile.resolve().as_posix()
         save_result(result, filename=args.config, section=section)
