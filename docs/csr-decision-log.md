@@ -394,7 +394,12 @@ Each intermediate is built in the shared box (D4) and optimised, then confirmed 
 - QM/MM relaxation (user, 2026-10-16): the QM/MM MD is expected to relax the site a little; that is its purpose. It must still keep the bond geometry of everything in the QM region. Check QM-region bonds when picking frames.
 - **NAC frames come from the QM/MM MD equilibration** (user), not from MM MD. They are picked with `scripts/select_nac_frames.py`: OH⁻ O01–C4x ≤ 3.2 Å, O01–C4x–O2x 95–120°, spread out in time.
   - `qmmm.inputs.traj_frequency` was set to 50 (every 50 fs, ~1,000 frames over 50 ps) before the qmmm stage started; at 1,000 it would have saved only 50 frames.
-- Revisit: the QM/MM MD cost (50,000 xTB/MM steps; estimated 3–6 days).
+- QM/MM MD runtime (2026-10-16):
+  - The md stage finished in job 29920397: all Zn constraints held (O2x 1.94 Å); `check_bonds.py` found every QM-region bond intact in all frames, with no new contacts and no proton transfers. In MM the OH⁻ is still not in attack geometry (OH⁻–C4x 3.5–4.3 Å, 21–45°).
+  - Its QM/MM MD ran at ~30 s per step on 16 CPUs (~17 days for 50 ps) and was cancelled. Job 29937049 (8 cores, unbound) was erratic, 3.6–131 s per step, and was also cancelled.
+  - A benchmark (job 29937358) traced this to unbound OpenMP threads stacking on SMT siblings: one bound thread per physical core takes 0.80 s per xTB call, against 2–9 s unbound.
+  - Rerun as **job 29937641**: qmmm stage only, from `md.results.lastframe`, 8 CPUs, `cores: 4`, bound threads. It runs at **1.37 s per step (max 1.8 s), so 50 ps takes ≈ 19 h**. Frames are saved every 50 fs to `qmmm_results/QM_MM.dcd`.
+  - Binding is now the mcube default (`src/mcube/threads.py`).
 - Revisit: after the probe, whether the reactant is a cis OH⁻/carbonyl Zn complex (then attack needs the OH⁻ to rotate over the carbonyl face, which a scan will show), and whether HOH485 belongs in the Michaelis complex.
 
 ## Resources (see `running-on-bunya.md`)
