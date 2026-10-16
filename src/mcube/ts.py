@@ -65,6 +65,7 @@ from .qmmm import (
     write_pdb,
     resolve_stage_atoms,
 )
+from .threads import resolve_cores, unbind_threads
 
 from ash import *
 
@@ -88,8 +89,10 @@ def run(args) -> Dict[str, Any]:
         raise ValueError("No TS guess: give --pdb (e.g. the NEB's saddlepoint.pdb)")
 
     charge, mult = qmmm_inputs.get("charge"), qmmm_inputs.get("mult")
-    cores = int(inputs.get("cores", qmmm_inputs.get("cores", 1)))
+    cores = resolve_cores(inputs.get("cores", qmmm_inputs.get("cores")))
     workers = max(1, min(int(inputs.get("freq_workers", 1)), cores))
+    if workers > 1:
+        unbind_threads(f"{workers} NumFreq workers run in parallel")
     forcefields, implicit = mm_settings(qmmm_inputs, md)
 
     print("[STEP] Building MM system...")

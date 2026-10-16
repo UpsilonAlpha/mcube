@@ -37,6 +37,7 @@ from .qmmm import stage_inputs
 from .md import build_md_theory, md_constraints
 from .ramd_engine import RAMD, com_and_radius
 from .ramd_analysis import tau_ramd, format_report
+from .threads import resolve_cores
 
 WATER_IONS = {"HOH", "WAT", "SOL", "TIP3", "NA", "CL", "K", "Na+", "Cl-", "K+", "NA+", "CL-"}
 CSV_FIELDS = ["replica", "trajectory", "seed", "dissociated", "time_ps", "steps", "direction_changes",
@@ -132,8 +133,8 @@ def run(args) -> Dict[str, Any]:
     else:
         constraints = md_constraints(md_inputs, preprocess, pdb_file)
     restraints = resolve_atoms(inputs.get("restraints") or None, pdb_file)
-    mm, forcefields = build_md_theory(md_inputs, preprocess, pdb_file, constraints, restraints,
-                                      cores=inputs.get("cores", md_inputs.get("cores")))
+    cores = resolve_cores(inputs.get("cores", md_inputs.get("cores")))
+    mm, forcefields = build_md_theory(md_inputs, preprocess, pdb_file, constraints, restraints, cores=cores)
     topology = mm.topology
     implicit = bool(md_inputs.get("implicit"))
 
@@ -189,7 +190,7 @@ def run(args) -> Dict[str, Any]:
         "properties": inputs.get("properties"),
     }
     if settings["platform"] == "CPU" and not settings["properties"]:
-        settings["properties"] = {"Threads": str(inputs.get("cores", md_inputs.get("cores") or 1))}
+        settings["properties"] = {"Threads": str(cores)}
     print(f"[INFO] RAMD settings: {settings}")
     engine = RAMD(mm.system, topology, binder, receptor, **settings)
 

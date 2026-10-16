@@ -27,6 +27,7 @@ from .qmmm import (
     write_pdb,
     resolve_stage_atoms,
 )
+from .threads import unbind_threads
 from ash import *
 
 # neb.inputs keys passed straight to ASH's NEB / NEBTS (see ash/interfaces/interface_knarr.py)
@@ -65,6 +66,9 @@ def run(args) -> Dict[str, Any]:
     neb_workers = max(1, min(numimages, args.cores))
     theory_cores = max(1, args.cores // neb_workers)
     runmode = 'parallel' if neb_workers > 1 else 'serial'
+    if neb_workers > 1:
+        # Each image's xTB would otherwise bind its threads to the same first cores
+        unbind_threads(f"{neb_workers} NEB images run in parallel")
 
     forcefields, implicit = mm_settings(qmmm_inputs, md)
 

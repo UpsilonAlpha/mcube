@@ -17,6 +17,7 @@ from .preprocess import (
     load_section,
     resolve_atoms,
 )
+from .threads import resolve_cores
 
 # ==============================
 # Unified run() function
@@ -128,7 +129,7 @@ def run(args) -> Dict[str, Any]:
         print(f"[INFO] {len(restraints)} distance restraints: {restraints}")
 
     mm, default_forcefields = build_md_theory(inputs, preprocess, pdb_file, constraints, restraints,
-                                              cores=inputs.get("cores"))
+                                              cores=resolve_cores(inputs.get("cores")))
 
     fragment = Fragment(pdbfile=pdb_file)
     result["forcefields"] = default_forcefields

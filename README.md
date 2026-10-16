@@ -45,6 +45,11 @@ mcube postprocess config.yaml [--qmmm] [--redraw] [--cutoff 2.6] [--metals ZN MG
 
 `--cores` defaults to `$SLURM_CPUS_PER_TASK` (or 1). The `md`, `qmmm`, `scan`, `ts` and `ramd` stages take their core count from `cores` in the config instead.
 
+**Threads.** Every stage binds OpenMP threads, one per physical core (`OMP_PROC_BIND=close`, `OMP_PLACES=cores`), unless you set these variables yourself or set `MCUBE_THREAD_BINDING=0`.
+- **Why:** on SMT nodes, `--cpus-per-task=N` gives N/2 physical cores. Unbound xTB threads then share cores and ran 2–9× slower, with erratic step times (see `docs/running-on-bunya.md`).
+- **Default `cores`:** when `cores` is not set, a stage uses the number of physical cores it is allowed to run on (e.g. 4 for `--cpus-per-task=8`). A larger `cores` gives a warning.
+- **Parallel workers:** NEB with parallel images and `ts` with `freq_workers` > 1 turn binding off, because each worker would bind to the same cores.
+
 ## Config file
 
 The config file has one section per stage, and each section has `inputs` (written by you) and `results` (written by mcube). When an input is missing, the stage falls back to the earlier stage's results: for example, `md` uses `preprocess.results.processed_pdb` unless `md.inputs.pdb_file` is set. Start from a template in [`config_examples/`](config_examples):

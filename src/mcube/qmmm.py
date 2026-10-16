@@ -30,6 +30,7 @@ from .preprocess import (
     qm_region_settings,
     resolve_atom_inputs,
 )
+from .threads import resolve_cores
 
 from ash import *
 
@@ -244,7 +245,8 @@ def run(args) -> Dict[str, Any]:
     forcefields, implicit = mm_settings(inputs, md)
 
     print("[STEP] Building MM system...")
-    mm = make_mm(forcefields, pdb_file, implicit, inputs.get("cores", 1))
+    cores = resolve_cores(inputs.get("cores"))
+    mm = make_mm(forcefields, pdb_file, implicit, cores)
     inputs = resolve_stage_atoms(inputs, mm)
 
     fragment = Fragment(pdbfile=pdb_file)
@@ -257,7 +259,7 @@ def run(args) -> Dict[str, Any]:
     }
     save_result(result, filename=args.config, section=section)
 
-    qmmm_theory = make_qmmm(inputs, mm, fragment, qm_atoms, boundary_excluded, inputs.get("cores"))
+    qmmm_theory = make_qmmm(inputs, mm, fragment, qm_atoms, boundary_excluded, cores)
 
     if not inputs.get("skip_equilibrate"):
         print("[STEP] Running QM/MM MD...")
@@ -322,7 +324,7 @@ def run(args) -> Dict[str, Any]:
         pyscf = PySCFTheory(scf_type="RKS" if mult == 1 else "UKS",
                             functional=inputs.get("sp_functional", "wb97x-v"),
                             basis=inputs.get("sp_basis", "def2-svp"),
-                            numcores=inputs.get("cores"))
+                            numcores=cores)
         qmmm_sp = QMMMTheory(
             qm_theory=pyscf,
             mm_theory=mm,

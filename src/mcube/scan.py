@@ -50,6 +50,7 @@ from .qmmm import (
     resolve_stage_atoms,
     optimize,
 )
+from .threads import resolve_cores
 
 from ash import *
 
@@ -75,7 +76,7 @@ def run(args) -> Dict[str, Any]:
         raise ValueError("No starting structure: give --pdb (e.g. the reactant's QM_MM_optimized.pdb)")
 
     charge, mult = qmmm_inputs.get("charge"), qmmm_inputs.get("mult")
-    cores = inputs.get("cores", qmmm_inputs.get("cores", 1))
+    cores = resolve_cores(inputs.get("cores", qmmm_inputs.get("cores")))
     forcefields, implicit = mm_settings(qmmm_inputs, md)
 
     print("[STEP] Building MM system...")
