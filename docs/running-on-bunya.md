@@ -38,6 +38,33 @@ conda activate ASH                 # mcube is pip-installed (editable) in this e
 
 Keep `cores:` in `config.yaml` equal to `--cpus-per-task`. The `md` and `qmmm` stages take their thread count from the config, not from SLURM.
 
+### Bind OpenMP threads, one per physical core (measured 2026-10-16)
+
+- **What SLURM allocates:** on the `general` partition's EPYC nodes (2 hardware threads per core), `--cpus-per-task=8` gives **4 physical cores plus their SMT siblings** (e.g. CPUs 31, 34–36, 287, 290–292).
+- **Unbound threads float:** OpenMP threads that aren't bound move between those CPUs and stack onto the same one. On a busy shared node, xTB then becomes slow and erratic. The QM/MM MD of job 29937049 saw 3.6–131 s per step.
+
+Benchmark (job 29937358): the same QM/MM xTB call (GFN2, 124 QM atoms incl. link atoms, 47,893 point charges, 17 SCF iterations), 5 runs per setup:
+
+| Threads | `OMP_PROC_BIND=close`, `OMP_PLACES=cores` | Mean wall time | SD |
+| --- | --- | --- | --- |
+| **4** | **yes** | **0.80 s** | 0.00 |
+| 8 | yes | 1.42 s | 0.01 |
+| 4 | no | 1.9–4.7 s | 1.2–1.8 |
+| 8 | no | 4.0–5.4 s | 0.5–2.0 |
+
+So, for xTB/QM-MM jobs:
+
+```bash
+#SBATCH --cpus-per-task=8
+export OMP_NUM_THREADS=4          # one thread per physical core = cpus-per-task / 2
+export OMP_PROC_BIND=close
+export OMP_PLACES=cores
+```
+
+and set `qmmm.inputs.cores: 4`.
+- **Why fewer threads:** 8 threads land on SMT siblings and are slower than 4.
+- **Filesystem:** made no difference. `$TMPDIR` is `/scratch/temp/<jobid>` (not node-local), and once threads are bound, running there or in the job directory gives the same time.
+
 ## Memory
 
 | Job | Requested | Measured peak | Suggested request |
