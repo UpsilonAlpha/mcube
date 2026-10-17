@@ -56,7 +56,7 @@ The config file has one section per stage, and each section has `inputs` (writte
 
 - [`pdbqt_config.yaml`](config_examples/pdbqt_config.yaml): explicit solvent, docked ligand from a PDBQT
 - [`implicit_config.yaml`](config_examples/implicit_config.yaml): implicit solvent (GBn2), ligand from a PDB
-- [`membrane_config.yaml`](config_examples/membrane_config.yaml): membrane protein in an explicit POPC bilayer
+- [`membrane_config.yaml`](config_examples/membrane_config.yaml): membrane protein in an explicit POPC bilayer (see [`docs/membrane-validation.md`](docs/membrane-validation.md) for the area-per-lipid and barostat checks)
 - [`protein_protein_ramd.yaml`](config_examples/protein_protein_ramd.yaml): protein–protein complex without metals, md and τRAMD on a GPU (`scripts/ramd_gpu.slurm`)
 
 Results are written back with `yaml.safe_dump`, so comments in the config are lost the first time a stage saves its results. Writes are locked (POSIX), so several jobs can run stages on one config at once as long as each writes its own `--section`.
