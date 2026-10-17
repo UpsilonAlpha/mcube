@@ -444,6 +444,14 @@ Each intermediate is built in the shared box (D4) and optimised, then confirmed 
     - mcube now binds only xTB (wrapper) and uses grid level 3, RI-JK and all physical cores for single points.
   - Rerun 29996196 (single point only for `lysH`; `ohH` optimisation + single point): the process now runs at ~790% CPU on 8 cores, but the first VV10 evaluation alone took > 15 min.
   - On CPU the VV10 non-local term of ωB97M-V dominates (124 QM atoms, 1,154 basis functions); grid level, RI and threads do not fix it.
+  - User decision: switch the check to a hybrid without VV10. **ωB97X/def2-SVP, RI-JK**.
+    - D3(BJ) is not available in the ASH env (no `vdw`/dftd3/dftd4 package). It is a post-SCF additive term, so it can be added to the same geometries later.
+    - The first ωB97X run (29997262) wrote the RI integrals to disk (ASH's PySCF `max_memory` defaults to 3,100 MB) and was cancelled. mcube now sets `sp_memory` to 80% of the SLURM job memory.
+  - Job 29997628 (96 GB, ~78 GB for PySCF; integrals in RAM, no disk I/O):
+    - exchange–correlation step 8–11 s;
+    - one-off initialisation (RI integrals + first build) 23–26 min;
+    - the first SCF cycle had taken > 8 min when last checked.
+    - Each single point will probably take a few hours. Faster options for the many path single points to come: gpu4pyscf on `gpu_cuda`, or seminumerical exchange (SGX).
 - Revisit: after the probe, whether the reactant is a cis OH⁻/carbonyl Zn complex (then attack needs the OH⁻ to rotate over the carbonyl face, which a scan will show), and whether HOH485 belongs in the Michaelis complex.
 
 ## Resources (see `running-on-bunya.md`)
