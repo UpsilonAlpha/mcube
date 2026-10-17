@@ -13,7 +13,7 @@ Usage:
     python select_nac_frames.py topology.pdb traj.dcd --outdir nac_frames \
         [--nuc "resname OH and name O01"] [--carbon "resname mer and name C4x"] \
         [--oxygen "resname mer and name O2x"] [--dmax 3.2] [--amin 95 --amax 120] \
-        [--n 10] [--min-separation 50] [--skip 0]
+        [--n 10] [--min-separation 50] [--skip 0] [--intact bond_frames.csv]
 """
 
 import argparse
@@ -46,6 +46,7 @@ def main():
     p.add_argument("--n", type=int, default=10, help="Max number of frames to write")
     p.add_argument("--min-separation", type=int, default=50, help="Min frames between selected frames")
     p.add_argument("--skip", type=int, default=0, help="Ignore the first N frames (equilibration)")
+    p.add_argument("--intact", help="bond_frames.csv from check_bonds.py: only frames with intact bonds")
     args = p.parse_args()
 
     traj = mdtraj.load(args.trajectory, top=args.topology)
@@ -62,8 +63,14 @@ def main():
         for i, (d, a) in enumerate(zip(dist, angle)):
             f.write(f"{i},{traj.time[i]:.1f},{d:.3f},{a:.1f}\n")
 
+    good = np.ones(len(dist), bool)
+    if args.intact:
+        flags = {int(r.split(",")[0]): r.strip().split(",")[-1] == "1"
+                 for r in open(args.intact).read().splitlines()[1:] if r.strip()}
+        good = np.array([flags.get(i, False) for i in range(len(dist))])
+        print(f"Frames with intact bonds (from {args.intact}): {good.sum()} / {len(dist)}")
     ok = np.where((dist <= args.dmax) & (angle >= args.amin) & (angle <= args.amax)
-                  & (np.arange(len(dist)) >= args.skip))[0]
+                  & (np.arange(len(dist)) >= args.skip) & good)[0]
     print(f"{len(traj)} frames; distance {dist.min():.2f}-{dist.max():.2f} A (mean {dist.mean():.2f}); "
           f"angle {angle.min():.0f}-{angle.max():.0f} deg (mean {angle.mean():.0f})")
     print(f"Frames meeting d <= {args.dmax} A and {args.amin} <= angle <= {args.amax} deg: {len(ok)} "
