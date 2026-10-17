@@ -426,6 +426,10 @@ Each intermediate is built in the shared box (D4) and optimised, then confirmed 
   - Q3 (Asp92): it bridges the Zn and both water/OH⁻ oxygens, so it is positioned as a Zn ligand and a possible base.
   - Q2: Arg90 and Arg229 hold the substrate's 6α-hydroxyethyl and C2 side chain, not the reacting β-lactam.
 - Revisit: protonation state of the Lys226/OH⁻ pair; how to build reactants for the NEB given no sampled attack geometry.
+- Job 29937641 completed all 50,000 QM/MM MD steps: 50 ps, 1,000 frames in `qmmm_results/QM_MM.dcd`, plus `QM_MM_lastframe.pdb`.
+  - It then failed at the first step of the follow-up optimisation with an ASH error: after `OpenMM_MD`, `QMMMTheory` has no `MMenergy`, which geomeTRIC's energy log reads.
+  - The MD output is intact. mcube now rebuilds the MM and QM/MM objects from the MD end point before optimising (commit 8c596d0).
+  - The last 10 ps (frames 791–999) are not yet included in the D29 analysis.
 
 **D30 – Check the Lys226 → OH⁻ proton transfer at DFT before building any NEB on it.** (2026-10-17, user decision; analogous to Imhof's B3LYP check of AM1/d)
 - Frames 192, 395 and 575 of the QM/MM MD (9.6, 19.75 and 28.75 ps; 575 is the closest to attack). They are in `protdft/frames/`, with the box from the trajectory.
