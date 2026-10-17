@@ -18,6 +18,7 @@ from .preprocess import (
     resolve_atoms,
 )
 from .threads import resolve_cores
+from . import membrane as membrane_mod
 
 # ==============================
 # Unified run() function
@@ -37,6 +38,19 @@ def md_forcefields(inputs: Dict[str, Any], preprocess: Dict[str, Any]) -> list:
     if ligand_forcefields:
         default_forcefields.append(ligand_forcefields)
     return default_forcefields
+
+
+def md_membrane(inputs: Dict[str, Any], preprocess: Dict[str, Any]) -> bool:
+    """
+    Whether this is a membrane system: `md.inputs.membrane`, else what preprocess built.
+
+    It defaults to the preprocess setting because the two have to agree: a bilayer built
+    by preprocess but run without the membrane barostat would be squeezed isotropically.
+    """
+    value = inputs.get("membrane")
+    if value is None:
+        value = (preprocess.get("inputs") or {}).get("membrane")
+    return bool(value)
 
 
 def build_md_theory(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file: str,
@@ -83,6 +97,40 @@ def build_md_theory(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file
             nonbonded_cutoff_noPBC=20,
         )
 
+    elif md_membrane(inputs, preprocess):
+        default_forcefields = membrane_mod.lipid_forcefields(
+            default_forcefields, inputs.get("membrane_lipid_xml") or membrane_mod.LIPID_XML)
+        topology = PDBFile(pdb_file).topology
+        # Same reason as the implicit branch above: ASH cannot set constraints or the
+        # nonbonded method on a system read from xmlsystemfile, so they are set here. On
+        # top of that, ASH can only add an isotropic MonteCarloBarostat, which would tie
+        # the bilayer area to its thickness, so the membrane barostat goes in here too.
+        system = membrane_mod.membrane_system(
+            topology,
+            default_forcefields,
+            temperature=inputs.get("temp"),
+            nonbonded_cutoff=inputs.get("nonbonded_cutoff", membrane_mod.NONBONDED_CUTOFF),
+            pressure=inputs.get("pressure", membrane_mod.PRESSURE),
+            surface_tension=inputs.get("surface_tension", membrane_mod.SURFACE_TENSION),
+            barostat_frequency=inputs.get("barostat_frequency", membrane_mod.BAROSTAT_FREQUENCY),
+        )
+
+        with open('system.xml', 'w') as output:
+            output.write(XmlSerializer.serialize(system))
+
+        mm = OpenMMTheory(
+            xmlsystemfile="system.xml",
+            pdbfile=pdb_file,
+            periodic=True,
+            numcores=cores,
+            platform=inputs.get("platform", "CPU"),  # e.g. CUDA on a GPU node
+            properties=inputs.get("properties"),
+            autoconstraints='HBonds',
+            constraints=constraints,
+            restraints=restraints,
+            rigidwater=True,
+        )
+
     else:
         mm = OpenMMTheory(
             xmlfiles=default_forcefields,
@@ -121,6 +169,11 @@ def run(args) -> Dict[str, Any]:
     if pdb_file is None:
         pdb_file = preprocess["results"]["processed_pdb"]
 
+    membrane = md_membrane(inputs, preprocess)
+    if membrane and inputs.get("implicit"):
+        raise ValueError("`membrane` and `implicit` cannot both be set in the md inputs: a bilayer "
+                         "needs an explicit, periodic box.")
+
     constraints = md_constraints(inputs, preprocess, pdb_file)
     # Harmonic distance restraints [[i, j, distance_A, k_kcal_per_mol_A2], ...], e.g. to pull a
     # substrate into place during equilibration. Constraints stay as [i, j] pairs (current distance).
@@ -150,7 +203,41 @@ def run(args) -> Dict[str, Any]:
     if inputs.get("implicit") and not inputs.get("skip_npt"):
         print("[INFO] Implicit solvent has no periodic box: skipping NPT equilibration")
 
-    if not inputs.get("skip_npt") and not inputs.get("implicit"):
+    if membrane and not inputs.get("skip_npt"):
+        print("[STEP] NPT Equilibration (membrane barostat)...")
+        # Not OpenMM_box_equilibration: it always asks ASH for a MonteCarloBarostat, which
+        # is isotropic, and ASH's "already present" check looks for that exact class name,
+        # so it would not see the MonteCarloMembraneBarostat and the system would end up
+        # with two barostats. OpenMM_MD without `barostat=` leaves the membrane barostat
+        # that is already in the serialised system as the only one; ASH's own removal pass
+        # in that case drops only MonteCarloBarostat/AndersenThermostat, not the membrane
+        # barostat. Checked either side of the run.
+        membrane_mod.check_single_barostat(mm.system)
+        OpenMM_MD(
+            fragment=fragment,
+            theory=mm,
+            timestep=inputs.get("npt_timestep"),
+            simulation_time=inputs.get("npt_time", 1000),
+            traj_frequency=inputs.get("traj_frequency", 1000),
+            temperature=inputs.get("temp"),
+            integrator='LangevinMiddleIntegrator',
+            coupling_frequency=1,
+            trajfilename='relaxbox_NPT',
+            trajectory_file_option='DCD',
+            datafilename="nptsim.csv",
+        )
+        membrane_mod.check_single_barostat(mm.system)
+        result["npt_csv"] = Path("nptsim.csv").resolve().as_posix()
+        # Box size and area per lipid over the run. Diagnostic only, so a failure here
+        # must not throw away an equilibrated box.
+        try:
+            result["membrane"] = membrane_mod.membrane_report(
+                Path("relaxbox_NPT_lastframe.pdb").resolve().as_posix(), "relaxbox_NPT.dcd")
+        except Exception as exc:
+            print(f"[WARNING] Could not report the membrane box size: {exc}")
+        save_result(result, filename=args.config, section="md")
+
+    if not inputs.get("skip_npt") and not inputs.get("implicit") and not membrane:
         print("[STEP] NPT Equilibration...")
         OpenMM_box_equilibration(
             fragment=fragment,
@@ -169,6 +256,13 @@ def run(args) -> Dict[str, Any]:
     
     if not inputs.get("skip_nvt"):
         print("[STEP] Production MD...")
+        if membrane:
+            # The membrane barostat stays in the system, so production runs at constant
+            # pressure and zero surface tension rather than at constant volume. That is
+            # the right ensemble for a bilayer: it keeps the area per lipid free.
+            print("[INFO] Membrane system: production MD keeps the membrane barostat (NPT, "
+                  "tensionless), so the box area and thickness stay free")
+            membrane_mod.check_single_barostat(mm.system)
         OpenMM_MD(
             fragment=fragment,
             theory=mm,
@@ -198,6 +292,15 @@ def run(args) -> Dict[str, Any]:
             )
             result["trajfile"] = Path("NVTtrajectory_imaged.dcd").resolve().as_posix()
             result["lastframe"] = Path("NVTtrajectory_lastframe_imaged.pdb").resolve().as_posix()
+
+        if membrane:
+            membrane_mod.check_single_barostat(mm.system)
+            try:
+                result["membrane_production"] = membrane_mod.membrane_report(
+                    Path("NVTtrajectory_lastframe.pdb").resolve().as_posix(), "NVTtrajectory.dcd",
+                    csvfile="membrane_box_production.csv")
+            except Exception as exc:
+                print(f"[WARNING] Could not report the membrane box size: {exc}")
 
     print("[DONE] Workflow complete")
     save_result(result,  filename=args.config, section="md")

@@ -2,7 +2,7 @@
 
 A pipeline for protein–ligand systems, often metalloproteins, built on [ASH](https://github.com/RagnarB83/ash). It runs:
 
-1. **preprocess**: ligand parameterisation (OpenFF), protonation and solvation (explicit or implicit), metal-coordination bond constraints and QM-region selection
+1. **preprocess**: ligand parameterisation (OpenFF), protonation and solvation (explicit water, implicit solvent or an explicit lipid bilayer), metal-coordination bond constraints and QM-region selection
 2. **md**: OpenMM minimisation, optional gentle warm-up, NPT box equilibration and production MD
 3. **qmmm**: xTB/MM MD and geometry optimisation, with an optional PySCF QM/MM single point and cube files
 4. **scan**: relaxed QM/MM distance scan (builds intermediates/products in the reactant's box)
@@ -56,6 +56,7 @@ The config file has one section per stage, and each section has `inputs` (writte
 
 - [`pdbqt_config.yaml`](config_examples/pdbqt_config.yaml): explicit solvent, docked ligand from a PDBQT
 - [`implicit_config.yaml`](config_examples/implicit_config.yaml): implicit solvent (GBn2), ligand from a PDB
+- [`membrane_config.yaml`](config_examples/membrane_config.yaml): membrane protein in an explicit POPC bilayer
 - [`protein_protein_ramd.yaml`](config_examples/protein_protein_ramd.yaml): protein–protein complex without metals, md and τRAMD on a GPU (`scripts/ramd_gpu.slurm`)
 
 Results are written back with `yaml.safe_dump`, so comments in the config are lost the first time a stage saves its results. Writes are locked (POSIX), so several jobs can run stages on one config at once as long as each writes its own `--section`.
@@ -78,6 +79,11 @@ Results are written back with `yaml.safe_dump`, so comments in the config are lo
 | `residue_variants` | none | Protonation states, e.g. `{A: {80: HIE}}` |
 | `skip_solvate` | `false` | Use the PDB as it is (protein, or `merged.pdb` with a ligand) |
 | `implicit` | `false` | Add hydrogens only (no water box), for implicit-solvent MD |
+| `membrane` | `false` | Build an explicit lipid bilayer and water box around the protein (OpenMM's `addMembrane`). Mutually exclusive with `implicit`. **The bilayer is built in the xy plane and the protein is not reoriented**, so `protein_pdb` must already have the membrane normal along z and its hydrophobic belt centred on `membrane_center_z` (e.g. a structure from [OPM](http://opm.phar.umich.edu)). |
+| `membrane_lipidtype` | `POPC` | Lipid: `POPC`, `POPE`, `DLPC`, `DLPE`, `DMPC`, `DOPC` or `DPPC` (OpenMM's pre-equilibrated patches) |
+| `membrane_padding` | 10.0 | Smallest distance in Å from any protein atom to a box edge (`addMembrane`'s `minimumPadding`). It sizes the water box as well; the bilayer is tiled from whole patches, so the box can end up larger. |
+| `membrane_center_z` | 0.0 | z of the bilayer midplane in Å |
+| `membrane_lipid_xml` | `amber14/lipid17.xml` | Lipid force field, appended to `default_forcefields` on the membrane path (the protein/water defaults have no lipid parameters). Checked against the installed OpenMM. |
 | `pH` | 8.0 explicit / 7.0 implicit | Protonation pH |
 | `solvent_padding` | 10.0 | Water padding in Å (explicit only) |
 | `ionic_strength` | 0.1 | NaCl concentration in M (explicit only) |
@@ -103,6 +109,12 @@ Results are written back with `yaml.safe_dump`, so comments in the config are lo
 | `temp` | | Temperature (K) |
 | `implicit` | `false` | GBn2 implicit solvent. Uses HBond constraints, 1.5 amu hydrogen mass and a 2 nm cutoff. NPT and reimaging are skipped. |
 | `implicit_eps` | | Solvent dielectric for implicit solvent |
+| `membrane` | `preprocess.inputs.membrane` | Explicit bilayer: the system is built here (PME, 12 Å cutoff, HBond constraints, rigid water, 1.5 amu hydrogens) with an `openmm.MonteCarloMembraneBarostat` (XYIsotropic, ZFree, zero surface tension) and passed to ASH as a serialised system, so the area per lipid and the bilayer thickness relax independently. ASH's own barostat is isotropic and would couple them. Equilibration runs through `OpenMM_MD` instead of `OpenMM_box_equilibration` for the same reason, and production keeps the barostat (so it is NPT, not NVT). `temp` is required. |
+| `npt_time` | 1000 | Membrane NPT length in ps (`npt_timestep`). Box size and area per lipid per frame are written to `membrane_box.csv` and recorded under `results.membrane`. |
+| `surface_tension` | 0.0 | Membrane barostat surface tension in bar·nm. 0 is a tensionless bilayer, which is what reproduces experimental areas per lipid. |
+| `pressure` | 1.0 | Barostat pressure in bar (membrane only) |
+| `barostat_frequency` | 25 | Steps between barostat moves (membrane only) |
+| `nonbonded_cutoff` | 12.0 | Periodic nonbonded cutoff in Å (membrane only; ASH's own default elsewhere) |
 | `gentle` | `false` | Gentle warm-up (1 → 10 → 300 K) after minimisation |
 | `skip_npt` | `false` | Skip NPT box equilibration (timestep `npt_timestep`) |
 | `skip_nvt` | `false` | Skip production MD |
