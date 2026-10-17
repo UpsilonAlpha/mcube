@@ -426,6 +426,17 @@ Each intermediate is built in the shared box (D4) and optimised, then confirmed 
   - Q3 (Asp92): it bridges the Zn and both water/OH⁻ oxygens, so it is positioned as a Zn ligand and a possible base.
   - Q2: Arg90 and Arg229 hold the substrate's 6α-hydroxyethyl and C2 side chain, not the reacting β-lactam.
 - Revisit: protonation state of the Lys226/OH⁻ pair; how to build reactants for the NEB given no sampled attack geometry.
+
+**D30 – Check the Lys226 → OH⁻ proton transfer at DFT before building any NEB on it.** (2026-10-17, user decision; analogous to Imhof's B3LYP check of AM1/d)
+- Frames 192, 395 and 575 of the QM/MM MD (9.6, 19.75 and 28.75 ps; 575 is the closest to attack). They are in `protdft/frames/`, with the box from the trajectory.
+- Two QM/MM optimisations (GFN2-xTB/MM, 8 Å active region, ≤300 steps) per frame, sharing one active region:
+  - `lysH`: proton held on Lys226 NZ (`opt_constraints` NZ–HZ1 = 1.03 Å), i.e. Lys-NH3⁺ + Zn-OH⁻;
+  - `ohH`: unconstrained, so the proton stays on O01, i.e. Lys-NH2 + Zn-OH2.
+- Each optimised structure gets an ωB97M-V/def2-SVP/MM single point (PySCF, electrostatic embedding).
+- Compare ΔE = E(ohH) − E(lysH) at xTB with the DFT value:
+  - same sign and similar size: the transfer is real, and the reactant is Zn-OH2 + neutral Lys226 (Q1 then asks whether Lys226 takes the proton back, or Asp92 does, during attack);
+  - opposite sign: it is an xTB artefact. The reactant keeps Lys-NH3⁺/OH⁻ and the paths need a treatment that keeps it, e.g. DFT/MM refinement.
+- Job 29981678 (array of 3, 16 CPUs = 8 physical cores, `ProtDFT.slurm`). The `qmmm` stage now takes per-section `inputs` and saves `sp_energy`.
 - Revisit: after the probe, whether the reactant is a cis OH⁻/carbonyl Zn complex (then attack needs the OH⁻ to rotate over the carbonyl face, which a scan will show), and whether HOH485 belongs in the Michaelis complex.
 
 ## Resources (see `running-on-bunya.md`)

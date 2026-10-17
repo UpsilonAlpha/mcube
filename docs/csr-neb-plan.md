@@ -2,6 +2,27 @@
 
 How we go from the restrained MM model to reaction barriers. The decisions behind each step are in [csr-decision-log.md](csr-decision-log.md).
 
+## Questions
+
+CSR-1 is an unusual B3 with an RQK-HRH active site. The paths must answer:
+1. **Lys226 (K254):** does it stabilise meropenem hydrolysis, as Lys92 does in EcoRV?
+2. **Arg90 (R118) and Arg229:** are the arginines involved?
+3. **Asp92 (D120), the "bridging" aspartate:** is it involved?
+
+How each question is answered:
+- **Who moves which proton:** along every NEB path, monitor Lys226 NZ, Asp92 OD1/OD2, the Zn water and O01 protons.
+- **Per-residue contributions** (as Imhof did for Lys92 in EcoRV): recompute each path's energies with the charges of Lys226, Arg90, Arg229 and Asp92 zeroed in turn, then optimise the path again with the residue removed or neutralised for the important cases.
+- **Where they sit at the start (D29):**
+  - Arg90 and Arg229 hold the 6α-hydroxyethyl and C2 side chain;
+  - Asp92 binds the Zn and H-bonds both water oxygens;
+  - Lys226 sits 2.7 Å from the O01 nucleophile.
+
+## Status (2026-10-17)
+
+- **QM/MM MD:** 50 ps (job 29937641; first 39.5 ps analysed in D29). Lys226 protonates the Zn-OH⁻ at once, and no frame reaches attack geometry.
+- **DFT check:** the protonation-state check (D30, job 29981678) decides how reactants are built.
+- **Then:** relaxed O01–C4x scans from QM/MM frames, with protons free and monitored, give TI endpoints for NEB R→TI, then TS/IRC, per snapshot.
+
 ## Principle
 
 **The metal site is never left free in MM.** Every classical stage keeps the Zn coordination geometry held by constraints and restraints. That is the purpose of the mcube pipeline. The Zn site is only free in QM/MM, where the Zn, its ligands and the substrate are all in the QM region and no constraints apply.
