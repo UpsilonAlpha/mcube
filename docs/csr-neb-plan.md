@@ -17,6 +17,71 @@ How each question is answered:
   - Asp92 binds the Zn and H-bonds both water oxygens;
   - Lys226 sits 2.7 Å from the O01 nucleophile.
 
+## Methods we replicate (checked against the abstracts, 2026-10-18)
+
+**Imhof, Fischer & Smith, *Biochemistry* 2009 (EcoRV; PMID 19678693)**
+- **Approach:** AM1/d/MM. They computed a whole *network* of reaction pathways exhaustively, rather than one guessed path. The full network method is reviewed in Imhof, *Methods Enzymol.* 2016 (PMID 27497170).
+- **Validation:** AM1/d against B3LYP/6-31++G(d,p) on small model systems.
+- **Mechanism they found:**
+  - a **water nucleophile**, whose proton goes to a carboxylate oxygen of **Asp90**;
+  - **Mg²⁺ activates the water**;
+  - **Lys92 positions the phosphate and stabilises the intermediate**;
+  - the protein electrostatically stabilises the transition states.
+
+**Xu, Xie & Guo, *J. Biol. Chem.* 2006 (mono-Zn B2 CphA, biapenem; PMID 16423823)**, and **Wu, Xu & Guo, *JACS* 2010 (PMID 21138257)**
+- **Approach:** SCC-DFTB/MM MD, with free energies from potential-of-mean-force (umbrella sampling), plus DFT.
+- **Mechanism they found:**
+  - a **non-metal-bound water** nucleophile;
+  - the **general base is the Zn-bound Asp120**, not His118;
+  - a single, near-concerted addition/elimination transition state, with a PMF barrier of ≈14 kcal/mol;
+  - protonating Asp120 breaks its O–Zn bond, and the leaving N replaces it as the Zn ligand.
+- The 2010 paper found that the crystallised enzyme–intermediate complex lies on a *minor* pathway.
+
+**Other MBLs, same group:**
+- NDM-1 (B1, PMID 24025144) and SMB-1 (B3, PMID 32146530): the *Zn-bridging hydroxide* is the nucleophile, with Asp120/124 assisting. That is the di-Zn case.
+
+**Relevance to CSR-1:**
+- Our **Asp92 is D120** (crystal 120 = model 92). As in CphA, it binds the Zn, and in our QM/MM MD it H-bonds both water oxygens.
+- CSR-1 has one Zn, like CphA. So the precedent favours **water + Asp general base** over a pre-formed hydroxide.
+
+## Replication protocol for CSR-1 with modern methods
+
+| | Imhof 2009 / Xu–Guo 2006 | CSR-1 (mcube) |
+| --- | --- | --- |
+| QM level for sampling and paths | AM1/d (Imhof); SCC-DFTB (Guo) | GFN2-xTB/MM (electrostatic embedding) |
+| Energies | B3LYP model systems; DFT corrections | ωB97X-D3(BJ)/def2-SVP/MM single points along paths; def2-TZVPD on stationary points (D31) |
+| Reactant sampling | minimised structures (Imhof); QM/MM MD (Guo) | 50 ps QM/MM MD (D28/D29), several snapshots |
+| Paths | exhaustive path network (Imhof) | relaxed scans → NEB-CI → TS optimisation + IRC for every candidate step, assembled into a network |
+| Free energies | PMF by umbrella sampling (Guo) | xTB/MM umbrella sampling along the best path's coordinate(s), with WHAM/MBAR. Needs a new mcube stage. |
+| Validation | AM1/d vs B3LYP on model systems | xTB vs ωB97X on the QM/MM structures (D30), plus a cluster-model check |
+| Residue roles | Lys92 positioning and stabilisation | charge deletion / mutation for Lys226, Arg90, Arg229, Asp92 along the best paths |
+
+**Step 1 – enumerate mechanisms (Imhof-style network).** Candidate first steps, each a scan → NEB → TS/IRC on 2–3 snapshots:
+- **H1 (CphA-like):** a **non-metal-bound water** attacks C4x and **Asp92** accepts its proton. This needs the second-shell waters near C4x, which we haven't analysed yet: the QM/MM MD analysis covered only O01 and HOH485.
+- **H2:** the Zn-bound water (O01, after the Lys226 → O01 transfer) attacks, and Asp92 or Lys226 NZ accepts the proton.
+- **H3 (classic B3):** Zn-bound OH⁻ attacks, with Lys226 protonated. This depends on D30 confirming that this protonation state is reasonable.
+- **H4:** Lys226 acts as the base.
+
+Then, from the tetrahedral intermediate or directly (concerted, as in CphA): C4x–N1x cleavage, and N1x protonation by Asp92-H, Lys226 or water. The network is the set of intermediates joined by the computed steps. The answer is the path with the lowest highest barrier, plus any competitive alternatives (cf. the "minor pathway" result of Wu *et al.*).
+
+**Step 2 – DFT energies along every path** (ωB97X-D3(BJ)/def2-SVP; TZVPD at stationary points). Paths whose ordering changes between xTB and DFT are re-examined.
+
+**Step 3 – free energy of the winning mechanism (Guo-style).**
+- QM/MM umbrella sampling along the reaction coordinate(s), e.g. d(O–C4x) − d(C4x–N1x), and a proton-transfer coordinate to Asp92.
+- PMF by WHAM/MBAR, with DFT corrections.
+- At ~1.4 s per xTB/MM MD step, a 30-window, 5 ps-per-window PMF is ≈ 60 h of compute per coordinate, run in parallel.
+
+**Step 4 – residue roles (the three questions).**
+- **Q1:** compare paths with Lys226 protonated vs neutral; charge deletion along the best path; whether Lys226 stabilises the oxyanion or the leaving N.
+- **Q2:** zero the MM charges of Arg229 (it is in the MM region) along the paths; for Arg90 (QM) use a neutralised or truncated QM model.
+- **Q3:** Asp92 as base (H1/H2) vs a spectator; protonated-Asp92 intermediates; whether Asp92 leaves the Zn when protonated (CphA behaviour).
+
+**mcube work this needs:**
+- an umbrella-sampling stage plus WHAM/MBAR analysis;
+- a charge-deletion single point (zero chosen MM residues' charges);
+- second-shell water / nucleophile candidate analysis (`contact_report.py` and `site_report.py` cover most of it);
+- network bookkeeping (one config section per step; a small script to assemble barriers).
+
 ## Status (2026-10-17)
 
 - **QM/MM MD:** 50 ps (job 29937641; first 39.5 ps analysed in D29). Lys226 protonates the Zn-OH⁻ at once, and no frame reaches attack geometry.

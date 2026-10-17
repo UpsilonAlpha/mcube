@@ -469,6 +469,14 @@ Each intermediate is built in the shared box (D4) and optimised, then confirmed 
   - **def2-TZVP(D): yes, for final energies of stationary points** (R, intermediates, TS, P) per snapshot. Paths, scans and NEB images stay at def2-SVP.
     - Plan: ωB97X-D3(BJ)/def2-TZVPD/MM single points. The RI integrals grow several-fold (~2,700 basis functions), so these need high-memory jobs or SGX exchange; measure on one structure first.
   - **ωB97M-V on GPU: not needed** for this project.
+
+**D32 – Replicate the published methods (Imhof 2009 path network; Xu–Guo 2006 QM/MM + PMF) instead of testing ad hoc protonation guesses.** (2026-10-18, user decision)
+- The Asp92-protonated DFT check is on hold. The running D30 check (proton on Lys226 vs on O01) continues: it doubles as the xTB-vs-DFT validation step.
+- Literature, checked against Europe PMC abstracts:
+  - **EcoRV:** water nucleophile, proton to Asp90, Mg²⁺ activation, Lys92 positioning and stabilisation.
+  - **CphA (mono-Zn):** non-metal-bound water nucleophile, Zn-bound Asp120 as general base, near-concerted, PMF ≈ 14 kcal/mol.
+  - **CSR-1:** our Asp92 = D120.
+- Protocol: `csr-neb-plan.md`, "Replication protocol for CSR-1".
 - Revisit: after the probe, whether the reactant is a cis OH⁻/carbonyl Zn complex (then attack needs the OH⁻ to rotate over the carbonyl face, which a scan will show), and whether HOH485 belongs in the Michaelis complex.
 
 ## Resources (see `running-on-bunya.md`)
