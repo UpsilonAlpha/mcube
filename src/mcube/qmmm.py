@@ -306,6 +306,12 @@ def run(args) -> Dict[str, Any]:
         # Start from the QM/MM MD end point if there is one, else from pdb_file
         if Path("QM_MM_lastframe.pdb").exists():
             fragment = Fragment(pdbfile="QM_MM_lastframe.pdb")
+            # Fresh MM and QM/MM objects: after OpenMM_MD, ASH's QMMMTheory no longer has the
+            # attributes the optimiser logs (AttributeError: 'QMMMTheory' object has no attribute
+            # 'MMenergy'), which killed job 29937641 at the first optimisation step
+            print("[STEP] Rebuilding the QM/MM system from the QM/MM MD end point for the optimisation...")
+            mm = make_mm(forcefields, "QM_MM_lastframe.pdb", implicit, cores)
+            qmmm_theory = make_qmmm(inputs, mm, fragment, qm_atoms, boundary_excluded, cores)
 
         # An active_atoms file reuses another run's active region (e.g. the reactant's for the product)
         actatoms = resolve_actatoms(getattr(args, "actatoms", None), inputs, mm, fragment,
