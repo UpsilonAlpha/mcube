@@ -64,6 +64,35 @@ How each question is answered:
 
 Then, from the tetrahedral intermediate or directly (concerted, as in CphA): C4x–N1x cleavage, and N1x protonation by Asp92-H, Lys226 or water. The network is the set of intermediates joined by the computed steps. The answer is the path with the lowest highest barrier, plus any competitive alternatives (cf. the "minor pathway" result of Wu *et al.*).
 
+**Step 1 results – nucleophile candidates in the 50 ps QM/MM MD** (`scripts/nucleophile_candidates.py`, 1,000 frames; `qmmm_analysis/nucleophiles*`).
+
+Criteria: attack = d(O···C4x) ≤ 3.5 Å and O–C4x=O2x angle 95–120°; loose attack = ≤ 4.0 Å and 90–125°; H-bond = O···acceptor ≤ 3.2 Å with an H ≤ 2.5 Å.
+
+| Candidate | In QM? | Zn-bound | d(O···C4x) min | Angle | Loose attack frames | H-bond partners (occupancy) |
+| --- | --- | --- | --- | --- | --- | --- |
+| O01 (former OH⁻ + Lys226 H) | yes | 100% | 2.91 Å | ≤ 87° | 0 | meropenem C3-carboxylate O4x 88%; Lys226 NZ 2.7 Å, Asp92 OD2 2.9 Å (heavy atoms) |
+| HOH485 (Zn water) | yes | 100% | 3.20 Å | ≤ 87° | 0 | **Asp92 OD1 97%**, OD2 45% |
+| **HOH E3094** (second shell) | MM | 0% | 3.60 Å | mean 105° | 4.7% (47 frames) | meropenem O1x (6α-OH, held by Arg90 NH1 99%) 97%, HOH E2493 99%, E2155 94%, **E3166 94%** |
+| HOH E3166 | MM | 0% | 3.32 Å | ≤ 75° | 0 | **Asp92 OD1 67%**, HOH485 (mean 3.1 Å) |
+| HOH E2493 | MM | 0% | 3.93 Å | mean 123° | 0.7% | E3094 |
+
+- The Zn-bound oxygens are close to C4x but beside the carbonyl O; they never reach the attack angle.
+- Only the second-shell water **E3094** sits on the Bürgi–Dunitz trajectory. Its route to a base is the relay **E3094 → E3166 → Asp92 OD1**.
+
+**H1–H4, revised with these data.** Each is a relaxed xTB/MM scan of d(O_nuc–C4x) from its starting value to 1.45 Å (0.1 Å steps) from 3 frames, with protons free. Monitored throughout: O_nuc–H···acceptor, C4x–N1x, Zn–O2x and Zn–O_nuc.
+
+| | Nucleophile → proton acceptor | Precedent | QM region change | Start frames |
+| --- | --- | --- | --- | --- |
+| **H1** | second-shell **E3094 → (E3166) → Asp92 OD1** | CphA (Xu–Guo 2006): non-metal water, Zn-bound D120 base | **add E3094 and E3166** (the scans need them in QM) | E3094 loose-attack frames spread in time, e.g. 105, 280, 472 |
+| **H2** | Zn-bound **HOH485 → Asp92 OD1** (direct, 97% H-bond) | EcoRV (water → Asp90, metal-activated) | none | frames with the best HOH485 angle |
+| **H3** | Zn-bound **O01 (water) → meropenem C3-carboxylate O4x** (88% H-bond), or → Lys226 NZ | substrate-assisted / Lys as base (Q1) | none | frames 575, 244, 192 (closest O01 approach) |
+| **H4** | classic **Zn-OH⁻** (proton held on Lys226) attacks; Lys226-NH3⁺ stabilises | di-Zn B1/B3 bridging hydroxide | none (Lys226 NZ–H constrained during the scan) | same as H3; **only if D30 says Lys-NH3⁺/OH⁻ is reasonable at DFT** |
+
+Then:
+- If a scan's end point is a tetrahedral intermediate, optimise it unconstrained. Run NEB R→TI and TS/IRC, then the C4x–N1x cleavage and N1x-protonation steps (from Asp92-H, Lys226, water or the carboxylate).
+- If the attack and ring opening are concerted, as in CphA, a single NEB R→EI⁻ covers both.
+- The paths connect into the Imhof-style network.
+
 **Step 2 – DFT energies along every path** (ωB97X-D3(BJ)/def2-SVP; TZVPD at stationary points). Paths whose ordering changes between xTB and DFT are re-examined.
 
 **Step 3 – free energy of the winning mechanism (Guo-style).**

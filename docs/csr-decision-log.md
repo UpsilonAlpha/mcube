@@ -477,6 +477,18 @@ Each intermediate is built in the shared box (D4) and optimised, then confirmed 
   - **CphA (mono-Zn):** non-metal-bound water nucleophile, Zn-bound Asp120 as general base, near-concerted, PMF ≈ 14 kcal/mol.
   - **CSR-1:** our Asp92 = D120.
 - Protocol: `csr-neb-plan.md`, "Replication protocol for CSR-1".
+
+**D33 – Nucleophile candidates from the full 50 ps QM/MM MD; H1–H4 scans proposed.** (2026-10-18; details in `csr-neb-plan.md`, "Step 1 results")
+- No candidate ever reaches strict attack geometry.
+- The Zn-bound oxygens (O01, HOH485) stay beside the carbonyl O (≤ 87°).
+- One second-shell MM water, **E3094**, lies on the Bürgi–Dunitz trajectory: 105° mean, within 4 Å in 4.7% of frames. It is H-bonded to the 6α-hydroxyethyl OH (itself held by Arg90) and, through water **E3166**, to **Asp92 OD1**. This is a CphA-type route.
+- O01 H-bonds the substrate's C3-carboxylate (88%); HOH485 H-bonds Asp92 OD1 (97%).
+- Proposed scans:
+  - **H1:** E3094 → E3166 → Asp92 (QM region + E3094, E3166);
+  - **H2:** HOH485 → Asp92;
+  - **H3:** O01 → carboxylate or Lys226;
+  - **H4:** Zn-OH⁻ with Lys226-NH3⁺, only if D30 supports that protonation state.
+- Pending: user approval to set these up.
 - Revisit: after the probe, whether the reactant is a cis OH⁻/carbonyl Zn complex (then attack needs the OH⁻ to rotate over the carbonyl face, which a scan will show), and whether HOH485 belongs in the Michaelis complex.
 
 ## Resources (see `running-on-bunya.md`)
