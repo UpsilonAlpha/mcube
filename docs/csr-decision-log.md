@@ -452,6 +452,15 @@ Each intermediate is built in the shared box (D4) and optimised, then confirmed 
     - one-off initialisation (RI integrals + first build) 23–26 min;
     - the first SCF cycle had taken > 8 min when last checked.
     - Each single point will probably take a few hours. Faster options for the many path single points to come: gpu4pyscf on `gpu_cuda`, or seminumerical exchange (SGX).
+
+**D31 – DFT level for this project: ωB97X/def2-SVP (RI-JK, exact exchange, no SGX).** (2026-10-17, user decision)
+- Why (user): the energies must capture long-range interactions involving charged/polar groups and the Zn²⁺. A range-separated hybrid with full exact exchange suits that; a few hours per single point is acceptable.
+- Set as the project default in `CSR_crystal_v2` `qmmm.inputs`: `sp_functional: wb97x`, `sp_basis: def2-svp`, `sp_gridlevel: 3`, `sp_densityfit: true`. `sp_memory` defaults to 80% of the job memory; give single-point jobs ~96 GB so the RI integrals stay in RAM.
+- Not chosen yet:
+  - adding D3(BJ) (needs a dispersion package in the env; additive, post-SCF);
+  - def2-TZVP(D) for final barriers;
+  - ωB97M-V on GPU (gpu4pyscf).
+  Revisit before the final path energies.
 - Revisit: after the probe, whether the reactant is a cis OH⁻/carbonyl Zn complex (then attack needs the OH⁻ to rotate over the carbonyl face, which a scan will show), and whether HOH485 belongs in the Michaelis complex.
 
 ## Resources (see `running-on-bunya.md`)
