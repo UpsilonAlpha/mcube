@@ -15,6 +15,7 @@ Pipeline:
 from __future__ import annotations
 
 import copy
+import os
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 
@@ -327,6 +328,13 @@ def run(args) -> Dict[str, Any]:
         # Speed settings: ASH's own PySCF defaults (grid level 5, no density fitting) made one
         # wB97M-V/def2-SVP SCF cycle on ~120 QM atoms take ~22 min on 4 threads
         sp_cores = resolve_cores(inputs.get("sp_cores"), "sp_cores")
+        # PySCF memory (MB). ASH's default (3100) sends density-fitting integrals to disk;
+        # by default use 80% of the SLURM job's memory so they stay in RAM.
+        sp_memory = inputs.get("sp_memory")
+        if sp_memory is None:
+            slurm_mb = os.environ.get("SLURM_MEM_PER_NODE")
+            sp_memory = int(0.8 * int(slurm_mb)) if slurm_mb and slurm_mb.isdigit() else 3100
+        print(f"[INFO] PySCF single point: {sp_cores} threads, max_memory {sp_memory} MB")
         pyscf = PySCFTheory(scf_type="RKS" if mult == 1 else "UKS",
                             functional=inputs.get("sp_functional", "wb97x-v"),
                             basis=inputs.get("sp_basis", "def2-svp"),
@@ -334,6 +342,7 @@ def run(args) -> Dict[str, Any]:
                             densityfit=inputs.get("sp_densityfit", True),
                             auxbasis=inputs.get("sp_auxbasis"),
                             platform=inputs.get("sp_platform", "CPU"),
+                            memory=sp_memory,
                             numcores=sp_cores)
         qmmm_sp = QMMMTheory(
             qm_theory=pyscf,

@@ -141,6 +141,7 @@ Minimisation always runs. Metal–donor `constraints` are applied as fixed-dista
 | `sp_densityfit`, `sp_auxbasis` | `true`, PySCF default | Density fitting (RI-JK for hybrids) |
 | `sp_cores` | physical cores | Threads for the single point (independent of the xTB `cores`) |
 | `sp_platform` | `CPU` | `GPU` uses gpu4pyscf (must be installed) |
+| `sp_memory` | 80% of `$SLURM_MEM_PER_NODE`, else 3100 | PySCF `max_memory` (MB). Density-fitting integrals that don't fit are written to disk and re-read every cycle; a range-separated hybrid on ~120 QM atoms with def2-SVP needs ~60 GB to stay in RAM. |
 
 `results` (section `qmmm`, or `--section NAME`): `qm_atoms`, `boundary_excluded`, `trajfile`, `lastframe`, `opttraj`, `optimized_pdb` (`QM_MM_optimized.pdb`, the full optimised system, usable as an NEB endpoint), `opt_energy` (Eh), `converged`, `opt_constraints` (with the distances used), `cubes`.
 
