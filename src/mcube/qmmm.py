@@ -30,7 +30,7 @@ from .preprocess import (
     qm_region_settings,
     resolve_atom_inputs,
 )
-from .threads import resolve_cores
+from .threads import resolve_cores, xtb_dir
 
 from ash import *
 
@@ -100,8 +100,10 @@ def make_mm(forcefields, pdb_file: str, implicit: bool, cores: int):
 
 def make_qmmm(qmmm_inputs: Dict[str, Any], mm, fragment, qm_atoms, boundary_excluded,
               cores: int, runmode: Optional[str] = None):
-    xtb = xTBTheory(xtbmethod=qmmm_inputs.get("xtb_method", "GFN2"), numcores=cores,
-                    runmode=runmode or qmmm_inputs.get("xtb_runmode", "inputfile"))
+    runmode = runmode or qmmm_inputs.get("xtb_runmode", "inputfile")
+    # As a separate program, xTB can be thread-bound without affecting this process (threads.py)
+    xtb = xTBTheory(xtbmethod=qmmm_inputs.get("xtb_method", "GFN2"), numcores=cores, runmode=runmode,
+                    xtbdir=xtb_dir() if runmode == "inputfile" else None)
     return QMMMTheory(
         qm_theory=xtb,
         mm_theory=mm,

@@ -45,7 +45,7 @@ mcube postprocess config.yaml [--qmmm] [--redraw] [--cutoff 2.6] [--metals ZN MG
 
 `--cores` defaults to `$SLURM_CPUS_PER_TASK` (or 1). The `md`, `qmmm`, `scan`, `ts` and `ramd` stages take their core count from `cores` in the config instead.
 
-**Threads.** Every stage binds OpenMP threads, one per physical core (`OMP_PROC_BIND=close`, `OMP_PLACES=cores`), unless you set these variables yourself or set `MCUBE_THREAD_BINDING=0`.
+**Threads.** xTB runs with its OpenMP threads bound one per physical core (`OMP_PROC_BIND=close`, `OMP_PLACES=cores`), through a small wrapper script that mcube writes to `.mcube_xtb/` in the run directory. The Python process itself (OpenMM, PySCF, numpy) is not bound: binding an in-process OpenMP runtime pins later threads to one core. Setting `OMP_PROC_BIND`/`OMP_PLACES` yourself, or `MCUBE_THREAD_BINDING=0`, turns mcube's binding off.
 - **Why:** on SMT nodes, `--cpus-per-task=N` gives N/2 physical cores. Unbound xTB threads then share cores and ran 2–9× slower, with erratic step times (see `docs/running-on-bunya.md`).
 - **Default `cores`:** when `cores` is not set, a stage uses the number of physical cores it is allowed to run on (e.g. 4 for `--cpus-per-task=8`). A larger `cores` gives a warning.
 - **Parallel workers:** NEB with parallel images and `ts` with `freq_workers` > 1 turn binding off, because each worker would bind to the same cores.
