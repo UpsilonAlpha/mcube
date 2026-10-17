@@ -136,11 +136,11 @@ Minimisation always runs. Metal–donor `constraints` are applied as fixed-dista
 | `actradius` | 0 | If > 0, optimise all atoms within this radius (Å) of `actregion_origin`. Otherwise only the QM atoms move. |
 | `actregion_origin` | first non-standard QM atom | Atom index at the centre of the active region |
 | `singlepoint` | `true` | PySCF QM/MM single point (RKS/UKS from `mult`), plus `density.cube`, `mep.cube`, `HOMO.cube` and `LUMO.cube` |
-| `sp_functional`, `sp_basis` | `wb97x-v`, `def2-svp` | Single-point level of theory |
+| `sp_functional`, `sp_basis` | `wb97x-v`, `def2-svp` | Single-point level of theory (PySCF names, e.g. `wb97m_v`; the energy is saved as `sp_energy`) |
 
 `results` (section `qmmm`, or `--section NAME`): `qm_atoms`, `boundary_excluded`, `trajfile`, `lastframe`, `opttraj`, `optimized_pdb` (`QM_MM_optimized.pdb`, the full optimised system, usable as an NEB endpoint), `opt_energy` (Eh), `converged`, `opt_constraints` (with the distances used), `cubes`.
 
-`mcube qmmm config.yaml --pdb other.pdb --section qmmm_product` runs the same inputs on another structure (e.g. each NEB endpoint) without overwriting the other run's results. `--actatoms FILE` (qmmm, scan, neb and ts) reuses an active-atom list such as the reactant run's `active_atoms`, so both NEB endpoints and the NEB share one active region.
+`mcube qmmm config.yaml --pdb other.pdb --section qmmm_product` runs the same inputs (overridden by `qmmm_product.inputs`, if given, e.g. `skip_equilibrate: true` or `opt_constraints`) on another structure (e.g. each NEB endpoint) without overwriting the other run's results. `--actatoms FILE` (qmmm, scan, neb and ts) reuses an active-atom list such as the reactant run's `active_atoms`, so both NEB endpoints and the NEB share one active region.
 
 `scan`, `neb` and `ts` use `qmmm.inputs` for `charge`, `mult`, `xtb_method`, `forcefields`, `cores` (scan, ts), the QM region and (unless overridden) `actradius`/`actregion_origin`. Each reads its own base section's `inputs` (`scan`, `neb`, `ts`), overridden by the inputs of the `--section` it writes its results to, so several scans or steps can live in one config:
 

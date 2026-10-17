@@ -233,11 +233,12 @@ def run(args) -> Dict[str, Any]:
     preprocess = load_section(args.config, "preprocess")
     md = load_section(args.config, "md")
     qmmm = load_section(args.config, "qmmm")
-    inputs = qmmm.get("inputs")
-    if inputs is None:
+    if qmmm.get("inputs") is None:
         raise KeyError(f"No qmmm.inputs section in {args.config}")
-    # Results go to this section, so several structures (e.g. NEB endpoints) can share one config
+    # Results go to this section, so several structures (e.g. NEB endpoints) can share one config;
+    # its own `inputs` (if any) override qmmm.inputs, e.g. skip_equilibrate or opt_constraints per run
     section = getattr(args, "section", None) or "qmmm"
+    inputs = stage_inputs(args.config, "qmmm", section)
     md_results = md.get("results") or {}
 
     pdb_file = getattr(args, "pdb", None) or inputs.get("pdb_file") or md_results.get("lastframe")
@@ -335,7 +336,10 @@ def run(args) -> Dict[str, Any]:
             printlevel=1,
         )
         print("[STEP] Running PySCF QM/MM single point...")
-        Singlepoint(theory=qmmm_sp, fragment=fragment, charge=inputs.get("charge"), mult=mult)
+        sp = Singlepoint(theory=qmmm_sp, fragment=fragment, charge=inputs.get("charge"), mult=mult)
+        result["sp_energy"] = float(sp.energy)
+        result["sp_level"] = f"{inputs.get('sp_functional', 'wb97x-v')}/{inputs.get('sp_basis', 'def2-svp')}"
+        save_result(result, filename=args.config, section=section)
 
         mol = pyscf.mol
         mf = pyscf.mf
