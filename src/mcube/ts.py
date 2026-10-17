@@ -102,7 +102,7 @@ def run(args) -> Dict[str, Any]:
     qmmm_inputs = resolve_stage_atoms(qmmm_inputs, mm)
 
     print("[STEP] Building QM region...")
-    qm_atoms, boundary_excluded = resolve_qm_region(qmmm_inputs, preprocess, pdb_file)
+    qm_atoms, boundary_excluded = resolve_qm_region({**qmmm_inputs, **{k: inputs[k] for k in ('qm_residues', 'extra_qm_residues') if k in inputs}}, preprocess, pdb_file)
     # Parallel NumFreq runs `workers` gradients at once, so give each fewer xTB threads
     qmmm_theory = make_qmmm(qmmm_inputs, mm, fragment, qm_atoms, boundary_excluded,
                             cores // workers if workers > 1 else cores,

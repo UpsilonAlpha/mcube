@@ -49,6 +49,23 @@ def resolve_qm_region(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_fi
     if inputs.get("qm_residues") is not None:
         return build_qm_region(pdb_file, inputs["qm_residues"], **settings)
 
+    # `extra_qm_residues: {chain: [resid, ...]}` adds residues (e.g. second-shell waters)
+    # to the preprocess QM region for this stage only
+    extra = inputs.get("extra_qm_residues")
+    if extra:
+        base = {str(ch): {str(k): v for k, v in res.items()} for ch, res in (results.get("qm_residues") or {}).items()}
+        topology = PDBFile(pdb_file).topology
+        for ch, resids in extra.items():
+            wanted = {str(r) for r in resids}
+            found = {r.id.strip(): r.name for r in topology.residues()
+                     if r.chain.id == str(ch) and r.id.strip() in wanted}
+            missing = wanted - set(found)
+            if missing:
+                raise ValueError(f"extra_qm_residues: chain {ch} residues {sorted(missing)} not in {pdb_file}")
+            base.setdefault(str(ch), {}).update(found)
+            print(f"[INFO] Extra QM residues for this stage: chain {ch} {sorted(found.items())}")
+        return build_qm_region(pdb_file, base, **settings)
+
     if results.get("qm_atoms") is not None:
         print(f"[INFO] Using {len(results['qm_atoms'])} QM atoms saved by preprocess")
         return results["qm_atoms"], results.get("boundary_excluded", [])

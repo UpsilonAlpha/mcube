@@ -78,7 +78,7 @@ def run(args) -> Dict[str, Any]:
     qmmm_inputs = resolve_stage_atoms(qmmm_inputs, mm)
 
     print("[STEP] Building QM region...")
-    qm_atoms, boundary_excluded = resolve_qm_region(qmmm_inputs, preprocess, args.reactant)
+    qm_atoms, boundary_excluded = resolve_qm_region({**qmmm_inputs, **{k: neb_inputs[k] for k in ('qm_residues', 'extra_qm_residues') if k in neb_inputs}}, preprocess, args.reactant)
     result["qm_atoms"] = qm_atoms
     result["boundary_excluded"] = boundary_excluded
 

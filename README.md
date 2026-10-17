@@ -122,6 +122,7 @@ Minimisation always runs. Metal–donor `constraints` are applied as fixed-dista
 | `pdb_file` | `md.results.lastframe` | Starting structure. It must have the same atom order as `processed_pdb`. |
 | `forcefields` | `md.results.forcefields` | |
 | `qm_residues` | from preprocess | Override the QM region (rebuilt on `pdb_file`) |
+| `extra_qm_residues` | none | `{chain: [resid, ...]}` added to the preprocess QM region for this run only (e.g. second-shell waters). Also accepted in `scan`, `neb` and `ts` sections. |
 | `implicit` | `md.inputs.implicit` | Non-periodic MM when true |
 | `charge`, `mult` | required | QM-region charge and multiplicity |
 | `cores` | | xTB / PySCF cores |
