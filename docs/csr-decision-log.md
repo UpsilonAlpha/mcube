@@ -489,6 +489,19 @@ Each intermediate is built in the shared box (D4) and optimised, then confirmed 
   - **H3:** O01 → carboxylate or Lys226;
   - **H4:** Zn-OH⁻ with Lys226-NH3⁺, only if D30 supports that protonation state.
 - Pending: user approval to set these up.
+
+**D34 – H1–H4 relaxed scans launched (all four).** (2026-10-18, user decision: run all four, and cancel H4 if the D30 DFT result rules out Lys226-NH3⁺/OH⁻ in time)
+- Job 30022363: array of 12 tasks (H1 tasks 0–2, H2 3–5, H3 6–8, H4 9–11), each 8 CPUs (4 bound xTB threads).
+- Setup: config sections `scan_H{1-4}_f{frame}`, run directories `scans/<section>/`, job list `scans/scan_jobs.txt`, setup script `scans/make_scan_sections.py`.
+- Each scan: d(O_nuc–C4x) from its start value to 1.45 Å in 25 points (0.08–0.11 Å steps), ≤ 200 optimisation steps per point, protons free.
+  - Monitored at every point: C4x–N1x, Zn–O2x, C4x–O2x, Zn–O_nuc, plus the H···acceptor distances specific to each hypothesis.
+  - Active regions: 464–487 atoms (8 Å around the Zn, per frame).
+- Start frames (`select_nac_frames.py`, ranked by closeness to the ideal attack geometry, ≥ 100 frames apart, after frame 50):
+  - **H1** E3094: frames 365 / 497 / 635 (3.89–4.06 Å, 104–108°). QM region + waters E3094 and E3166 = 125 atoms, via the new per-section `extra_qm_residues`.
+  - **H2** HOH485: frames 395 / 775 / 910 (3.59–4.14 Å, 62–92°).
+  - **H3** O01: frames 192 / 575 / 888 (3.38–3.68 Å, 52–87°).
+  - **H4**: same frames as H3, with Lys226 NZ–HZ1 held at 1.03 Å so O01 stays a hydroxide.
+- Caveat: the Zn-bound nucleophiles (H2–H4) start at 52–92°, well off the Bürgi–Dunitz angle, so their scans force a reorientation; their maxima are upper bounds.
 - Revisit: after the probe, whether the reactant is a cis OH⁻/carbonyl Zn complex (then attack needs the OH⁻ to rotate over the carbonyl face, which a scan will show), and whether HOH485 belongs in the Michaelis complex.
 
 ## Resources (see `running-on-bunya.md`)
