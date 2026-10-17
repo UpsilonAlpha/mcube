@@ -437,6 +437,13 @@ Each intermediate is built in the shared box (D4) and optimised, then confirmed 
   - same sign and similar size: the transfer is real, and the reactant is Zn-OH2 + neutral Lys226 (Q1 then asks whether Lys226 takes the proton back, or Asp92 does, during attack);
   - opposite sign: it is an xTB artefact. The reactant keeps Lys-NH3⁺/OH⁻ and the paths need a treatment that keeps it, e.g. DFT/MM refinement.
 - Job 29981678 (array of 3, 16 CPUs = 8 physical cores, `ProtDFT.slurm`). The `qmmm` stage now takes per-section `inputs` and saves `sp_energy`.
+- Progress (2026-10-17):
+  - Proton held on Lys226 (`lysH`) optimisations: frames 395 and 575 converged; frame 192 hit the 300-step limit.
+  - The ωB97M-V single points were far too slow and were cancelled (29981678 after ~4 h; 29992285 after 12 min):
+    - 29981678 took ~22 min per SCF cycle. It used 4 threads, ASH's default grid level 5 and no density fitting, and the process-wide thread binding (mcube's first default) had pinned PySCF's process to one core.
+    - mcube now binds only xTB (wrapper) and uses grid level 3, RI-JK and all physical cores for single points.
+  - Rerun 29996196 (single point only for `lysH`; `ohH` optimisation + single point): the process now runs at ~790% CPU on 8 cores, but the first VV10 evaluation alone took > 15 min.
+  - On CPU the VV10 non-local term of ωB97M-V dominates (124 QM atoms, 1,154 basis functions); grid level, RI and threads do not fix it.
 - Revisit: after the probe, whether the reactant is a cis OH⁻/carbonyl Zn complex (then attack needs the OH⁻ to rotate over the carbonyl face, which a scan will show), and whether HOH485 belongs in the Michaelis complex.
 
 ## Resources (see `running-on-bunya.md`)
