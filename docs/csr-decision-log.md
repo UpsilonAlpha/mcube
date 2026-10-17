@@ -456,11 +456,15 @@ Each intermediate is built in the shared box (D4) and optimised, then confirmed 
 **D31 – DFT level for this project: ωB97X/def2-SVP (RI-JK, exact exchange, no SGX).** (2026-10-17, user decision)
 - Why (user): the energies must capture long-range interactions involving charged/polar groups and the Zn²⁺. A range-separated hybrid with full exact exchange suits that; a few hours per single point is acceptable.
 - Set as the project default in `CSR_crystal_v2` `qmmm.inputs`: `sp_functional: wb97x`, `sp_basis: def2-svp`, `sp_gridlevel: 3`, `sp_densityfit: true`. `sp_memory` defaults to 80% of the job memory; give single-point jobs ~96 GB so the RI integrals stay in RAM.
-- Not chosen yet:
-  - adding D3(BJ) (needs a dispersion package in the env; additive, post-SCF);
-  - def2-TZVP(D) for final barriers;
-  - ωB97M-V on GPU (gpu4pyscf).
-  Revisit before the final path energies.
+- Follow-up decisions (user, 2026-10-17):
+  - **D3(BJ): yes.** ωB97X-D3(BJ) for all single points, as a post-SCF correction on the QM region (link atoms included).
+    - Env: installed `dftd3-python` 1.2.1 (`--freeze-installed`); the `simple-dftd3` library was already present. Conda also updated openssl 3.6.2 → 3.6.5; numpy, PySCF, OpenMM and xTB are unchanged. pyvdw (ASH's route) was tried and removed: it needs the D4 and MBD stacks too.
+    - mcube: `qmmm.inputs.sp_dispersion: d3bj` (project config) → `sp_disp_energy` and `sp_energy_disp`.
+    - `scripts/d3_correction.py` adds it to single points that were run without it. It rebuilds the QM region and link atoms exactly as ASH does: same 5 boundary pairs.
+    - D30 job 29997628: the `lysH` single points started before this, so they get D3 from the script; the `ohH` single points pick it up from the config.
+  - **def2-TZVP(D): yes, for final energies of stationary points** (R, intermediates, TS, P) per snapshot. Paths, scans and NEB images stay at def2-SVP.
+    - Plan: ωB97X-D3(BJ)/def2-TZVPD/MM single points. The RI integrals grow several-fold (~2,700 basis functions), so these need high-memory jobs or SGX exchange; measure on one structure first.
+  - **ωB97M-V on GPU: not needed** for this project.
 - Revisit: after the probe, whether the reactant is a cis OH⁻/carbonyl Zn complex (then attack needs the OH⁻ to rotate over the carbonyl face, which a scan will show), and whether HOH485 belongs in the Michaelis complex.
 
 ## Resources (see `running-on-bunya.md`)
