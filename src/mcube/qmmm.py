@@ -322,10 +322,17 @@ def run(args) -> Dict[str, Any]:
         # the MM environment enters as point charges. No continuum solvation: ASH's PySCF
         # interface ignores it when point charges are present.
         mult = inputs.get("mult")
+        # Speed settings: ASH's own PySCF defaults (grid level 5, no density fitting) made one
+        # wB97M-V/def2-SVP SCF cycle on ~120 QM atoms take ~22 min on 4 threads
+        sp_cores = resolve_cores(inputs.get("sp_cores"), "sp_cores")
         pyscf = PySCFTheory(scf_type="RKS" if mult == 1 else "UKS",
                             functional=inputs.get("sp_functional", "wb97x-v"),
                             basis=inputs.get("sp_basis", "def2-svp"),
-                            numcores=cores)
+                            gridlevel=inputs.get("sp_gridlevel", 3),
+                            densityfit=inputs.get("sp_densityfit", True),
+                            auxbasis=inputs.get("sp_auxbasis"),
+                            platform=inputs.get("sp_platform", "CPU"),
+                            numcores=sp_cores)
         qmmm_sp = QMMMTheory(
             qm_theory=pyscf,
             mm_theory=mm,

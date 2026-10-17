@@ -137,6 +137,10 @@ Minimisation always runs. Metal–donor `constraints` are applied as fixed-dista
 | `actregion_origin` | first non-standard QM atom | Atom index at the centre of the active region |
 | `singlepoint` | `true` | PySCF QM/MM single point (RKS/UKS from `mult`), plus `density.cube`, `mep.cube`, `HOMO.cube` and `LUMO.cube` |
 | `sp_functional`, `sp_basis` | `wb97x-v`, `def2-svp` | Single-point level of theory (PySCF names, e.g. `wb97m_v`; the energy is saved as `sp_energy`) |
+| `sp_gridlevel` | 3 | PySCF DFT grid level (ASH's own default is 5, which made VV10 functionals very slow) |
+| `sp_densityfit`, `sp_auxbasis` | `true`, PySCF default | Density fitting (RI-JK for hybrids) |
+| `sp_cores` | physical cores | Threads for the single point (independent of the xTB `cores`) |
+| `sp_platform` | `CPU` | `GPU` uses gpu4pyscf (must be installed) |
 
 `results` (section `qmmm`, or `--section NAME`): `qm_atoms`, `boundary_excluded`, `trajfile`, `lastframe`, `opttraj`, `optimized_pdb` (`QM_MM_optimized.pdb`, the full optimised system, usable as an NEB endpoint), `opt_energy` (Eh), `converged`, `opt_constraints` (with the distances used), `cubes`.
 
