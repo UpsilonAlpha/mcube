@@ -400,6 +400,32 @@ Each intermediate is built in the shared box (D4) and optimised, then confirmed 
   - A benchmark (job 29937358) traced this to unbound OpenMP threads stacking on SMT siblings: one bound thread per physical core takes 0.80 s per xTB call, against 2–9 s unbound.
   - Rerun as **job 29937641**: qmmm stage only, from `md.results.lastframe`, 8 CPUs, `cores: 4`, bound threads. It runs at **1.37 s per step (max 1.8 s), so 50 ps takes ≈ 19 h**. Frames are saved every 50 fs to `qmmm_results/QM_MM.dcd`.
   - Binding is now the mcube default (`src/mcube/threads.py`).
+
+**D29 – QM/MM MD (first 39.5 ps): Lys226 protonates the Zn-OH⁻ at once; no attack geometry is sampled.** (2026-10-17; analysis in `CSR_crystal_v2/qmmm_analysis/`, on job 29937641's trajectory while it was still running)
+- Bond geometry (`check_bonds.py`, 791 frames, 119 QM atoms):
+  - All QM-region bonds keep their length (largest changes are normal vibration).
+  - No new heavy-atom contacts.
+  - **One proton transfer: Lys226 HZ1 → OH⁻ O01** in the first frame, permanent. HZ1–O01 is 0.91–1.35 Å (≈1.0 after frame 0); NZ–O01 is 2.74 Å (H-bond).
+  - So in GFN2-xTB/MM the Zn-OH⁻/Lys226-NH3⁺ pair is not stable. It becomes Zn-OH2 (O01) + neutral Lys226 at once.
+- Zn site (QM/MM, unconstrained):
+  - His88 NE2 2.08, His164 NE2 2.05, OH⁻/H2O O01 2.11, HOH485 2.10 Å.
+  - **Asp92 OD2 2.11 Å, bound in 99.5% of frames**, and it H-bonds both O01 (2.93 Å) and HOH485 (OD1/OD2 2.8–2.9 Å).
+  - The carbonyl O2x is on the Zn in 91% of frames (mean 2.32 Å).
+  - Coordination number 5–7 (mean 5.9).
+- Attack geometry: **none in 791 frames**, for either O01 (3.26–4.49 Å, 20–53°) or HOH485 (3.20–4.50 Å, 16–74°). The O01 nucleophile stays cis to O2x on the Zn (O01···O2x 2.77 Å).
+  - Closest O01 frames: 575 (3.38 Å, 52°), 244, 207, 192, 550.
+  - Closest HOH485 frames: 757 (3.62 Å, 67°), 395.
+- Contacts relevant to the three questions (polar, ≤ 3.5 Å, occupancy over 791 frames):
+  - **Lys226** (K254, RQK): NZ···O01 99.9% (now H-bond acceptor from the former OH⁻).
+  - **Arg90** (R118, HRH): NH1···meropenem O1x (6α-hydroxyethyl OH) 99%, NH1···HOH485 78%.
+  - **Arg229**: NH1···O5x (dimethylcarbamoyl C=O) 89%, ···S1x 33%.
+  - **Asp92** ("bridging"): Zn 99.5%; ···O01 100%; ···HOH485 100%; ···O2x 70%.
+  - Other partners: Ser186 OG···C3-carboxylate O4x 100%; Asn225 ND2···O01 99%; His164 NE2···O2x (both on the Zn).
+- Implications:
+  - Q1 (Lys226): in xTB, Lys226 does not just stabilise a Zn-OH⁻; it hands its proton to it. Whether this is real or an xTB artefact must be checked at DFT before any NEB is built on it.
+  - Q3 (Asp92): it bridges the Zn and both water/OH⁻ oxygens, so it is positioned as a Zn ligand and a possible base.
+  - Q2: Arg90 and Arg229 hold the substrate's 6α-hydroxyethyl and C2 side chain, not the reacting β-lactam.
+- Revisit: protonation state of the Lys226/OH⁻ pair; how to build reactants for the NEB given no sampled attack geometry.
 - Revisit: after the probe, whether the reactant is a cis OH⁻/carbonyl Zn complex (then attack needs the OH⁻ to rotate over the carbonyl face, which a scan will show), and whether HOH485 belongs in the Michaelis complex.
 
 ## Resources (see `running-on-bunya.md`)
