@@ -1,0 +1,42 @@
+# Membrane protein in an explicit POPC bilayer (e.g. a class B GPCR with a bound peptide).
+#
+# The membrane is built in the xy plane, so `protein_pdb` must already be aligned with
+# the membrane normal along z and its hydrophobic belt centred on `membrane_center_z`.
+# Neither mcube nor ASH reorients the protein. Membrane-aligned structures can be taken
+# from the OPM database (http://opm.phar.umich.edu).
+#
+# Residues must be numbered 1..N within each chain (as for every mcube config), so
+# renumber the input and any residue_variants / extra_qm_residues with it.
+preprocess:
+  inputs:
+    protein_pdb: ../receptor_aligned.pdb   # z-aligned, belt centred on z = 0
+    # ligand: PEPTIDE.pdb                  # a peptide agonist can be a chain of protein_pdb instead
+    membrane: true
+    membrane_lipidtype: POPC               # POPC, POPE, DLPC, DLPE, DMPC, DOPC or DPPC
+    membrane_padding: 10.0                 # Angstrom from any protein atom to a box edge
+    membrane_center_z: 0.0                 # Angstrom: where the bilayer midplane sits
+    ionic_strength: 0.15                   # M NaCl
+    default_forcefields:
+    - amber14/protein.ff14SB.xml
+    - amber14/tip3p.xml
+    # amber14/lipid17.xml is appended automatically on the membrane path
+    # residue_variants: {A: {83: HIE}}
+    metals:                                # no metal site: no coordination constraints
+    skip_solvate: false
+md:
+  inputs:
+    cores: 8
+    platform: CUDA                         # a bilayer is a large system; CPU is slow
+    properties: {Precision: mixed}
+    temp: 300
+    membrane: true                         # defaults to preprocess.inputs.membrane
+    # surface_tension: 0.0                 # bar*nm; 0 = tensionless bilayer
+    # pressure: 1.0                        # bar
+    # barostat_frequency: 25               # steps between barostat moves
+    # nonbonded_cutoff: 12.0               # Angstrom
+    npt_timestep: 0.002
+    npt_time: 2000                         # ps; a bilayer needs ns to settle its area per lipid
+    nvt_timestep: 0.004                    # production keeps the membrane barostat (NPT)
+    nvt_time: 100000
+    traj_frequency: 2500
+    gentle: true
