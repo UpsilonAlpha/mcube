@@ -142,6 +142,7 @@ Minimisation always runs. Metal–donor `constraints` are applied as fixed-dista
 | `sp_cores` | physical cores | Threads for the single point (independent of the xTB `cores`) |
 | `sp_platform` | `CPU` | `GPU` uses gpu4pyscf (must be installed) |
 | `sp_memory` | 80% of `$SLURM_MEM_PER_NODE`, else 3100 | PySCF `max_memory` (MB). Density-fitting integrals that don't fit are written to disk and re-read every cycle; a range-separated hybrid on ~120 QM atoms with def2-SVP needs ~60 GB to stay in RAM. |
+| `sp_dispersion`, `sp_dispersion_method` | none, `sp_functional` | Post-SCF DFT-D3 on the QM region (link atoms included): `d3bj` or `d3zero`, parameters for the named functional (simple-dftd3 names, e.g. `wb97x`). Needs `dftd3-python`. Saved as `sp_disp_energy` and `sp_energy_disp`. |
 
 `results` (section `qmmm`, or `--section NAME`): `qm_atoms`, `boundary_excluded`, `trajfile`, `lastframe`, `opttraj`, `optimized_pdb` (`QM_MM_optimized.pdb`, the full optimised system, usable as an NEB endpoint), `opt_energy` (Eh), `converged`, `opt_constraints` (with the distances used), `cubes`.
 
@@ -285,6 +286,7 @@ All are in `scripts/`:
 - `contact_report.py <topology.pdb> <traj.dcd> --target SEL --sel SEL [--cutoff 3.5] [--near 10] [--frames list]`: polar contacts between chosen residues and a target group, with occupancy (optionally on a subset of frames)
 - `strip_solvent.py <in.pdb> <out.pdb> [--keep D] [--keep C:2]`: removes bulk water and monatomic ions (keeping chosen chains/residues) so an MD end point can be the next `preprocess.inputs.protein_pdb`
 - `extract_frames.py <topology.pdb> <traj.dcd> --frames 300 400 -1`: writes chosen frames as full-system PDBs (same atom order and ids, the frame's own box in CRYST1), e.g. as `mcube qmmm --pdb` inputs
+- `d3_correction.py <structure.pdb> config.yaml [--section S] [--method wb97x] [--damping d3bj]`: post-SCF DFT-D3 energy of the QM region (QM atoms + ASH-style link atoms), to add to single points run without dispersion
 - `check_bonds.py <topology.pdb> <traj.dcd> --config config.yaml [--tol 0.25] [--contact 1.75]`: checks that bond geometry in the QM region (or `--sel`) is preserved: stretched bonds, new heavy-atom contacts and proton transfers per frame, with an `intact` flag per frame in `bond_frames.csv`
 - `site_report.py <topology.pdb> <traj.dcd> [--metal SEL] [--pair A B] [--angle A B C] [--rmsd-sel SEL]`: metal coordination shell (bound fraction, distances), chosen distances/angles and RMSD over a trajectory (or a single PDB as the trajectory). Atoms as mdtraj selections, `chain:resid:atom` or indices.
 - `build_product_box.py <reactant_solvated.pdb> <product_solute.pdb> <out.pdb>`: builds a solvated NEB product in the reactant's water box. NEB endpoints must share every atom, waters included, so solvating reactant and product separately does not work. The product solute must have the same atoms in the same order as the reactant solute. The script aligns on the non-reactive solute atoms and reports water clashes. QM/MM-optimise both endpoints before running NEB.

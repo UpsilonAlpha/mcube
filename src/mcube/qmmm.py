@@ -223,6 +223,22 @@ def optimize(fragment, theory, actatoms, inputs, constraints, constrainvalue, ma
     return (float(energy) if energy is not None else None), True
 
 
+def d3_energy(symbols, coords_bohr, method: str, damping: str = "d3bj") -> float:
+    """
+    DFT-D3 dispersion energy (Eh) from the simple-dftd3 library (`dftd3-python`).
+    damping: d3bj (rational) or d3zero. `method` is the functional's name in
+    simple-dftd3's parameter table (e.g. wb97x, b3lyp).
+    """
+    from dftd3.interface import DispersionModel, RationalDampingParam, ZeroDampingParam
+    from pyscf.data.elements import charge
+    damping = damping.lower()
+    if damping not in ("d3bj", "d3zero"):
+        raise ValueError(f"sp_dispersion must be d3bj or d3zero, not {damping!r}")
+    param = (RationalDampingParam if damping == "d3bj" else ZeroDampingParam)(method=method.replace("_", "-"))
+    model = DispersionModel(np.array([charge(s) for s in symbols]), np.asarray(coords_bohr, dtype=float))
+    return float(model.get_dispersion(param, grad=False)["energy"])
+
+
 def write_pdb(mm, coords, filename: str) -> str:
     """Full system with the MM topology (keeps residue names/ids, e.g. for NEB endpoints)."""
     with open(filename, "w") as f:
@@ -357,6 +373,17 @@ def run(args) -> Dict[str, Any]:
         sp = Singlepoint(theory=qmmm_sp, fragment=fragment, charge=inputs.get("charge"), mult=mult)
         result["sp_energy"] = float(sp.energy)
         result["sp_level"] = f"{inputs.get('sp_functional', 'wb97x-v')}/{inputs.get('sp_basis', 'def2-svp')}"
+        if inputs.get("sp_dispersion"):
+            # Post-SCF D3 on the QM region (link atoms included) exactly as PySCF saw it
+            disp = d3_energy([pyscf.mol.atom_symbol(i) for i in range(pyscf.mol.natm)],
+                             pyscf.mol.atom_coords(unit="Bohr"),
+                             inputs.get("sp_dispersion_method", inputs.get("sp_functional", "wb97x-v")),
+                             inputs["sp_dispersion"])
+            result["sp_dispersion"] = inputs["sp_dispersion"]
+            result["sp_disp_energy"] = disp
+            result["sp_energy_disp"] = result["sp_energy"] + disp
+            print(f"[INFO] {inputs['sp_dispersion']} dispersion: {disp:.8f} Eh; "
+                  f"E(SCF + disp) = {result['sp_energy_disp']:.8f} Eh")
         save_result(result, filename=args.config, section=section)
 
         mol = pyscf.mol
