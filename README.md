@@ -80,8 +80,8 @@ Results are written back with `yaml.safe_dump`, so comments in the config are lo
 | `skip_solvate` | `false` | Use the PDB as it is (protein, or `merged.pdb` with a ligand) |
 | `implicit` | `false` | Add hydrogens only (no water box), for implicit-solvent MD |
 | `membrane` | `false` | Build an explicit lipid bilayer and water box around the protein (OpenMM's `addMembrane`). Mutually exclusive with `implicit`. **The bilayer is built in the xy plane and the protein is not reoriented**, so `protein_pdb` must already have the membrane normal along z and its hydrophobic belt centred on `membrane_center_z` (e.g. a structure from [OPM](http://opm.phar.umich.edu)). |
-| `membrane_lipidtype` | `POPC` | Lipid: `POPC`, `POPE`, `DLPC`, `DLPE`, `DMPC`, `DOPC` or `DPPC` (OpenMM's pre-equilibrated patches) |
-| `membrane_padding` | 10.0 | Smallest distance in Å from any protein atom to a box edge (`addMembrane`'s `minimumPadding`). It sizes the water box as well; the bilayer is tiled from whole patches, so the box can end up larger. |
+| `membrane_lipidtype` | `POPC` | Lipid: `POPC`, `POPE`, `DLPC`, `DLPE`, `DMPC`, `DOPC` or `DPPC` (OpenMM's pre-equilibrated patches). **The lipid residues are not named after the lipid**: Lipid17 truncates them to three characters, so POPC and POPE are both `POP`, and the others are `DLP`, `DMP`, `DOP`, `DPP`. Select on those in analysis scripts and VMD/PyMOL selections. |
+| `membrane_padding` | 10.0 | Smallest distance in Å from any protein atom to a box edge (`addMembrane`'s `minimumPadding`). It is a lower bound, not the box size: the bilayer is tiled from whole copies of OpenMM's patch (63.7 × 66.9 Å for POPC), so the xy dimensions come out as integer multiples of the patch and are usually larger than protein + 2 × padding. It sizes the water layer in z as well. |
 | `membrane_center_z` | 0.0 | z of the bilayer midplane in Å |
 | `membrane_lipid_xml` | `amber14/lipid17.xml` | Lipid force field, appended to `default_forcefields` on the membrane path (the protein/water defaults have no lipid parameters). Checked against the installed OpenMM. |
 | `pH` | 8.0 explicit / 7.0 implicit | Protonation pH |
