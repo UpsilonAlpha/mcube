@@ -159,6 +159,9 @@ def make_dft(inputs: Dict[str, Any], cores: int, mult: Optional[int], prefix: st
                        auxbasis=level_option(inputs, prefix, "auxbasis"),
                        dispersion=level_option(inputs, prefix, "scf_dispersion"),
                        platform=level_option(inputs, prefix, "platform", "CPU"),
+                       # On GPU the MM point-charge gradient can also run on the device,
+                       # which is most of the QM/MM gradient for a large MM environment
+                       GPU_pcgrad=bool(level_option(inputs, prefix, "gpu_pcgrad", False)),
                        memory=pyscf_memory(inputs, prefix),
                        numcores=cores)
 

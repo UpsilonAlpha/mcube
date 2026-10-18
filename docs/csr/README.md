@@ -48,3 +48,15 @@ would have made the two states identical and the comparison empty.
 lysH's `active_atoms`, so both use the same active region. Read the result as
 `sp_energy_disp` for each section: dE = E(ohH) - E(lysH), negative meaning the
 transfer to the hydroxide is still favourable.
+
+## `mk_gpubench.py` + `GpuBench.slurm` — D45, DFT/MM gradient timing on a GPU
+
+Needs `gpu4pyscf` in the ASH env (installed 2026-10-18 with `cupy-cuda12x==13.3.0`
+and `numpy==1.26.4` pinned, so the install was purely additive and numpy stayed at
+1.26.4 — a newer cupy wants numpy >= 2, which would break OpenMM 8.4 and mdtraj).
+
+Three levels, each a few constrained optimisation steps with no single point, so the
+per-step wall time in `optimization_energies.log` is the DFT/MM gradient cost:
+wB97X (comparable to the measured CPU cost), r2SCAN-D4 (the proposed geometry level),
+and r2SCAN-D4 with `GPU_pcgrad` to price moving the MM point-charge gradient onto the
+device. Requests one GPU on `gpu_cuda`, QOS `gpu`.

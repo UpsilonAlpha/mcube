@@ -140,6 +140,7 @@ Minimisation always runs. Metal–donor `constraints` are applied as fixed-dista
 | `dft_functional`, `dft_basis`, `dft_gridlevel`, `dft_densityfit`, `dft_auxbasis`, `dft_platform`, `dft_memory` | the matching `sp_*` value | Level of theory for `qm_engine: dft`. Each falls back to its `sp_*` counterpart, so a config that already sets the single-point level need not repeat it. |
 | `dft_scf_dispersion` | none | Dispersion inside the SCF for `qm_engine: dft` (ASH/PySCF's own keyword: `D3`, `D4`, `VV10`, …), so it enters the gradient. Distinct from `sp_dispersion`, which is applied after a single point. |
 | `dft_cores` | stage `cores` | Threads for the DFT gradients |
+| `dft_gpu_pcgrad` | `false` | With `dft_platform: GPU`, also compute the MM point-charge gradient on the device. For a large MM environment that is most of the QM/MM gradient. |
 | `singlepoint` | `true` | PySCF QM/MM single point (RKS/UKS from `mult`), plus `density.cube`, `mep.cube`, `HOMO.cube` and `LUMO.cube` |
 | `sp_functional`, `sp_basis` | `wb97x-v`, `def2-svp` | Single-point level of theory (PySCF names, e.g. `wb97m_v`; the energy is saved as `sp_energy`) |
 | `sp_gridlevel` | 3 | PySCF DFT grid level (ASH's own default is 5, which made VV10 functionals very slow) |
