@@ -502,6 +502,21 @@ Each intermediate is built in the shared box (D4) and optimised, then confirmed 
   - **H3** O01: frames 192 / 575 / 888 (3.38–3.68 Å, 52–87°).
   - **H4**: same frames as H3, with Lys226 NZ–HZ1 held at 1.03 Å so O01 stays a hydroxide.
 - Caveat: the Zn-bound nucleophiles (H2–H4) start at 52–92°, well off the Bürgi–Dunitz angle, so their scans force a reorientation; their maxima are upper bounds.
+
+**D35 – D30 DFT result; first scan results; scans restarted from optimised reactants.** (2026-10-18)
+- **D30 (ωB97X-D3(BJ)/def2-SVP//xTB/MM):** ΔE = E(proton on O01, Lys226 neutral) − E(proton on Lys226, Zn-OH⁻):
+  - frame 395: **−13.1** kcal/mol (xTB −11.9);
+  - frame 575: **−15.5** kcal/mol (xTB −17.8).
+  - D3 contributes −0.7 to −0.8 of these.
+  - Frame 192's DFT run failed (RecursionError in a logging call).
+  - **The Lys226 → OH⁻ transfer is real at DFT.** The reactant is Zn-OH2 + neutral Lys226. **H4 (Zn-OH⁻ with Lys226-NH3⁺) is dropped:** it starts 13–16 kcal/mol uphill.
+- **Scans (job 30022363):**
+  - **H1, frame 497 (complete):** monotonic rise to +46.5 kcal/mol at 1.45 Å. No intermediate and no proton transfer: the E3094 H stays 2.8–3.5 Å from E3166, and E3166 only H-bonds Asp92. The carbonyl lengthens (1.205 → 1.275 Å) and binds the Zn more tightly (2.30 → 2.04 Å), i.e. oxyanion-hole behaviour.
+  - **H2, frame 395 (22/25):** monotonic to +39.7 kcal/mol at 1.72 Å. The HOH485 H-bond to Asp92 breaks (1.78 → 3.75 Å) while its H approaches the lactam N (5.2 → 2.3 Å); the carbonyl leaves the Zn (2.29 → 3.10 Å). This hints at a concerted attack + N-protonation, as in CphA.
+  - **9 tasks were killed out of memory** (16 GB): memory grows with optimisation steps, and the tasks started from unoptimised MD frames (first step −0.38 Eh), so they needed ~200 steps per point. H2 frame 775 is stuck (geomeTRIC SVD errors).
+- **Lessons:**
+  1. Optimise each start frame to a reactant minimum R before scanning, as the plan already said (step 3).
+  2. 1D O–C4x scans do not make the proton move, so they give neutral-water addition energies. As Imhof and Guo did, the proton transfer must be a coordinate of its own: 2D scans (O–C4x × H···acceptor), or a scan from the state where the proton has already moved.
 - Revisit: after the probe, whether the reactant is a cis OH⁻/carbonyl Zn complex (then attack needs the OH⁻ to rotate over the carbonyl face, which a scan will show), and whether HOH485 belongs in the Michaelis complex.
 
 ## Resources (see `running-on-bunya.md`)
