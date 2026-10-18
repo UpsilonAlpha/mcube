@@ -267,3 +267,88 @@ ts_attack_s1:
 - It shows which two minima the TS actually connects, which may not be the intended endpoints: for example, a side-chain rotation instead of the chemical step.
 - It also gives a clean minimum-energy path, used for energy profiles and DFT single points.
 - Together, TS refinement and IRC turn "the highest NEB image" into a verified transition state for that elementary step.
+
+## Proposed protocol (P-series) — publication grade
+
+Proposed 2026-10-18 (D43), awaiting a decision on the level of theory. The point is
+that the three questions (Lys226, the arginines, Asp92) are answered by *differences*
+between computed paths, so every path must be computed to the same, defensible standard.
+
+### P-A. Establish the Michaelis complex before any path
+
+The degraded reactant (D41) cost us every scan so far, so this is settled first and
+stated explicitly in the paper. Candidate states, all from the same NVT frame, all
+constrained identically, compared on energy at DFT/MM:
+
+| State | Zn sphere | Proton |
+| --- | --- | --- |
+| 1 | 2 His + OH- + H2O | Lys226-NH3+ |
+| 2 | 2 His + H2O + H2O | Lys226 neutral |
+| 3 | 2 His + OH- (no HOH485) | Lys226-NH3+ |
+| 4 | 2 His + OH- + H2O + Asp92 OD2 | Lys226-NH3+ |
+
+States 1 and 2 are job 30053828 (D42). States 3 and 4 test whether HOH485 belongs in
+the sphere and whether Asp92 is a ligand or a base — the question D41 identified as
+defining the mechanism. The chosen state is the one lowest in energy, not the one the
+setup happened to produce. Report the carbonyl distance as an *outcome*, not a restraint:
+re-run the winner with no Zn-O2x constraint to see where it settles.
+
+### P-B. Level of theory (decision required)
+
+| Tier | Paths | Stationary points | Comment |
+| --- | --- | --- | --- |
+| A | xTB/MM | xTB/MM + DFT/MM single points | What we have been doing. A referee will object that barriers from semi-empirical geometries are not quantitative. |
+| B | xTB/MM (scans, NEB) | **re-optimised at DFT/MM**, DFT/MM frequencies and IRC | Standard for MBL QM/MM papers. **Recommended.** |
+| C | DFT/MM throughout | DFT/MM | Defensible but likely unaffordable for 3 mechanisms x 3 structures. |
+
+Under tier B, xTB/MM is used only to find approximate paths; every number that appears
+in the paper comes from DFT/MM. Final energies on stationary points at
+wB97X-D3(BJ)/def2-TZVPD (D31).
+
+### P-C. Convergence and validation (both expected by referees)
+
+- **QM region size**: R and TS at ~119, ~150 and ~200 atoms; show the barrier is converged. Also vary the active-region radius (8 -> 10 A).
+- **xTB vs DFT**: for each elementary step, compare on a cluster model (P1). Report the deviation rather than assuming xTB geometries are adequate.
+- **Basis/dispersion**: def2-SVP -> def2-TZVPD effect on the barrier; D3(BJ) contribution reported separately.
+
+### P-D. Free energies, not just potential energies
+
+Barriers compared with k_cat need DG. Under tier B, DFT/MM frequencies on the QM region
+give ZPE and thermal corrections almost free. For the rate-determining step only, add
+umbrella sampling or metadynamics at xTB/MM along the reaction coordinate to capture the
+condensed-phase contribution, and state clearly which terms are included.
+
+### P-E. Sampling
+
+At least three independent reactant structures per mechanism, with the spread in barriers
+reported. One path from one frame is not a result.
+
+### P-F. Mechanism discrimination
+
+All three hypotheses computed to the same level and compared, not just the favoured one:
+Zn-OH- attack; second-shell water with Asp92 as general base (CphA-like, Xu & Guo 2006);
+concerted attack with N1x protonation. The comparison *is* the answer to question 3.
+
+### P-G. Residue contributions — the three questions
+
+On the converged paths: charge deletion / in-silico mutation for **Lys226** (question 1),
+**Arg90 and Arg229** (question 2) and **Asp92** (question 3). Arg229 in MM, Arg90 and
+Asp92 in QM (P2).
+
+### P-H. An experimental control: the triple mutant
+
+**PDB 6DR8** (1.48 A) is the R118H/Q121H/K254H triple mutant and, unlike the wild type,
+**is crystallographically metal-loaded with two zincs**. It gives us (i) a structure with
+an experimentally defined zinc site to validate the whole protocol against, and (ii) the
+natural comparison: the canonical di-zinc site versus the RQK variant. Computing the same
+mechanism for both turns "what does CSR-1 do?" into "why does the RQK substitution change
+the mechanism?", which is a stronger result and uses an existing structure.
+
+### P-I. Limitations to state explicitly
+
+- No wild-type CSR-1 structure retains zinc (6DN4 is apo), so the mono-zinc Michaelis
+  complex is constructed; its justification is P-A, and the zinc position comes from the
+  Q121H/K254H mutant 6NC5, at a site whose own ligands are wild type (D41).
+- The non-truncated form is modelled, as the more faithful model of the natural enzyme;
+  residues 1-14 have no experimental coordinates and sit 9-13 A from the zinc.
+- Semi-empirical sampling underlies the paths even under tier B; P-C quantifies that.

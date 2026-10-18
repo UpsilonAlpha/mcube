@@ -635,6 +635,11 @@ So the surviving problems are (a) no hydroxide and (b) a sphere two ligands beyo
 - **Lesson for the working rules:** do not type long payloads into the browser terminal. Two separate corruptions happened here — a ~3 kB base64 command was silently truncated mid-string, and a hand-retyped base64 chunk differed from the original. Put cluster scripts in the repo and `git pull` them; type only short commands. Verify any transferred file by checksum against the local copy before running it.
 - **Still running, unaffected:** reactant array **30048252** (tasks 1–3 completed; 0, 4–8 were running when the terminal died). Nothing else.
 
+**D43 – Superseded jobs cancelled.** (2026-10-18, user: "we want a solid methodology fit for a paper")
+- Cancelled **30022363** (the last H2 f395 1D scan: frozen QM waters, degraded reactant, one dimension) and **30048252** (reactant optimisations for the H1–H3 NAC frames, all taken from the degraded QM/MM MD, so reactants for scans that will not now be run from those frames). Tasks 1–3 had completed and their `QM_MM_optimized.pdb` files are kept as records.
+- Only **30053828** (D42, the clean four-coordinate proton check) is running. The user's GLP1R jobs are a separate project and were left alone.
+- A publication-grade protocol is proposed in `csr-neb-plan.md` under "Proposed protocol (P-series)", pending the user's decision on the level of theory.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
