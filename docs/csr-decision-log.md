@@ -740,6 +740,33 @@ So the surviving problems are (a) no hydroxide and (b) a sphere two ligands beyo
 - **M2 is the only live route** and is now well supported: a non-metal-bound water attacking C4x with Asp92 as general base, exactly CphA (Xu, Xie & Guo 2006). D33 found the second-shell water E3094 is the only species on the Bürgi-Dunitz line; this result removes its competitors.
 - M1 is therefore complete. Next is M2 on the single best reactant, all at xTB/MM with DFT/MM single points on the final path.
 
+**D49 - M2 cannot be set up from existing data: the attacking water never has a proton aimed at a base.** (2026-10-18)
+
+Asked for M2, I checked the coordinates against the structures before building any grid, which is what the failed H1 grid (D38) taught. Three independent checks agree.
+
+**1. The corrected resting-state reactant** (`protdft/cleanR/ohH/QM_MM_optimized.pdb`, `nuc_scout.py`):
+
+| Water | O-C4x | angle O-C4x-O2x | Zn-O | |
+| --- | --- | --- | --- | --- |
+| O01 | 3.63 | 40 | 1.99 | Zn-bound, cis to the carbonyl |
+| HOH485 | 3.80 | 65 | 1.97 | Zn-bound; its H reaches Asp92 OD1 at **1.65**, but it cannot attack |
+| E3094 | 4.71 | 127 | 6.10 | protons point at bulk waters E2155 (1.86) and E2493 (1.80) |
+| E3166 | 5.54 | **96** | 4.97 | good angle and H1 donates to Asp92 OD1 at **1.82**, but 5.5 A away |
+
+No water satisfies distance and angle together. The ones H-bonded to Asp92 cannot attack; the one nearest the attack line donates to bulk solvent.
+
+**2. The whole 50 ps trajectory** (`joint_nac.py`, 1000 frames, 46 waters within 12 A of C4x). Only two waters ever reach the Bürgi-Dunitz window at all: **HOH3094 in 326 frames** (best 3.67 A / 95 deg, frame 208) and HOH2493 in 95. **Neither donates to Asp92 in a single frame, and in no frame does any water do both.**
+
+**3. The relay, and other acceptors.** Only 2 waters near the site ever donate to Asp92, and in no frame are attacker, bridge and base aligned together. Extending the acceptor set to the substrate's own O4x, O3x, O1x and N1x finds nothing either: while a water is on the attack line, none of its protons is within 2.5 A of any of them.
+
+**So the Asp92-as-general-base step, direct or relayed, is not pre-organised anywhere in the data we have.** Forcing a 2D grid from here would repeat the D38 mistake of dragging a group across space and calling it a proton transfer.
+
+**The important caveat, and why this is not yet a conclusion about the enzyme.** That trajectory was generated in the **degraded** sphere: Asp92 was coordinated to the zinc at 2.07-2.11 A and Lys226 had already lost its proton (D41). A carboxylate bound to a divalent metal is both oriented toward it and much weakened as a base, which is a plausible reason nothing donates to it. The analysis may simply be asking the wrong state. In the corrected reactant Asp92 sits at 2.80 A and is free.
+
+**Minimal next step:** a short QM/MM MD from the corrected `ohH` reactant, then rerun `joint_nac.py` on it. This is the smallest simulation that can settle M2, and it matches what Xu & Guo did (SCC-DFTB/MM MD before any path). At the measured 1.37 s/step, 25 ps is about 9.5 h on 4 cores. If a free Asp92 recruits a water into the donating position, M2 becomes available and the frame to start from falls out of the analysis; if it does not, the Asp92-base mechanism is genuinely absent here and the hypothesis set needs rethinking rather than more scans.
+
+**Tools added:** `docs/csr/nuc_scout.py` (candidates and their proton acceptors in one structure) and `docs/csr/joint_nac.py` (the joint attack-and-donate test over a trajectory, including the relay).
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
