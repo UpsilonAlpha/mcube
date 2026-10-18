@@ -653,6 +653,19 @@ So the surviving problems are (a) no hydroxide and (b) a sphere two ligands beyo
   3. **A smaller QM region for the refinement.** 119 -> ~70 atoms (keep Zn, both His, Asp92, the Lys226 side chain, both waters, and only meropenem's β-lactam ring, carboxylate and 6α-OH) is roughly 4–8x for hybrid DFT. The QM-region convergence test (P-C) then runs at xTB level plus single points at the full region.
 - **Unchanged:** D42's job 30053828 is an xTB/MM optimisation with DFT single points — a screen to pick the reactant state, not a published number. Once the state is chosen it gets a DFT/MM optimisation under tier B.
 
+**D45 – gpu4pyscf installed (additively); DFT/MM gradient benchmark submitted.** (2026-10-18, user approved the install)
+- **The install nearly broke the environment, and the dry run caught it.** `pip install gpu4pyscf-cuda12x` on its own would have pulled `cupy-cuda12x` 14.2.0, which requires **numpy >= 2.0**, and so would have upgraded **numpy 1.26.4 -> 2.4.6**. OpenMM 8.4 and mdtraj are compiled against numpy 1.x, so that would have taken out the MM backbone of the whole pipeline — and the cleanR job was running in the same environment at the time.
+  - Installed instead with `cupy-cuda12x==13.3.0` and `numpy==1.26.4` pinned. The dry run then reported only additions, and the install added exactly: `cupy-cuda12x-13.3.0`, `fastrlock-0.8.4`, `gpu4pyscf-cuda12x-1.8.1`, `gpu4pyscf-libxc-cuda12x-0.8.1`, `pyscf-dispersion-1.5.0`. **Nothing was replaced or removed.**
+  - Verified afterwards: numpy 1.26.4, OpenMM 8.4, PySCF 2.13.0, mdtraj all still import. Job 30053828 kept running throughout.
+  - **Rule for next time:** `pip install --dry-run` first and read the "Would install" line; pin anything that must not move. This is the second time an install in this environment tried to drag core packages with it (the first was pyvdw, D-series earlier).
+- **ASH GPU support confirmed** in `interface_pyscf.py`: `platform == 'GPU'` is handled through the SCF, gradient and property paths, and there is a separate `GPU_pcgrad` for the MM point-charge gradient — which for a large MM environment is much of the QM/MM gradient. mcube now exposes it as **`dft_gpu_pcgrad`** (9beb7d8).
+- **Benchmark job 30054626** (`docs/csr/mk_gpubench.py`, `GpuBench.slurm`; 1 GPU on `gpu_cuda`, 8 CPUs, 64 GB). Three levels, each a few constrained optimisation steps from the same NVT end point with no single point, so the per-step wall time in `optimization_energies.log` *is* the DFT/MM gradient cost:
+  - `qmmm_gpu_wb97x` — ωB97X/def2-SVP, directly comparable to the measured CPU cost (~4–5 h per energy on 16 cores, job 29997628);
+  - `qmmm_gpu_r2scan` — r2SCAN-D4/def2-SVP, the proposed geometry level (meta-GGA, no exact exchange);
+  - `qmmm_gpu_r2scan_pc` — as above with `GPU_pcgrad`, to price moving the point-charge gradient onto the device.
+  - The D42 sphere constraints are kept so the timing is measured on the reactant geometry we actually care about. Each section is allowed to fail independently so one bad level does not cost the other numbers.
+- **What the numbers decide:** whether tier B runs at the full 119-atom QM region (if a gradient lands in the tens of minutes) or still needs the reduced ~70-atom region, and whether ωB97X geometries are affordable or geometries should be r2SCAN-D4 with ωB97X-D3(BJ)/def2-TZVPD energies on top.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
