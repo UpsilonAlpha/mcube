@@ -666,6 +666,16 @@ So the surviving problems are (a) no hydroxide and (b) a sphere two ligands beyo
   - The D42 sphere constraints are kept so the timing is measured on the reactant geometry we actually care about. Each section is allowed to fail independently so one bad level does not cost the other numbers.
 - **What the numbers decide:** whether tier B runs at the full 119-atom QM region (if a gradient lands in the tens of minutes) or still needs the reduced ~70-atom region, and whether ωB97X geometries are affordable or geometries should be r2SCAN-D4 with ωB97X-D3(BJ)/def2-TZVPD energies on top.
 
+**D46 – Documentation pass; a silent per-section bug found and fixed; GPU benchmark needed a CUDA runtime.** (2026-10-18, user: "make sure mcube changes are documented to be human usable")
+- **Docs (177a6f0).** `docs/qm-levels.md`: when to use xTB vs DFT, how each `dft_*` key falls back to its `sp_*` counterpart, the difference between the two dispersion keys (`dft_scf_dispersion` is in the SCF and so in the gradient; `sp_dispersion` is post-SCF and reported separately), why DFT frequencies need a partial Hessian, GPU setup, and where the keys may be set. Worked configs `config_examples/qmmm_dft_refine.yaml` (the whole xTB-then-DFT sequence) and `config_examples/scan_2d.yaml` (including how to choose a proton-transfer coordinate and how to read the grid). Both parse-checked.
+- **Bug found while writing the examples (177a6f0).** `scan`, `neb` and `ts` all built the QM theory from `qmmm.inputs` **only**, so `qm_engine: dft` or any `dft_*` key set on a `scan_*` / `neb_*` / `ts_*` section was **silently ignored and the stage ran at xTB**. That would have produced "DFT" barriers that were really semi-empirical, with nothing in the output to say so — the worst kind of failure for a paper. `qm_level_inputs()` now merges the QM-level keys, and only those, from the stage's own section; charge, multiplicity and force fields still come from `qmmm.inputs`. Covered by `tests/test_qm_levels.py` (11 tests) and two stub regression tests. The `qmmm` stage was never affected, because it already merges per-section inputs.
+- **Also corrected:** four places (README twice, `ts.py`, `qmmm.py`) still said all active-region waters are kept rigid, which the earlier fix changed. Waters in the QM region are left free so they can transfer protons.
+- **GPU benchmark 30054626 failed in 24 s per section**, all three: `ImportError: libcusolver.so.11: cannot open shared object file`. The node was an **NVIDIA L40S, 46 GB, driver 610.43.02**, so the hardware was fine; the cause is that Bunya has **no CUDA 12 module** (only `cuda11.7`) and no CUDA 12 toolkit on the filesystem, so cupy's `cuda12x` wheels had no runtime libraries.
+  - Fixed by installing the CUDA 12 runtime as pip wheels — dry-run first, and it reported only additions: `nvidia-cublas/cuda-nvrtc/cuda-runtime/cufft/curand/cusolver/cusparse/nvjitlink-cu12`. numpy stayed at 1.26.4; OpenMM 8.4 and mdtraj still import.
+  - `GpuBench.slurm` now puts those wheels' `lib` directories on `LD_LIBRARY_PATH` and asserts `cupy` works before running anything, so a broken GPU setup fails in one line instead of three times over.
+  - **Resubmitted as 30055503.**
+- **Still running:** cleanR 30053828 (D42), unaffected by any of the installs.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
