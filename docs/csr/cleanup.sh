@@ -58,20 +58,28 @@ report() {
 printf '%-46s %11s %8s\n' "category" "size" "files"
 printf '%-46s %11s %8s\n' "--------" "----" "-----"
 
+# Directories never swept for working files. Add any run in progress via SKIP:
+#   SKIP="protdft/cleanR" bash cleanup.sh <run> --delete
+# A running job writes xtb_.*, gradient and geometric_OPTtraj* every step, so
+# sweeping its directory mid-run can crash it or corrupt the optimisation.
+PRUNE=( -path ./preprocess_results -prune -o -path ./md_results -prune -o
+        -path ./qmmm_results -prune -o )
+for d in ${SKIP:-}; do
+    PRUNE+=( -path "./${d#./}" -prune -o )
+    echo "skipping (in use): ${d#./}"
+done
+[ -n "${SKIP:-}" ] && echo
+
 # 1. ASH/geomeTRIC working files, regenerable, and the bulk of the file count.
 #    Kept out of the protected directories by -path pruning.
-report "ASH working files (xtb_, gradient, pcgrad...)" . \
-    -path ./preprocess_results -prune -o -path ./md_results -prune -o \
-    -path ./qmmm_results -prune -o \
+report "ASH working files (xtb_, gradient, pcgrad...)" . "${PRUNE[@]}" \
     \( -name 'xtb_.*' -o -name 'pcgrad' -o -name 'gradient' -o -name 'energy' \
        -o -name 'charges' -o -name 'Fragment-currentgeo.*' \
        -o -name 'initialxyzfiletric.xyz' -o -name 'constraints.txt' \
        -o -name '*.engrad' -o -name 'ActiveRegion.xyz' \) -type f -print
 
 # 2. geomeTRIC trajectories: large, and superseded by the final PDB once converged.
-report "geomeTRIC optimisation trajectories" . \
-    -path ./preprocess_results -prune -o -path ./md_results -prune -o \
-    -path ./qmmm_results -prune -o \
+report "geomeTRIC optimisation trajectories" . "${PRUNE[@]}" \
     \( -name 'geometric_OPTtraj*.xyz' -o -name 'geometric_OPTtraj.tmp' \
        -o -name 'HT.v_*.txt' \) -type f -print
 
