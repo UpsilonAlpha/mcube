@@ -697,6 +697,10 @@ So the surviving problems are (a) no hydroxide and (b) a sphere two ligands beyo
 
   The killed scans are 1.3-16 GB each and are mostly geomeTRIC `HT.v_*.txt` history files at ~30 MB apiece - the same unbounded growth that caused the out-of-memory kills (D35). The two scans with usable output, `scan_H1_f00497` (165 MB) and `scan_H2_f00395` (177 MB), are excluded and keep their results. The script now also copies every killed run's `scan_energies.csv` into `scans/killed_runs_csv/` before removing the directory, so the record of how far each got survives at a few kB.
 - **CphA confirmed** by the user as the mono-zinc template alongside EcoRV, which is what M2 already assumed.
+- **Cleanup run (user approved): 69.6 GB removed in 2650 files. Scratch went from 327 GB to 181 GB**, well under the 300 GB quota; files 859,781 to 855,717. Most of the space was `HT.v_*.txt` geomeTRIC history files rather than the scan directories themselves, which is why the swept total came out above the 66.7 GB estimate.
+  - **The running cleanR job was protected.** It writes `xtb_.*`, `gradient` and `geometric_OPTtraj*` every step, so sweeping its directory would have crashed it or corrupted the optimisation. `cleanup.sh` gained a `SKIP` variable for exactly this, and the run used `SKIP="protdft/cleanR"`. Job 30053828 was still running afterwards with its working files intact.
+  - Verified kept: `qmmm_results/QM_MM.dcd` (550 MB), `md_results/NVTtrajectory_lastframe.pdb`, both surviving scans' `scan_energies.csv`, and all ten killed runs' CSVs now in `scans/killed_runs_csv/`.
+  - Not done: `CSR_crystal`, `CSR_ligand` and `CSR_hydrolysed` have not been swept, and the GPU python packages (~2-3 GB in HOME, which is at 40/50 GB) are still installed.
 
 ## Resources (see `running-on-bunya.md`)
 
