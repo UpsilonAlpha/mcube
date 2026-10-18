@@ -116,14 +116,82 @@ def make_mm(forcefields, pdb_file: str, implicit: bool, cores: int):
     )
 
 
+def level_option(inputs: Dict[str, Any], prefix: str, name: str, default=None):
+    """
+    A QM level option, read as `<prefix>_<name>` and falling back to `sp_<name>`.
+
+    The fallback means a config that already defines the DFT level for single points
+    does not have to repeat it to run the gradients at the same level.
+    """
+    for key in (f"{prefix}_{name}", f"sp_{name}"):
+        if key in inputs:
+            return inputs[key]
+    return default
+
+
+def pyscf_memory(inputs: Dict[str, Any], prefix: str = "sp") -> int:
+    """
+    PySCF max_memory in MB. ASH's default (3100) sends density-fitting integrals to
+    disk; by default use 80% of the SLURM job's memory so they stay in RAM.
+    """
+    memory = level_option(inputs, prefix, "memory")
+    if memory is None:
+        slurm_mb = os.environ.get("SLURM_MEM_PER_NODE")
+        memory = int(0.8 * int(slurm_mb)) if slurm_mb and slurm_mb.isdigit() else 3100
+    return int(memory)
+
+
+def make_dft(inputs: Dict[str, Any], cores: int, mult: Optional[int], prefix: str = "sp"):
+    """
+    PySCF theory for QM/MM energies or gradients.
+
+    `dispersion` is ASH's own keyword, so it enters the gradient and a DFT/MM
+    optimisation is dispersion-corrected. The explicit `sp_dispersion` correction
+    applied after a single point (`d3_energy`) is separate and stays post-SCF.
+    """
+    functional = level_option(inputs, prefix, "functional", "wb97x-v")
+    basis = level_option(inputs, prefix, "basis", "def2-svp")
+    return PySCFTheory(scf_type="RKS" if mult == 1 else "UKS",
+                       functional=functional,
+                       basis=basis,
+                       gridlevel=level_option(inputs, prefix, "gridlevel", 3),
+                       densityfit=level_option(inputs, prefix, "densityfit", True),
+                       auxbasis=level_option(inputs, prefix, "auxbasis"),
+                       dispersion=level_option(inputs, prefix, "scf_dispersion"),
+                       platform=level_option(inputs, prefix, "platform", "CPU"),
+                       memory=pyscf_memory(inputs, prefix),
+                       numcores=cores)
+
+
+def make_qm(inputs: Dict[str, Any], cores: int, runmode: Optional[str] = None):
+    """
+    The QM theory for the gradient-driven stages (optimisation, scan, NEB, TS, frequencies).
+
+    `qm_engine: xtb` (the default) is GFN2-xTB; `qm_engine: dft` runs those stages at
+    DFT/MM instead, at the `dft_*` level (falling back to the `sp_*` keys). DFT gradients
+    cost orders of magnitude more than xTB ones, so a DFT engine is for refining
+    stationary points that an xTB path has already located, not for exploring.
+    """
+    engine = str(inputs.get("qm_engine", "xtb")).lower()
+    if engine in ("dft", "pyscf"):
+        dft_cores = resolve_cores(inputs.get("dft_cores", cores), "dft_cores")
+        theory = make_dft(inputs, dft_cores, inputs.get("mult"), "dft")
+        print(f"[INFO] QM engine: DFT ({theory.functional}/"
+              f"{level_option(inputs, 'dft', 'basis', 'def2-svp')}), {dft_cores} threads, "
+              f"platform {level_option(inputs, 'dft', 'platform', 'CPU')}")
+        return theory
+    if engine != "xtb":
+        raise ValueError(f"qm_engine must be 'xtb' or 'dft', not {engine!r}")
+    runmode = runmode or inputs.get("xtb_runmode", "inputfile")
+    # As a separate program, xTB can be thread-bound without affecting this process (threads.py)
+    return xTBTheory(xtbmethod=inputs.get("xtb_method", "GFN2"), numcores=cores, runmode=runmode,
+                     xtbdir=xtb_dir() if runmode == "inputfile" else None)
+
+
 def make_qmmm(qmmm_inputs: Dict[str, Any], mm, fragment, qm_atoms, boundary_excluded,
               cores: int, runmode: Optional[str] = None):
-    runmode = runmode or qmmm_inputs.get("xtb_runmode", "inputfile")
-    # As a separate program, xTB can be thread-bound without affecting this process (threads.py)
-    xtb = xTBTheory(xtbmethod=qmmm_inputs.get("xtb_method", "GFN2"), numcores=cores, runmode=runmode,
-                    xtbdir=xtb_dir() if runmode == "inputfile" else None)
     return QMMMTheory(
-        qm_theory=xtb,
+        qm_theory=make_qm(qmmm_inputs, cores, runmode),
         mm_theory=mm,
         fragment=fragment,
         qmatoms=qm_atoms,
@@ -374,22 +442,9 @@ def run(args) -> Dict[str, Any]:
         # Speed settings: ASH's own PySCF defaults (grid level 5, no density fitting) made one
         # wB97M-V/def2-SVP SCF cycle on ~120 QM atoms take ~22 min on 4 threads
         sp_cores = resolve_cores(inputs.get("sp_cores"), "sp_cores")
-        # PySCF memory (MB). ASH's default (3100) sends density-fitting integrals to disk;
-        # by default use 80% of the SLURM job's memory so they stay in RAM.
-        sp_memory = inputs.get("sp_memory")
-        if sp_memory is None:
-            slurm_mb = os.environ.get("SLURM_MEM_PER_NODE")
-            sp_memory = int(0.8 * int(slurm_mb)) if slurm_mb and slurm_mb.isdigit() else 3100
-        print(f"[INFO] PySCF single point: {sp_cores} threads, max_memory {sp_memory} MB")
-        pyscf = PySCFTheory(scf_type="RKS" if mult == 1 else "UKS",
-                            functional=inputs.get("sp_functional", "wb97x-v"),
-                            basis=inputs.get("sp_basis", "def2-svp"),
-                            gridlevel=inputs.get("sp_gridlevel", 3),
-                            densityfit=inputs.get("sp_densityfit", True),
-                            auxbasis=inputs.get("sp_auxbasis"),
-                            platform=inputs.get("sp_platform", "CPU"),
-                            memory=sp_memory,
-                            numcores=sp_cores)
+        print(f"[INFO] PySCF single point: {sp_cores} threads, "
+              f"max_memory {pyscf_memory(inputs, 'sp')} MB")
+        pyscf = make_dft(inputs, sp_cores, mult, "sp")
         qmmm_sp = QMMMTheory(
             qm_theory=pyscf,
             mm_theory=mm,

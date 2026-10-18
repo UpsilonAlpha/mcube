@@ -136,6 +136,10 @@ Minimisation always runs. Metal–donor `constraints` are applied as fixed-dista
 | `opt_maxiter` | 200 | Optimisation steps. If they run out, the last geometry is kept as `QM_MM_optimized.pdb` and `converged: false` is recorded. |
 | `actradius` | 0 | If > 0, optimise all atoms within this radius (Å) of `actregion_origin`. Otherwise only the QM atoms move. |
 | `actregion_origin` | first non-standard QM atom | Atom index at the centre of the active region |
+| `qm_engine` | `xtb` | QM theory for the gradient stages (optimisation, scan, NEB, TS, frequencies): `xtb` for GFN2-xTB, or `dft` to run them at DFT/MM. A DFT gradient costs orders of magnitude more than an xTB one, so use `dft` to refine stationary points an xTB path has already located, not to explore. |
+| `dft_functional`, `dft_basis`, `dft_gridlevel`, `dft_densityfit`, `dft_auxbasis`, `dft_platform`, `dft_memory` | the matching `sp_*` value | Level of theory for `qm_engine: dft`. Each falls back to its `sp_*` counterpart, so a config that already sets the single-point level need not repeat it. |
+| `dft_scf_dispersion` | none | Dispersion inside the SCF for `qm_engine: dft` (ASH/PySCF's own keyword: `D3`, `D4`, `VV10`, …), so it enters the gradient. Distinct from `sp_dispersion`, which is applied after a single point. |
+| `dft_cores` | stage `cores` | Threads for the DFT gradients |
 | `singlepoint` | `true` | PySCF QM/MM single point (RKS/UKS from `mult`), plus `density.cube`, `mep.cube`, `HOMO.cube` and `LUMO.cube` |
 | `sp_functional`, `sp_basis` | `wb97x-v`, `def2-svp` | Single-point level of theory (PySCF names, e.g. `wb97m_v`; the energy is saved as `sp_energy`) |
 | `sp_gridlevel` | 3 | PySCF DFT grid level (ASH's own default is 5, which made VV10 functionals very slow) |
