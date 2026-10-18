@@ -774,6 +774,38 @@ No water satisfies distance and angle together. The ones H-bonded to Asp92 canno
 - **The test afterwards** is the same `joint_nac.py` criterion, so the two trajectories are directly comparable. If frames satisfy both halves, the best one becomes the M2 reactant and the scan coordinates come from its actual distances. If none do, the Asp92-as-base mechanism is absent in this system and the hypothesis set needs rethinking rather than more scans.
 - This is the only simulation running, and the minimum that can settle M2.
 
+**D51 - M2 result: the six-coordinate site is what the model prefers, and Asp92 as base is not available.** (2026-10-19, job 30085418 COMPLETED in 9:11:36)
+
+**The zinc re-formed the six-coordinate sphere on its own.** Started from the clean four-coordinate reactant with **Asp92 free at 2.80 A and no constraints**, 25 ps of QM/MM MD ended with:
+
+| Ligand | Last frame | Started at |
+| --- | --- | --- |
+| HOH485 O | 2.04 | 1.97 |
+| His164 NE2 | 2.07 | 1.98 |
+| **Asp92 OD2** | **2.09** | **2.80** |
+| O01 | 2.11 | 1.99 |
+| His88 NE2 | 2.14 | 1.94 |
+| mer O2x | 2.25 | 2.90 |
+
+Lys226 kept its two hydrogens (still neutral) and O01 kept two (still water), so the D48 protonation state was stable - the back-transfer did not happen.
+
+**This changes the reading of D41.** The Asp92 migration was not a one-off artefact of a bad setup: from a clean start, with nothing imposed, the model pulls Asp92 and the substrate carbonyl back onto the metal within 25 ps. A two-His zinc is under-coordinated, so recruiting two more ligands is chemically unsurprising. **Either the mono-Zn site genuinely is six-coordinate, or GFN2-xTB over-coordinates the zinc** - a known weakness of semi-empirical methods with metals, and precisely what Imhof's AM1/d-vs-B3LYP validation was for.
+
+**The joint criterion still fails, now from the right starting state** (`joint_nac.py`, 500 frames):
+
+| Water | attack frames | H to Asp92 | both |
+| --- | --- | --- | --- |
+| HOH3094 | **210** (best 3.41 A / 99 deg, frame 209) | **0** | **0** |
+| HOH2493 | 51 (best 3.91 A / 96 deg) | 0 | 0 |
+
+The relay fails too. HOH3094's protons still point at bulk waters (E2155 1.70, E2493 2.01); the waters that do reach Asp92 are HOH485, which is zinc-bound at a 38 degree attack angle, and E3166 at 2.17 A but 4.65 A from C4x and 64 degrees off.
+
+**So the Asp92-as-general-base mechanism is not accessible in this model, tested twice from two different starting states.** Note that it fails for a *structural* reason that follows from the zinc coordination: with Asp92 bound to the metal and the carbonyl occupying a sixth site, nothing is left to accept the attacking water's proton.
+
+**Everything now rests on one assumption: that xTB describes this zinc correctly.** If it over-coordinates, the whole picture - Asp92 unavailable, the carbonyl inner-sphere, the Zn-bound waters at 33-38 degrees - is an artefact, and the mechanism question reopens with a four- or five-coordinate site.
+
+**Proposed next test (cheap and decisive), ahead of any more mechanism work:** from the md2 last frame, two constrained xTB/MM optimisations with Zn-Asp92 OD2 held at 2.10 and at 2.80 A, everything else free, then one DFT/MM single point on each. Two single points, about 9-10 h in one CPU job. If DFT prefers Asp92 off the metal while xTB prefers it on, the over-coordination is confirmed and the model needs changing before any path is computed. This is M4 (validation) brought forward ahead of M2, because M2's answer now depends on it.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

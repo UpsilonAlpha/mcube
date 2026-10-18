@@ -154,8 +154,8 @@ for ri, vals in stats.items():
             best = (int(joint.sum()), ri, bi, np.flatnonzero(joint))
 if best[0] == 0:
     print("No frame has attacker, bridge and base aligned at once either.")
-    print("The relay is not pre-organised anywhere in 50 ps, so whichever route is")
-    print("taken, the model must include the reorganisation that sets it up.")
+    print("The relay is not pre-organised in any of the %d frames, so whichever route" % n)
+    print("is taken, the model must include the reorganisation that sets it up.")
 else:
     cnt, ri, bi, frames = best
     print("%s%s -> %s%s -> Asp92 aligned in %d frames; first few: %s"
