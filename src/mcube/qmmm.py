@@ -191,6 +191,25 @@ def make_qm(inputs: Dict[str, Any], cores: int, runmode: Optional[str] = None):
                      xtbdir=xtb_dir() if runmode == "inputfile" else None)
 
 
+QM_LEVEL_KEYS = ("qm_engine", "xtb_method", "xtb_runmode")
+
+
+def qm_level_inputs(qmmm_inputs: Dict[str, Any], stage_inputs_: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    `qmmm.inputs` with the QM-level keys overridden by a stage's own section.
+
+    The scan, neb and ts stages take the QM theory from `qmmm.inputs`, so without
+    this a `qm_engine: dft` set on one of those sections would be silently ignored
+    and the stage would quietly run at xTB. Everything else about the QM/MM setup
+    (charge, mult, force fields) still comes from `qmmm.inputs`.
+    """
+    merged = dict(qmmm_inputs)
+    for key, value in (stage_inputs_ or {}).items():
+        if key in QM_LEVEL_KEYS or key.startswith(("dft_", "sp_")):
+            merged[key] = value
+    return merged
+
+
 def make_qmmm(qmmm_inputs: Dict[str, Any], mm, fragment, qm_atoms, boundary_excluded,
               cores: int, runmode: Optional[str] = None):
     return QMMMTheory(
@@ -245,7 +264,7 @@ def check_in_active(pairs, actatoms, what: str = "constraint"):
 
 def water_constraints(mm, actatoms, qm_atoms=()) -> List[list]:
     """
-    O-H and H-H pairs of active-region TIP3P waters (kept rigid during optimisation).
+    O-H and H-H pairs of active-region *MM* TIP3P waters, to keep them rigid while optimising.
 
     Waters in the QM region are left free: freezing their O-H bonds would stop them
     giving up or taking a proton (nucleophilic water, proton relays).

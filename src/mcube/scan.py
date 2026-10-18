@@ -63,6 +63,7 @@ from .qmmm import (
     clean_geometric_files,
     write_pdb,
     resolve_stage_atoms,
+    qm_level_inputs,
     optimize,
 )
 from .threads import resolve_cores
@@ -103,6 +104,7 @@ def run(args) -> Dict[str, Any]:
     md = load_section(args.config, "md")
     qmmm_inputs = load_section(args.config, "qmmm").get("inputs") or {}
     inputs = stage_inputs(args.config, "scan", section)
+    qmmm_inputs = qm_level_inputs(qmmm_inputs, inputs)  # qm_engine/dft_* may be set per section
 
     if "atoms" not in inputs or "end" not in inputs:
         raise KeyError(f"{section}.inputs needs `atoms: [i, j]` and `end` (and usually `points`)")

@@ -1,0 +1,64 @@
+# 2D relaxed scan: bond formation coupled to a proton transfer.
+#
+# Why two dimensions. In a 1D scan along the nucleophile-carbon distance the
+# optimiser finds the lowest energy at each point, but a proton transfer has a
+# barrier of its own, so the proton simply stays where it is. The scan then
+# measures neutral addition, which is high in energy in any enzyme, and the
+# profile rises monotonically with no intermediate. Making the proton transfer a
+# second coordinate maps the two motions together, and the low-energy route
+# across the grid shows whether the proton moves before, during or after the
+# bond forms -- and to which acceptor.
+#
+#   mcube scan config.yaml --section scan2d_relay --pdb reactant_optimized.pdb
+#
+# Choosing the second coordinate:
+#   * Pick the actual proton and acceptor from the OPTIMISED REACTANT, not from a
+#     crystal structure or an MD frame. Print the H...acceptor distances first and
+#     use the H that really points at the acceptor. A coordinate that starts at
+#     4 A is not a proton transfer; it drags a group across space and wastes days.
+#   * Put every atom involved in the QM region (see extra_qm_residues below).
+#     Waters in the QM region are left free, so they can give up a proton; MM
+#     waters are held rigid.
+#   * End at ~1.0 A for O-H, ~1.05 A for N-H.
+#
+# Cost: points x points2 constrained optimisations. Start with one grid on one
+# structure, not three.
+scan:
+  inputs:
+    opt_maxiter: 200
+    resume: true                        # rerunning continues from scan_energies.csv
+
+scan2d_relay:
+  inputs:
+    # Coordinate 1 (columns): nucleophile -> carbonyl carbon
+    atoms: ["E:3094:O", "C:1:C4x"]
+    start: 3.9                          # omit to start from the current distance
+    end: 1.45
+    points: 13
+    # Coordinate 2 (rows): the proton transfer
+    atoms2: ["E:3094:H2", "E:3166:O"]
+    start2: 1.8
+    end2: 1.0
+    points2: 6
+    # Reported at every grid point, so the chemistry can be followed
+    monitor:
+    - ["C:1:C4x", "C:1:N1x"]            # ring opening
+    - ["B:1:ZN", "C:1:O2x"]             # oxyanion stabilisation
+    - ["E:3166:H1", "A:92:OD1"]         # the second proton of the relay
+    extra_qm_residues:
+      E: [3094, 3166]                   # both relay waters in the QM region
+
+# Output, in the working directory:
+#   scan_KK_XX.pdb      one structure per grid point (KK = row, XX = column)
+#   scan_energies.csv   point, i1, i2, target1_A, distance1_A, target2_A,
+#                       distance2_A, energy_Eh, rel_kcal_mol, converged,
+#                       d_<i>_<j> for each monitored pair, pdb
+#
+# Rows run over coordinate 2; within a row coordinate 1 is swept back and forth
+# ("snake" order), so every point starts from an adjacent one and the grid stays
+# continuous. Results are written after every point, so a job that hits its time
+# limit loses nothing: resubmit the same command and it picks up where it stopped.
+#
+# Reading it: pivot rel_kcal_mol on (i2, i1). A diagonal valley means the proton
+# moves as the bond forms (concerted); an L-shaped one means stepwise, and the
+# corner is the intermediate.

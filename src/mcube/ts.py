@@ -35,7 +35,8 @@ taken from `ts.inputs`):
         irc_method: mode
         irc_step: 0.15
         opt_maxiter: 300
-        rigid_water: true            # hold active-region waters rigid, as in qmmm minimisations
+        rigid_water: true            # hold MM active-region waters rigid, as in qmmm
+                                     # minimisations (QM waters are always left free)
 
 Charge, multiplicity, force fields, xTB settings, cores and the active region
 come from qmmm.inputs; use --actatoms with the reactant's active_atoms.
@@ -64,6 +65,7 @@ from .qmmm import (
     clean_geometric_files,
     write_pdb,
     resolve_stage_atoms,
+    qm_level_inputs,
 )
 from .threads import resolve_cores, unbind_threads
 
@@ -82,6 +84,7 @@ def run(args) -> Dict[str, Any]:
     md = load_section(args.config, "md")
     qmmm_inputs = load_section(args.config, "qmmm").get("inputs") or {}
     inputs = stage_inputs(args.config, "ts", section)
+    qmmm_inputs = qm_level_inputs(qmmm_inputs, inputs)  # qm_engine/dft_* may be set per section
 
     pdb_file = getattr(args, "pdb", None) or inputs.get("pdb_file") or \
         (load_section(args.config, "neb").get("results") or {}).get("saddlepoint_pdb")

@@ -26,6 +26,7 @@ from .qmmm import (
     resolve_actatoms,
     write_pdb,
     resolve_stage_atoms,
+    qm_level_inputs,
 )
 from .threads import unbind_threads
 from ash import *
@@ -53,6 +54,7 @@ def run(args) -> Dict[str, Any]:
     preprocess = load_section(args.config, "preprocess")
     qmmm_inputs = qmmm_cfg.get("inputs") or {}
     neb_inputs = stage_inputs(args.config, "neb", section)
+    qmmm_inputs = qm_level_inputs(qmmm_inputs, neb_inputs)  # qm_engine/dft_* may be set per section
 
     charge = qmmm_inputs["charge"]
     mult = qmmm_inputs["mult"]

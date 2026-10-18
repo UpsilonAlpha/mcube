@@ -1,0 +1,91 @@
+# Enzyme mechanism: explore at xTB, refine and report at DFT.
+# See docs/qm-levels.md. Replace ENZYME.pdb, LIGAND.pdb, the chains, residue
+# numbers, His tautomers and the atom selectors.
+#
+# Order of use (each is a separate `mcube` call, see the README):
+#   mcube preprocess config.yaml
+#   mcube md         config.yaml
+#   mcube qmmm       config.yaml                              # QM/MM MD + xTB minimisation
+#   mcube scan       config.yaml --section scan_attack        # xTB: find the path
+#   mcube neb        config.yaml --section neb_step1 ...      # xTB: approximate TS
+#   mcube qmmm       config.yaml --section qmmm_R_dft --pdb ...   # DFT: refine the minima
+#   mcube ts         config.yaml --section ts_step1_dft ...        # DFT: TS, freqs, IRC
+preprocess:
+  inputs:
+    protein_pdb: ENZYME.pdb
+    ligand: LIGAND.pdb
+    ligand_resname: LIG
+    residue_variants:
+      A: {88: HID, 164: HID}            # His tautomers must be chosen deliberately
+    metals: [ZN]
+    cutoff: 3.0                         # metal-ligand cutoff (A): what gets restrained
+    solvent_padding: 12.0
+    ionic_strength: 0.15
+md:
+  inputs:
+    cores: 8
+    temp: 300
+
+qmmm:
+  inputs:
+    charge: 2                           # QM-region charge, not the system charge
+    mult: 1
+    cores: 4                            # xTB threads (see running-on-bunya.md)
+    time: 50                            # ps of QM/MM MD
+    timestep: 0.001
+    traj_frequency: 50
+    actradius: 8                        # atoms within 8 A of the origin may move
+    actregion_origin: B:1:ZN
+    opt_maxiter: 300
+    # The DFT level used for single points, and inherited by every dft_* key below
+    sp_functional: wb97x
+    sp_basis: def2-svp
+    sp_gridlevel: 3
+    sp_densityfit: true
+    sp_dispersion: d3bj                 # reported separately as sp_energy_disp
+
+# --- xTB: find the path -------------------------------------------------------
+scan_attack:
+  inputs:
+    atoms: ["C:2:O01", "C:1:C4x"]       # nucleophile -> carbonyl carbon
+    end: 1.45
+    points: 25
+    monitor:                            # distances reported at every point
+    - ["C:1:C4x", "C:1:N1x"]
+    - ["B:1:ZN", "C:1:O2x"]
+
+# --- DFT: refine a minimum ----------------------------------------------------
+# Run on a converged xTB structure, e.g. the scan's first point or QM_MM_optimized.pdb.
+qmmm_R_dft:
+  inputs:
+    qm_engine: dft                      # the optimiser now uses PySCF, not xTB
+    skip_equilibrate: true              # no QM/MM MD: this is a refinement
+    dft_functional: r2scan              # cheap geometry level (meta-GGA)
+    dft_scf_dispersion: D4              # in the SCF, so it is in the gradient
+    dft_platform: GPU                   # drop these two lines to stay on CPU
+    dft_gpu_pcgrad: true
+    dft_cores: 8
+    opt_maxiter: 150
+    singlepoint: true                   # final energy at sp_functional/sp_basis
+    sp_basis: def2-tzvpd                # larger basis for the reported energy
+
+# --- DFT: transition state, frequencies and IRC -------------------------------
+ts_step1_dft:
+  inputs:
+    qm_engine: dft
+    dft_functional: r2scan
+    dft_scf_dispersion: D4
+    dft_platform: GPU
+    dft_gpu_pcgrad: true
+    # A full numerical Hessian is 3N x 2 gradients and is not affordable at DFT.
+    # Restrict it to the atoms that actually move: see docs/qm-levels.md.
+    partial_hessian_atoms:
+    - "C:2:O01"
+    - "C:1:C4x"
+    - "C:1:O2x"
+    - "C:1:N1x"
+    monitor:
+    - ["C:2:O01", "C:1:C4x"]
+    - ["C:1:C4x", "C:1:N1x"]
+    singlepoint: true
+    sp_basis: def2-tzvpd

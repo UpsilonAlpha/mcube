@@ -57,6 +57,8 @@ The config file has one section per stage, and each section has `inputs` (writte
 - [`pdbqt_config.yaml`](config_examples/pdbqt_config.yaml): explicit solvent, docked ligand from a PDBQT
 - [`implicit_config.yaml`](config_examples/implicit_config.yaml): implicit solvent (GBn2), ligand from a PDB
 - [`protein_protein_ramd.yaml`](config_examples/protein_protein_ramd.yaml): protein–protein complex without metals, md and τRAMD on a GPU (`scripts/ramd_gpu.slurm`)
+- [`qmmm_dft_refine.yaml`](config_examples/qmmm_dft_refine.yaml): enzyme mechanism explored at xTB, then stationary points, frequencies and IRC refined at DFT/MM (see [docs/qm-levels.md](docs/qm-levels.md))
+- [`scan_2d.yaml`](config_examples/scan_2d.yaml): 2D relaxed scan, bond formation coupled to a proton transfer
 
 Results are written back with `yaml.safe_dump`, so comments in the config are lost the first time a stage saves its results. Writes are locked (POSIX), so several jobs can run stages on one config at once as long as each writes its own `--section`.
 
@@ -132,11 +134,11 @@ Minimisation always runs. Metal–donor `constraints` are applied as fixed-dista
 | `traj_frequency` | 1000 | QM/MM MD save interval (steps) |
 | `skip_equilibrate` | `false` | Skip QM/MM MD |
 | `skip_optimize` | `false` | Skip QM/MM optimisation |
-| `opt_constraints` | none | Bond constraints during the optimisation: `[[i, j], …]` holds the starting distance, `[[i, j, d_Å], …]` sets it. Atoms must be in the active region. Active-region waters are always kept rigid. |
+| `opt_constraints` | none | Bond constraints during the optimisation: `[[i, j], …]` holds the starting distance, `[[i, j, d_Å], …]` sets it. Atoms must be in the active region. MM waters in the active region are kept rigid; waters **in the QM region are left free**, so a QM water can donate or accept a proton. |
 | `opt_maxiter` | 200 | Optimisation steps. If they run out, the last geometry is kept as `QM_MM_optimized.pdb` and `converged: false` is recorded. |
 | `actradius` | 0 | If > 0, optimise all atoms within this radius (Å) of `actregion_origin`. Otherwise only the QM atoms move. |
 | `actregion_origin` | first non-standard QM atom | Atom index at the centre of the active region |
-| `qm_engine` | `xtb` | QM theory for the gradient stages (optimisation, scan, NEB, TS, frequencies): `xtb` for GFN2-xTB, or `dft` to run them at DFT/MM. A DFT gradient costs orders of magnitude more than an xTB one, so use `dft` to refine stationary points an xTB path has already located, not to explore. |
+| `qm_engine` | `xtb` | QM theory for the gradient stages (optimisation, scan, NEB, TS, frequencies): `xtb` for GFN2-xTB, or `dft` to run them at DFT/MM. A DFT gradient costs orders of magnitude more than an xTB one, so use `dft` to refine stationary points an xTB path has already located, not to explore. Settable per `scan`/`neb`/`ts` section too. |
 | `dft_functional`, `dft_basis`, `dft_gridlevel`, `dft_densityfit`, `dft_auxbasis`, `dft_platform`, `dft_memory` | the matching `sp_*` value | Level of theory for `qm_engine: dft`. Each falls back to its `sp_*` counterpart, so a config that already sets the single-point level need not repeat it. |
 | `dft_scf_dispersion` | none | Dispersion inside the SCF for `qm_engine: dft` (ASH/PySCF's own keyword: `D3`, `D4`, `VV10`, …), so it enters the gradient. Distinct from `sp_dispersion`, which is applied after a single point. |
 | `dft_cores` | stage `cores` | Threads for the DFT gradients |
@@ -214,7 +216,7 @@ Each point is optimised from the previous one with the scanned distance fixed. W
 | `irc` | `true` | Follow the TS downhill both ways |
 | `irc_method` | `mode` | `mode`: displace ±`irc_step` Å (largest atom displacement) along the imaginary mode and minimise each side. `sella`: Sella IRC on the active region (`irc_dx`; needs `sella`, expensive for a large active region). |
 | `opt_maxiter` | 300 | Steps per IRC minimisation |
-| `rigid_water` | `true` | Keep active-region waters rigid, as in the `qmmm` minimisations |
+| `rigid_water` | `true` | Keep MM active-region waters rigid, as in the `qmmm` minimisations. Waters in the QM region are never constrained, so they stay free to transfer protons. |
 
 `results`: `ts_pdb` (`ts_optimized.pdb`), `ts_energy`, `guess_imaginary`, `imaginary_frequencies`, `small_imaginary`, `lowest_frequencies`, `ts_mode_atoms`, monitored distances, and `irc.forward/reverse` (`irc_*.pdb`, energy, barrier = E(TS) − E(end) in kcal/mol, distances).
 
@@ -278,6 +280,12 @@ By default, postprocess analyses the MD trajectory (`md.results`). With `--qmmm`
 - **Plots** of temperature, density and box volume from the MD CSV (MD only), and an RMSD plot of the protein heavy atoms
 - **Interaction network** with H-bonds (protein and ligand), salt bridges (< 4 Å), π–π (< 5 Å), cation–π (< 6 Å) and metal coordination (`--cutoff`). Edges whose occupancy is above `--occupancy` are kept. `--redraw` redraws the plot from `interaction_network.csv` without recomputing. `--spring_constant` and `--iterations` control the layout.
 - **RMSF** of Cα atoms after alignment, written as B-factors to `rmsf_bfactor.pdb`
+
+## Choosing the QM level
+
+Every gradient-driven stage (`qmmm` optimisation, `scan`, `neb`, `ts` and its frequencies) runs at GFN2-xTB by default, or at DFT/MM with `qm_engine: dft`. See [docs/qm-levels.md](docs/qm-levels.md) for which to use where, how the `dft_*` keys relate to the `sp_*` ones, why frequencies need a partial Hessian at DFT, and how to install and use GPU PySCF without breaking numpy.
+
+`qm_engine` and the `dft_*` / `sp_*` keys may be set on `qmmm.inputs` or on an individual `scan` / `neb` / `ts` section, which overrides it; everything else about the QM/MM setup (charge, multiplicity, force fields) always comes from `qmmm.inputs`.
 
 ## Running on Bunya
 
