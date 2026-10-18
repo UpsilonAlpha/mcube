@@ -166,6 +166,9 @@ scan_attack:            # mcube scan config.yaml --pdb R.pdb --section scan_atta
 | `start` | current distance | First value (Å) |
 | `end` | required | Last value (Å) |
 | `points` | 10 | Number of points, both ends included |
+| `atoms2`, `start2`, `end2`, `points2` | none | A second distance: makes the scan a 2D grid (e.g. nucleophile–C × proton–acceptor), visited row by row over coordinate 2 with coordinate 1 swept back and forth, so each point starts from a neighbour. PDBs are `scan_KK_XX.pdb`; the CSV gains `i1`, `i2`, `target2_A`, `distance2_A`. |
+| `resume` | `true` | Continue from an existing `scan_energies.csv` (skip finished points, start from the last structure) |
+| `extra_qm_residues` / `qm_residues` | qmmm values | QM region for this scan (e.g. add second-shell waters) |
 | `constraints` | none | Extra bonds held during the scan, `[[i, j]]` or `[[i, j, d]]` |
 | `opt_maxiter` | 200 | Optimisation steps per point. A point that runs out keeps its last geometry, is marked `converged: false`, and the scan continues. |
 | `monitor` | none | Distances `[[i, j], …]` reported at every point (CSV and results) |

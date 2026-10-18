@@ -78,7 +78,7 @@ def resolve_qm_region(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_fi
 # ==============================
 
 # Input keys that hold atoms; each atom may be an index or a "chain:resid:atom" selector
-ATOM_KEYS = ("actregion_origin", "opt_constraints", "atoms", "constraints", "hessian_atoms",
+ATOM_KEYS = ("actregion_origin", "opt_constraints", "atoms", "atoms2", "constraints", "hessian_atoms",
              "partial_hessian_atoms", "monitor")
 
 
