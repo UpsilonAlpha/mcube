@@ -537,6 +537,16 @@ Each intermediate is built in the shared box (D4) and optimised, then confirmed 
   - **H2b (concerted N-protonation, CphA-like):** O(HOH485)–C4x, 12 points × H(HOH485)···N1x from R to 1.05 Å, 7 points (84 points). Use the H that is closer to N1x in R.
   - One frame per hypothesis first: the R with the best attack geometry. 8 CPUs, 32 GB, 2-day limit; `resume` restarts a stopped grid.
 
+**D37 – 2D grids submitted.** (2026-10-18, user approved all three)
+- **Why:** a 1D O–C4x scan keeps the proton on the water, so it describes addition of a neutral water. The proton transfer has to be its own coordinate (Imhof 2009; Xu & Guo 2006). The low-energy route across each grid shows whether the proton moves before, during or after the attack, and to which base.
+- **Sections** `scan2d_*` in `config.yaml`; job script `Grid.slurm` (8 CPUs, 32 GB, 2 days); section script `scans/make_grid_sections.py`. Each grid starts from its optimised reactant and waits for that reactant task (`afterok`):
+  - **H1** `scan2d_H1_f00497` (job 30048856, after 30048252_1): O(E3094)–C4x → 1.45 Å, 13 points × H2(E3094)···O(E3166) → 1.0 Å, 6 points. Tests the E3094 → E3166 → Asp92 relay. H2 of E3094 was chosen because it was closer to E3166 (3.6 Å) in frame 497.
+  - **H2a** `scan2d_H2a_f00910` (job 30048857, after 30048252_5): O(HOH485)–C4x → 1.45 Å, 12 points × H2(HOH485)···Asp92 OD1 → 1.0 Å, 5 points. Tests Asp92 as the base for the Zn-bound water.
+  - **H2b** `scan2d_H2b_f00910` (job 30048858, after 30048252_5): same coordinate 1, 12 points × H1(HOH485)···N1x → 1.05 Å, 7 points. Tests concerted attack and N-protonation (CphA-like). H1 was chosen because it was closer to N1x (3.7–4.0 Å vs 4.8–5.1 Å).
+  - H2a and H2b share a reactant (frame 910, best H2 angle of 92°), so the two bases are compared on the same structure.
+- **Monitored:** C4x–N1x, Zn–O2x, C4x–O2x, Zn–O_nuc, the other water H, and for H1 the second relay proton (E3166 H1···Asp92 OD1) and the 6α-OH···O(E3094) H-bond.
+- If a job hits the time limit, resubmitting the same command resumes the grid.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
