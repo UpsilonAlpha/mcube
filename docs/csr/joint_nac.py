@@ -44,6 +44,17 @@ o2 = sel("resname mer and name O2x")
 od1 = sel("resid 91 and name OD1")   # mdtraj resid is 0-based: Asp92
 od2 = sel("resid 91 and name OD2")
 
+def find(_unused, key):
+    """(chain, resSeq, atomname) -> atom index, searching the loaded topology."""
+    ch, rs, nm = key
+    for a in top.atoms:
+        if a.name == nm and str(a.residue.resSeq) == rs:
+            return a.index
+    return None
+
+
+at_top = None
+
 waters = [r for r in top.residues if r.name in ("HOH", "WAT")]
 w_o = {r.index: [a.index for a in r.atoms if a.element.symbol == "O"][0] for r in waters}
 w_h = {r.index: [a.index for a in r.atoms if a.element.symbol == "H"] for r in waters}
@@ -77,18 +88,34 @@ for ri in near:
         hd = md.compute_distances(traj, [[hi, od1], [hi, od2]]) * 10
         hb |= (hd < MAX_HB).any(axis=1)
     both = attacks & hb
-    stats[ri] = (attacks.sum(), hb.sum(), both.sum(), dist[:, 0], angle, attacks)
+    # Where else could the proton go while the water is on the attack line?
+    # The substrate's own carboxylate and ring nitrogen are internal candidates.
+    other = {}
+    for label, key in (("mer O4x", ("C", "1", "O4x")), ("mer O3x", ("C", "1", "O3x")),
+                       ("mer N1x", ("C", "1", "N1x")), ("mer O1x", ("C", "1", "O1x"))):
+        k = find(at_top, key)
+        if k is None:
+            continue
+        m = np.zeros(n, dtype=bool)
+        for hi in w_h[ri]:
+            m |= (md.compute_distances(traj, [[hi, k]])[:, 0] * 10) < MAX_HB
+        if (attacks & m).any():
+            other[label] = int((attacks & m).sum())
+    stats[ri] = (attacks.sum(), hb.sum(), both.sum(), dist[:, 0], angle, attacks, other)
 
 if not stats:
     raise SystemExit("no non-zinc water ever reaches the attack geometry")
 
 res = {r.index: r for r in waters}
 print("\n%-16s %8s %8s %8s   %s" % ("water", "attack", "H->Asp92", "BOTH", "best O-C4x / angle"))
-for ri, (a, h, b, dd, an, _) in sorted(stats.items(), key=lambda kv: -kv[1][2]):
+for ri, (a, h, b, dd, an, _, other) in sorted(stats.items(), key=lambda kv: -kv[1][2]):
     r = res[ri]
     k = int(np.argmin(np.where((an > BD_LO) & (an < BD_HI), dd, 1e9)))
     print("%-16s %8d %8d %8d   %.2f A / %.0f deg (frame %d)"
           % ("%s%s" % (r.name, r.resSeq), a, h, b, dd[k], an[k], k))
+    if other:
+        print("%-16s   while attacking, a proton is also near: %s" % ("",
+              ", ".join("%s (%d frames)" % (lbl, c) for lbl, c in sorted(other.items(), key=lambda x: -x[1]))))
 
 if max(v[2] for v in stats.values()):
     ri = max(stats.items(), key=lambda kv: kv[1][2])[0]
