@@ -117,7 +117,7 @@ def run(args) -> Dict[str, Any]:
     print(f"[INFO] Active region {len(actatoms)} atoms; Hessian over {len(hessatoms)} atoms "
           f"(~{3 * len(hessatoms) * int(inputs.get('freq_npoint', 2))} gradients per frequency job)")
 
-    water = water_constraints(mm, actatoms) if inputs.get("rigid_water", True) else []
+    water = water_constraints(mm, actatoms, qm_atoms) if inputs.get("rigid_water", True) else []
 
     def constraints():
         # Fresh lists each call: ASH rewrites the indices to active-region indices in place

@@ -148,8 +148,8 @@ def run(args) -> Dict[str, Any]:
              f"({len(order)} grid points)" if two_d else "")
           + f"; active region {len(actatoms)} atoms")
 
-    # Held at their starting values throughout (waters rigid, extra pairs as given)
-    held = bond_constraints(water_constraints(mm, actatoms), fragment.coords) + \
+    # Held at their starting values throughout (MM waters rigid, extra pairs as given)
+    held = bond_constraints(water_constraints(mm, actatoms, qm_atoms), fragment.coords) + \
         bond_constraints(extra, fragment.coords)
 
     result: Dict[str, Any] = {

@@ -172,10 +172,17 @@ def check_in_active(pairs, actatoms, what: str = "constraint"):
         raise ValueError(f"{what} atoms {missing} are not in the active region")
 
 
-def water_constraints(mm, actatoms) -> List[list]:
-    """O-H and H-H pairs of active-region TIP3P waters (kept rigid during optimisation)."""
+def water_constraints(mm, actatoms, qm_atoms=()) -> List[list]:
+    """
+    O-H and H-H pairs of active-region TIP3P waters (kept rigid during optimisation).
+
+    Waters in the QM region are left free: freezing their O-H bonds would stop them
+    giving up or taking a proton (nucleophilic water, proton relays).
+    """
+    qm = set(int(a) for a in qm_atoms)
     return [[int(p[0]), int(p[1])] for p in
-            getwaterconstraintslist(openmmtheoryobject=mm, atomlist=actatoms, watermodel='tip3p')]
+            getwaterconstraintslist(openmmtheoryobject=mm, atomlist=actatoms, watermodel='tip3p')
+            if int(p[0]) not in qm and int(p[1]) not in qm]
 
 
 def optimizer_constraints(water_pairs, user_pairs, coords):
@@ -337,7 +344,7 @@ def run(args) -> Dict[str, Any]:
         # Optional bond constraints: [[i, j]] holds the current distance, [[i, j, d_Å]] sets it
         user_pairs = inputs.get("opt_constraints") or []
         check_in_active(user_pairs, actatoms, "opt_constraints")
-        constraints, constrainvalue = optimizer_constraints(water_constraints(mm, actatoms), user_pairs,
+        constraints, constrainvalue = optimizer_constraints(water_constraints(mm, actatoms, qm_atoms), user_pairs,
                                                             fragment.coords)
         if user_pairs:
             result["opt_constraints"] = bond_constraints(user_pairs, fragment.coords)
