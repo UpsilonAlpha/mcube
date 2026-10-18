@@ -767,6 +767,13 @@ No water satisfies distance and angle together. The ones H-bonded to Asp92 canno
 
 **Tools added:** `docs/csr/nuc_scout.py` (candidates and their proton acceptors in one structure) and `docs/csr/joint_nac.py` (the joint attack-and-donate test over a trajectory, including the relay).
 
+**D50 - 25 ps QM/MM MD from the corrected reactant, to settle whether M2 exists.** (2026-10-18, job 30085418, submitted 23:15 AEST)
+- **Purpose.** D49 found no frame in the original 50 ps trajectory where a water both reaches the Bürgi-Dunitz window and donates to Asp92, directly or through a bridge. But that trajectory had Asp92 coordinated to the zinc at 2.07-2.11 A and Lys226 already deprotonated, so it may be the wrong state. This resamples from `protdft/cleanR/ohH/QM_MM_optimized.pdb`, the resting state established in D48: two His, O01 as water, HOH485, **Asp92 free at 2.80 A, Lys226 neutral**.
+- **No constraints.** The `qmmm` stage applies no MM restraints during the QM/MM MD, so the metal site is described by xTB alone. Whether Asp92 returns to the zinc is therefore a *result* of this run, not an assumption. Worth noting that in CphA, Asp120 is both a zinc ligand and the general base, so its coordinating would not by itself rule out the mechanism; what matters is whether a water is positioned to use it.
+- **Settings:** 25 ps, 1 fs step, 300 K, frames every 50 steps (500 frames), 4 xTB threads bound to 4 physical cores on 8 allocated CPUs, 32 GB, 2-day limit. About 9.5 h at the measured 1.37 s/step. Scripts `docs/csr/mk_md2.py` and `docs/csr/Md2.slurm`; config backup `config.yaml.bak16`.
+- **The test afterwards** is the same `joint_nac.py` criterion, so the two trajectories are directly comparable. If frames satisfy both halves, the best one becomes the M2 reactant and the scan coordinates come from its actual distances. If none do, the Asp92-as-base mechanism is absent in this system and the hypothesis set needs rethinking rather than more scans.
+- This is the only simulation running, and the minimum that can settle M2.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
