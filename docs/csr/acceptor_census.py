@@ -45,10 +45,16 @@ w_o = {r.index: [a.index for a in r.atoms if a.element.symbol == "O"][0] for r i
 w_h = {r.index: [a.index for a in r.atoms if a.element.symbol == "H"] for r in waters}
 res_of = {r.index: r for r in waters}
 
-# Pick the water that attacks most often, unless one was named
+# Pick the water that attacks most often, unless one was named.
+# Slice frame 0 once: doing it inside the loop rebuilds the whole trajectory
+# object per water, which dominates the runtime for a box of 14000 waters.
+first = traj[0]
+prefilter = md.compute_distances(first, [[w_o[ri], c4] for ri in w_o])[0] * 10
+near_enough = {ri for ri, dd in zip(w_o, prefilter) if dd < 12.0}
+
 best, best_n, best_mask = None, 0, None
 for ri, oi in w_o.items():
-    if md.compute_distances(traj[0], [[oi, c4]])[0, 0] * 10 > 12:
+    if ri not in near_enough:
         continue
     if want is not None and str(res_of[ri].resSeq) != want:
         continue
