@@ -305,6 +305,18 @@ Under tier B, xTB/MM is used only to find approximate paths; every number that a
 in the paper comes from DFT/MM. Final energies on stationary points at
 wB97X-D3(BJ)/def2-TZVPD (D31).
 
+Tier B was chosen (D44). mcube gained `qm_engine: dft` for this; the cost figures and
+the three ways to make it affordable are in D44, and the level split below follows from them:
+
+| Purpose | Level |
+| --- | --- |
+| Paths (scans, NEB) | GFN2-xTB/MM |
+| Stationary-point geometries and frequencies | DFT/MM, meta-GGA + dispersion (e.g. r2SCAN-D4/def2-SVP), `dft_*` keys |
+| All reported energies | wB97X-D3(BJ)/def2-TZVPD on those geometries, `sp_*` keys |
+
+Frequencies use `partial_hessian_atoms` on the reacting subset: a full 119-atom numerical
+Hessian is 714 gradients and is not affordable at any DFT level we can reach.
+
 ### P-C. Convergence and validation (both expected by referees)
 
 - **QM region size**: R and TS at ~119, ~150 and ~200 atoms; show the barrier is converged. Also vary the active-region radius (8 -> 10 A).

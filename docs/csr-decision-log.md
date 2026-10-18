@@ -640,6 +640,19 @@ So the surviving problems are (a) no hydroxide and (b) a sphere two ligands beyo
 - Only **30053828** (D42, the clean four-coordinate proton check) is running. The user's GLP1R jobs are a separate project and were left alone.
 - A publication-grade protocol is proposed in `csr-neb-plan.md` under "Proposed protocol (P-series)", pending the user's decision on the level of theory.
 
+**D44 – Tier B chosen; mcube can now run DFT/MM gradients, but the cost needs a decision.** (2026-10-18)
+- **User decision:** tier B — xTB/MM to find paths, then all stationary points re-optimised at DFT/MM with DFT/MM frequencies and IRC, so every published number is DFT.
+- **mcube change (1938eed):** the gradient stages had no way to use DFT. `qmmm`, `scan`, `neb` and `ts` all built a `QMMMTheory` around GFN2-xTB, and PySCF appeared only in the single point. Added **`qm_engine: xtb|dft`**, with `dft_*` level keys that each fall back to their `sp_*` counterpart, and `dft_scf_dispersion` routed through ASH's own `dispersion` keyword so dispersion enters the gradient rather than being added afterwards. The single point now shares the same factory. Stub tests cover the engine switch, the fallback and the rejection of an unknown engine.
+- **The cost problem.** Measured, not estimated: job **29997628** took **9:52 and 10:36 h on 16 CPUs** for two DFT/MM single points plus one xTB/MM optimisation, i.e. **~4–5 h per DFT/MM energy** at ωB97X/def2-SVP, grid level 3, density fitting, 119 QM atoms. A gradient costs at least as much again.
+  - A stationary point needs tens of DFT/MM gradients even from a good xTB start, so **one DFT/MM optimisation is days to weeks on CPU**, and the protocol needs on the order of 12–36 stationary points (3 mechanisms x 3 structures x R/TS/P).
+  - **Numerical frequencies are worse.** A full QM-region Hessian is 3N x 2 gradients: 119 atoms = **714 gradients**. At 5 h each that is impossible, and even at 30 min each it is ~15 days per Hessian. **Partial Hessians (`partial_hessian_atoms`, already supported) are mandatory**, restricted to the reacting subset (~15–25 atoms, so 90–150 gradients).
+  - **`gpu4pyscf` is not installed** (checked: absent; PySCF 2.13.0, CPU only). ASH's `PySCFTheory` accepts `platform='GPU'`, so mcube can already request it through `dft_platform` once the package exists.
+- **Three ways to make tier B affordable**, which combine:
+  1. **GPU.** `gpu4pyscf` on Bunya's A100/H100 is typically 10–30x for this size, bringing a gradient to tens of minutes and an optimisation to ~1–2 days. The single biggest lever. **Needs the user's approval to install.**
+  2. **A cheaper functional for geometries.** ωB97X is a range-separated hybrid; a meta-GGA such as r2SCAN-D4 avoids exact exchange and is several times cheaper. Geometries and frequencies at r2SCAN-D4/def2-SVP, all reported energies at ωB97X-D3(BJ)/def2-TZVPD on those geometries. A standard and defensible split, and now expressible: `dft_functional: r2scan` with `sp_functional: wb97x`.
+  3. **A smaller QM region for the refinement.** 119 -> ~70 atoms (keep Zn, both His, Asp92, the Lys226 side chain, both waters, and only meropenem's β-lactam ring, carboxylate and 6α-OH) is roughly 4–8x for hybrid DFT. The QM-region convergence test (P-C) then runs at xTB level plus single points at the full region.
+- **Unchanged:** D42's job 30053828 is an xTB/MM optimisation with DFT single points — a screen to pick the reactant state, not a published number. Once the state is chosen it gets a DFT/MM optimisation under tier B.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
