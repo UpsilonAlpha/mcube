@@ -9,6 +9,13 @@
 #SBATCH --partition=gpu_cuda
 #SBATCH --qos=gpu
 #SBATCH --account=a_imb_ccbcd
+#SBATCH --mail-type=END,FAIL
+# No --mail-user here on purpose: this repo is public, so an address committed
+# here would be scraped. SLURM mails the submitting user's configured address by
+# default. If your cluster has no default, either submit with an explicit
+# address, which overrides the directives:
+#     sbatch --mail-user=you@example.com THIS_SCRIPT.slurm
+# or add a --mail-user line to your own working copy, which is not in git.
 #SBATCH --output=protdft/gpubench-%j.out
 #SBATCH --error=protdft/gpubench-%j.err
 

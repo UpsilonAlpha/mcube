@@ -60,3 +60,23 @@ per-step wall time in `optimization_energies.log` is the DFT/MM gradient cost:
 wB97X (comparable to the measured CPU cost), r2SCAN-D4 (the proposed geometry level),
 and r2SCAN-D4 with `GPU_pcgrad` to price moving the MM point-charge gradient onto the
 device. Requests one GPU on `gpu_cuda`, QOS `gpu`.
+
+## Email notifications
+
+Both job scripts carry `#SBATCH --mail-type=END,FAIL` but deliberately **no
+`--mail-user`**: this repository is public, so an address committed here would be
+scraped. SLURM mails the submitting user's configured address by default; if that
+is not set up, pass one at submit time, which overrides the directives:
+
+```bash
+sbatch --mail-user=you@example.com CleanR.slurm
+```
+
+The working copies under `/scratch/.../CSR_crystal_v2/` are not in git, so an
+address can be added there instead.
+
+For a job that is already queued or running, change it in place:
+
+```bash
+scontrol update JobId=<id> MailUser=you@example.com MailType=END,FAIL
+```
