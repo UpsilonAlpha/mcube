@@ -22,6 +22,14 @@ module load miniforge/26.1.0-0
 source $ROOTMINIFORGE/etc/profile.d/conda.sh
 conda activate ASH
 
+# cupy's cuda12x wheels need the CUDA 12 runtime, and Bunya has no CUDA 12 module
+# (only cuda11.7), so the libraries come from the nvidia-*-cu12 pip wheels. Put their
+# lib directories on the loader path, or cupy fails with
+# "ImportError: libcusolver.so.11: cannot open shared object file" (job 30054626).
+NVLIB=$(python -c "import site,glob,os; p=site.getsitepackages()[0]; print(':'.join(sorted(glob.glob(os.path.join(p,'nvidia','*','lib')))))")
+export LD_LIBRARY_PATH="$NVLIB${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+python -c "import cupy; cupy.zeros(3).sum(); print('cupy OK', cupy.__version__, cupy.cuda.runtime.getDeviceCount(), 'device(s)')"
+
 nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv
 START=$PWD/md_results/NVTtrajectory_lastframe.pdb
 
