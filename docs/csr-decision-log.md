@@ -683,7 +683,20 @@ So the surviving problems are (a) no hydroxide and (b) a sphere two ligands beyo
 - **Explicitly dropped:** DFT/MM optimisation and frequencies throughout, QM-region convergence sweeps, three structures per mechanism, umbrella sampling, and the 6DR8 control.
 - **Scratch is over quota: 327 GB against a 300 GB limit, and 859,781 files against a 1,000,000 file limit.** The file count matters as much as the size, because ASH leaves dozens of small working files per optimisation. `docs/csr/cleanup.sh` lists by default and deletes only with `--delete`. It removes ASH working files, geomeTRIC trajectories, the nine out-of-memory scans, the cancelled 2D grids, the GPU benchmark output, the superseded QM/MM probe directories and config backups beyond the newest three, and never touches `preprocess_results/`, `md_results/`, `qmmm_results/`, `config.yaml`, any `QM_MM_*.pdb`, `scan_energies.csv`, `scan_*.pdb` or `nac_frame*.pdb`. Verified on a mock tree: protected files survive, the rest goes.
 - **Open question:** "the CSR paper" is ambiguous. The only CSR-1 paper found is Pedroso *et al.* 2020 (PMID 32542533), which is characterisation and has no computational methods to replicate. D32 pairs EcoRV with **CphA (Xu & Guo 2006)**, and M2 assumes CphA is what was meant. To be confirmed.
-- The code-server terminal died again mid-task, so the cleanup has not been run and scratch is still over quota.
+- **Measured (listing only, nothing deleted yet): 66.7 GB reclaimable in `CSR_crystal_v2` alone**, which would take scratch from 327 GB to about 260 GB.
+
+  | Category | Size | Items |
+  | --- | --- | --- |
+  | out-of-memory / cancelled 1D scans | 61.4 GB | 10 dirs |
+  | geomeTRIC optimisation trajectories | 4.8 GB | 87 files |
+  | ASH working files | 328 MB | 381 files |
+  | cancelled 2D grids | 56 MB | 1 |
+  | superseded QM/MM probe directories | 52 MB | 2 |
+  | abandoned GPU benchmark | 25 MB | 1 |
+  | config backups beyond the newest 3 | small | 12 |
+
+  The killed scans are 1.3-16 GB each and are mostly geomeTRIC `HT.v_*.txt` history files at ~30 MB apiece - the same unbounded growth that caused the out-of-memory kills (D35). The two scans with usable output, `scan_H1_f00497` (165 MB) and `scan_H2_f00395` (177 MB), are excluded and keep their results. The script now also copies every killed run's `scan_energies.csv` into `scans/killed_runs_csv/` before removing the directory, so the record of how far each got survives at a few kB.
+- **CphA confirmed** by the user as the mono-zinc template alongside EcoRV, which is what M2 already assumed.
 
 ## Resources (see `running-on-bunya.md`)
 

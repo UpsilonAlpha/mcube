@@ -72,10 +72,21 @@ report "ASH working files (xtb_, gradient, pcgrad...)" . \
 report "geomeTRIC optimisation trajectories" . \
     -path ./preprocess_results -prune -o -path ./md_results -prune -o \
     -path ./qmmm_results -prune -o \
-    \( -name 'geometric_OPTtraj*.xyz' -o -name 'geometric_OPTtraj.tmp' \) -type f -print
+    \( -name 'geometric_OPTtraj*.xyz' -o -name 'geometric_OPTtraj.tmp' \
+       -o -name 'HT.v_*.txt' \) -type f -print
 
 # 3. Runs that were killed or cancelled and produced nothing usable.
-report "out-of-memory / cancelled 1D scans" \
+# Before removing the killed scans, keep their energy tables: a few kB each, and
+# the only record of how far those runs got.
+if [ -d scans ]; then
+    mkdir -p scans/killed_runs_csv
+    for d in scans/scan_H[0-9]_f*; do
+        case "$d" in */scan_H1_f00497|*/scan_H2_f00395) continue ;; esac
+        [ -f "$d/scan_energies.csv" ] || continue
+        cp -n "$d/scan_energies.csv" "scans/killed_runs_csv/$(basename "$d").csv" 2>/dev/null
+    done
+fi
+report "out-of-memory / cancelled 1D scans (CSVs kept)" \
     scans -maxdepth 1 -type d -name 'scan_H[0-9]_f*' \
     ! -name 'scan_H1_f00497' ! -name 'scan_H2_f00395' -print
 report "cancelled 2D grids" scans -maxdepth 1 -type d -name 'scan2d_*' -print
