@@ -547,6 +547,30 @@ Each intermediate is built in the shared box (D4) and optimised, then confirmed 
 - **Monitored:** C4x–N1x, Zn–O2x, C4x–O2x, Zn–O_nuc, the other water H, and for H1 the second relay proton (E3166 H1···Asp92 OD1) and the 6α-OH···O(E3094) H-bond.
 - If a job hits the time limit, resubmitting the same command resumes the grid.
 
+**D38 – All grids cancelled. The reactant state, not the hypotheses, is the problem.** (2026-10-18)
+- User challenge: do not spend simulation time without a plan. On inspecting the optimised reactants, H2a/H2b (30048857/8) and then H1 (30048856) were all cancelled. Nothing is running.
+- **The Zn is six-coordinate in every optimised reactant:**
+
+  | Ligand | Distance (Å) |
+  | --- | --- |
+  | His88 NE2 | 2.01–2.08 |
+  | His164 NE2 | 2.01–2.04 |
+  | Asp92 OD2 | 2.07–2.11 |
+  | O01 (water) | 1.99–2.13 |
+  | HOH485 (water) | 2.04–2.09 |
+  | meropenem O2x (carbonyl) | 2.16–2.31 (detached in f910) |
+
+- **There is no hydroxide in the model.** O01 carries two protons (H03 plus Lys226's HZ1, 1.00 Å) and Lys226 is neutral NH2; HOH485 is an intact water. Both Zn-bound oxygens are neutral water.
+- **Why every scan was ~+40 kcal/mol:** a neutral water attacking a carbonyl is intrinsically that expensive. The 1D scans were not testing a mechanism, they were measuring neutral-water addition. (The frozen-QM-water bug, fixed in 113de19, made it worse but was not the cause.)
+- **Why the Zn-bound waters cannot attack:** O01 and HOH485 sit *cis* to the carbonyl on the same metal, so their O–C4x–O2x angles are 31–45°. A nucleophile coordinated next to the carbon it must attack is on the wrong trajectory by construction. This is why D33 found no Zn-bound oxygen above 87°.
+- **Why H1's relay runs backwards:** E3094 has the right trajectory (4.40 Å, 101–109°) but donates both protons to bulk waters E2155 (1.74 Å) and E2493 (1.76 Å). E3166 *donates to* E3094, not the reverse, and sits 3.0–3.8 Å away. The nearest heteroatom to E3094 is meropenem's own 6α-OH O1x at 2.65 Å, which also donates to it. E3094 is a cluster water with no base except bulk solvent, so the submitted H1 grid would have dragged it 4.35 → 1.0 Å across space rather than transferring a proton.
+- **Diagnosis:** a mono-Zn B3 site with three protein ligands, two waters *and* the substrate carbonyl is over-coordinated; catalytic Zn in B3 MBLs is normally four- or five-coordinate with a hydroxide. The Michaelis complex we built is probably wrong, and D29/D30 (the Lys226 → O01 transfer, −13 to −16 kcal/mol at DFT) was computed *in* this over-coordinated state, so it does not settle the protonation question for the correct one.
+- **Next, before any more scans (P6):** establish the reactant state.
+  1. Check CSR-1's reported Zn coordination (crystal structure, B3 literature): how many waters, and is the carbonyl expected to coordinate?
+  2. Test whether HOH485 belongs in the Zn sphere. Already flagged as a revisit in D35.
+  3. Re-examine the protonation state once the coordination number is right: a five-coordinate Zn-OH⁻ with Lys226 as NH3⁺ is the canonical B3 reactant and was never tested, because the MD collapsed to Zn-OH2 from the six-coordinate start.
+  4. Only once a hydroxide nucleophile exists with a plausible trajectory do scans or grids make sense.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
@@ -561,3 +585,4 @@ Each intermediate is built in the shared box (D4) and optimised, then confirmed 
 - P3: one Zn vs two Zn; possibly other metals at the Zn site.
 - P4: Δ1 tautomer pathway (D19).
 - P5: DFT/MM energies along the converged xTB paths.
+- P6: establish the correct Zn coordination number and protonation state of the Michaelis complex (D38). Blocks all scans.
