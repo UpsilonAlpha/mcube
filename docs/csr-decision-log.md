@@ -519,6 +519,24 @@ Each intermediate is built in the shared box (D4) and optimised, then confirmed 
   2. 1D O–C4x scans do not make the proton move, so they give neutral-water addition energies. As Imhof and Guo did, the proton transfer must be a coordinate of its own: 2D scans (O–C4x × H···acceptor), or a scan from the state where the proton has already moved.
 - Revisit: after the probe, whether the reactant is a cis OH⁻/carbonyl Zn complex (then attack needs the OH⁻ to rotate over the carbonyl face, which a scan will show), and whether HOH485 belongs in the Michaelis complex.
 
+**D36 – Reactant optimisations; 2D scan support; QM waters were held rigid; 2D grid proposal.** (2026-10-18)
+- **Reactants:** H2 frame 775 cancelled. Each H1–H3 start frame is optimised to a reactant minimum R (sections `qmmm_R_H{1,2,3}_f*`: `skip_equilibrate`, no single point, `opt_maxiter` 500, 32 GB; H1 with E3094 and E3166 in the QM region). The scans will start from these.
+- **mcube:** `scan` now does 2D grids (`atoms2`, `start2`, `end2`, `points2`). Rows run over coordinate 2 and coordinate 1 is swept back and forth, so every point starts from a neighbour. A stopped scan resumes from `scan_energies.csv`.
+- **Bug found and fixed (113de19):** the optimisers froze the O–H bonds of every active-region TIP3P water, *including waters in the QM region*. MD was not affected (`rigidwater=False`).
+  - Consequence for D35: in the 1D scans HOH485 (H2) and E3094/E3166 (H1) could not lose a proton. The "no proton transfer" result and the +40–47 kcal/mol profiles are therefore upper bounds, not evidence against the relay.
+  - QM waters are now left free in `qmmm`, `scan` and `ts`. The reactant job was restarted with the fix (30047537 → 30048252).
+- **H-bond network in the start frames** (nearest acceptor of each H):
+  - E3094 (H1 nucleophile) donates both protons to bulk waters E2155 and E2493 (1.7–2.0 Å). It *accepts* H-bonds from the meropenem 6α-OH (H5x, 1.6–1.7 Å) and from E3166 H2 (1.7–2.5 Å). E3166 H1 donates to Asp92 OD1 (1.9–2.4 Å).
+  - So the E3094 → E3166 → Asp92 relay is not pre-organised. Every link runs the wrong way: the E3094 H points away from E3166 (3.5–4.0 Å). For the relay to work, E3094 must rotate, or E3166 must first give its proton to Asp92 and then take one from E3094.
+  - HOH485 (H2 nucleophile, Zn-bound, 1.98–2.17 Å): H2 donates to Asp92 OD1 (1.7–1.9 Å); H1 donates to the 6α-OH O1x or to Arg90 NH1. Its distance to N1x is 3.7–4.0 Å (H1) and 4.8–5.1 Å (H2). In the 1D scan the Asp92-bonded H swung to 2.3 Å from N1x.
+- **Proposed 2D grids** (not submitted; waiting for approval and for R):
+  - **H1:** O(E3094)–C4x from R (~3.9 Å) to 1.45 Å, 13 points × H(E3094)···O(E3166) from R to 1.0 Å, 6 points (78 points).
+    - Monitor H1(E3166)···Asp92 OD1 (second proton of the relay), H5x···O(E3094), plus C4x–N1x, Zn–O2x, C4x–O2x.
+    - If R still has E3094 pointing away from E3166, coordinate 2 forces a rotation first. Then decide whether to put E2155/E2493 in the QM region instead.
+  - **H2a (Asp92 as base):** O(HOH485)–C4x from R to 1.45 Å, 12 points × H2(HOH485)···Asp92 OD1 from R (~1.8 Å) to 1.0 Å, 5 points (60 points).
+  - **H2b (concerted N-protonation, CphA-like):** O(HOH485)–C4x, 12 points × H(HOH485)···N1x from R to 1.05 Å, 7 points (84 points). Use the H that is closer to N1x in R.
+  - One frame per hypothesis first: the R with the best attack geometry. 8 CPUs, 32 GB, 2-day limit; `resume` restarts a stopped grid.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
