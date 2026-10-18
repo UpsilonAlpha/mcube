@@ -268,6 +268,75 @@ ts_attack_s1:
 - It also gives a clean minimum-energy path, used for energy profiles and DFT single points.
 - Together, TS refinement and IRC turn "the highest NEB image" into a verified transition state for that elementary step.
 
+## Minimal protocol (M-series) — supersedes the P-series below
+
+Decided 2026-10-18 (D47): CPU only, and as little simulation as will test the three
+questions, staying with what the source papers actually did.
+
+**This reverses the tier B decision (D44).** Re-reading the methods settles it: both
+source papers used *semi-empirical* QM/MM as the primary method, with DFT only for
+validation on small models.
+
+| | Imhof 2009 (EcoRV) | Xu & Guo 2006 (CphA) | CSR-1, here |
+| --- | --- | --- | --- |
+| Primary QM | AM1/d/MM | SCC-DFTB/MM | **GFN2-xTB/MM** |
+| DFT used for | B3LYP on small model systems, as validation | DFT corrections | cluster-model validation + single points on the final path |
+| Stationary points optimised at DFT/MM? | no | no | **no** |
+
+GFN2-xTB is a later, better-parameterised method than either AM1/d or SCC-DFTB, so
+using it as the primary method is faithful to these papers rather than a compromise.
+Re-optimising every stationary point at DFT/MM (tier B) went beyond both of them, and
+its cost is what forced the GPU detour. `qm_engine: dft` stays available in mcube for
+a final check on one structure, but is not the route.
+
+### M1. Settle the reactant - in flight
+
+Job 30053828 (D42): proton on Lys226 versus on O01, in a clean four-coordinate
+sphere, xTB/MM geometries with DFT/MM single points. One number decides whether we
+have a hydroxide. Nothing else starts until it lands.
+
+### M2. One mechanism, one structure
+
+The precedent from both papers and our own D33/D41 geometry point the same way: a
+**non-metal-bound water attacking C4x with Asp92 (= Asp120) as the general base**,
+exactly the CphA case. Compute that one first, on the single best reactant:
+
+scan (2D: O-C4x x H...Asp92 OD1) -> NEB-CI -> TS optimisation -> IRC -> DFT/MM single
+points along the path. Everything xTB/MM except the last step.
+
+Only if it fails do the alternatives get the same treatment, in this order: Zn-bound
+water with Asp92 as base, then concerted N1x protonation.
+
+### M3. Answer the three questions by charge deletion
+
+The cheap part, and what the questions actually require. On the one converged path,
+recompute the energies with selected residues' charges zeroed:
+
+| Question | Residue | Region |
+| --- | --- | --- |
+| 1. Does Lys226 stabilise hydrolysis, as Lys92 does in EcoRV? | Lys226 | QM |
+| 2. Are the arginines involved? | Arg90, Arg229 | Arg90 QM, Arg229 MM |
+| 3. Is the bridging Asp92 involved? | Asp92 | QM (and M2 tests it as the base directly) |
+
+Imhof's EcoRV conclusion - Mg(II) activates the water, Asp90 takes the proton, Lys92
+positions the substrate and stabilises the intermediate - is the direct comparison for
+question 1.
+
+### M4. Validation, as the papers did it
+
+One cluster model (QM region only, no MM), xTB versus wB97X-D3(BJ)/def2-TZVPD, for the
+rate-determining step. This is Imhof's AM1/d-vs-B3LYP check, not a QM-region
+convergence sweep.
+
+### Deliberately not doing
+
+Dropped from the P-series as more than the questions need: DFT/MM optimisation and
+frequencies of every stationary point; QM-region size convergence sweeps; three
+structures per mechanism; umbrella-sampling free energies (Guo's PMF - only if a
+barrier must be compared with k_cat); and the 6DR8 triple-mutant control. Each is
+defensible, none is necessary to answer the three questions, and any can be added
+later if a referee asks.
+
 ## Proposed protocol (P-series) — publication grade
 
 Proposed 2026-10-18 (D43), awaiting a decision on the level of theory. The point is
