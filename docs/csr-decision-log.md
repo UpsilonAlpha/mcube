@@ -571,6 +571,30 @@ Each intermediate is built in the shared box (D4) and optimised, then confirmed 
   3. Re-examine the protonation state once the coordination number is right: a five-coordinate Zn-OH⁻ with Lys226 as NH3⁺ is the canonical B3 reactant and was never tested, because the MD collapsed to Zn-OH2 from the six-coordinate start.
   4. Only once a hydroxide nucleophile exists with a plausible trajectory do scans or grids make sense.
 
+**D39 – The source structure is an engineered double mutant; the model's zinc has only two protein ligands.** (2026-10-18)
+- Traced the model back to **PDB 6NC5** (`CSR_crystal/6NC5.pdb`): *Cronobacter sakazakii* metallo-β-lactamase, "HARLDQ motif", **ENGINEERED: YES, MUTATION: YES**, 2.07 Å.
+- **Sequence comparison** (`seqcmp.py`): our model is crystal numbering **+1**, 257/259 residues identical, with exactly **two mismatches**:
+  - crystal **His92 → model Gln93**
+  - crystal **His225 → model Lys226**
+  - So 6NC5 is a **Q93H/K226H double mutant** that restores the canonical B3 zinc-binding histidines, and our model is the wild-type RQK sequence (Arg90, **Gln93**, **Lys226**). The model build was right to revert them.
+- **6NC5 has six modelled zincs.** Three are surface artefacts on Glu/Asp/phosphate (ZN304–306, B = 56–70). The active site holds two:
+
+  | Site | Ligands | Note |
+  | --- | --- | --- |
+  | ZN301 | Asp91 OD2 1.95, **His92** NE2 2.01, **His225** NE2 2.04, HOH493 2.08 | four-coordinate |
+  | ZN302 | HOH485 1.90, His163 NE2 2.09, HOH493 2.14, His87 NE2 2.22 | four-coordinate |
+  | ZN303 | HOH485 1.88, HOH516 1.96, HOH504 2.13, acetate 2.79 | all water/acetate — artefact |
+
+  **HOH493 bridges ZN301 and ZN302**, the classic di-zinc bridging-hydroxide position.
+- **Two of ZN301's three protein ligands are the mutated residues.** In wild-type CSR-1 they are Gln93 and Lys226, which cannot bind zinc. So ZN301 exists only in the mutant, and wild-type CSR-1 being mono-zinc at the ZN302 site is consistent with this structure. Deleting ZN301 was correct.
+- **But the model's zinc then has only two protein ligands** (His88 and His164, i.e. crystal His87/His163). Matching distances confirm the identifications: our starting model's zinc sphere was HOH 1.90 / His164 2.09 / OH(O01) 2.14 / His88 2.22 / Asp92 2.80 — exactly ZN302's crystal distances. So:
+  - **our hydroxide O01 = crystal HOH493** (the former bridging water), and
+  - **our HOH485 (D:1) = crystal HOH485**, which in the crystal also bridges to the artefact ZN303.
+  - **Asp92 was *not* a ZN302 ligand in the crystal** (2.80 Å). It is a ZN301 ligand (1.95 Å). With ZN301 deleted it migrated onto our zinc (2.07–2.11 Å), which is what the user spotted earlier and what D28 restrained to 2.80 Å in MM only.
+- **This reframes question 3.** Asp92 may not be a general base at all: with its partner zinc absent, it may legitimately be a zinc ligand in wild-type mono-zinc CSR-1. Whether it coordinates or stays as a free base is now the central modelling question, not an incidental detail.
+- **And it explains the six-coordination.** A two-His zinc needs two or three more ligands. Ours took the hydroxide, HOH485, Asp92 *and* the substrate carbonyl. At least one of those does not belong.
+- **Open, for the reactant state:** which combination of {OH⁻(ex-493), HOH485, Asp92 OD2, substrate carbonyl} completes a chemically sensible four- or five-coordinate zinc, and is HOH485 (a bridge to an artefact metal in the crystal) part of the real site at all.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
