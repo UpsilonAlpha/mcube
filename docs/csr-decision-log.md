@@ -700,7 +700,8 @@ So the surviving problems are (a) no hydroxide and (b) a sphere two ligands beyo
 - **Cleanup run (user approved): 69.6 GB removed in 2650 files. Scratch went from 327 GB to 181 GB**, well under the 300 GB quota; files 859,781 to 855,717. Most of the space was `HT.v_*.txt` geomeTRIC history files rather than the scan directories themselves, which is why the swept total came out above the 66.7 GB estimate.
   - **The running cleanR job was protected.** It writes `xtb_.*`, `gradient` and `geometric_OPTtraj*` every step, so sweeping its directory would have crashed it or corrupted the optimisation. `cleanup.sh` gained a `SKIP` variable for exactly this, and the run used `SKIP="protdft/cleanR"`. Job 30053828 was still running afterwards with its working files intact.
   - Verified kept: `qmmm_results/QM_MM.dcd` (550 MB), `md_results/NVTtrajectory_lastframe.pdb`, both surviving scans' `scan_energies.csv`, and all ten killed runs' CSVs now in `scans/killed_runs_csv/`.
-  - Not done: `CSR_crystal`, `CSR_ligand` and `CSR_hydrolysed` have not been swept, and the GPU python packages (~2-3 GB in HOME, which is at 40/50 GB) are still installed.
+  - **The other three run directories were then listed and are not worth sweeping:** `CSR_crystal` 995 MB (mostly 953 MB of geomeTRIC trajectories from the superseded v1 run), `CSR_ligand` 90 MB, `CSR_hydrolysed` nothing. About 1.1 GB in total against 119 GB of headroom, and `CSR_ligand` / `CSR_hydrolysed` are the reference runs whose `MM.slurm` defined the correct pipeline order, so their records are worth more than the space. Left alone.
+  - Still installed: the GPU python packages, ~2-3 GB in HOME, which is at 40/50 GB. Uninstall commands are in `cleanup.sh` if HOME gets tight.
 
 ## Resources (see `running-on-bunya.md`)
 
