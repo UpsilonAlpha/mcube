@@ -806,6 +806,37 @@ The relay fails too. HOH3094's protons still point at bulk waters (E2155 1.70, E
 
 **Proposed next test (cheap and decisive), ahead of any more mechanism work:** from the md2 last frame, two constrained xTB/MM optimisations with Zn-Asp92 OD2 held at 2.10 and at 2.80 A, everything else free, then one DFT/MM single point on each. Two single points, about 9-10 h in one CPU job. If DFT prefers Asp92 off the metal while xTB prefers it on, the over-coordination is confirmed and the model needs changing before any path is computed. This is M4 (validation) brought forward ahead of M2, because M2's answer now depends on it.
 
+**D52 - Reconsidering the mechanism: the zinc activates the electrophile, and the proton leaves down a water wire.** (2026-10-19, user: "step back and reconsider what mechanism a six-coordinate mono-zinc site could actually support")
+
+**The measurement that settles it** (`acceptor_census.py`, md2 trajectory). Instead of asking "does the attacking water donate to Asp92", ask what is within hydrogen-bond reach of its protons at all, during the 210 frames where it is genuinely on the Bürgi-Dunitz line:
+
+| Acceptor | Frames (of 210) | Closest |
+| --- | --- | --- |
+| HOH2155 O | **210** | **1.51 A** |
+| HOH2493 O | **207** | **1.48 A** |
+
+Nothing else, out of 36 O/N atoms within 8 A. No Asp92, no substrate atom, no Lys226, no histidine. Two waters, in essentially every attacking frame, at H-bond lengths short enough to be near-symmetric. **That is a proton wire, and it is persistent rather than transient.**
+
+**Why a six-coordinate mono-zinc site implies this mechanism.** Coordination number sets the zinc's job. A four-coordinate zinc polarises one water enough to deprotonate it near neutral pH, which is the carbonic-anhydrase and canonical-MBL picture: the metal *makes the nucleophile*. Six-coordinate, the same charge is spread over more ligands, each is polarised less, and the aqua pKa rises - which is exactly what D48 measured, with the proton preferring the water over Lys226 by only 5.2 kcal/mol instead of strongly favouring hydroxide. What the site does have is the **substrate carbonyl bound at 2.25 A**, so the metal is a Lewis acid **activating the electrophile**. A metal that activates the electrophile does not need to make the nucleophile, and cannot easily do both: its two aqua ligands sit *cis* to the bound carbonyl and are therefore 33-38 degrees off the attack trajectory, which is a geometric consequence of the coordination, not an accident of our structures. This is the "promoted-water" pattern of carboxypeptidase A rather than the "nucleophilic-metal" pattern of carbonic anhydrase.
+
+**The nucleophile then has to come from outside the coordination sphere, and its proton has to go somewhere that is not the metal site.** Both halves are satisfied here: HOH3094 attacks from the Bürgi-Dunitz line in 210 of 500 frames, and its protons are permanently engaged with HOH2155 and HOH2493 leading into bulk.
+
+**This explains every failure so far, and they were all the same failure.** The 1D scans gave monotonic +40 kcal/mol rises because the proton had nowhere to go: the acceptors were not in the QM region, and a bug froze the QM waters anyway (fixed in 113de19). The H1 grid drove the proton at E3166/Asp92, 4.35 A away. `joint_nac.py` tested only Asp92. In each case the nucleophile was right and the **acceptor was wrong**.
+
+**Consequences for the three questions.**
+- **Q3, Asp92.** Likely *not* the general base: it is a zinc ligand at 2.09 A and nothing donates to it. If that holds, CSR-1 differs from CphA, where Asp120 is both ligand and base - a real result rather than a null one, and one the RQK substitutions could plausibly explain.
+- **Q1, Lys226.** It is neutral in the resting state, having given its proton to O01. Its likely role is electrostatic stabilisation of the developing oxyanion, which is precisely Imhof's conclusion for Lys92 in EcoRV. Charge deletion tests it.
+- **Q2, arginines.** Unchanged: Arg90 holds the 6-alpha-OH, Arg229 by charge deletion.
+
+**Revised M2, from the measured geometry rather than from a hypothesis:**
+- QM region: add **HOH3094, HOH2155 and HOH2493** (`extra_qm_residues`), so the wire is quantum-mechanical and the proton can actually leave.
+- Start frame: an attacking frame, e.g. **frame 209** (O-C4x 3.41 A, angle 99 deg), optimised to a reactant first.
+- Coordinate 1: **O(3094)-C4x**, from ~3.4 A to 1.45 A.
+- Coordinate 2: **H(3094)...O(2155)**, from ~1.5 A to 1.0 A - already an H-bond, so this is a genuine transfer coordinate and not a translation.
+- Monitor C4x-N1x, Zn-O2x, C4x-O2x, the second wire H-bond to HOH2493, and Zn-Asp92.
+
+**Still open, and worth stating in any write-up:** whether GFN2-xTB over-coordinates the zinc (D51). If the true site is four- or five-coordinate with Asp92 free, the CphA route returns and this mechanism is the wrong one. The validation is cheap and should be done before the path is published, but it no longer blocks setting M2 up, because the water wire is present in the structures either way.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
