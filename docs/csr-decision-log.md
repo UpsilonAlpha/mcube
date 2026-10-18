@@ -703,6 +703,43 @@ So the surviving problems are (a) no hydroxide and (b) a sphere two ligands beyo
   - **The other three run directories were then listed and are not worth sweeping:** `CSR_crystal` 995 MB (mostly 953 MB of geomeTRIC trajectories from the superseded v1 run), `CSR_ligand` 90 MB, `CSR_hydrolysed` nothing. About 1.1 GB in total against 119 GB of headroom, and `CSR_ligand` / `CSR_hydrolysed` are the reference runs whose `MM.slurm` defined the correct pipeline order, so their records are worth more than the space. Left alone.
   - Still installed: the GPU python packages, ~2-3 GB in HOME, which is at 40/50 GB. Uninstall commands are in `cleanup.sh` if HOME gets tight.
 
+**D48 - M1 result: the transfer is still favourable, but by a third of what the degraded geometry said; and the Zn-bound oxygens still cannot attack.** (2026-10-18, job 30053828, COMPLETED in 9:51:17)
+
+**Energies** (wB97X-D3(BJ)/def2-SVP//xTB/MM, identical sphere constraints on both states, both optimisations converged):
+
+| State | `sp_energy_disp` (Eh) | xTB `opt_energy` (Eh) |
+| --- | --- | --- |
+| `qmmm_cleanR_lysH` (proton on Lys226, O01 = OH-) | -5070.611564 | -423.530261 |
+| `qmmm_cleanR_ohH` (proton on O01, O01 = H2O) | -5070.619894 | -423.535511 |
+
+**dE = E(ohH) - E(lysH) = -5.23 kcal/mol at DFT** (-3.29 at xTB).
+
+- **Still negative, so the resting state is Zn-OH2 with neutral Lys226.** The model genuinely has no hydroxide, and H4 is not reinstated.
+- **But the driving force is about a third of D30/D35** (-13.1 and -15.5 kcal/mol). So roughly two-thirds of that was an artefact of the degraded six-coordinate geometry, where Asp92's charge sat on the metal and the carbonyl competed for it. D35's "the Lys226 transfer is real at DFT" stands, but the margin was overstated.
+- **-5.2 kcal/mol is small enough to treat with care.** It is within reach of def2-SVP basis error, the imposed constraints, and the absence of entropy, sampling and explicit environment relaxation. The hydroxide state is not comfortably excluded, only disfavoured.
+
+**Final structures** (`protdft/cleanR/*/QM_MM_optimized.pdb`, both five-coordinate):
+
+| | lysH | ohH |
+| --- | --- | --- |
+| Zn-O01 | **1.83** | **1.99** |
+| Zn-His88 NE2 | 1.99 | 1.94 |
+| Zn-His164 NE2 | 2.02 | 1.98 |
+| Zn-HOH485 O | 2.04 | 1.97 |
+| Zn-Asp92 OD2 | 2.80 (constrained) | 2.80 (constrained) |
+| Zn-mer O2x | 2.90 (constrained) | 2.90 (constrained) |
+| O01 hydrogens | **1** (H03) | **2** (H03 + HZ1) |
+| Lys226 NZ hydrogens | **3** (NH3+) | **2** (neutral) |
+
+- The proton pinning did what it was meant to: in ohH, HZ1 is on O01 and NZ keeps only HZ2/HZ3.
+- **Zn-O01 lengthens 1.83 -> 1.99 A on protonation**, the textbook hydroxide-to-water signature, which is a good internal consistency check on the two states.
+- **The decisive result is geometric, and it is independent of the protonation question: even in a clean four-coordinate sphere the Zn-bound oxygens cannot attack.** O01-C4x-O2x is **38-40 degrees** and HOH485 is **65 degrees**, nowhere near the Bürgi-Dunitz window of 95-120. This confirms D41 from an optimised structure rather than MD frames.
+
+**Consequences for the plan.**
+- **H2, H3 and H4 are geometrically dead**, whatever the protonation state: a nucleophile coordinated cis to the carbonyl on the same metal is on the wrong trajectory by construction.
+- **M2 is the only live route** and is now well supported: a non-metal-bound water attacking C4x with Asp92 as general base, exactly CphA (Xu, Xie & Guo 2006). D33 found the second-shell water E3094 is the only species on the Bürgi-Dunitz line; this result removes its competitors.
+- M1 is therefore complete. Next is M2 on the single best reactant, all at xTB/MM with DFT/MM single points on the final path.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
