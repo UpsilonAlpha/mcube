@@ -63,10 +63,18 @@ r = res_of[best]
 print("attacking water: %s%s, on the Burgi-Dunitz line in %d of %d frames\n"
       % (r.name, r.resSeq, best_n, n))
 
-# Every heavy atom that is ever close to either proton during those frames
+# Every heavy atom that is ever close to either proton during those frames.
+# Restricted to the local environment: pairing against all ~15000 waters in the
+# box is both slow and pointless, since nothing beyond the first shell can take
+# the proton.
 sub = traj[best_mask]
-heavy = [a.index for a in top.atoms
-         if a.element.symbol in ("O", "N") and a.residue.index != best]
+oi = w_o[best]
+local = md.compute_distances(sub[0], [[oi, a.index] for a in top.atoms
+                                      if a.element.symbol in ("O", "N")])[0] * 10
+heavy = [a.index for a, dd in zip([a for a in top.atoms
+                                   if a.element.symbol in ("O", "N")], local)
+         if dd < 8.0 and a.residue.index != best]
+print("%d O/N atoms within 8 A of the attacking oxygen\n" % len(heavy))
 counts = collections.Counter()
 closest = {}
 for hi in w_h[best]:
