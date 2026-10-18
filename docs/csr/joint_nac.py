@@ -77,27 +77,60 @@ for ri in near:
         hd = md.compute_distances(traj, [[hi, od1], [hi, od2]]) * 10
         hb |= (hd < MAX_HB).any(axis=1)
     both = attacks & hb
-    stats[ri] = (attacks.sum(), hb.sum(), both.sum(), dist[:, 0], angle)
+    stats[ri] = (attacks.sum(), hb.sum(), both.sum(), dist[:, 0], angle, attacks)
 
 if not stats:
     raise SystemExit("no non-zinc water ever reaches the attack geometry")
 
 res = {r.index: r for r in waters}
 print("\n%-16s %8s %8s %8s   %s" % ("water", "attack", "H->Asp92", "BOTH", "best O-C4x / angle"))
-for ri, (a, h, b, dd, an) in sorted(stats.items(), key=lambda kv: -kv[1][2]):
+for ri, (a, h, b, dd, an, _) in sorted(stats.items(), key=lambda kv: -kv[1][2]):
     r = res[ri]
     k = int(np.argmin(np.where((an > BD_LO) & (an < BD_HI), dd, 1e9)))
     print("%-16s %8d %8d %8d   %.2f A / %.0f deg (frame %d)"
           % ("%s%s" % (r.name, r.resSeq), a, h, b, dd[k], an[k], k))
 
-best = max(stats.items(), key=lambda kv: kv[1][2])
-if best[1][2] == 0:
-    print("\nNo frame has both halves at once.")
-    print("The attacking water and the water that donates to Asp92 are never the same")
-    print("molecule, so a one-water general-base step is not available from this")
-    print("trajectory: either a relay carries the proton, or the site must reorganise.")
+if max(v[2] for v in stats.values()):
+    ri = max(stats.items(), key=lambda kv: kv[1][2])[0]
+    print("\n%s%s satisfies both directly -- use one of those frames as the M2 reactant."
+          % (res[ri].name, res[ri].resSeq))
+    raise SystemExit
+
+print("\nNo frame has both halves at once: the attacking water and the water that")
+print("donates to Asp92 are never the same molecule.")
+
+# Relay: the attacking water hands its proton to a bridging water that is itself
+# donating to Asp92. Two transfers, so both H-bonds must exist in the same frame.
+print("\nTesting the relay: attacker -> bridging water -> Asp92")
+bridges = {}
+for ri in near:
+    hb = np.zeros(n, dtype=bool)
+    for hi in w_h[ri]:
+        hd = md.compute_distances(traj, [[hi, od1], [hi, od2]]) * 10
+        hb |= (hd < MAX_HB).any(axis=1)
+    if hb.any():
+        bridges[ri] = hb
+print("%d of those waters donate to Asp92 in at least one frame" % len(bridges))
+
+best = (0, None, None, None)
+for ri, vals in stats.items():
+    attacks = vals[5]
+    for bi, bhb in bridges.items():
+        if bi == ri:
+            continue
+        reach = np.zeros(n, dtype=bool)
+        for hi in w_h[ri]:
+            hd = md.compute_distances(traj, [[hi, w_o[bi]]]) * 10
+            reach |= hd[:, 0] < MAX_HB
+        joint = attacks & reach & bhb
+        if joint.sum() > best[0]:
+            best = (int(joint.sum()), ri, bi, np.flatnonzero(joint))
+if best[0] == 0:
+    print("No frame has attacker, bridge and base aligned at once either.")
+    print("The relay is not pre-organised anywhere in 50 ps, so whichever route is")
+    print("taken, the model must include the reorganisation that sets it up.")
 else:
-    ri, (a, h, b, dd, an) = best
-    frames = "see above"
-    print("\n%s%s satisfies both in %d frames -- use one of those as the M2 reactant."
-          % (res[ri].name, res[ri].resSeq, b))
+    cnt, ri, bi, frames = best
+    print("%s%s -> %s%s -> Asp92 aligned in %d frames; first few: %s"
+          % (res[ri].name, res[ri].resSeq, res[bi].name, res[bi].resSeq,
+             cnt, ", ".join(str(int(f)) for f in frames[:10])))
