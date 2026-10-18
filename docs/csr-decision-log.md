@@ -609,6 +609,22 @@ Each intermediate is built in the shared box (D4) and optimised, then confirmed 
 - **Also noted:** a numbering discrepancy for the lysine, Lys254 (PDB titles) vs Lys263 (Krco *et al.* review, *Front Chem* 2023;11:1196073, PMID 37408556), unresolved. GOB-18, not GOB-1, is the mono-zinc B3 precedent, and its single zinc sits in the **Zn2** site (PDB 5K0W); the sister B3-RQK enzyme SPR-1 is suggested to be mono-zinc at rest with a di-zinc centre forming on substrate binding (not established).
 - **Nothing is running. No further scans until the reactant state is settled (P6).**
 
+**D41 – Corrections to D40 (user). The reactant we built was right; the MD degraded it.** (2026-10-18)
+Three claims in D40 were wrong or overstated. The user corrected all three, and the corrected diagnosis is sharper and more useful.
+
+1. **"The zinc is inference, not literature" — wrong.** The zinc position is crystallographic. Our zinc sits at 6NC5's **ZN302**, and ZN302's own ligands, His87 and His163 (our His88/His164), are **not** among the mutated residues: 6NC5's mutations are at 92 and 225, both **Zn2**-site residues. So the zinc occupies a site whose coordination is wild type, at crystallographic distances (2.09, 2.22 Å). What is true is only that the wild-type crystal forms did not retain zinc — verified directly: **6DN4 reports `nonpolymer_entity_count: 0`, zero ligand atoms, no ZN** (1.99 Å, 347 solvent atoms); 6DQ2 has one unnamed 10-atom non-polymer and no ZN. Since the enzyme is active it must bind zinc, so apo crystals point to crystallisation conditions and the reduced affinity the paper describes, not to an absent site. (Note also that "HARLDQ motif" in the PDB titles names the *parent* enzyme's motif; 6NC5's coordinates read H-A-R-L-D-**H** at 87–92, confirming the Q→H mutation.)
+2. **"Over-coordinated" — wrong, as stated.** Coordination number counts all ligands. Canonical B3 Zn1 is four-coordinate as **three His + hydroxide**. CSR-1's Zn1 is **H-R-H**: only two usable His, because Arg118 replaces the third. So **two His + hydroxide + one water is the canonical-equivalent four-coordinate sphere**, and **HOH485 is justified** — it fills the slot the missing third His would occupy. HOH485 is not the problem.
+3. **"The non-truncated form is the inactive form" — overstated.** This was relayed from a literature summary and not verified. Reduced activity in a truncation assay does not establish that the mature form is catalytically dead, and the non-truncated form is the more faithful model of the natural enzyme. Keeping it is a defensible choice. The one caveat that survives is narrow and structural: residues **1–14 are absent from 6NC5** (which covers 15–273) and so have no experimental coordinates, yet Ala12, Pro13, Tyr15, Leu17, Phe18, Glu19 and Trp21 sit 9–13 Å from the zinc. Modelled-in backbone near the active site is worth knowing about; it is not grounds for truncating.
+
+**Corrected diagnosis.** The reactant as *built* was correct and canonical: Zn + His88 + His164 + **OH⁻ (ex-HOH493)** + **H2O (HOH485)**, four-coordinate, with one hydroxide nucleophile. The **QM/MM MD then degraded it** in three ways:
+  - **Lys226 donated HZ1 to O01**, turning the hydroxide into water, so the model lost its nucleophile entirely (D29);
+  - **Asp92 OD2 migrated onto the metal**, 2.80 Å in the crystal → **2.07–2.11 Å**, becoming a fifth ligand it is not in the crystal;
+  - **the substrate carbonyl came inner-sphere** at 2.16–2.31 Å, a sixth.
+
+So the surviving problems are (a) no hydroxide and (b) a sphere two ligands beyond canonical, both arising *during* the simulation rather than from the build. (c) The geometric result is unchanged: neither Zn-bound oxygen reaches the Bürgi–Dunitz angle (31–45°), and only a non-metal-bound water does (D33).
+
+**The D30/D35 DFT check needs redoing.** It found the Lys226 → O01 transfer favourable by 13–16 kcal/mol, but it was computed in the already-degraded six-coordinate geometry, where Asp92's negative charge sits on the metal and the carbonyl competes for it. **Next test (cheap, decisive):** DFT single points comparing proton-on-Lys226 vs proton-on-O01 in a *clean* four-coordinate sphere — Asp92 held at its crystallographic 2.80 Å, carbonyl not inner-sphere. If the transfer is not favourable there, the hydroxide survives, H4 is reinstated and H1/H3 become testable with a real nucleophile.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
@@ -623,4 +639,4 @@ Each intermediate is built in the shared box (D4) and optimised, then confirmed 
 - P3: one Zn vs two Zn; possibly other metals at the Zn site.
 - P4: Δ1 tautomer pathway (D19).
 - P5: DFT/MM energies along the converged xTB paths.
-- P6: establish the correct Zn coordination number and protonation state of the Michaelis complex (D38). Blocks all scans.
+- P6: establish whether the Lys226 -> OH- transfer survives in a clean four-coordinate sphere (D41). Blocks all scans.
