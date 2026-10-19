@@ -866,6 +866,26 @@ A literature sweep, with the two load-bearing papers verified directly through E
 - **The cost obstacle, quantified.** The QM region is 119 atoms and breaks down as meropenem 51, Arg90 18, Lys226 16, His88 11, His164 11, Asp92 6, HOH485 3, O01 2, Zn 1. A DFT/MM gradient on all 119 costs about as much as the measured 4-5 h single point, so a full optimisation is days to weeks - the same wall that drove the abandoned GPU detour. **The coordination question does not need all 119 atoms.** First shell plus a truncated substrate - Zn, both imidazoles, the Asp92 acetate, both waters, and meropenem cut back to the beta-lactam ring, carbonyl, N1x and C3 carboxylate - is roughly 50-55 atoms, where hybrid DFT is several times cheaper and an optimisation becomes a job rather than a campaign. This is also precisely the model-system validation Imhof used.
 - Job **30119957** (xTB scan along Zn-Asp92 with four DFT single points) is left running: its xTB half still measures where xTB puts Asp92, which is one side of the comparison either way, and it costs nothing extra now.
 
+**D55 - Neither wB97X-3c nor g-xTB is the right tool here; r2SCAN-D4/def2-TZVP is, and it is already available.** (2026-10-19)
+
+Both suggestions were investigated properly and the two blocking facts were verified against primary sources rather than taken from a search summary.
+
+**g-xTB is blocked today, for a reason outside our control.** It is real and attractive: ChemRxiv preprint June 2025, GPL-3.0 at `github.com/grimme-lab/g-xtb` with precompiled binaries, WTMAD-2 of 9.3 kcal/mol on GMTKN55 at about 1.5x GFN2-xTB cost, and **ASH already supports it** as `xTBTheory(xtbmethod='GXTB')` with analytic gradients since v2.0.0. But the ASH documentation states plainly: **"Note that electrostatic embedding QM/MM with g-XTB will not yet work."** g-xTB does not implement point-charge embedding (`$pcem`). Our entire QM/MM setup is electrostatic embedding, so g-xTB cannot be the QM level. Worth revisiting once the method lands in tblite proper, which the developers say is the plan.
+
+**wB97X-3c is viable on cost but is the wrong method for a zinc geometry.**
+- The good news first: it does **not** use VV10. The composite replaces wB97X-V's non-local term with **D4** (a1 0.2464, a2 4.737, **s8 = 0**, s9 1.0), so none of the cost problem that killed wB97M-V applies (Müller, Hansen, Grimme, *J Chem Phys* 2023, 158:014103).
+- But the authors' own benchmarks report it is **less accurate for 3d transition-metal geometries (TMC32)** than for main-group bonds, attributed to the large-core ECPs, and worse for open-shell metal systems (ROST61). For geometry work they point towards r2SCAN-3c. **There is no published endorsement of wB97X-3c for zinc geometry optimisation** - which is exactly and only what we need it for.
+- And it is not available: **vDZP is not in PySCF and not on the Basis Set Exchange**; it would mean converting basis and large-core ECPs from `grimme-lab/wB97X-3c` plus supplying the refitted D4 parameters, each piece needing validation against an ORCA reference. Days of work, for a method its own authors flag as weaker at our target property. Native support exists in ORCA >= 6.0.0, if we ever want it for energies.
+
+**What we will use instead: r2SCAN-D4/def2-TZVP.** Checked directly in our environment: **`r2scan` is present in PySCF's libxc** (confirmed as a meta-GGA) and **def2-TZVP loads for Zn**. ASH's `PySCFTheory` already accepts `dispersion='D4'`. So this needs no basis conversion, no new software and no validation of hand-assembled pieces. It is also the right class of method: a meta-GGA has no exact exchange, so it is several times cheaper than wB97X at the same basis, and r2SCAN is what the wB97X-3c authors themselves recommend for geometries. Reported energies can still be wB97X-D3(BJ)/def2-TZVPD single points on the r2SCAN geometries, which is the usual and defensible split. Note this is r2SCAN-D4/def2-TZVP, **not** the r2SCAN-3c composite, whose mTZVPP basis has the same availability problem as vDZP.
+
+**Adopting the user's design.** Optimise at DFT/MM **straight from the restrained MM structure**, with no xTB QM/MM equilibration, so the xTB bias never reaches the geometry. To make it a real test rather than a local relaxation, run it from **two different starting coordinations** and compare both the final geometries and their energies:
+  1. `md_results/NVTtrajectory_lastframe.pdb` - the restrained MM end point, carbonyl at 1.94 A, Asp92 at 2.79 A;
+  2. `protdft/cleanR/ohH/QM_MM_optimized.pdb` - the four-coordinate state, Asp92 at 2.80 A, carbonyl at 2.90 A.
+A local optimisation cannot leave its basin, so starting from one geometry alone would prove nothing.
+
+**Timing probe first.** Cost at this size has surprised us twice, so before committing to two multi-day optimisations, a three-step run measures the r2SCAN-D4/def2-TZVP gradient cost on the real 119-atom QM region. If it is tens of minutes the full optimisations are a job each; if it is hours we fall back to the reduced ~50-atom model described in D54.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
