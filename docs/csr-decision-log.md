@@ -909,6 +909,31 @@ That is a relaxed-coordinate question, and it is what job 30119957 is already as
   - **`dftopt_from6c`** from `protdft/md2_ohH/QM_MM_lastframe.pdb` - Asp92 2.09 A, carbonyl 2.25 A. This is **xTB's own preferred geometry, not the restrained-MM artefact**, so the two-basin comparison survives the user's objection while dropping the structure they objected to.
 Neither has constraints: where Asp92 and the carbonyl end up, and which is lower in energy, is the result.
 
+**D57 - xTB says Asp92 is firmly bound; DFT/MM optimisation at the full QM region is unaffordable; waiting for the DFT single points instead.** (2026-10-19)
+
+**Finding: the xTB relaxed scan along Zn-Asp92 OD2 (job 30119957) is complete, all nine points converged.**
+
+| Zn-OD2 (A) | rel (kcal/mol) | Zn-His88 | Zn-His164 | O01-C4x |
+| --- | --- | --- | --- | --- |
+| 2.05 | 0.00 | 2.100 | 2.040 | 3.619 |
+| **2.175** | **-0.12** | 2.088 | 2.022 | 3.621 |
+| 2.30 | +0.51 | 2.079 | 2.006 | 3.627 |
+| 2.425 | +1.60 | 2.072 | 1.992 | 3.632 |
+| 2.55 | +2.95 | 2.065 | 1.979 | 3.637 |
+| 2.80 | **+5.72** | 2.059 | 1.958 | 3.664 |
+| 2.925 | +7.14 | 2.060 | 1.946 | 3.669 |
+| 3.05 | +8.46 | 2.068 | 1.937 | 3.695 |
+
+**GFN2-xTB puts the minimum at 2.18 A and charges 5.7 kcal/mol to pull Asp92 out to its crystallographic 2.80 A**, 8.5 to 3.05. The curve is smooth and monotonic past the minimum, with no second well - so at this level Asp92 is a genuine zinc ligand, not a loosely associated one. The two histidines shorten as Asp92 leaves (2.10 to 2.07 and 2.04 to 1.94), the zinc compensating for lost charge donation, and the O01-C4x attack distance barely moves (3.62 to 3.70), so opening this particular coordination site does not by itself bring the nucleophile closer.
+
+**Cost measured, and it rules out the planned DFT optimisations.** The probe (job 30123101) completed **one** optimisation step - 22 SCF cycles plus the gradient - in **about two hours** at r2SCAN/def2-TZVP on the 119-atom QM region (2192 basis functions, 16 cores). So roughly **2 h per gradient**: a 250-step optimisation is three weeks, and even 25 steps is two days. The probe was cancelled once this was clear; it had served its purpose.
+
+**Decision: do not submit the two DFT optimisations yet, and wait for the single points already running.** The instruction was to fall back to a reduced model if the rate was too slow, but there is a better move available first. Job 30119957 is now computing **wB97X-D3(BJ)/def2-SVP single points at four points of the xTB scan** (2.05, 2.425, 2.80, 3.05 A). That gives the DFT energy as a function of Zn-Asp92 distance **on the same geometries**, which is exactly the xTB-versus-DFT comparison we want, for about 18 h of compute that is already underway:
+- if the DFT curve also rises steeply with distance, xTB is not over-coordinating, the six-coordinate site is real, and no DFT optimisation is needed at all;
+- if DFT is flat or prefers the long distance, then xTB is wrong about the site and DFT geometries become worth their cost - at which point the reduced model from D54, or def2-SVP in place of def2-TZVP, makes them affordable.
+
+Spending four days of DFT optimisation before reading an 18 h answer that is already running would be the wrong order.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
