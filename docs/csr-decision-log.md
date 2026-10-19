@@ -886,6 +886,29 @@ A local optimisation cannot leave its basin, so starting from one geometry alone
 
 **Timing probe first.** Cost at this size has surprised us twice, so before committing to two multi-day optimisations, a three-step run measures the r2SCAN-D4/def2-TZVP gradient cost on the real 119-atom QM region. If it is tens of minutes the full optimisations are a job each; if it is hours we fall back to the reduced ~50-atom model described in D54.
 
+**D56 - What the two reference papers actually do with the substrate-metal contact, and a useful precedent for a six-coordinate metal.** (2026-10-19, answering the user's question)
+
+User: drop the run from the restrained MM, since its carbonyl is pinned at an unrealistic 1.94 A; a polarised carbonyl should be enough; is that what CphA and EcoRV did?
+
+**Short answer: for CphA yes, for EcoRV the metal's job is different again - and neither relies on the metal polarising the substrate carbonyl.**
+
+- **CphA** (Xu, Xie & Guo 2006, PMID 16423823): nucleophile is a **non-metal-bound water**, general base is the **Zn-bound Asp120**, and the paper does not report Zn-O(carbonyl) coordination. A merely polarised carbonyl is consistent with it.
+- **EcoRV** (Imhof, Fischer & Smith 2009, PMID 19678693, abstract verified): the metal does not polarise the substrate at all - **"the magnesium metal ion activates a water molecule"**. **Asp90 accepts the proton** from that water, generating the nucleophile, and **Lys92 positions the scissile phosphate and stabilises the metaphosphate intermediate** in the orientation best for attack. The abstract does not state whether the phosphate is inner-sphere to Mg.
+
+**The genuinely useful find, which reframes our problem.** Imhof *et al.* report that in EcoRV the magnesium's **coordination number drops from six to four** when the attacking water is positioned, and they use exactly this to explain **why calcium is not catalytically active** - Ca(II) prefers higher coordination and cannot shed ligands to open the site.
+
+That changes the question we have been asking. A six-coordinate resting metal is **not** by itself incompatible with catalysis; there is a published precedent where it is the resting state and the catalytically competent state is reached by shedding ligands. So the question is no longer "is our six-coordinate zinc an artefact" but:
+
+1. is the six-coordinate site the resting state (plausible either way), and
+2. **can it drop to four-coordinate to open a site and position a nucleophile, and at what energetic cost?**
+
+That is a relaxed-coordinate question, and it is what job 30119957 is already asking along Zn-Asp92, albeit at xTB. The DFT optimisations now answer the first half and give the energy difference between the two coordinations.
+
+**Setup changed accordingly.** `dftopt_fromMM` is dropped. The two starts are now:
+  - **`dftopt_from4c`** from `protdft/cleanR/ohH/QM_MM_optimized.pdb` - Asp92 at 2.80 A, carbonyl polarised at 2.90 A, i.e. the arrangement the user wants and the one consistent with CphA;
+  - **`dftopt_from6c`** from `protdft/md2_ohH/QM_MM_lastframe.pdb` - Asp92 2.09 A, carbonyl 2.25 A. This is **xTB's own preferred geometry, not the restrained-MM artefact**, so the two-basin comparison survives the user's objection while dropping the structure they objected to.
+Neither has constraints: where Asp92 and the carbonyl end up, and which is lower in energy, is the result.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

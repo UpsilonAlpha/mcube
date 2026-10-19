@@ -13,8 +13,10 @@ geometries and its vDZP basis is in neither PySCF nor the Basis Set Exchange
 Two starting coordinations, because a local optimisation cannot leave its basin
 and starting from one would prove nothing:
 
-  dftopt_fromMM   restrained MM end point - carbonyl 1.94 A, Asp92 2.79 A
-  dftopt_from4c   the four-coordinate state - Asp92 2.80 A, carbonyl 2.90 A
+  dftopt_from4c   four-coordinate - Asp92 2.80 A, carbonyl polarised at 2.90 A
+  dftopt_from6c   six-coordinate  - Asp92 2.09 A, carbonyl 2.25 A (xTB's own
+                  preference from the md2 MD, NOT the restrained MM structure,
+                  whose carbonyl was pinned at an unrealistic 1.94 A)
 
 No constraints in either: where Asp92 and the carbonyl end up is the result.
 """
@@ -31,8 +33,8 @@ LEVEL = dict(qm_engine="dft", dft_functional="r2scan", dft_basis="def2-tzvp",
 sections = {
     # three steps only: this exists to measure the gradient cost
     "dftopt_probe": dict(LEVEL, opt_maxiter=3),
-    "dftopt_fromMM": dict(LEVEL, opt_maxiter=250),
     "dftopt_from4c": dict(LEVEL, opt_maxiter=250),
+    "dftopt_from6c": dict(LEVEL, opt_maxiter=250),
 }
 c = Path("config.yaml")
 with _locked(c):
@@ -42,8 +44,8 @@ with _locked(c):
     yaml.safe_dump(d, open("t.tmp", "w"), sort_keys=False, default_flow_style=False)
     os.replace("t.tmp", c)
 
-starts = {"dftopt_fromMM": "md_results/NVTtrajectory_lastframe.pdb",
-          "dftopt_from4c": "protdft/cleanR/ohH/QM_MM_optimized.pdb"}
+starts = {"dftopt_from4c": "protdft/cleanR/ohH/QM_MM_optimized.pdb",
+          "dftopt_from6c": "protdft/md2_ohH/QM_MM_lastframe.pdb"}
 for name in sections:
     print(name, sections[name]["dft_functional"], sections[name]["dft_basis"],
           "maxiter", sections[name]["opt_maxiter"])
