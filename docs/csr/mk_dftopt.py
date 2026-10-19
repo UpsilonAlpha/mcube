@@ -27,8 +27,15 @@ import yaml
 
 from mcube.preprocess import _locked
 
+# No dft_scf_dispersion: ASH routes its `dispersion` keyword through the pyvdw
+# library, which we uninstalled because it dragged in the D4/MBD stacks and broke
+# the environment. So the gradient has no dispersion term. For a zinc first-shell
+# coordination question that is acceptable - metal-carboxylate and metal-water
+# distances are set by electrostatics and covalency, not dispersion - and D3(BJ)
+# still enters the reported energy through mcube's own sp_dispersion, which uses
+# simple-dftd3 and works. State the limitation rather than hiding it.
 LEVEL = dict(qm_engine="dft", dft_functional="r2scan", dft_basis="def2-tzvp",
-             dft_scf_dispersion="D4", dft_gridlevel=3, dft_densityfit=True,
+             dft_gridlevel=3, dft_densityfit=True,
              dft_cores=16, skip_equilibrate=True, singlepoint=False)
 sections = {
     # three steps only: this exists to measure the gradient cost

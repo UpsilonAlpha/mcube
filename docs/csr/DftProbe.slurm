@@ -19,9 +19,16 @@
 #
 # No thread binding here: PySCF runs in-process, so binding would pin its BLAS
 # threads to one core (docs/running-on-bunya.md).
+#
+# OMP_NUM_THREADS=1 is deliberate and is ASH's own guidance for PySCF: PySCF sets
+# its thread count at runtime from dft_cores via lib.num_threads(), and a
+# conflicting environment value makes it warn and can clamp it. Without this,
+# ASH's OpenMM object had already set OMP_NUM_THREADS to the MM core count (4),
+# leaving PySCF asking for 16 threads in a 4-thread environment.
 set -euo pipefail
 ulimit -s unlimited
 export OMP_STACKSIZE=1G
+export OMP_NUM_THREADS=1
 export PYTHONUNBUFFERED=1
 module load miniforge/26.1.0-0
 source $ROOTMINIFORGE/etc/profile.d/conda.sh
