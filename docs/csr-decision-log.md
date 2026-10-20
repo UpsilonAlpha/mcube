@@ -975,6 +975,32 @@ Consequences:
 
 Doing 1 before 2 avoids repeating days of equilibration to answer a question that 10 h may settle.
 
+**D60 - Tooling consolidated; CPU efficiency measured; what CphA actually says about the carbonyl.** (2026-10-20, user)
+
+**Scripts consolidated.** Eleven one-off `mk_*.py` and analysis scripts plus seven per-job `*.slurm` files became four, which is the structure mcube itself argues for - configuration, not code per problem:
+
+| File | What it is |
+| --- | --- |
+| `site.yaml` | the active site (atoms, candidate bases, near-attack criteria) and every calculation we run |
+| `sections.py` | adds a calculation to `config.yaml`, refusing to write if a selector does not resolve in that calculation's own start structure |
+| `site.py` | all the analysis: `sphere`, `nucleophiles`, `acceptors`, `joint` |
+| `run.slurm` | one job script for every stage; resources from the `sbatch` line, `xtb` or `dft` threading profile |
+
+Everything system-specific now lives in the YAML, so the tools carry no knowledge of this enzyme and a new calculation is a few lines rather than a new file. Smoke-tested on the cluster: `sphere` and `nucleophiles` reproduce the old scripts' numbers exactly on the relaxed structure (Zn sphere 2.03-2.13 A, O01-C4x 3.62 A at 36 degrees).
+
+**CPU efficiency measured rather than assumed** (`seff`), and it splits sharply:
+
+| Job | Work | CPUs | CPU efficiency | Memory used |
+| --- | --- | --- | --- | --- |
+| 30053828 | xTB opt + **DFT** single points | 16 | **96.2%** | 56 GB of 96 |
+| 30085418 | pure **xTB/MM MD** | 8 | **29.6%** | 0.5 GB of 32 |
+
+So the 64 CPUs now available should go to **DFT**, which genuinely saturates what it is given, and **not** to xTB, which saturates around four threads and leaves the rest idle. xTB work gets faster by running points in parallel, not by adding threads. Memory follows the same split: DFT wants tens of GB for density-fitting integrals, xTB about one, so the 32 GB we routinely asked for on MD jobs was ~60x more than needed.
+
+**What CphA used for the Zn-carbonyl distance: nothing, because there is no such contact.** Xu, Xie & Guo 2006 (PMID 16423823) states that after ring opening the nitrogen leaving group replaces Asp120 "as the **fourth** ligand of the sole zinc ion" - so CphA's zinc is **four-coordinate**, with no room for the substrate carbonyl, and the paper reports no Zn-O(carbonyl) coordination. The abstract gives no interatomic distances at all, and the full text is not in Europe PMC (the record says `inEPMC: N`, no PMC id), so this is from the abstract rather than from reading the paper; an Unpaywall PDF exists at jbc.org if the numbers are needed.
+
+**So the answer to "can we just use their distance" is that borrowing from CphA means not coordinating the carbonyl at all** - which is what `constraint_exclude_residues` would give us (D59), and is consistent with the dominant B1 picture where the carbonyl is polarised and hydrogen-bonded rather than inner-sphere (D53). The caveat is that CphA is a B2 enzyme whose zinc sits in a Cys-containing site (Asp120, Cys221, His263) and is four-coordinate, while ours is B3-RQK with only two histidines; the coordination chemistry differs, so the transferable part is the principle, not a number.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
