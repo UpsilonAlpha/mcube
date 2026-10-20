@@ -4,6 +4,8 @@
     python site.py nucleophiles <pdb> [pdb ...]     attack geometry + proton acceptors
     python site.py acceptors    <traj> <topology>   what CAN take the proton, counted
     python site.py joint        <traj> <topology>   attack AND donate, same molecule
+    python site.py poses        <pdbqt> <receptor> [ligand.pdb]
+                                                    docked poses vs the metal site
 
 Every atom, every candidate base and every criterion comes from `site.yaml`
 (override with --site), so this script carries no knowledge of a particular
@@ -296,10 +298,68 @@ def mode_joint(site, traj_file, top_file):
               % (res[ri].name, res[ri].resSeq, res[bi].name, res[bi].resSeq, cnt))
 
 
+def mode_poses(site, args):
+    """Where do docked poses sit relative to the metal, and which one did we use?
+
+    Answers the question a single carried-forward pose cannot: are the
+    alternatives in the same place, and is the structure we have actually the
+    top-scored one? Vina's scoring is good to a couple of kcal/mol, so poses
+    within that of each other are not distinguishable by score alone and the
+    geometry has to decide.
+    """
+    pdbqt, receptor = args[0], args[1]
+    reference = args[2] if len(args) > 2 else None
+
+    def centroid(points):
+        n = len(points)
+        return tuple(sum(p[i] for p in points) / n for i in range(3))
+
+    metal = index_of(load_pdb(receptor), site["metal"])
+    if metal is None:
+        raise SystemExit("metal %s not found in %s" % (site["metal"], receptor))
+    zn = load_pdb(receptor)[metal][4]
+
+    poses, scores, current = [], [], []
+    for line in open(pdbqt):
+        if line.startswith("MODEL"):
+            current = []
+        elif line.startswith("REMARK VINA RESULT"):
+            scores.append(float(line.split()[3]))
+        elif line.startswith(("ATOM", "HETATM")):
+            current.append((float(line[30:38]), float(line[38:46]), float(line[46:54])))
+        elif line.startswith("ENDMDL"):
+            poses.append(current)
+    if not poses and current:
+        poses = [current]
+
+    ref_pts = ref_c = None
+    if reference:
+        ref_pts = [a[4] for a in load_pdb(reference)]
+        ref_c = centroid(ref_pts)
+        print("reference %s: %d atoms, centroid to metal %.2f A"
+              % (reference, len(ref_pts), math.dist(ref_c, zn)))
+    print("metal %s at %.2f %.2f %.2f in %s
+" % (site["metal"], zn[0], zn[1], zn[2], receptor))
+
+    print("%-6s %8s %7s %10s %12s" % ("pose", "score", "atoms", "to metal", "to reference"))
+    for i, pts in enumerate(poses, 1):
+        c = centroid(pts)
+        score = "%8.3f" % scores[i - 1] if i <= len(scores) else "       -"
+        ref = "%12.2f" % math.dist(c, ref_c) if ref_c else "           -"
+        print("%-6d %s %7d %9.2f A %s" % (i, score, len(pts), math.dist(c, zn), ref))
+    if ref_c and poses:
+        near = min(range(len(poses)), key=lambda i: math.dist(centroid(poses[i]), ref_c))
+        d = math.dist(centroid(poses[near]), ref_c)
+        print("
+closest pose to the reference: %d, centroids %.2f A apart%s"
+              % (near + 1, d, " - so the reference is that pose" if d < 0.5
+                 else " - the reference matches no pose well, check its provenance"))
+
+
 # --- entry point -------------------------------------------------------------
 
 MODES = {"sphere": mode_sphere, "nucleophiles": mode_nucleophiles,
-         "acceptors": mode_acceptors, "joint": mode_joint}
+         "acceptors": mode_acceptors, "joint": mode_joint, "poses": mode_poses}
 
 if __name__ == "__main__":
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
@@ -309,7 +369,7 @@ if __name__ == "__main__":
         raise SystemExit(__doc__)
     site = yaml.safe_load(open(site_file))["site"]
     mode, rest = args[0], args[1:]
-    if mode in ("sphere", "nucleophiles"):
+    if mode in ("sphere", "nucleophiles", "poses"):
         MODES[mode](site, rest)
     else:
         if len(rest) != 2:
