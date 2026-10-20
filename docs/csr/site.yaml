@@ -121,8 +121,24 @@ sections:
 
   sp_dft:                      # score a geometry someone else produced
     stage: qmmm
-    inputs:
+    inputs: &sp_only
       skip_equilibrate: true
       skip_optimize: true
       singlepoint: true
       sp_cores: 64
+
+  # D63: is xTB's 22.4 kcal/mol for pulling the carbonyl off real? Same check
+  # as D58 did for Asp92, on three points of the carbonyl scan. Separate
+  # sections because each run writes its results back into its own.
+  sp_co0:
+    stage: qmmm
+    start: protdft/coscan/scan_00.pdb     # Zn-O2x 2.15 A
+    inputs: *sp_only
+  sp_co4:
+    stage: qmmm
+    start: protdft/coscan/scan_04.pdb     # Zn-O2x 3.08 A
+    inputs: *sp_only
+  sp_co8:
+    stage: qmmm
+    start: protdft/coscan/scan_08.pdb     # Zn-O2x 4.00 A
+    inputs: *sp_only
