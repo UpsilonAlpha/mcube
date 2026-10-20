@@ -13,11 +13,11 @@ from openmm.app import PDBFile, ForceField, CutoffNonPeriodic, HBonds
 from ash import *
 
 from .preprocess import (
+    resolve_cores,
     save_result,
     load_section,
     resolve_atoms,
 )
-from .threads import resolve_cores
 from . import membrane as membrane_mod
 
 # ==============================

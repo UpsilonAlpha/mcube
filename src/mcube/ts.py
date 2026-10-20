@@ -50,7 +50,7 @@ from typing import Dict, Any, List
 
 import numpy as np
 
-from .preprocess import save_result, load_section
+from .preprocess import resolve_cores, save_result, load_section
 from .qmmm import (
     resolve_qm_region,
     stage_inputs,
@@ -67,7 +67,6 @@ from .qmmm import (
     resolve_stage_atoms,
     qm_level_inputs,
 )
-from .threads import resolve_cores, unbind_threads
 
 from ash import *
 
@@ -95,7 +94,8 @@ def run(args) -> Dict[str, Any]:
     cores = resolve_cores(inputs.get("cores", qmmm_inputs.get("cores")))
     workers = max(1, min(int(inputs.get("freq_workers", 1)), cores))
     if workers > 1:
-        unbind_threads(f"{workers} NumFreq workers run in parallel")
+        print(f"[INFO] {workers} NumFreq workers run in parallel: run this stage "
+              "with OMP_PROC_BIND/OMP_PLACES unset (the xtb-parallel recipe)")
     forcefields, implicit = mm_settings(qmmm_inputs, md)
 
     print("[STEP] Building MM system...")

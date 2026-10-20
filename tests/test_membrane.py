@@ -11,7 +11,13 @@ build a bilayer, so it is a real lipid/water system with a known area per lipid.
 import sys
 from pathlib import Path
 
-import openmm
+import pytest
+
+# These need OpenMM but not ASH. Skip rather than fail the whole collection where
+# OpenMM is absent, as the other test modules do for ASH.
+pytest.importorskip("openmm", reason="the membrane mode needs OpenMM")
+
+import openmm  # noqa: E402
 import pytest
 from openmm import unit
 from openmm.app import ForceField, PDBFile

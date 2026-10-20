@@ -37,7 +37,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from .preprocess import load_section, save_result
+from .preprocess import load_section, resolve_cores, save_result
 from .qmmm import (
     d3_energy,
     make_dft,
@@ -47,7 +47,6 @@ from .qmmm import (
     resolve_qm_region,
     resolve_stage_atoms,
 )
-from .threads import resolve_cores
 
 from ash import *
 

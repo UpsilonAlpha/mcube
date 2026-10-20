@@ -90,10 +90,6 @@ def main():
     # =========================================================
     # DISPATCH
     # =========================================================
-    # Thread binding has to be in the environment before ASH, OpenMM or xTB start
-    from .threads import configure_threads
-    configure_threads()
-
     # Stage modules are imported lazily so that e.g. `preprocess` does not
     # require pyscf or MDAnalysis to be importable.
     stage = importlib.import_module(f".{args.command}", package=__package__)

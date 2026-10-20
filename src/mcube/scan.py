@@ -48,7 +48,7 @@ from typing import Dict, Any, List, Tuple
 
 import numpy as np
 
-from .preprocess import save_result, load_section
+from .preprocess import resolve_cores, save_result, load_section
 from .qmmm import (
     resolve_qm_region,
     stage_inputs,
@@ -66,7 +66,6 @@ from .qmmm import (
     qm_level_inputs,
     optimize,
 )
-from .threads import resolve_cores
 
 from ash import *
 

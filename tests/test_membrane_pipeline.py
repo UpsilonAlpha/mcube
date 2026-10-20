@@ -12,6 +12,11 @@ import sys
 import types
 from pathlib import Path
 
+import pytest
+
+# ASH is stubbed below, but mcube's own imports still reach OpenMM.
+pytest.importorskip("openmm", reason="mcube.preprocess imports OpenMM")
+
 import openmm
 import pytest
 import yaml

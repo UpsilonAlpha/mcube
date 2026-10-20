@@ -118,10 +118,10 @@ export OMP_PLACES=cores
 and set `qmmm.inputs.cores: 4`.
 
 **mcube now binds xTB only, by default:**
-- It runs xTB through a wrapper (`.mcube_xtb/xtb` in the run directory) that exports `OMP_PROC_BIND=close` and `OMP_PLACES=cores` for xTB alone. When `cores` is unset it uses the physical core count.
+- Thread placement is set by the job script, not by mcube: see the three recipes in the README and the named profiles in `docs/csr/run.slurm`. When a stage's `cores` is unset, mcube takes the count from `$OMP_NUM_THREADS`, else `$SLURM_CPUS_PER_TASK`.
 - **Don't export `OMP_PROC_BIND`/`OMP_PLACES` in job scripts.** If the Python process is bound, an in-process OpenMP runtime pins the main thread to one core, and threads created later inherit that one-core mask.
   - Measured: a PySCF ωB97M-V single point (job 29992285) ran with its process mask at one core plus its sibling, ~18% CPU per thread. That was mcube's first default, which set the variables process-wide; now fixed.
-  - Exporting them yourself, or `MCUBE_THREAD_BINDING=0`, turns mcube's binding off.
+  - Stages that run several xTB processes at once (NEB images, parallel NumFreq) must run with `OMP_PROC_BIND`/`OMP_PLACES` unset, or every worker binds to the same cores.
 - **Measured with binding:** the CSR QM/MM MD (job 29937641, 8 CPUs, `cores: 4`) runs at about **1.4 s per step**: xTB 1.1–1.2 s, OpenMM 0.08 s. That is roughly 20 h for 50 ps; unbound, it was 14.6 s median and up to 131 s.
 - **Why fewer threads:** 8 threads land on SMT siblings and are slower than 4.
 - **Filesystem:** made no difference. `$TMPDIR` is `/scratch/temp/<jobid>` (not node-local), and once threads are bound, running there or in the job directory gives the same time.

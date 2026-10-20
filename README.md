@@ -11,6 +11,20 @@ A pipeline for protein–ligand systems, often metalloproteins, built on [ASH](h
 7. **sp**: PySCF QM/MM single point on a finished geometry, with density, MEP and HOMO/LUMO cubes
 8. **postprocess**: MD data plots, RMSD, RMSF (as B-factors) and a residue interaction network
 
+The path through them is linear, with `sp` as the scoring step applied to each
+geometry you want an energy for:
+
+```
+preprocess -> md -> qmmm -> sp                    the complex, and its energy
+                      \-> scan | neb -> ts -> sp   the path, its TS, and the barrier
+```
+
+`sp` is not a step the next stage consumes: it reads a finished geometry and
+writes an energy, so it is run once per stationary point (reactant, products,
+TS) rather than once per pipeline. `scan` and `neb` are alternatives — a relaxed
+scan to build endpoints along one coordinate, or a band between endpoints you
+already have.
+
 All stages read one YAML config file and write their results back into it, so each stage picks up the outputs of the stages before it.
 
 ## Install
@@ -45,10 +59,15 @@ mcube postprocess config.yaml [--qmmm] [--redraw] [--cutoff 2.6] [--metals ZN MG
 
 `--cores` defaults to `$SLURM_CPUS_PER_TASK` (or 1). The `md`, `qmmm`, `scan` and `ts` stages take their core count from `cores` in the config instead, and `sp` from `sp_cores`.
 
-**Threads.** xTB runs with its OpenMP threads bound one per physical core (`OMP_PROC_BIND=close`, `OMP_PLACES=cores`), through a small wrapper script that mcube writes to `.mcube_xtb/` in the run directory. The Python process itself (OpenMM, PySCF, numpy) is not bound: binding an in-process OpenMP runtime pins later threads to one core. Setting `OMP_PROC_BIND`/`OMP_PLACES` yourself, or `MCUBE_THREAD_BINDING=0`, turns mcube's binding off.
-- **Why:** on SMT nodes, `--cpus-per-task=N` gives N/2 physical cores. Unbound xTB threads then share cores and ran 2–9× slower, with erratic step times (see `docs/running-on-bunya.md`).
-- **Default `cores`:** when `cores` is not set, a stage uses the number of physical cores it is allowed to run on (e.g. 4 for `--cpus-per-task=8`). A larger `cores` gives a warning.
-- **Parallel workers:** NEB with parallel images and `ts` with `freq_workers` > 1 turn binding off, because each worker would bind to the same cores.
+**Threads.** mcube does not touch `OMP_*`. Thread placement has to be in the environment before ASH, OpenMM or xTB start, and the right policy differs per stage, so it belongs in your job script. mcube only reads a thread *count*: a stage's `cores` (or `sp_cores`/`dft_cores`), else `$OMP_NUM_THREADS`, else `$SLURM_CPUS_PER_TASK`, else 1.
+
+Three recipes, which is all that is needed. `docs/csr/run.slurm` implements them as named profiles.
+
+| Stages | Settings | Why |
+| --- | --- | --- |
+| `md`, `qmmm`, `scan`, `ts` without `freq_workers` | `OMP_NUM_THREADS=$((N/2))`, `OMP_PROC_BIND=close`, `OMP_PLACES=cores` | One xTB process at a time. On SMT nodes `--cpus-per-task=N` gives N/2 physical cores; unbound xTB threads shared cores and ran **2–9× slower** with erratic step times (`docs/running-on-bunya.md`) |
+| `neb` with parallel images, `ts` with `freq_workers` > 1 | `OMP_NUM_THREADS=$((N/2))`, `OMP_PROC_BIND`/`OMP_PLACES` **unset** | Several xTB processes at once. Binding is actively harmful: every worker pins to the same first cores |
+| `sp`, and any stage with `qm_engine: dft` | `OMP_NUM_THREADS=1`, `OMP_PROC_BIND`/`OMP_PLACES` **unset** | PySCF runs in-process and sets its own thread count from `sp_cores`/`dft_cores`. A conflicting `OMP_NUM_THREADS` makes it warn and can clamp it, and process-wide binding pins its BLAS threads to one core (measured: ~18% CPU per thread) |
 
 ## Config file
 

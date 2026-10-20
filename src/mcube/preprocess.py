@@ -173,6 +173,26 @@ def load_section(filename: str, section: str) -> Dict[str, Any]:
     return data.get(section, {})
 
 
+def resolve_cores(requested, label: str = "cores") -> int:
+    """How many threads a stage asks ASH for: the config value, else the job's.
+
+    Thread *placement* -- OMP_NUM_THREADS, OMP_PROC_BIND, OMP_PLACES -- is set by
+    the job script, not by mcube, because the right policy differs per stage and
+    cannot be changed once the process has started: see the thread recipes in the
+    README and `docs/csr/run.slurm`. This only decides a count.
+    """
+    if requested is not None:
+        return int(requested)
+    for var in ("OMP_NUM_THREADS", "SLURM_CPUS_PER_TASK"):
+        value = (os.environ.get(var) or "").strip()
+        if value.isdigit() and int(value) > 0:
+            print(f"[INFO] {label} not set: using {value} from ${var}")
+            return int(value)
+    print(f"[INFO] {label} not set and neither $OMP_NUM_THREADS nor "
+          f"$SLURM_CPUS_PER_TASK is set: using 1")
+    return 1
+
+
 # ==============================
 # Atom selectors
 # ==============================

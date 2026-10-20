@@ -28,13 +28,13 @@ from openmm import unit
 from openmm.app import PDBFile
 
 from .preprocess import (
+    resolve_cores,
     save_result,
     load_section,
     build_qm_region,
     qm_region_settings,
     resolve_atom_inputs,
 )
-from .threads import resolve_cores, xtb_dir
 
 from ash import *
 
@@ -189,9 +189,10 @@ def make_qm(inputs: Dict[str, Any], cores: int, runmode: Optional[str] = None):
     if engine != "xtb":
         raise ValueError(f"qm_engine must be 'xtb' or 'dft', not {engine!r}")
     runmode = runmode or inputs.get("xtb_runmode", "inputfile")
-    # As a separate program, xTB can be thread-bound without affecting this process (threads.py)
+    # xTB's thread placement comes from the job script's environment, which it
+    # inherits as a separate process.
     return xTBTheory(xtbmethod=inputs.get("xtb_method", "GFN2"), numcores=cores, runmode=runmode,
-                     xtbdir=xtb_dir() if runmode == "inputfile" else None)
+                     )
 
 
 QM_LEVEL_KEYS = ("qm_engine", "xtb_method", "xtb_runmode")

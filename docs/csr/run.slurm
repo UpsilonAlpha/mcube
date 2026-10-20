@@ -18,7 +18,7 @@
 #
 #   sbatch -J <name> [resources] run.slurm <profile> <stage> <section> [start.pdb]
 #
-#   profile  xtb | dft   threading only, see below
+#   profile  xtb | xtb-parallel | dft   thread placement only, see below
 #   stage    preprocess | md | qmmm | sp | scan | neb | ts
 #   section  the config.yaml section, e.g. scan_znco; for preprocess and md,
 #            which have no sections, it just names the output directory
@@ -38,7 +38,7 @@ ulimit -s unlimited
 export OMP_STACKSIZE=1G
 export PYTHONUNBUFFERED=1
 
-PROFILE=${1:?profile: xtb or dft}
+PROFILE=${1:?profile: xtb, xtb-parallel or dft}
 STAGE=${2:?stage: preprocess, md, qmmm, sp, scan, neb or ts}
 SECTION=${3:?config.yaml section, or the stage name for preprocess/md}
 START=${4:-}
@@ -50,21 +50,35 @@ case "$STAGE" in
   *)             SECTION_ARGS=(--section "$SECTION"); OUT=protdft/$SECTION ;;
 esac
 
+# Thread placement lives here, not in mcube: it has to be in the environment
+# before ASH, OpenMM or xTB start, and the right policy differs per stage.
+# mcube only reads a thread *count* (a stage's `cores`, else $OMP_NUM_THREADS,
+# else $SLURM_CPUS_PER_TASK).
 case "$PROFILE" in
   xtb)
-    # xTB runs as a separate process, so binding its threads is safe and is
-    # worth 2-9x on SMT nodes. 8 allocated CPUs is 4 physical cores.
+    # One xTB process at a time: bind one thread per physical core. Worth 2-9x
+    # on SMT nodes, where N allocated CPUs are N/2 physical cores.
+    # Stages: md, qmmm, scan, and ts without freq_workers.
     export OMP_NUM_THREADS=$(( ${SLURM_CPUS_PER_TASK:-8} / 2 ))
     export OMP_PROC_BIND=close
     export OMP_PLACES=cores
     ;;
+  xtb-parallel)
+    # Several xTB processes at once (neb with parallel images, ts with
+    # freq_workers > 1). Binding here is actively harmful: every worker would
+    # pin its threads to the same first cores. Leave placement to the OS.
+    export OMP_NUM_THREADS=$(( ${SLURM_CPUS_PER_TASK:-8} / 2 ))
+    unset OMP_PROC_BIND OMP_PLACES
+    ;;
   dft)
     # PySCF runs in-process and sets its own thread count from dft_cores or
     # sp_cores. A conflicting OMP_NUM_THREADS makes it warn and can clamp it,
-    # and process-wide binding would pin its BLAS threads to one core.
+    # and process-wide binding pins its BLAS threads to one core (measured:
+    # ~18% CPU per thread). Stages: sp, and anything with qm_engine: dft.
     export OMP_NUM_THREADS=1
+    unset OMP_PROC_BIND OMP_PLACES
     ;;
-  *) echo "unknown profile: $PROFILE (xtb or dft)" >&2; exit 2 ;;
+  *) echo "unknown profile: $PROFILE (xtb, xtb-parallel or dft)" >&2; exit 2 ;;
 esac
 
 module load miniforge/26.1.0-0
