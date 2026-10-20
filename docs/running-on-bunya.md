@@ -11,9 +11,15 @@ Notes from setting up and running the CSR (meropenem) reactant/product systems i
 #SBATCH --time=12:00:00            # shorter limits start sooner (backfill)
 
 set -euo pipefail
-export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 ulimit -s unlimited                # xTB recommendation, avoids stack segfaults
 export OMP_STACKSIZE=1G
+# Threads depend on what dominates the step - see "Resources by job type".
+# For an xTB stage: half the allocated CPUs (physical cores), bound.
+export OMP_NUM_THREADS=$(( SLURM_CPUS_PER_TASK / 2 ))
+export OMP_PROC_BIND=close
+export OMP_PLACES=cores
+# For a DFT stage, use OMP_NUM_THREADS=1 instead, with no binding, and let
+# PySCF set its own thread count from dft_cores / sp_cores.
 
 module load miniforge/26.1.0-0
 source $ROOTMINIFORGE/etc/profile.d/conda.sh
@@ -25,6 +31,54 @@ conda activate ASH                 # mcube is pip-installed (editable) in this e
 - Run each stage in its own directory. Stages write many files to the current directory and write results back into `config.yaml`.
 - Don't run two stages at the same time against one `config.yaml`. Each stage reads, edits and rewrites the whole file, so concurrent runs can silently overwrite each other's results. Run them one after another in a single job, or give each its own config.
 - After a job finishes, run `seff <jobid>` and adjust the next request.
+
+## Resources by job type
+
+All from `seff` on real jobs. The short version: **what dominates a step decides
+whether more cores help**, and that is not simply "xTB versus DFT".
+
+| Stage | Dominated by | CPUs | CPU efficiency | Memory used | Request |
+| --- | --- | --- | --- | --- | --- |
+| `preprocess` | file handling | 1-2 | - | 0.7 GB | 4 GB |
+| `md` (classical, CPU) | OpenMM | 8 | - | ~1 GB | 8 GB |
+| `qmmm` optimisation, xTB | geomeTRIC linear algebra | 8 | **~94%** | 0.9 GB | 4-8 GB |
+| `scan`, xTB | same, once per point | 8 | ~94% | ~1 GB | 8-16 GB |
+| `qmmm` MD, xTB | xTB + OpenMM only | 8 | **~30%** | 0.5 GB | 8 GB |
+| `qmmm` single point or optimisation, **DFT** | PySCF | 16 | **~96%** | 56 GB | 96 GB+ |
+
+**DFT scales, so give it cores.** PySCF saturated 16 and will use more; 64 is
+worth requesting for single points and DFT gradients. It is also the only stage
+that needs real memory - tens of GB, because density-fitting integrals are held
+in RAM and spill to disk if `sp_memory` / `dft_memory` is too small, which is far
+slower. mcube defaults those to 80% of `SLURM_MEM_PER_NODE`, so ask for what you
+want it to use.
+
+**xTB does not scale, and the reason differs by stage.** An xTB *optimisation* or
+*scan* still reaches ~94%, but that is geomeTRIC's linear algebra over hundreds
+of active atoms, not xTB. An xTB *MD* run has no optimiser, so only xTB and
+OpenMM are left and the job idles at ~30% of 8 cores. Either way xTB itself
+saturates around four threads: making xTB work finish sooner means **running
+points in parallel** (an array job over scan points or frames), not asking for
+more threads per point.
+
+**Memory requests have been 10-100x too large** for everything except DFT. An MD
+job asking 32 GB used 0.5 GB. Smaller requests fit on more nodes and start
+sooner.
+
+**Threading, which is not the same for the two cases:**
+
+- **xTB stages** - bind threads to physical cores. On SMT nodes the allocated
+  CPUs are half physical cores, so `OMP_NUM_THREADS=$(( SLURM_CPUS_PER_TASK / 2 ))`
+  with `OMP_PROC_BIND=close` and `OMP_PLACES=cores`. Worth 2-9x; see below.
+  Binding is safe because xTB runs as a separate process.
+- **DFT stages** - set `OMP_NUM_THREADS=1` and do **not** bind. PySCF runs
+  in-process and sets its own thread count from `dft_cores` / `sp_cores`; a
+  conflicting environment value makes it warn and can clamp it, and process-wide
+  binding pins its BLAS threads to a single core. ASH's OpenMM object sets
+  `OMP_NUM_THREADS` to the MM core count as a side effect, so set it explicitly
+  after activation rather than relying on the default.
+
+`docs/csr/run.slurm` implements both as the `xtb` and `dft` profiles.
 
 ## CPU threads
 
@@ -79,8 +133,14 @@ and set `qmmm.inputs.cores: 4`.
 | `mcube preprocess` (CSR, ~41k atoms after solvation) | 64 GB | 0.7 GB | 4 GB |
 | Other CPU jobs on this account (`tri`, `s2b`, `step2`, `infill`) | 24–64 GB | 3–4 GB | ~2× the measured peak |
 | `mcube qmmm` optimisation (xTB + OpenMM, ~41k atoms, 8 Å active region) | 16 GB | 0.91 GB (`sstat` MaxRSS), 0.94 GB in `top` | 4 GB |
+| `mcube qmmm` MD (xTB + OpenMM, 25 ps) | 32 GB | 0.5 GB (`seff`) | 8 GB |
+| `mcube qmmm` **DFT** single point (ωB97X/def2-SVP, 119 QM atoms) | 96 GB | 56 GB (`seff`) | 96 GB+ |
 
-Memory requests have been 10–100× larger than needed. Smaller requests fit on more nodes and start sooner.
+Memory requests have been 10–100× larger than needed **for everything except
+DFT**, which is the one stage that genuinely wants tens of GB: density-fitting
+integrals are held in RAM and spill to disk when `sp_memory` / `dft_memory` is
+too small, which is much slower. Everywhere else, smaller requests fit on more
+nodes and start sooner. See "Resources by job type" above.
 
 ## Measured: QM/MM geometry optimisation (job 29837804)
 

@@ -34,18 +34,20 @@ becomes section `scan_znco`, and `cleanR_lysH` becomes `qmmm_cleanR_lysH`.
 
 ## Choosing resources
 
-Measured with `seff` on this system, which is why `run.slurm` takes a profile:
+The full measured table is in
+[docs/running-on-bunya.md](../running-on-bunya.md#resources-by-job-type); the
+short version, which is why `run.slurm` takes a profile:
 
 | Work | CPUs | CPU efficiency | Memory used |
 | --- | --- | --- | --- |
 | DFT single points | 16 | **96%** | 56 GB of 96 |
+| xTB optimisation or scan | 8 | **94%** (geomeTRIC, not xTB) | ~1 GB |
 | xTB/MM MD | 8 | **30%** | 0.5 GB of 32 |
 
-DFT scales, so give it cores — up to 64 is available and worth using. xTB does
-not: it saturates around four threads and the rest of the job is serial, so
-extra CPUs are wasted. Make xTB work finish sooner by running points in
-parallel, not by adding threads. Memory follows the same split: DFT needs tens
-of GB for density-fitting integrals, xTB needs about one.
+DFT scales, so give it cores — 64 is available and worth using, and it is the
+one stage that needs real memory. xTB does not scale: it saturates around four
+threads, so make xTB work finish sooner by running points in parallel rather
+than adding threads.
 
 The `xtb` profile binds threads (worth 2–9× on SMT nodes, where allocated CPUs
 are half physical cores). The `dft` profile deliberately does not, and sets
