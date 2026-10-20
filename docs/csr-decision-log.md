@@ -1191,6 +1191,22 @@ The single point is submitted separately rather than with `singlepoint: true`, p
 
 **Caveat to carry.** The MM equilibration still runs with a non-bonded point-charge zinc, which is documented to over-coordinate, so if the carbonyl comes in during the MM stage rather than the QM/MM stage that is weak evidence. Record the Zn-O2x distance at the end of MM separately from the end of the QM/MM MD, and judge them separately.
 
+**D70 - A pure DFT single point does not scale to 64 cores, and D60's 96% was a mixed job.** `seff` on all three (jobs 30207244/5/6, each wB97X-D3(BJ)/def2-SVP on 119 QM atoms, 64 cores):
+
+| job | state | CPU efficiency | wall clock | memory |
+| --- | --- | --- | --- | --- |
+| 30207244 | COMPLETED | **36.87%** | 26:17 | 67.8 GB of 128 |
+| 30207245 | COMPLETED | **37.17%** | 25:33 | 68.0 GB of 128 |
+| 30207246 | COMPLETED | **38.09%** | 25:54 | 68.1 GB of 128 |
+
+That is about 24 cores' worth of work on a 64-core allocation: ~18 core-hours wasted per job, ~53 across the three. D60 recommended 64 cores for DFT on the strength of 96.2% efficiency, but that measurement was job 30053828, an xTB optimisation **and** DFT single points in one job - and D60's own text says an xTB optimisation reaches ~94% because of geomeTRIC's linear algebra. So the 96% was mostly the optimiser, and "DFT scales, give it cores" was never measured on a single point. These three are the first clean measurement, and `docs/running-on-bunya.md` now says 24-32 cores and 96 GB.
+
+One candidate for part of the shortfall, untested: the stage also writes four cube files, which is serial work at the end of an otherwise parallel job. `cubes: false` (now an `sp` input) should raise the efficiency, and that is a cheap thing to measure before anyone asks for more cores.
+
+**Note on the comparison that prompted this.** The "4-5 h at 16 cores" figure for a single point is also from that mixed job and is not a single point's wall time, so no speedup factor should be quoted between the two. The honest statement is just the absolute one: a single point of this size and level takes about 26 minutes on 64 cores, at 37% efficiency.
+
+**The scientific branch this check was meant to decide is already closed by D67/D68.** DFT came out steep (D65: +23.6 kcal/mol at 4.00 A), which under the original plan meant "the carbonyl is genuinely bound at both levels, so the only untested thing is the binding pose - propose re-docking". Re-docking is not needed: D66 established the pose is docked pose 2, and D67 that the docked pose puts the carbonyl **5.43 A** from the zinc, so a pose with an uncoordinated carbonyl already exists and never needed generating. D69's unrestrained run is testing exactly that, from exactly that structure. Nothing to propose.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

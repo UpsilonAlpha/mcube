@@ -44,14 +44,28 @@ whether more cores help**, and that is not simply "xTB versus DFT".
 | `qmmm` optimisation, xTB | geomeTRIC linear algebra | 8 | **~94%** | 0.9 GB | 4-8 GB |
 | `scan`, xTB | same, once per point | 8 | ~94% | ~1 GB | 8-16 GB |
 | `qmmm` MD, xTB | xTB + OpenMM only | 8 | **~30%** | 0.5 GB | 8 GB |
-| `qmmm` single point or optimisation, **DFT** | PySCF | 16 | **~96%** | 56 GB | 96 GB+ |
+| `qmmm` optimisation, **DFT** | PySCF gradients + geomeTRIC | 16 | ~96% (mixed job) | 56 GB | 96 GB+ |
+| `sp` single point, **DFT** | PySCF SCF | **24-32** | **~37% at 64** | 68 GB | 96 GB |
 
-**DFT scales, so give it cores.** PySCF saturated 16 and will use more; 64 is
-worth requesting for single points and DFT gradients. It is also the only stage
-that needs real memory - tens of GB, because density-fitting integrals are held
-in RAM and spill to disk if `sp_memory` / `dft_memory` is too small, which is far
-slower. mcube defaults those to 80% of `SLURM_MEM_PER_NODE`, so ask for what you
-want it to use.
+**DFT scales, but not to 64 cores - corrected 2026-10-20.** The earlier
+"DFT saturates what you give it" came from job 30053828, which was an xTB
+optimisation *and* DFT single points in one job, so its 96% was mostly
+geomeTRIC's linear algebra rather than the SCF. The first clean measurement of a
+pure single point (jobs 30207244/5/6: wB97X-D3(BJ)/def2-SVP, 119 QM atoms,
+64 cores each) gives **36.9%, 37.2% and 38.1%** CPU efficiency at 26 minutes
+wall clock and 68 GB. That is about 24 cores' worth of work on a 64-core
+allocation, so each job wasted roughly 18 core-hours.
+
+So ask for **24-32 cores** for a single point of this size, not 64. A likely
+part of the shortfall is that the stage also writes four cube files, which is
+serial work at the end of an otherwise parallel job; `cubes: false` should raise
+the efficiency and is worth measuring before requesting more cores.
+
+DFT is still the only stage that needs real memory - tens of GB, because
+density-fitting integrals are held in RAM and spill to disk if `sp_memory` /
+`dft_memory` is too small, which is far slower. 68 GB of 128 was used here, so
+96 GB is the right request. mcube defaults those to 80% of `SLURM_MEM_PER_NODE`,
+so ask for what you want it to use.
 
 **xTB does not scale, and the reason differs by stage.** An xTB *optimisation* or
 *scan* still reaches ~94%, but that is geomeTRIC's linear algebra over hundreds
