@@ -173,7 +173,43 @@ def load_section(filename: str, section: str) -> Dict[str, Any]:
     return data.get(section, {})
 
 
-def check_inherited_restraints(constraints, restraints, inputs) -> None:
+def atom_names(pdb_file: str) -> list:
+    """["chain:resid:atom", ...] in file order: the inverse of a selector lookup."""
+    return ["%s:%s:%s" % (line[21], line[22:26].strip(), line[12:16].strip())
+            for line in open(pdb_file) if line.startswith(("ATOM", "HETATM"))]
+
+
+def to_selectors(entries, pdb_file: str) -> list:
+    """Rewrite each entry's first two atoms as "chain:resid:atom", leaving any
+    trailing numbers (a target distance, a force constant) alone.
+
+    Indices are only meaningful against the structure they were resolved on, and
+    solvating again renumbers everything after the solute. Selectors survive that,
+    which is why they are what the config uses everywhere else. Entries that are
+    already selectors pass through, so configs written before this still work.
+    """
+    if not entries:
+        return []
+    names = None
+    out = []
+    for entry in entries:
+        atoms = entry.replace(",", " ").split() if isinstance(entry, str) else list(entry)
+        if len(atoms) < 2:
+            continue
+        pair = []
+        for atom in atoms[:2]:
+            if isinstance(atom, str) and atom.count(":") == 2:
+                pair.append(atom)
+            else:
+                if names is None:
+                    names = atom_names(pdb_file)
+                index = int(atom)
+                pair.append(names[index] if index < len(names) else str(atom))
+        out.append(pair + list(atoms[2:]))
+    return out
+
+
+def check_inherited_restraints(constraints, restraints, pdb_file: str, inputs) -> None:
     """Refuse to constrain a pair that md held in place with a harmonic restraint.
 
     A restraint says "we are imposing this distance"; a constraint on a detected
@@ -188,22 +224,24 @@ def check_inherited_restraints(constraints, restraints, inputs) -> None:
     """
     if not constraints or not restraints:
         return
-    allowed = {frozenset(map(str, pair)) for pair in (inputs.get("acknowledge_restrained") or [])}
-    imposed = {frozenset(str(r[r_i]) for r_i in (0, 1)): r for r in restraints if len(r) >= 2}
+    imposed = {frozenset(entry[:2]): entry for entry in to_selectors(restraints, pdb_file)}
+    allowed = {frozenset(entry[:2]) for entry in
+               to_selectors(inputs.get("acknowledge_restrained"), pdb_file)}
     clashes = [imposed[key] for key in
-               (frozenset(str(c[i]) for i in (0, 1)) for c in constraints)
+               (frozenset(entry[:2]) for entry in to_selectors(constraints, pdb_file))
                if key in imposed and key not in allowed]
     if not clashes:
         return
-    detail = "".join("    %s - %s: restrained to %s A by md\n" % (c[0], c[1], c[2] if len(c) > 2 else "?")
-                     for c in clashes)
+
+    detail = "".join("    %s - %s: restrained to %s A by md\n"
+                     % (c[0], c[1], c[2] if len(c) > 2 else "?") for c in clashes)
     raise ValueError(
         "md.results.restraints records distances this run imposed, and preprocess "
         "would now freeze them as detected metal coordination:\n" + detail +
         "\nThat makes an assumption look structural. In the preprocess inputs, either\n"
         "add the residue to `constraint_exclude_residues` to leave it free, or list\n"
         "the pair in `acknowledge_restrained` to assert the coordination is real:\n"
-        "    acknowledge_restrained: [[%s, %s]]\n" % (clashes[0][0], clashes[0][1]))
+        '    acknowledge_restrained: [["%s", "%s"]]\n' % (clashes[0][0], clashes[0][1]))
 
 
 def resolve_cores(requested, label: str = "cores") -> int:
@@ -697,7 +735,7 @@ def run(args) -> Dict[str, Any]:
         check_inherited_restraints(
             constraints,
             (load_section(args.config, "md").get("results") or {}).get("restraints"),
-            inputs)
+            pdb_file, inputs)
     else:
         # e.g. protein–protein complexes: no metal site to hold, no metal QM region
         print("[INFO] No metals given: no coordination constraints and no metal QM region")

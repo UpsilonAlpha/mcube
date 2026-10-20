@@ -14,6 +14,7 @@ from ash import *
 
 from .preprocess import (
     resolve_cores,
+    to_selectors,
     save_result,
     load_section,
     resolve_atoms,
@@ -186,7 +187,9 @@ def run(args) -> Dict[str, Any]:
 
     fragment = Fragment(pdbfile=pdb_file)
     result["forcefields"] = default_forcefields
-    result["restraints"] = restraints
+    # Recorded as selectors, not the indices OpenMM was given: indices only mean
+    # something against the structure they were resolved on.
+    result["restraints"] = to_selectors(restraints, pdb_file)
 
     print("[STEP] Minimization...")
     OpenMM_Opt(fragment=fragment, theory=mm, maxiter=500, tolerance=1)
