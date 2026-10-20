@@ -616,9 +616,16 @@ def mode_graft(site, args):
     zn = sys_atoms[metal_i][4]
     bd = site["burgi_dunitz"]
 
+    # Is the ligand in the system the same conformer as the pose, just moved?
+    # Optimal superposition removes the placement and leaves the conformation,
+    # which separates "this pose was repositioned" from "this is not that pose".
+    sys_lig = [a[4] for a in sys_atoms
+               if a[0] == lig_chain and a[1] == lig_resid and a[2][0] != "H"]
+
     print()
-    print("%-6s %8s %10s %12s %10s" % ("pose", "score", "Zn-carbonyl",
-                                       "waters <%.1fA" % 2.2, "written"))
+    print("%-6s %8s %10s %9s %12s %10s"
+          % ("pose", "score", "Zn-carbonyl", "conformer", "waters <2.2A",
+             "written"))
     for n, pose in enumerate(poses, 1):
         new_heavy = [None] * len(heavy_idx)
         for pi, ri in enumerate(mapping):
@@ -634,7 +641,15 @@ def mode_graft(site, args):
             written = write_grafted(system, sys_atoms, lig_rows, ref_atoms,
                                     pos_of, clashing, n)
         score = "%8.3f" % scores[n - 1] if n <= len(scores) else "       -"
-        print("%-6d %s %9.2f A %12d %10s" % (n, score, znco, len(clashing), written))
+        conf = "        -"
+        if len(sys_lig) == len(pose):
+            ordered = [None] * len(pose)
+            for pi, ri in enumerate(mapping):
+                ordered[pi] = sys_lig[ri]
+            _, crmsd = kabsch(ordered, pose)
+            conf = "%7.2f A" % crmsd
+        print("%-6d %s %9.2f A %9s %12d %10s"
+              % (n, score, znco, conf, len(clashing), written))
 
     # The ligand already in the system is the control: if the docked pose it
     # came from sits somewhere else entirely, the pipeline moved it there.
