@@ -59,15 +59,14 @@ mcube postprocess config.yaml [--qmmm] [--redraw] [--cutoff 2.6] [--metals ZN MG
 
 `--cores` defaults to `$SLURM_CPUS_PER_TASK` (or 1). The `md`, `qmmm`, `scan` and `ts` stages take their core count from `cores` in the config instead, and `sp` from `sp_cores`.
 
-**Threads.** mcube does not touch `OMP_*`. Thread placement has to be in the environment before ASH, OpenMM or xTB start, and the right policy differs per stage, so it belongs in your job script. mcube only reads a thread *count*: a stage's `cores` (or `sp_cores`/`dft_cores`), else `$OMP_NUM_THREADS`, else `$SLURM_CPUS_PER_TASK`, else 1.
+**Threads.** You choose `--cpus-per-task`, `--mem` and `--time`; nothing else.
+`mcube env <config> <stage> [--section S]` prints the thread settings that stage
+needs and the job script applies them before anything starts, so a stage cannot
+run under the wrong policy. It also warns when the allocation is larger than the
+stage can use. `docs/csr/run.slurm` is a ready-made job script that does this.
 
-Three recipes, which is all that is needed. `docs/csr/run.slurm` implements them as named profiles.
-
-| Stages | Settings | Why |
-| --- | --- | --- |
-| `md`, `qmmm`, `scan`, `ts` without `freq_workers` | `OMP_NUM_THREADS=$((N/2))`, `OMP_PROC_BIND=close`, `OMP_PLACES=cores` | One xTB process at a time. On SMT nodes `--cpus-per-task=N` gives N/2 physical cores; unbound xTB threads shared cores and ran **2–9× slower** with erratic step times (`docs/running-on-bunya.md`) |
-| `neb` with parallel images, `ts` with `freq_workers` > 1 | `OMP_NUM_THREADS=$((N/2))`, `OMP_PROC_BIND`/`OMP_PLACES` **unset** | Several xTB processes at once. Binding is actively harmful: every worker pins to the same first cores |
-| `sp`, and any stage with `qm_engine: dft` | `OMP_NUM_THREADS=1`, `OMP_PROC_BIND`/`OMP_PLACES` **unset** | PySCF runs in-process and sets its own thread count from `sp_cores`/`dft_cores`. A conflicting `OMP_NUM_THREADS` makes it warn and can clamp it, and process-wide binding pins its BLAS threads to one core (measured: ~18% CPU per thread) |
+mcube takes the thread *count* for a stage from its `cores` (or `sp_cores` /
+`dft_cores`), else `$OMP_NUM_THREADS`, else `$SLURM_CPUS_PER_TASK`, else 1.
 
 ## Config file
 
@@ -80,6 +79,8 @@ The config file has one section per stage, and each section has `inputs` (writte
 - [`scan_2d.yaml`](config_examples/scan_2d.yaml): 2D relaxed scan, bond formation coupled to a proton transfer
 
 Results are written back with `yaml.safe_dump`, so comments in the config are lost the first time a stage saves its results. Writes are locked (POSIX), so several jobs can run stages on one config at once as long as each writes its own `--section`.
+
+**Restraints do not silently become constraints.** `md` records the pairs it restrained in the PDBs it writes, as `REMARK` lines that travel with the file. If a later run starts from one of those structures and its metal-contact detection would now freeze the same pair, `preprocess` stops and asks which you meant: `constraint_exclude_residues` to leave it free, or `acknowledge_restrained` to say the coordination is real.
 
 **Atom selectors.** Wherever an input takes atoms (`md` `constraints`/`restraints`; `actregion_origin`, `opt_constraints`; scan `atoms`/`constraints`; ts `hessian_atoms`/`monitor`; neb `hessian_atoms`/`partial_hessian_atoms`), each atom can be a 0-based index or a `"chain:resid:atom"` string matched against the stage's structure, e.g. `"B:1:ZN"` or `"A:88:NE2"`. Numbers in the same entry (distances, force constants) are left alone, so `restraints: [["B:1:ZN", "C:1:O2x", 2.2, 20.0]]` works. Selectors keep a config valid when the solvent box (and so every index after the solute) changes, and make configs readable for new systems. The resolved indices are printed.
 
@@ -119,6 +120,7 @@ A stale chain ID fails loudly in some places and silently in others: a `chain:re
 | `require_his_variants` | `false` | Fail if any histidine has no tautomer in `residue_variants`. A warning is printed either way. |
 | `extra_qm_residues` | none | `{chain: [resid, ...]}`: residues added to the QM region on top of the metal's coordination sphere (e.g. catalytic Lys/Arg) |
 | `constraint_exclude_residues` | none | `{chain: [resid, ...]}`: residues whose metal–donor distance is left unconstrained during MD (e.g. the substrate) |
+| `acknowledge_restrained` | none | `["B:1:ZN C:1:O2x", ...]`: pairs an earlier run held in place with a harmonic restraint that this run may still constrain. Without it, preprocess **refuses** to constrain such a pair, because an imposed distance would become an apparently structural one |
 | `exclude_residues` | none | `{chain: [resid, ...]}`: coordinating residues left out of the QM region. Their metal–donor bond constraints are still applied in classical MD. Not the same as `boundary_excluded`, which lists the non-amino-acid QM atoms that ASH should not place link atoms on. |
 | `backbone_atoms` | standard backbone | Atoms of amino-acid QM residues that stay in MM |
 | `amino_acids` | 20 standard + Amber variants | Residues cut at CA–CB. Any other residue (metals, ligands, waters) is put fully into the QM region and excluded from boundary detection. |

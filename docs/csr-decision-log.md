@@ -1207,6 +1207,32 @@ One candidate for part of the shortfall, untested: the stage also writes four cu
 
 **The scientific branch this check was meant to decide is already closed by D67/D68.** DFT came out steep (D65: +23.6 kcal/mol at 4.00 A), which under the original plan meant "the carbonyl is genuinely bound at both levels, so the only untested thing is the binding pose - propose re-docking". Re-docking is not needed: D66 established the pose is docked pose 2, and D67 that the docked pose puts the carbonyl **5.43 A** from the zinc, so a pose with an uncoordinated carbonyl already exists and never needed generating. D69's unrestrained run is testing exactly that, from exactly that structure. Nothing to propose.
 
+**D71 - The two methodological failures are now prevented by the code, not by the documentation.** (2026-10-20, user)
+
+Both of the traps this project fell into were being handled by telling people about them. That only works until someone is tired.
+
+**Restraint laundering (D68) is now refused.** `md` records every pair it restrained into the PDBs it writes, as `REMARK 100 MCUBE RESTRAINED <sel_i> <sel_j> <target> <k>` lines. Selectors rather than indices, so resolvation cannot shift them, and REMARK lines rather than a sidecar file, because the structure gets copied and renamed between runs and a REMARK travels with it. `preprocess` reads those stamps from its `protein_pdb` and, if the metal-contact detection would now freeze a stamped pair, **stops** and names it:
+
+    B:1:ZN - C:1:O2x: restrained to 2.20 A (k = 20.0) by an earlier run
+
+offering the two honest choices - `constraint_exclude_residues` to leave it free, or `acknowledge_restrained: ["B:1:ZN C:1:O2x"]` to assert the coordination is real. Run this project's own history through it and `CSR_crystal_v2` would not have started. Real coordination (histidines, the hydroxide, waters) is untouched, because those pairs were never restrained.
+
+**Thread placement is no longer a choice.** `mcube env <config> <stage> [--section]` derives the policy from the stage and the config and prints shell exports; `run.slurm` evals it after activating the environment and before anything starts. The profile argument is gone - `run.slurm <stage> <section> [start.pdb]`. The three cases are now decided rather than remembered:
+
+| condition | threads | bind |
+| --- | --- | --- |
+| one xTB process (`qmmm`, `scan`, `ts` without workers) | CPUs/2 | **yes** |
+| parallel xTB (`neb`, `ts` with `freq_workers` > 1) | CPUs/2 | no |
+| in-process BLAS (`sp`, any `qm_engine: dft`, `md`) | 1 (or CPUs/2 for md) | no |
+
+It also warns at submit time when the allocation exceeds what the stage can use, which is the D70 mistake: `[WARNING] 64 CPUs allocated but sp uses about 32`.
+
+The user's framing is the reason both of these are code: the only things left to choose are `--cpus-per-task`, `--mem`, `--time` and `config.yaml`. The documentation shrank accordingly - the three-recipe thread table in the README is two sentences now, and `run.slurm`'s header carries a worked `sbatch` line per stage instead.
+
+**Tested:** 20 new tests pass locally (`test_env.py`, which needs only PyYAML because `cli.py` imports no stage); `test_provenance.py` covers the stamp and the refusal and runs in the ASH environment. The provenance logic was also exercised standalone against a synthetic structure before being spliced in - round trip, idempotence, pair-order insensitivity, acknowledgement, and leaving genuine contacts alone.
+
+**Not affected:** jobs 30226271 and 30226272 were already submitted, and Slurm spools the batch script at submit time, so they run the old script with the old arguments.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
