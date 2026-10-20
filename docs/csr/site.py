@@ -486,22 +486,36 @@ def frame_transform(docked_in, system, metal_selector, radius=12.0):
     mi = index_of(b, metal_selector)
     if mi is None:
         raise SystemExit("metal %s not found in %s" % (metal_selector, system))
-    near = {(x[0], x[1], x[2]) for x in b
-            if x[3] not in ("HOH", "WAT", "SOL")
-            and math.dist(x[4], b[mi][4]) < radius}
     key = lambda x: (x[0], x[1], x[2])
-    shared = [k for k in (key(x) for x in a) if k in near]
-    if len(shared) < 50:
-        raise SystemExit("only %d shared atoms near the metal; cannot align"
-                         % len(shared))
     pa = {key(x): x[4] for x in a}
     pb = {key(x): x[4] for x in b}
-    apply_, rmsd = kabsch([pa[k] for k in shared], [pb[k] for k in shared])
-    print("docking frame aligned onto the system on %d atoms within %.0f A of "
-          "the metal, RMSD %.2f A" % (len(shared), radius, rmsd))
-    if rmsd > 2.0:
-        print("  WARNING: that is a poor fit; the site has moved during MD and "
-              "a docked pose may not be meaningful in this frame")
+
+    def fit(backbone_only):
+        near = [key(x) for x in b
+                if x[3] not in ("HOH", "WAT", "SOL")
+                and (not backbone_only or x[2] in ("N", "CA", "C", "O"))
+                and math.dist(x[4], b[mi][4]) < radius]
+        shared = [k for k in near if k in pa]
+        if len(shared) < 20:
+            return None, None, len(shared)
+        apply_, rmsd = kabsch([pa[k] for k in shared], [pb[k] for k in shared])
+        return apply_, rmsd, len(shared)
+
+    # Side chains rearrange during MD; backbone does not. Fitting on everything
+    # lets that rearrangement masquerade as a frame difference, so fit on the
+    # backbone and report the all-atom number only as a measure of how much the
+    # site moved.
+    apply_, rmsd, n = fit(True)
+    _, all_rmsd, all_n = fit(False)
+    if apply_ is None:
+        raise SystemExit("only %d shared backbone atoms near the metal" % n)
+    print("docking frame aligned onto the system on %d backbone atoms within "
+          "%.0f A of the metal, RMSD %.2f A" % (n, radius, rmsd))
+    print("  for comparison, all %d atoms there fit to %.2f A: that is how far "
+          "the site itself moved" % (all_n, all_rmsd))
+    if rmsd > 1.0:
+        print("  WARNING: the backbone itself has moved; a docked pose may not "
+              "be meaningful in this frame")
     return apply_
 
 
@@ -622,9 +636,18 @@ def mode_graft(site, args):
         score = "%8.3f" % scores[n - 1] if n <= len(scores) else "       -"
         print("%-6d %s %9.2f A %12d %10s" % (n, score, znco, len(clashing), written))
 
+    # The ligand already in the system is the control: if the docked pose it
+    # came from sits somewhere else entirely, the pipeline moved it there.
+    in_system = next((a[4] for a in sys_atoms
+                      if a[0] == lig_chain and a[1] == lig_resid
+                      and a[2] == site["carbonyl_o"].rsplit(":", 1)[1]), None)
     print()
-    print("Zn-carbonyl under %.1f A is inner-sphere; the reference pose sits at "
-          "%.2f A" % (bd["metal_bound"], math.dist(ref_atoms[carb][4], zn)))
+    print("Zn-carbonyl under %.1f A is inner-sphere." % bd["metal_bound"])
+    print("  the docked pose, aligned into this frame: %.2f A"
+          % math.dist(ref_atoms[carb][4], zn))
+    if in_system:
+        print("  the ligand actually in the system:         %.2f A"
+              % math.dist(in_system, zn))
 
 
 def waters_within(sys_atoms, pos_of, lig_rows, cutoff):
