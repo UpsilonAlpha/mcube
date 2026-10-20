@@ -1060,6 +1060,28 @@ Done through `md.inputs.constraints`, which `md.py` prefers over the preprocess 
 
 **`run.slurm` gained `preprocess` and `md`**, which take no `--section`; for them the third argument only names the output directory. One script still covers every stage.
 
+**D63 - The MM re-do was the wrong instrument; D59 and D62 overstated the constraint's effect. Checking the carbonyl bond at DFT instead.** (2026-10-20, user: "the MM equilibration doesn't tell us anything about coordination")
+
+**The user is right, on two counts, and job 30205872 was cancelled minutes after it was submitted.**
+
+*First, classical MD cannot answer a coordination question here.* The zinc is a non-bonded model - a +2 point charge with Lennard-Jones - so whatever Zn-O2x distance the force field settles on reflects AMBER's parameters, not chemistry. Worse, it is biased in the direction that would have fooled us: Yang *et al.* (D53) document MM MD **pulling extra ligands into the zinc shell**, so an MM run that left the carbonyl bound would have been evidence of nothing, and we might have read it as confirmation.
+
+*Second, and this is the part I had wrong: the forced 1.94 A never propagated.* Tracing the distance through the pipeline:
+
+| Stage | Zn-O2x |
+| --- | --- |
+| MM NVT end point, constraint applied | **1.94 A** |
+| after 25 ps QM/MM MD (md2) | 2.25 A |
+| after QM/MM optimisation (zncheck relax) | 2.13 A |
+
+QM/MM corrected it immediately and never looked back. So the rigid constraint set a *starting* value that xTB discarded, and **every QM/MM result we have already rests on a bond length the quantum method chose**. D59 and D62 treated the constraint as though it contaminated the downstream geometry; it did not. What it genuinely did was hold the substrate in one binding **pose** through 1 ns of classical MD - a pose question, not a bond-length question, and not one an MM re-run would settle either.
+
+**So the carbonyl scan (D61) was already the right experiment**, done at QM/MM level from an equilibrated structure: 22.4 kcal/mol to pull the carbonyl to 4.00 A. The only open question is whether xTB is right about that number, and there is a cheap precedent for checking - D58 did exactly this for Asp92 and found DFT 1.6x **steeper**, not weaker.
+
+**Submitted: jobs 30207244, 30207245, 30207246** - wB97X-D3(BJ)/def2-SVP single points on carbonyl-scan points 0, 4 and 8 (Zn-O2x 2.15, 3.08 and 4.00 A), on the xTB geometries so only the method differs. Three sections `qmmm_sp_co0/4/8`, separate so none overwrites another's results. **64 cores each**, which the D60 measurements justify: DFT ran at 96% efficiency on 16 and is the one stage that scales.
+
+If DFT also says the carbonyl is firmly bound, the coordination is settled at both levels and the Michaelis complex stands as modelled - the mechanistic difficulty is then real, and the remaining question is the binding **pose**, which needs re-docking rather than any constraint change. If DFT is much flatter, xTB is overbinding the substrate specifically, and the geometry that blocked every mechanism reopens.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
