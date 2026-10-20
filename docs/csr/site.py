@@ -6,12 +6,14 @@
     python site.py joint        <traj> <topology>   attack AND donate, same molecule
     python site.py poses        <pdbqt> <receptor> [ligand.pdb]
                                                     docked poses vs the metal site
+    python site.py graft        <pdbqt> <ligand.pdb> <system.pdb> [1,3,4]
+                                                    a pose into the solvated system
 
 Every atom, every candidate base and every criterion comes from `site.yaml`
 (override with --site), so this script carries no knowledge of a particular
 enzyme and a new system needs a new YAML file rather than new code.
 
-The four modes answer four different questions, in rough order of cost:
+The modes answer different questions, in rough order of cost:
 
   sphere        what is coordinated, and where are the hydrogens?
   nucleophiles  for one structure: which waters could attack, and for each of
@@ -22,6 +24,9 @@ The four modes answer four different questions, in rough order of cost:
   joint         over a trajectory, does any single water both reach the attack
                 geometry and donate to a named base, directly or through one
                 bridging water? A general-base mechanism needs both at once.
+  poses         which docked poses are there, and which one are we actually on?
+  graft         put another pose into the equilibrated system, so the poses can
+                be compared in one system rather than in systems that differ.
 """
 from __future__ import annotations
 
@@ -43,6 +48,29 @@ def load_pdb(path):
                         line[17:20].strip(),
                         (float(line[30:38]), float(line[38:46]), float(line[46:54]))))
     return out
+
+
+def load_pdbqt(path):
+    """([pose heavy-atom coordinates, ...], [Vina score, ...]).
+
+    Heavy atoms only. A PDBQT has no nonpolar hydrogens, so anything compared
+    against it has to drop its own or the two are not the same molecule.
+    """
+    poses, scores, current = [], [], []
+    for line in open(path):
+        if line.startswith("MODEL"):
+            current = []
+        elif line.startswith("REMARK VINA RESULT"):
+            scores.append(float(line.split()[3]))
+        elif line.startswith(("ATOM", "HETATM")):
+            if (line[77:79].strip() or line[12:16].strip())[0] != "H":
+                current.append((float(line[30:38]), float(line[38:46]),
+                                float(line[46:54])))
+        elif line.startswith("ENDMDL"):
+            poses.append(current)
+    if not poses and current:
+        poses = [current]
+    return poses, scores
 
 
 def index_of(atoms, selector):
@@ -331,22 +359,7 @@ def mode_poses(site, args):
         raise SystemExit("metal %s not found in %s" % (site["metal"], receptor))
     zn = load_pdb(receptor)[metal][4]
 
-    # Heavy atoms only, on both sides: PDBQT carries no nonpolar hydrogens, so
-    # including the reference's would shift its centroid and invent a difference.
-    poses, scores, current = [], [], []
-    for line in open(pdbqt):
-        if line.startswith("MODEL"):
-            current = []
-        elif line.startswith("REMARK VINA RESULT"):
-            scores.append(float(line.split()[3]))
-        elif line.startswith(("ATOM", "HETATM")):
-            if (line[77:79].strip() or line[12:16].strip())[0] != "H":
-                current.append((float(line[30:38]), float(line[38:46]),
-                                float(line[46:54])))
-        elif line.startswith("ENDMDL"):
-            poses.append(current)
-    if not poses and current:
-        poses = [current]
+    poses, scores = load_pdbqt(pdbqt)
 
     ref_pts = ref_c = None
     if reference:
@@ -382,10 +395,196 @@ def mode_poses(site, args):
             print("  the reference matches no pose; check where it came from")
 
 
+def bond_graph(points, cutoff=1.9):
+    """{i: {neighbours}} by distance. Crude, but a covalent bond is short."""
+    graph = {i: set() for i in range(len(points))}
+    for i in range(len(points)):
+        for j in range(i + 1, len(points)):
+            if math.dist(points[i], points[j]) < cutoff:
+                graph[i].add(j)
+                graph[j].add(i)
+    return graph
+
+
+def map_pose_to_reference(pose, ref_pts):
+    """Which reference heavy atom is which pose heavy atom.
+
+    The pose this is derived from must be the one the reference came from, so
+    the two differ by much less than a bond length and nearest-neighbour
+    assignment is unambiguous. That is an assumption, so it is checked: the
+    mapping has to be a bijection AND has to carry the pose's bond graph onto
+    the reference's. If it does, the atom names are transferable to every other
+    pose in the file, which all share the PDBQT's atom order.
+    """
+    if len(pose) != len(ref_pts):
+        raise SystemExit("pose has %d heavy atoms, reference has %d"
+                         % (len(pose), len(ref_pts)))
+    mapping = [min(range(len(ref_pts)), key=lambda j: math.dist(p, ref_pts[j]))
+               for p in pose]
+    if len(set(mapping)) != len(mapping):
+        raise SystemExit("mapping is not one-to-one; the reference is not this "
+                         "pose, so atom names cannot be transferred")
+    gp, gr = bond_graph(pose), bond_graph(ref_pts)
+    for i, nbrs in gp.items():
+        if {mapping[n] for n in nbrs} != gr[mapping[i]]:
+            raise SystemExit("mapping does not preserve bonding at pose atom %d; "
+                             "refusing to guess atom identities" % (i + 1))
+    worst = max(math.dist(pose[i], ref_pts[mapping[i]]) for i in range(len(pose)))
+    print("atom mapping verified: bijective, bond graph preserved, "
+          "worst atom %.2f A" % worst)
+    return mapping
+
+
+def place_hydrogens(ref_atoms, heavy_idx, new_heavy):
+    """Carry each hydrogen across on the local frame of its parent heavy atom.
+
+    Rebuilding hydrogens with a force field would mean sanitising a docked
+    structure through a perception step that can get a beta-lactam wrong. The
+    local geometry around a hydrogen does not change between poses -- only the
+    torsions do -- so transferring it in the parent's frame is both exact for
+    the bits that matter and free of chemistry perception.
+    """
+    def frame(origin, a, b):
+        e1 = [a[k] - origin[k] for k in range(3)]
+        n1 = math.sqrt(sum(v * v for v in e1)) or 1.0
+        e1 = [v / n1 for v in e1]
+        e2 = [b[k] - origin[k] for k in range(3)]
+        dot = sum(e1[k] * e2[k] for k in range(3))
+        e2 = [e2[k] - dot * e1[k] for k in range(3)]
+        n2 = math.sqrt(sum(v * v for v in e2)) or 1.0
+        e2 = [v / n2 for v in e2]
+        e3 = [e1[1] * e2[2] - e1[2] * e2[1],
+              e1[2] * e2[0] - e1[0] * e2[2],
+              e1[0] * e2[1] - e1[1] * e2[0]]
+        return e1, e2, e3
+
+    old_heavy = [ref_atoms[i][4] for i in heavy_idx]
+    out = {}
+    for h, atom in enumerate(ref_atoms):
+        if atom[2][0] != "H":
+            continue
+        pos = atom[4]
+        order = sorted(range(len(heavy_idx)),
+                       key=lambda k: math.dist(pos, old_heavy[k]))
+        p, a, b = order[0], order[1], order[2]
+        old_f = frame(old_heavy[p], old_heavy[a], old_heavy[b])
+        new_f = frame(new_heavy[p], new_heavy[a], new_heavy[b])
+        d = [pos[k] - old_heavy[p][k] for k in range(3)]
+        local = [sum(d[k] * axis[k] for k in range(3)) for axis in old_f]
+        out[h] = tuple(new_heavy[p][k] + sum(local[c] * new_f[c][k]
+                                             for c in range(3))
+                       for k in range(3))
+    return out
+
+
+def mode_graft(site, args):
+    """Put a different docked pose into the system we already equilibrated.
+
+    Re-solvating each pose from scratch would give every pose a different water
+    count, and then the total energies are not comparable at all. Swapping the
+    ligand into one equilibrated system keeps the protein and the waters fixed,
+    so what differs between the runs is the thing under test.
+
+        site.py graft <pdbqt> <reference_ligand.pdb> <system.pdb> [poses]
+
+    With no pose list it only measures, which is the cheap triage: a pose that
+    puts nothing near the electrophile is not worth optimising.
+    """
+    pdbqt, ref_lig, system = args[0], args[1], args[2]
+    wanted = ([int(p) for p in args[3].split(",")] if len(args) > 3 else [])
+
+    poses, scores = load_pdbqt(pdbqt)
+    ref_atoms = load_pdb(ref_lig)
+    heavy_idx = [i for i, a in enumerate(ref_atoms) if a[2][0] != "H"]
+    ref_pts = [ref_atoms[i][4] for i in heavy_idx]
+
+    best = min(range(len(poses)),
+               key=lambda i: sum(min(math.dist(p, q) for q in poses[i])
+                                 for p in ref_pts))
+    print("reference ligand matches pose %d; deriving atom names from it"
+          % (best + 1))
+    mapping = map_pose_to_reference(poses[best], ref_pts)
+
+    # The reference ligand sits in the system, so find it there by name.
+    sys_atoms = load_pdb(system)
+    lig_chain, lig_resid = ref_atoms[0][0], ref_atoms[0][1]
+    lig_rows = [i for i, a in enumerate(sys_atoms)
+                if a[0] == lig_chain and a[1] == lig_resid]
+    if len(lig_rows) != len(ref_atoms):
+        raise SystemExit("system has %d atoms for %s:%s, reference ligand has %d"
+                         % (len(lig_rows), lig_chain, lig_resid, len(ref_atoms)))
+
+    carb = index_of(ref_atoms, site["carbonyl_o"])
+    if carb is None:
+        raise SystemExit("carbonyl %s not found in %s"
+                         % (site["carbonyl_o"], ref_lig))
+    metal_i = index_of(sys_atoms, site["metal"])
+    zn = sys_atoms[metal_i][4]
+    bd = site["burgi_dunitz"]
+
+    print()
+    print("%-6s %8s %10s %12s %10s" % ("pose", "score", "Zn-carbonyl",
+                                       "waters <%.1fA" % 2.2, "written"))
+    for n, pose in enumerate(poses, 1):
+        new_heavy = [None] * len(heavy_idx)
+        for pi, ri in enumerate(mapping):
+            new_heavy[ri] = pose[pi]
+
+        pos_of = {heavy_idx[k]: new_heavy[k] for k in range(len(heavy_idx))}
+        pos_of.update(place_hydrogens(ref_atoms, heavy_idx, new_heavy))
+
+        znco = math.dist(pos_of[carb], zn)
+        clashing = waters_within(sys_atoms, pos_of, lig_rows, 2.2)
+        written = "-"
+        if n in wanted:
+            written = write_grafted(system, sys_atoms, lig_rows, ref_atoms,
+                                    pos_of, clashing, n)
+        score = "%8.3f" % scores[n - 1] if n <= len(scores) else "       -"
+        print("%-6d %s %9.2f A %12d %10s" % (n, score, znco, len(clashing), written))
+
+    print()
+    print("Zn-carbonyl under %.1f A is inner-sphere; the reference pose sits at "
+          "%.2f A" % (bd["metal_bound"], math.dist(ref_atoms[carb][4], zn)))
+
+
+def waters_within(sys_atoms, pos_of, lig_rows, cutoff):
+    """Water residues with any atom within `cutoff` of a grafted ligand atom."""
+    pts = list(pos_of.values())
+    hit = set()
+    for i, a in enumerate(sys_atoms):
+        if i in set(lig_rows) or a[3] not in ("HOH", "WAT", "SOL"):
+            continue
+        if any(math.dist(a[4], p) < cutoff for p in pts):
+            hit.add((a[0], a[1]))
+    return hit
+
+
+def write_grafted(system, sys_atoms, lig_rows, ref_atoms, pos_of, clashing, n):
+    """The system PDB with the ligand replaced and clashing waters removed."""
+    out = "%s_pose%d.pdb" % (system.rsplit(".", 1)[0], n)
+    row_for = {row: k for k, row in enumerate(lig_rows)}
+    with open(out, "w") as fh:
+        i = -1
+        for line in open(system):
+            if not line.startswith(("ATOM", "HETATM")):
+                fh.write(line)
+                continue
+            i += 1
+            a = sys_atoms[i]
+            if (a[0], a[1]) in clashing:
+                continue
+            if i in row_for:
+                x, y, z = pos_of[row_for[i]]
+                line = "%s%8.3f%8.3f%8.3f%s" % (line[:30], x, y, z, line[54:])
+            fh.write(line)
+    return out.rsplit("/", 1)[-1]
+
+
 # --- entry point -------------------------------------------------------------
 
 MODES = {"sphere": mode_sphere, "nucleophiles": mode_nucleophiles,
-         "acceptors": mode_acceptors, "joint": mode_joint, "poses": mode_poses}
+         "acceptors": mode_acceptors, "joint": mode_joint, "poses": mode_poses,
+         "graft": mode_graft}
 
 if __name__ == "__main__":
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
@@ -395,7 +594,7 @@ if __name__ == "__main__":
         raise SystemExit(__doc__)
     site = yaml.safe_load(open(site_file))["site"]
     mode, rest = args[0], args[1:]
-    if mode in ("sphere", "nucleophiles", "poses"):
+    if mode in ("sphere", "nucleophiles", "poses", "graft"):
         MODES[mode](site, rest)
     else:
         if len(rest) != 2:
