@@ -40,7 +40,7 @@ short version, which is why `run.slurm` takes a profile:
 
 | Work | CPUs | CPU efficiency | Memory used |
 | --- | --- | --- | --- |
-| DFT single points | 16 | **96%** | 56 GB of 96 |
+| DFT single points (`sp` stage) | 16 | **96%** | 56 GB of 96 |
 | xTB optimisation or scan | 8 | **94%** (geomeTRIC, not xTB) | ~1 GB |
 | xTB/MM MD | 8 | **30%** | 0.5 GB of 32 |
 

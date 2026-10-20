@@ -42,7 +42,7 @@ def md_forcefields(inputs: Dict[str, Any], preprocess: Dict[str, Any]) -> list:
 def build_md_theory(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file: str,
                     constraints, restraints, cores=None):
     """
-    The classical system used by the md stage (and reused by ramd): force fields,
+    The classical system used by the md stage: force fields,
     HBond constraints, rigid water, 1.5 amu hydrogens, metal-site bond constraints
     and optional harmonic restraints. Returns (OpenMMTheory, force-field list).
     """

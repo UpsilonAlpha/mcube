@@ -58,27 +58,26 @@ site:
 # `inputs` verbatim, so adding a calculation is a few lines here.
 sections:
 
-  cleanR_lysH:                 # D42: proton on Lys226
+  # D42. Each of these is an optimisation only; score the result with a
+  # separate `sp_dft` run on its QM_MM_optimized.pdb, which is how the DFT
+  # single point gets 64 cores while the xTB optimisation does not need them.
+  cleanR_lysH:                 # proton on Lys226
     stage: qmmm
     start: md_results/NVTtrajectory_lastframe.pdb
     inputs:
       skip_equilibrate: true
-      singlepoint: true
       opt_maxiter: 600
-      sp_cores: 64
       opt_constraints:
         - [B:1:ZN, A:92:OD2, 2.80]
         - [B:1:ZN, C:1:O2x, 2.90]
         - [A:226:NZ, A:226:HZ1, 1.03]
 
-  cleanR_ohH:                  # D42: proton on O01
+  cleanR_ohH:                  # proton on O01
     stage: qmmm
     start: md_results/NVTtrajectory_lastframe.pdb
     inputs:
       skip_equilibrate: true
-      singlepoint: true
       opt_maxiter: 600
-      sp_cores: 64
       opt_constraints:
         - [B:1:ZN, A:92:OD2, 2.80]
         - [B:1:ZN, C:1:O2x, 2.90]
@@ -90,7 +89,6 @@ sections:
     inputs:
       skip_equilibrate: false
       skip_optimize: true
-      singlepoint: false
       time: 25
       timestep: 0.001
       traj_frequency: 50
@@ -120,25 +118,22 @@ sections:
       resume: true
 
   sp_dft:                      # score a geometry someone else produced
-    stage: qmmm
+    stage: sp
     inputs: &sp_only
-      skip_equilibrate: true
-      skip_optimize: true
-      singlepoint: true
       sp_cores: 64
 
   # D63: is xTB's 22.4 kcal/mol for pulling the carbonyl off real? Same check
   # as D58 did for Asp92, on three points of the carbonyl scan. Separate
   # sections because each run writes its results back into its own.
   sp_co0:
-    stage: qmmm
+    stage: sp
     start: protdft/coscan/scan_00.pdb     # Zn-O2x 2.15 A
     inputs: *sp_only
   sp_co4:
-    stage: qmmm
+    stage: sp
     start: protdft/coscan/scan_04.pdb     # Zn-O2x 3.08 A
     inputs: *sp_only
   sp_co8:
-    stage: qmmm
+    stage: sp
     start: protdft/coscan/scan_08.pdb     # Zn-O2x 4.00 A
     inputs: *sp_only

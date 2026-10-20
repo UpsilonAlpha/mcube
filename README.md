@@ -4,11 +4,11 @@ A pipeline for protein–ligand systems, often metalloproteins, built on [ASH](h
 
 1. **preprocess**: ligand parameterisation (OpenFF), protonation and solvation (explicit or implicit), metal-coordination bond constraints and QM-region selection
 2. **md**: OpenMM minimisation, optional gentle warm-up, NPT box equilibration and production MD
-3. **qmmm**: xTB/MM MD and geometry optimisation, with an optional PySCF QM/MM single point and cube files
+3. **qmmm**: xTB/MM MD and geometry optimisation
 4. **scan**: relaxed QM/MM distance scan (builds intermediates/products in the reactant's box)
 5. **neb**: QM/MM nudged elastic band between a reactant and a product (optionally NEB + TS optimisation), with a frequency check on the saddle point
 6. **ts**: TS optimisation with a partial Hessian, frequency check and IRC (quasi-IRC along the TS mode, or Sella)
-7. **ramd**: τRAMD relative residence times (random acceleration MD on the md stage's system, bootstrapped τ per replica)
+7. **sp**: PySCF QM/MM single point on a finished geometry, with density, MEP and HOMO/LUMO cubes
 8. **postprocess**: MD data plots, RMSD, RMSF (as B-factors) and a residue interaction network
 
 All stages read one YAML config file and write their results back into it, so each stage picks up the outputs of the stages before it.
@@ -37,13 +37,13 @@ mcube qmmm config.yaml
 mcube scan config.yaml --pdb reactant.pdb --section scan_attack [--actatoms active_atoms]
 mcube neb config.yaml --reactant reactant.pdb --product product.pdb [--section neb_step1] [--actatoms active_atoms] [--cores N]
 mcube ts config.yaml --pdb saddlepoint.pdb [--section ts_step1] [--actatoms active_atoms]
-mcube ramd config.yaml [--section ramd_complexA] [--replicas 0 1] [--analyse]
+mcube sp config.yaml --pdb QM_MM_optimized.pdb [--section sp_product]
 mcube postprocess config.yaml [--qmmm] [--redraw] [--cutoff 2.6] [--metals ZN MG] [--occupancy 0.1]
 ```
 
 `python -m mcube ...` also works. Every stage writes its files to the current directory, so run each stage from its own working directory. Paths saved in `results` are absolute, so later stages can be run from anywhere.
 
-`--cores` defaults to `$SLURM_CPUS_PER_TASK` (or 1). The `md`, `qmmm`, `scan`, `ts` and `ramd` stages take their core count from `cores` in the config instead.
+`--cores` defaults to `$SLURM_CPUS_PER_TASK` (or 1). The `md`, `qmmm`, `scan` and `ts` stages take their core count from `cores` in the config instead, and `sp` from `sp_cores`.
 
 **Threads.** xTB runs with its OpenMP threads bound one per physical core (`OMP_PROC_BIND=close`, `OMP_PLACES=cores`), through a small wrapper script that mcube writes to `.mcube_xtb/` in the run directory. The Python process itself (OpenMM, PySCF, numpy) is not bound: binding an in-process OpenMP runtime pins later threads to one core. Setting `OMP_PROC_BIND`/`OMP_PLACES` yourself, or `MCUBE_THREAD_BINDING=0`, turns mcube's binding off.
 - **Why:** on SMT nodes, `--cpus-per-task=N` gives N/2 physical cores. Unbound xTB threads then share cores and ran 2–9× slower, with erratic step times (see `docs/running-on-bunya.md`).
@@ -56,7 +56,6 @@ The config file has one section per stage, and each section has `inputs` (writte
 
 - [`pdbqt_config.yaml`](config_examples/pdbqt_config.yaml): explicit solvent, docked ligand from a PDBQT
 - [`implicit_config.yaml`](config_examples/implicit_config.yaml): implicit solvent (GBn2), ligand from a PDB
-- [`protein_protein_ramd.yaml`](config_examples/protein_protein_ramd.yaml): protein–protein complex without metals, md and τRAMD on a GPU (`scripts/ramd_gpu.slurm`)
 - [`qmmm_dft_refine.yaml`](config_examples/qmmm_dft_refine.yaml): enzyme mechanism explored at xTB, then stationary points, frequencies and IRC refined at DFT/MM (see [docs/qm-levels.md](docs/qm-levels.md))
 - [`scan_2d.yaml`](config_examples/scan_2d.yaml): 2D relaxed scan, bond formation coupled to a proton transfer
 
@@ -143,16 +142,7 @@ Minimisation always runs. Metal–donor `constraints` are applied as fixed-dista
 | `dft_scf_dispersion` | none | Dispersion inside the SCF for `qm_engine: dft` (ASH/PySCF's own keyword: `D3`, `D4`, `VV10`, …), so it enters the gradient. Distinct from `sp_dispersion`, which is applied after a single point. |
 | `dft_cores` | stage `cores` | Threads for the DFT gradients |
 | `dft_gpu_pcgrad` | `false` | With `dft_platform: GPU`, also compute the MM point-charge gradient on the device. For a large MM environment that is most of the QM/MM gradient. |
-| `singlepoint` | `true` | PySCF QM/MM single point (RKS/UKS from `mult`), plus `density.cube`, `mep.cube`, `HOMO.cube` and `LUMO.cube` |
-| `sp_functional`, `sp_basis` | `wb97x-v`, `def2-svp` | Single-point level of theory (PySCF names, e.g. `wb97m_v`; the energy is saved as `sp_energy`) |
-| `sp_gridlevel` | 3 | PySCF DFT grid level (ASH's own default is 5, which made VV10 functionals very slow) |
-| `sp_densityfit`, `sp_auxbasis` | `true`, PySCF default | Density fitting (RI-JK for hybrids) |
-| `sp_cores` | physical cores | Threads for the single point (independent of the xTB `cores`) |
-| `sp_platform` | `CPU` | `GPU` uses gpu4pyscf (must be installed) |
-| `sp_memory` | 80% of `$SLURM_MEM_PER_NODE`, else 3100 | PySCF `max_memory` (MB). Density-fitting integrals that don't fit are written to disk and re-read every cycle; a range-separated hybrid on ~120 QM atoms with def2-SVP needs ~60 GB to stay in RAM. |
-| `sp_dispersion`, `sp_dispersion_method` | none, `sp_functional` | Post-SCF DFT-D3 on the QM region (link atoms included): `d3bj` or `d3zero`, parameters for the named functional (simple-dftd3 names, e.g. `wb97x`). Needs `dftd3-python`. Saved as `sp_disp_energy` and `sp_energy_disp`. |
-
-`results` (section `qmmm`, or `--section NAME`): `qm_atoms`, `boundary_excluded`, `trajfile`, `lastframe`, `opttraj`, `optimized_pdb` (`QM_MM_optimized.pdb`, the full optimised system, usable as an NEB endpoint), `opt_energy` (Eh), `converged`, `opt_constraints` (with the distances used), `cubes`.
+`results` (section `qmmm`, or `--section NAME`): `qm_atoms`, `boundary_excluded`, `trajfile`, `lastframe`, `opttraj`, `optimized_pdb` (`QM_MM_optimized.pdb`, the full optimised system, usable as an NEB endpoint), `opt_energy` (Eh), `converged`, `opt_constraints` (with the distances used).
 
 `mcube qmmm config.yaml --pdb other.pdb --section qmmm_product` runs the same inputs (overridden by `qmmm_product.inputs`, if given, e.g. `skip_equilibrate: true` or `opt_constraints`) on another structure (e.g. each NEB endpoint) without overwriting the other run's results. `--actatoms FILE` (qmmm, scan, neb and ts) reuses an active-atom list such as the reactant run's `active_atoms`, so both NEB endpoints and the NEB share one active region.
 
@@ -220,45 +210,39 @@ Each point is optimised from the previous one with the scanned distance fixed. W
 
 `results`: `ts_pdb` (`ts_optimized.pdb`), `ts_energy`, `guess_imaginary`, `imaginary_frequencies`, `small_imaginary`, `lowest_frequencies`, `ts_mode_atoms`, monitored distances, and `irc.forward/reverse` (`irc_*.pdb`, energy, barrier = E(TS) − E(end) in kcal/mol, distances).
 
-### `ramd.inputs` (τRAMD)
+### `sp.inputs`
 
-Random acceleration MD (Lüdemann et al. 2000) with the τRAMD protocol (Kokh et al., *JCTC* 2018; GROMACS implementation, Kokh et al. 2020). A constant force acts on the binder's centre of mass along a random direction; every `eval_interval` the binder COM displacement *relative to the receptor COM* is checked, and if it is below `rmin` a new direction is drawn. A trajectory ends when the binder–receptor COM distance reaches `max_distance`. Each replica starts with its own unbiased equilibration (new velocities, optionally its own snapshot), then runs `trajectories` RAMD runs with new velocities. τ per replica is the time at which half of its trajectories have dissociated (mean of the medians of random 80% subsets, as `tauRAMD.py`); τ is the mean over replicas.
+The QM/MM single point, run as its own stage (`mcube sp`). It is separate from
+`qmmm` because the two want different machines: a DFT SCF scales across cores
+and wants tens of gigabytes (measured: 96% CPU on 16 cores, 56 GB for ~120 QM
+atoms), while the xTB MD and optimisation in front of it saturate about four
+threads and use under a gigabyte. One job cannot size both, so submit them
+separately.
 
-The system is the **md stage's** (same force fields, HBond constraints, rigid water, 1.5 amu hydrogens and metal-site constraints), so a metal site stays held as in every MM stage. md restraints are not applied. A constraint or restraint that ties the binder to anything else is refused, because it would prevent unbinding.
+Inputs are read from `qmmm.inputs`, then `sp.inputs`, then the `--section`
+inputs, so the force fields, charge, multiplicity and QM region are inherited
+from the model being scored and only the level and the resources need stating.
+A structure is required — `--pdb` or `pdb_file` — because there is no sensible
+default geometry for a single point.
 
 | Key | Default | Description |
 | --- | --- | --- |
-| `binder` | required | `{chain: [resid, …]}`, `{chain: all}` (e.g. a binder protein) or a list of atoms (indices or `chain:resid:atom`) |
-| `receptor` | everything else except water and monatomic ions | Same format |
-| `force` | 14 | Force magnitude, kcal/mol/Å (= 585.76 kJ/mol/nm). **Keep it the same for every complex you compare.** |
-| `eval_interval` | 0.1 | ps between direction checks |
-| `rmin` | 0.025 | Å of binder COM motion (relative to the receptor COM) per check below which the direction is redrawn |
-| `max_distance` | receptor radius + binder radius + `exit_margin` | Binder–receptor COM distance (Å) that counts as dissociated. Must be below half the box. |
-| `exit_margin` | 10 | Å added to the summed radii for the automatic `max_distance` |
-| `replicas`, `trajectories` | 4, 15 | Protocol size (≥ 4 replicas × ≥ 10–15 trajectories) |
-| `equil_time` | 100 | ps of unbiased MD per replica before its RAMD runs |
-| `max_time` | 10000 | ps per trajectory; runs that do not dissociate are kept as censored at this time |
-| `pdb_file` | `md.results.lastframe` | Start structure |
-| `replica_pdbs` | none | One start structure per replica (e.g. from `scripts/extract_frames.py`) |
-| `timestep`, `temp` | `md.inputs.nvt_timestep`, `md.inputs.temp` | ps, K |
-| `friction` | 1.0 | Langevin friction, 1/ps (the thermostat strongly affects dissociation times; keep it fixed) |
-| `pressure` | 1.0 | bar, Monte Carlo barostat (explicit solvent); `null` for NVT |
-| `remove_cm_motion` | `true` | Keep the system's CMMotionRemover |
-| `constraints` | md constraints | Override the metal-site constraints |
-| `restraints` | none | Harmonic restraints, as in md |
-| `platform`, `properties` | fastest available | OpenMM platform (`CUDA`, `OpenCL`, `CPU`) and its properties (e.g. `{Precision: mixed}`) |
-| `cores` | `md.inputs.cores` | CPU threads (CPU platform) |
-| `seed` | 2026 | Base seed for velocities and directions (per replica and trajectory) |
-| `traj_interval` | 0 | ps between DCD frames of each RAMD trajectory (0: none) |
-| `exit_pdb` | `true` | Write the last frame of each trajectory |
-| `bootstrap_rounds`, `bootstrap_fraction` | 5000, 0.8 | τ bootstrap |
-| `min_trajectories` | 10 | Warn below this many trajectories per replica |
+| `sp_functional`, `sp_basis` | `wb97x-v`, `def2-svp` | Single-point level of theory (PySCF names, e.g. `wb97m_v`; the energy is saved as `sp_energy`) |
+| `sp_gridlevel` | 3 | PySCF DFT grid level (ASH's own default is 5, which made VV10 functionals very slow) |
+| `sp_densityfit`, `sp_auxbasis` | `true`, PySCF default | Density fitting (RI-JK for hybrids) |
+| `sp_cores` | physical cores | Threads for the single point (independent of the xTB `cores`) |
+| `sp_platform` | `CPU` | `GPU` uses gpu4pyscf (must be installed) |
+| `sp_memory` | 80% of `$SLURM_MEM_PER_NODE`, else 3100 | PySCF `max_memory` (MB). Density-fitting integrals that don't fit are written to disk and re-read every cycle; a range-separated hybrid on ~120 QM atoms with def2-SVP needs ~60 GB to stay in RAM. |
+| `sp_dispersion`, `sp_dispersion_method` | none, `sp_functional` | Post-SCF DFT-D3 on the QM region (link atoms included): `d3bj` or `d3zero`, parameters for the named functional (simple-dftd3 names, e.g. `wb97x`). Needs `dftd3-python`. Saved as `sp_disp_energy` and `sp_energy_disp`. |
+| `cubes` | `true` | Write `density.cube`, `mep.cube`, `HOMO.cube` and `LUMO.cube` |
 
-Box size is the main cost: the binder must not reach the receptor's periodic image before it counts as dissociated, so the box edge should exceed `max_distance` + both radii + the cutoff (a warning says by how much). Set `preprocess.solvent_padding` for this before `md`.
+`results` (section `sp`, or `--section NAME`): `pdb_file`, `qm_atoms`, `boundary_excluded`, `sp_energy` (Eh), `sp_level`, `sp_dispersion`, `sp_disp_energy`, `sp_energy_disp`, `cubes`.
 
-Work is restartable and can be split: each replica uses `replica_RR/` (`equilibrated.xml`, `traj_TT_end.pdb`), stop times go to `ramd_times.csv` (one row per trajectory, file-locked), finished trajectories are skipped, and `--replicas 2` runs one replica (one SLURM array task each). `--analyse` re-analyses the CSV, which can also come from another engine (columns `replica`, `trajectory`, `time_ps`, `dissociated`; set `times_csv`).
-
-`results`: `tau_ps`, `tau_sd_ps` (spread over replicas), `mean_bootstrap_sd_ps`, per-replica `tau_ps`/`sd_ps`/`median_ps`/`ks` (KS distance to the Poisson CDF 1 − exp(−t/τ); 0.1–0.2 is typical), and `warnings` (too few replicas or trajectories, replica scatter above the bootstrap error, τ < 100 ps, censored majority, large KS).
+```bash
+# the usual pair: xTB QM/MM on a modest allocation, then the SCF on a big one
+sbatch --cpus-per-task=8  --mem=24G  ... mcube qmmm config.yaml --section qmmm_reactant
+sbatch --cpus-per-task=64 --mem=192G ... mcube sp   config.yaml --section sp_reactant        --pdb protdft/qmmm_reactant/QM_MM_optimized.pdb
+```
 
 ## Outputs by stage
 
@@ -266,10 +250,10 @@ Work is restartable and can be split: each replica uses `replica_RR/` (`equilibr
 | --- | --- |
 | preprocess | `<resname>.mol/.pdb`, `openff_<resname>.xml`, `merged.pdb`, `finalsystem.pdb` |
 | md | `frag-minimized.pdb`, `warmup_MD_cycle*`, `relaxbox_NPT.dcd`, `nptsim.csv`, `NVTtrajectory(.dcd, _imaged.dcd, _lastframe(_imaged).pdb)`, `nvtsim.csv`, `system.xml` (implicit) |
-| qmmm | `QM_MM.dcd`, `QM_MM_lastframe.pdb`, `active_atoms`, `geometric_OPTtraj_Full.xyz`, `geometric_OPTtraj_QMregion.xyz`, `*.cube` |
+| qmmm | `QM_MM.dcd`, `QM_MM_lastframe.pdb`, `active_atoms`, `geometric_OPTtraj_Full.xyz`, `geometric_OPTtraj_QMregion.xyz` |
+| sp | `*.cube` (`density`, `mep`, `HOMO`, `LUMO`) |
 | scan | `scan_XX.pdb`, `scan_energies.csv`, `active_atoms` |
 | neb | ASH NEB files, `saddlepoint.xyz`, `saddlepoint.pdb` |
-| ramd | `ramd_times.csv`, `replica_RR/equilibrated.xml`, `replica_RR/equilibration.dcd`, `replica_RR/traj_TT_end.pdb` (and `traj_TT.dcd`) |
 | ts | `Hessian_partial_TS`, `ts_optimized.pdb`, `irc_forward.pdb`, `irc_reverse.pdb`, `irc_*_opttraj.xyz` (or Sella's `sella_*.xyz`) |
 | postprocess | `Temperature.png`, `Density.png`, `BoxVolume.png`, `RMSD.png`, `interaction_network.csv/.png`, `rmsf_bfactor.pdb` |
 

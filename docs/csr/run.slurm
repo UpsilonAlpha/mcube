@@ -19,27 +19,27 @@
 #   sbatch -J <name> [resources] run.slurm <profile> <stage> <section> [start.pdb]
 #
 #   profile  xtb | dft   threading only, see below
-#   stage    preprocess | md | qmmm | scan | neb | ts
+#   stage    preprocess | md | qmmm | sp | scan | neb | ts
 #   section  the config.yaml section, e.g. scan_znco; for preprocess and md,
 #            which have no sections, it just names the output directory
 #   start    optional --pdb; omit to let mcube take it from the previous stage
 #
 # Measured efficiency on this system (seff), which is why profile matters:
-#   DFT single points, 16 CPUs : 96% CPU, 56 GB   -> scales, give it cores
+#   DFT single points (sp),  16 : 96% CPU, 56 GB   -> scales, give it cores
 #   xTB/MM MD,          8 CPUs : 30% CPU, 0.5 GB  -> does not scale past ~4
 # So run DFT wide, and make xTB work go faster by running points in parallel
 # rather than by adding threads.
 #
 #   sbatch -J coscan --cpus-per-task=8  --mem=16G run.slurm xtb scan scan_znco start.pdb
 #   sbatch -J spdft  --cpus-per-task=64 --mem=192G --time=12:00:00 \
-#          run.slurm dft qmmm qmmm_sp_dft geom.pdb
+#          run.slurm dft sp sp_sp_dft geom.pdb
 set -euo pipefail
 ulimit -s unlimited
 export OMP_STACKSIZE=1G
 export PYTHONUNBUFFERED=1
 
 PROFILE=${1:?profile: xtb or dft}
-STAGE=${2:?stage: preprocess, md, qmmm, scan, neb or ts}
+STAGE=${2:?stage: preprocess, md, qmmm, sp, scan, neb or ts}
 SECTION=${3:?config.yaml section, or the stage name for preprocess/md}
 START=${4:-}
 

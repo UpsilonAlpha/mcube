@@ -9,7 +9,10 @@ Pipeline:
 4. Run short QM/MM MD
 5. QM/MM geometry optimisation (optionally with an active region and with
    user bond constraints, `opt_constraints`)
-6. Optional PySCF QM/MM single point with density, MEP and HOMO/LUMO cube files
+
+The DFT single point that used to end this stage is now `mcube sp` (sp.py): it
+scales across cores and wants tens of gigabytes, while the xTB work here
+saturates about four threads, so the two are sized and submitted separately.
 """
 
 from __future__ import annotations
@@ -456,60 +459,14 @@ def run(args) -> Dict[str, Any]:
             result["opt_energy"] = energy
         save_result(result, filename=args.config, section=section)
 
-    if inputs.get("singlepoint", True):
-        # QM/MM single point on the current (optimised) geometry: CA-CB cuts get link atoms and
-        # the MM environment enters as point charges. No continuum solvation: ASH's PySCF
-        # interface ignores it when point charges are present.
-        mult = inputs.get("mult")
-        # Speed settings: ASH's own PySCF defaults (grid level 5, no density fitting) made one
-        # wB97M-V/def2-SVP SCF cycle on ~120 QM atoms take ~22 min on 4 threads
-        sp_cores = resolve_cores(inputs.get("sp_cores"), "sp_cores")
-        print(f"[INFO] PySCF single point: {sp_cores} threads, "
-              f"max_memory {pyscf_memory(inputs, 'sp')} MB")
-        pyscf = make_dft(inputs, sp_cores, mult, "sp")
-        qmmm_sp = QMMMTheory(
-            qm_theory=pyscf,
-            mm_theory=mm,
-            fragment=fragment,
-            qmatoms=qm_atoms,
-            excludeboundaryatomlist=boundary_excluded,
-            embedding="electrostatic",
-            printlevel=1,
-        )
-        print("[STEP] Running PySCF QM/MM single point...")
-        sp = Singlepoint(theory=qmmm_sp, fragment=fragment, charge=inputs.get("charge"), mult=mult)
-        result["sp_energy"] = float(sp.energy)
-        result["sp_level"] = f"{inputs.get('sp_functional', 'wb97x-v')}/{inputs.get('sp_basis', 'def2-svp')}"
-        if inputs.get("sp_dispersion"):
-            # Post-SCF D3 on the QM region (link atoms included) exactly as PySCF saw it
-            disp = d3_energy([pyscf.mol.atom_symbol(i) for i in range(pyscf.mol.natm)],
-                             pyscf.mol.atom_coords(unit="Bohr"),
-                             inputs.get("sp_dispersion_method", inputs.get("sp_functional", "wb97x-v")),
-                             inputs["sp_dispersion"])
-            result["sp_dispersion"] = inputs["sp_dispersion"]
-            result["sp_disp_energy"] = disp
-            result["sp_energy_disp"] = result["sp_energy"] + disp
-            print(f"[INFO] {inputs['sp_dispersion']} dispersion: {disp:.8f} Eh; "
-                  f"E(SCF + disp) = {result['sp_energy_disp']:.8f} Eh")
-        save_result(result, filename=args.config, section=section)
-
-        mol = pyscf.mol
-        mf = pyscf.mf
-        dm = mf.make_rdm1()
-        if mult != 1:
-            dm = dm[0] + dm[1]  # total density from alpha + beta
-        pyscf.cubegen_density(mol, "density.cube", dm)
-        pyscf.cubegen_mep(mol, "mep.cube", dm)
-
-        # Alpha orbitals for UKS
-        mo_coeff = mf.mo_coeff if mult == 1 else mf.mo_coeff[0]
-        homo = mol.nelec[0] - 1
-        lumo = mol.nelec[0]
-        pyscf.cubegen_orbital(mol, "HOMO.cube", mo_coeff[:, homo])
-        pyscf.cubegen_orbital(mol, "LUMO.cube", mo_coeff[:, lumo])
-
-        result["cubes"] = [Path(f).resolve().as_posix() for f in
-                           ("density.cube", "mep.cube", "HOMO.cube", "LUMO.cube")]
-        save_result(result, filename=args.config, section=section)
+    # The DFT single point is its own stage (`mcube sp`): it scales across cores and
+    # wants tens of gigabytes, while the xTB MD and optimisation above saturate about
+    # four threads, so one job cannot size both. See sp.py.
+    if inputs.get("singlepoint") is not None:
+        target = result.get("optimized_pdb") or result.get("lastframe") or pdb_file
+        print("[INFO] `singlepoint` is no longer part of the qmmm stage. To run it:\n"
+              f"         mcube sp {args.config} --pdb {target}\n"
+              "       Submit it separately so the SCF can have the cores and memory it "
+              "scales with (see sp.py).")
 
     return result

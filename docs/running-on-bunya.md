@@ -201,9 +201,9 @@ The ASH env has OpenMM 8.4 built against CUDA 13.1. Its platforms are Reference,
 #SBATCH --gres=gpu:1          # or gpu:h100:1 / gpu:a100:1
 ```
 
-- **Classical stages on the GPU:** `md.inputs.platform: CUDA` (with `properties: {Precision: mixed}`) runs the md stage there. `ramd.inputs.platform` does the same for RAMD.
+- **Classical stages on the GPU:** `md.inputs.platform: CUDA` (with `properties: {Precision: mixed}`) runs the md stage there.
 - **QM/MM stays on the CPU:** xTB has no GPU code, so keep QM/MM jobs on `general`.
-- **Job script:** `scripts/ramd_gpu.slurm` runs preprocess → md → ramd on one GPU. It first checks that OpenMM can open a CUDA context, which fails if a node's driver is older than CUDA 13.1 needs.
+- **Checking the context:** OpenMM failing to open a CUDA context means the node's driver is older than the installed CUDA needs; test it before queueing a long run.
 
 ## Future option: FMO-xTB for large QM regions
 

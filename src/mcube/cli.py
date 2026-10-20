@@ -26,6 +26,13 @@ def build_parser():
     p3.add_argument("--section", default="qmmm", help="Config section to write results to")
     p3.add_argument("--actatoms", help="File of active-atom indices (e.g. another run's active_atoms)")
 
+    # The single point is a separate stage from qmmm because a DFT SCF scales
+    # across cores while the xTB MD in front of it does not: see sp.py.
+    p9 = subparsers.add_parser("sp", help="QM/MM single point (PySCF) on a finished geometry")
+    p9.add_argument("config", help="Input yaml file")
+    p9.add_argument("--pdb", help="Structure to score (e.g. a stage's QM_MM_optimized.pdb)")
+    p9.add_argument("--section", default="sp", help="Config section to write results to")
+
     # =========================================================
     # NEB
     # =========================================================
@@ -55,18 +62,6 @@ def build_parser():
     p7.add_argument("--section", default="ts",
                     help="Config section for results; its inputs override ts.inputs")
     p7.add_argument("--actatoms", help="File of active-atom indices (e.g. the reactant's active_atoms)")
-
-    # =========================================================
-    # τRAMD
-    # =========================================================
-    p8 = subparsers.add_parser("ramd", help="τRAMD residence times (random acceleration MD)")
-    p8.add_argument("config", help="Input yaml file")
-    p8.add_argument("--section", default="ramd",
-                    help="Config section for results; its inputs override ramd.inputs")
-    p8.add_argument("--replicas", type=int, nargs="+",
-                    help="Run only these replicas (e.g. one per SLURM array task); default all")
-    p8.add_argument("--analyse", action="store_true", help="Only analyse ramd_times.csv")
-
 
     # =========================================================
     # POSTPROCESS
