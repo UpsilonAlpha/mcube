@@ -1145,7 +1145,33 @@ So the Michaelis complex this project has been studying has a zinc-carbonyl bond
 
 **The fair counter-argument, which matters.** Vina has no metal-coordination term. It cannot place a carbonyl on a zinc and its failure to do so is not evidence that the carbonyl does not belong there. Substrate carbonyl coordination to Zn1 is well established in binuclear MBLs. So this does **not** show the assumption is wrong - it shows it is an assumption, that it was imposed rigidly rather than allowed to find its own distance, and that docking cannot adjudicate it either way. The QM/MM relaxation to 2.13-2.25 A once the constraint was released (D63) is the only unforced evidence we have, and it is consistent with real coordination.
 
+**D67's inference about the cause is wrong; see D68.** The 1.94 A is real and it is rigidly constrained, but mcube did not put it there by assuming a canonical distance. It was a configured harmonic restraint in the *previous* run, and the input complex that run started from has the carbonyl at 5.43 A.
+
 **Also:** `md_results/NVTtrajectory_lastframe.pdb` still carries the 1.94 A constraint, so the "clean re-do" of the MD without constraining meropenem has not actually produced a trajectory yet. Anything started from that last frame inherits the constrained pose.
+
+**D68 - Where the 1.94 A actually came from: a setup restraint in run 1 became a hard constraint in run 2.** Traced through the configs and the atom indices. mcube's constraint machinery works exactly as designed and moved nothing.
+
+*The input.* `CSR_crystal/preprocess_results/csr_crystal_start.pdb` has meropenem as **docked pose 2 exactly** - conformer RMSD 0.00 A after optimal superposition, against 1.15-2.89 A for every other pose - with the beta-lactam carbonyl **5.43 A** from the zinc and Asp92 at 2.80 A. So pose 2 *was* chosen deliberately (`model: 2` in all three configs), which corrects D66's "nobody chose this": what was inherited was not the pose but what happened to it next. All three configs also set `merge_ligand: false`, so the PDBQT only ever supplied OpenFF parameters and `mer_crystal.pdb` is a parameterisation artefact, not the system's ligand - which is why it still sits at the docked position.
+
+*Run 1 (`CSR_crystal`).* `md.inputs` holds four rigid constraints, all genuine coordination - Zn to His88 NE2, His164 NE2, Asp92 OD2 and the hydroxide O01 - and **two harmonic restraints with hand-chosen targets**:
+
+| restraint | atoms | target | k |
+| --- | --- | --- | --- |
+| Zn to **mer O2x** | 4203-4209 | **2.2 A** | 20 kcal/mol/A^2 |
+| hydroxide **O01 to mer C4x** | 4255-4208 | **3.0 A** | 20 kcal/mol/A^2 |
+
+That is the answer to "why did it not stay at 5.43 A": it was pulled in on purpose. The restraint did its job and the carbonyl settled at 1.94 A, slightly inside the 2.2 A target because the MM zinc's electrostatics take over once it is close. This is a legitimate way to build a Michaelis complex and `md.py` documents the key for exactly that use. **Note the second restraint pre-organised the attack geometry too** - the nucleophile was held 3.0 A off the electrophilic carbon - so the near-attack conformation was built in, not found.
+
+*Run 2 (`CSR_crystal_v2`).* `protein_pdb` is run 1's restrained end state, and `md.inputs` specifies **no** constraints and no restraints, so `md_constraints` falls back to whatever `find_coordinators` detected at `cutoff: 3.0`. The carbonyl was now at 1.94 A, i.e. inside that cutoff, so it was classified as metal coordination and frozen. Run 1 constrained four contacts; run 2 constrained **six** - the carbonyl and a second water joined, purely because run 1 had moved them in:
+
+| run | constrained to Zn |
+| --- | --- |
+| CSR_crystal | His88, His164, Asp92, O01 |
+| CSR_crystal_v2 | His88, His164, Asp92, O01, **mer O2x**, **HOH D:1** |
+
+**The failure mode is laundering, not a bug.** A harmonic restraint is a statement that we do not know the distance and are imposing one. A rigid constraint on an auto-detected contact is a statement that the distance is structural and should be preserved. Chaining the runs converted the first into the second, and after that nothing downstream could tell an imposed distance from a crystallographic one - the detection cutoff only sees the number in the file. Everything from D57 onwards was measured in that state.
+
+**What this means for the protocol.** Restrained structures must not be fed back in as `protein_pdb` without re-declaring what is assumed, or `constraint_exclude_residues` must be used to keep the substrate out of the auto-detected set. Worth considering in mcube itself: record restrained pairs in the preprocess/md results and refuse to auto-constrain a pair that a previous run restrained, or at least warn.
 
 ## Resources (see `running-on-bunya.md`)
 
