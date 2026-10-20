@@ -957,6 +957,24 @@ Consequences:
 
 **Next, submitted as job 30200387 (`mk_coscan.py`, `CoScan.slurm`):** a relaxed xTB/MM scan pulling the **substrate carbonyl** off the zinc, Zn-O2x from 2.15 to 4.00 A in nine points, from the same relaxed structure as the Asp92 scan so the two coordinates are directly comparable. The carbonyl is the other removable ligand, and releasing it differs in kind from releasing Asp92: the two Zn-bound waters sit 34-36 degrees off the Burgi-Dunitz line **because** they are cis to a carbonyl pinned on the same metal, so freeing the substrate to rotate is the one move that could plausibly fix the geometry. Against that, leaving also gives up the Lewis-acid activation, so the scan is a genuine test rather than a foregone conclusion. Monitors both Zn-water distances to C4x, the rest of the first shell and C4x-N1x; attack angles come from `zn_sphere.py` over the scan structures afterwards, since `monitor` handles only distances. Start geometry checked first: Zn-O2x is 2.13 A, a real bond, so the coordinate is well posed.
 
+**D59 - The starting point was forced harder than I had said, and D58 is weaker than I presented it.** (2026-10-20, user: "was our starting point correct for these tests? ... should we run an unconstrained QM/MM equilibration ... with the substrate further away?")
+
+**Checked in the code, and the answer is uncomfortable.** `preprocess` detects metal-donor pairs within `cutoff` (3.0 A here) and saves them as `results.constraints`. `md.py` then passes them to OpenMM as **holonomic constraints** - rigid, not harmonic. So through the entire MM pipeline, NPT and NVT, the **Zn-carbonyl distance was exactly fixed**. That is why it sat at 1.94 A, shorter than the Zn-OH- bond: it was never allowed to relax, and 1.94 A is simply wherever the input structure happened to put it. Every structure since descends from that.
+
+**The QM/MM stages were genuinely unconstrained**, though: `qmmm.py` never reads `preprocess.results.constraints`. So the 25 ps md2 run was free, and it re-formed the octahedron from a start where Asp92 (2.80 A) and the carbonyl (2.90 A) had both been pulled out. That is a real test and it passed.
+
+**What D58 actually establishes, stated properly.** It shows that **along the Zn-Asp92 coordinate, from that structure**, wB97X agrees with GFN2-xTB and is in fact steeper. So xTB is not over-binding Asp92. It does **not** establish that the six-coordinate arrangement is the correct Michaelis complex, because both methods were asked the same conditional question - "given this octahedron, what does removing one ligand cost?" - and neither was asked what the site should look like. Agreement between two methods on a loaded question is not evidence that the question was right. The D58 entry overstated this and should be read with D59.
+
+**The untested assumption is the substrate pose.** Everything descends from a single modelled meropenem pose whose carbonyl was rigidly pinned to the zinc during equilibration. Displacing it locally (to 2.90 A) and releasing just relaxes back, which is unsurprising and proves little. A genuinely different pose - carboxylate anchored on Arg90 and Lys226 with the carbonyl merely polarised at 3.5 A or beyond - has never been sampled, and that is exactly the arrangement the B1 literature describes and that CphA is consistent with (D53, D56).
+
+**mcube already has the knob we failed to use.** `preprocess.inputs.constraint_exclude_residues: {chain: [resid]}` skips the metal bond constraint for a residue while keeping it in the QM region. Applying it to meropenem (`{C: [1]}`) would have let the MM equilibration find the substrate's own distance instead of freezing it. That is the root-cause fix for a clean re-do.
+
+**Plan, cheapest discriminating test first.**
+1. **Pose-robustness test, nearly free.** The running carbonyl scan (30200387) is producing relaxed structures with Zn-O2x out to 4.00 A - properly displaced substrate poses, not 0.8 A nudges. Take the far point and run **unconstrained QM/MM MD** from it. If the carbonyl returns to the metal, the pose is robust and the six-coordinate Michaelis complex is a genuine conclusion rather than an inherited one. If it settles somewhere else, we have a different complex and the mechanism question reopens with better geometry.
+2. **Clean re-do, only if step 1 says the pose is not robust** (or for the final published model regardless): re-run `preprocess` with `constraint_exclude_residues: {C: [1]}`, then MM equilibration and QM/MM MD. This removes the objection entirely but repeats the expensive part of the pipeline.
+
+Doing 1 before 2 avoids repeating days of equilibration to answer a question that 10 h may settle.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
