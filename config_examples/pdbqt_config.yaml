@@ -92,11 +92,18 @@ qmmm:
     skip_optimize: false
     actradius: 0                # >0: optimise atoms within this radius (Angstrom) of actregion_origin
     # actregion_origin: 5154    # atom index; default: first non-standard QM atom
-    singlepoint: true           # PySCF QM/MM single point + cube files
-    sp_functional: wb97x-v
-    sp_basis: def2-svp
 neb:
   inputs:
     images: 8
     numfreq: true
     # actradius / actregion_origin default to the qmmm values
+
+# PySCF QM/MM single point + cube files, run as its own stage so the SCF can
+# have the cores and memory it scales with:
+#   mcube sp config.yaml --pdb QM_MM_optimized.pdb
+# Force fields, charge, mult and the QM region are inherited from qmmm.inputs.
+sp:
+  inputs:
+    sp_functional: wb97x-v
+    sp_basis: def2-svp
+    # sp_cores: 64            # a DFT SCF scales; the xTB stages do not

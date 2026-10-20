@@ -4,8 +4,10 @@ Every gradient-driven stage (`qmmm` optimisation, `scan`, `neb`, `ts`, and the
 frequencies inside `ts`) builds a QM/MM theory. By default the QM part is
 GFN2-xTB. Setting `qm_engine: dft` runs those same stages with PySCF instead.
 
-The `singlepoint` at the end of the `qmmm` stage is always DFT and is unaffected
-by `qm_engine`; it has its own `sp_*` keys.
+The `sp` stage (`mcube sp`) is always DFT and is unaffected by `qm_engine`; it
+has its own `sp_*` keys. It is a separate stage because a DFT SCF scales across
+cores and wants tens of gigabytes while the gradient stages above do not, so the
+two are sized and submitted separately.
 
 ## Which to use
 

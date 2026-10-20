@@ -166,7 +166,7 @@ mcube qmmm config.yaml --pdb nac_frameXXXXX.pdb --section qmmm_snapN
 ```
 
 - Settings:
-  - `skip_equilibrate: true` (no QM/MM MD), `singlepoint: false`;
+  - `skip_equilibrate: true` (no QM/MM MD); the DFT score is a separate `sp` run;
   - `actradius: 8`, `actregion_origin: 4203`.
 - Outputs: `QM_MM_optimized.pdb` (the reactant minimum, R) and `active_atoms`.
 - Check: does the carbonyl stay on the Zn, and the OH⁻ near C4x, once the restraints are gone?

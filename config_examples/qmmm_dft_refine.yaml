@@ -66,8 +66,8 @@ qmmm_R_dft:
     dft_gpu_pcgrad: true
     dft_cores: 8
     opt_maxiter: 150
-    singlepoint: true                   # final energy at sp_functional/sp_basis
-    sp_basis: def2-tzvpd                # larger basis for the reported energy
+    # The reported energy is a separate stage (`mcube sp`), on this section's
+    # QM_MM_optimized.pdb: see the sp_* sections at the end of this file.
 
 # --- DFT: transition state, frequencies and IRC -------------------------------
 ts_step1_dft:
@@ -87,5 +87,17 @@ ts_step1_dft:
     monitor:
     - ["C:2:O01", "C:1:C4x"]
     - ["C:1:C4x", "C:1:N1x"]
-    singlepoint: true
-    sp_basis: def2-tzvpd
+
+# --- DFT: the reported energies ----------------------------------------------
+# Each stationary point is scored by its own sp run, on the geometry that stage
+# optimised, so every number in the paper comes from the same level:
+#   mcube sp config.yaml --section sp_reactant --pdb .../QM_MM_optimized.pdb
+#   mcube sp config.yaml --section sp_ts       --pdb .../ts_optimized.pdb
+# Submit these on a wide allocation: a DFT SCF scales across cores and wants
+# tens of gigabytes, while the xTB and DFT gradient stages above do not.
+sp:
+  inputs:
+    sp_basis: def2-tzvpd                # larger basis for the reported energy
+    # sp_cores: 64
+sp_reactant: {}
+sp_ts: {}
