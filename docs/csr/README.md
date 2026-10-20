@@ -1,82 +1,98 @@
-# CSR-1 job scripts
+# CSR-1 / meropenem: cluster scripts
 
-Project-specific scripts for the CSR-1 / meropenem study (see `../csr-decision-log.md`).
-They are kept here so the cluster can `git pull` them instead of having them retyped
-into a browser terminal, which corrupts long payloads.
+Four files, not one per calculation. Everything specific to this system lives in
+`site.yaml`; the scripts stay general, so a new calculation is a YAML edit and a
+new system is a new YAML file.
 
-Run from the run directory, e.g. `/scratch/user/uquadhik/CSR_crystal_v2`:
+| File | What it is |
+| --- | --- |
+| `site.yaml` | the active site (atoms, candidate bases, near-attack criteria) and every calculation we run |
+| `sections.py` | adds calculations from `site.yaml` to `config.yaml`, refusing to write if a selector does not resolve |
+| `site.py` | all the geometry analysis: `sphere`, `nucleophiles`, `acceptors`, `joint` |
+| `run.slurm` | one job script for every mcube stage; resources come from the `sbatch` line |
+| `cleanup.sh` | reclaim space and inodes in a run directory |
+
+They are kept in the repo and pulled on Bunya rather than typed into the browser
+terminal, which silently truncates long payloads.
+
+## Running something
 
 ```bash
-cp config.yaml config.yaml.bak            # keep a backup
-python /scratch/user/uquadhik/mcube/docs/csr/mk_cleanR.py
-cp /scratch/user/uquadhik/mcube/docs/csr/CleanR.slurm .
-sbatch CleanR.slurm
+cd /scratch/user/uquadhik/mcube && git pull -q
+cd /scratch/user/uquadhik/CSR_crystal_v2
+cp config.yaml config.yaml.bak          # the stages write results back into it
+
+D=/scratch/user/uquadhik/mcube/docs/csr
+python $D/sections.py $D/site.yaml --list          # what is defined
+python $D/sections.py $D/site.yaml scan_znco       # add it, checking selectors
+sbatch -J znco --cpus-per-task=8 --mem=16G $D/run.slurm \
+       xtb scan scan_znco protdft/zncheck/relax/QM_MM_optimized.pdb
 ```
 
-## `mk_cleanR.py` + `CleanR.slurm` — D42, the clean four-coordinate proton check
+`sections.py` writes `<stage>_<name>`, so the `scan_znco` entry in `site.yaml`
+becomes section `scan_znco`, and `cleanR_lysH` becomes `qmmm_cleanR_lysH`.
 
-Adds the sections `qmmm_cleanR_lysH` and `qmmm_cleanR_ohH` and prints the resolved
-atom index for every constrained selector (anything printed as `MISSING` means the
-section is wrong — do not submit).
+## Choosing resources
 
-Both states start from `md_results/NVTtrajectory_lastframe.pdb`, the pre-QM/MM-MD
-NVT end point, which already holds the canonical reactant: Zn + His88 + His164 +
-OH- (O01, one H) + H2O (HOH485), with Lys226 as NH3+ and Asp92 OD2 at its
-crystallographic 2.79 A.
+Measured with `seff` on this system, which is why `run.slurm` takes a profile:
 
-The same two sphere constraints go on **both** states, so the energy difference
-reflects only where the proton sits:
+| Work | CPUs | CPU efficiency | Memory used |
+| --- | --- | --- | --- |
+| DFT single points | 16 | **96%** | 56 GB of 96 |
+| xTB/MM MD | 8 | **30%** | 0.5 GB of 32 |
 
-| Constraint | Value | Why |
-| --- | --- | --- |
-| Zn - Asp92 OD2 | 2.80 A | crystallographic; stops the migration to 2.07-2.11 A seen in the QM/MM MD |
-| Zn - mer O2x | 2.90 A | carbonyl polarised, not inner-sphere; the preprocess metal restraint had pinned it at 1.94 A, shorter than the Zn-OH- bond |
+DFT scales, so give it cores — up to 64 is available and worth using. xTB does
+not: it saturates around four threads and the rest of the job is serial, so
+extra CPUs are wasted. Make xTB work finish sooner by running points in
+parallel, not by adding threads. Memory follows the same split: DFT needs tens
+of GB for density-fitting integrals, xTB needs about one.
 
-Each state then pins the shared proton on one side, so neither can collapse into
-the other:
+The `xtb` profile binds threads (worth 2–9× on SMT nodes, where allocated CPUs
+are half physical cores). The `dft` profile deliberately does not, and sets
+`OMP_NUM_THREADS=1`, because PySCF runs in-process, sets its own thread count
+from `dft_cores`/`sp_cores`, and would otherwise end up pinned to one core.
 
-| Section | Pinned | Gives |
-| --- | --- | --- |
-| `qmmm_cleanR_lysH` | NZ(Lys226)-HZ1 = 1.03 A | proton on the lysine; O01 stays hydroxide |
-| `qmmm_cleanR_ohH` | O01-HZ1 = 0.98 A | proton on O01; O01 becomes water |
+## Analysis
 
-Pinning both sides is a change from D30, where `ohH` was left unconstrained and
-relied on the transfer happening by itself. In a clean sphere it may not, which
-would have made the two states identical and the comparison empty.
+```bash
+D=/scratch/user/uquadhik/mcube/docs/csr
+python $D/site.py sphere       --site=$D/site.yaml structure.pdb
+python $D/site.py nucleophiles --site=$D/site.yaml structure.pdb
+python $D/site.py acceptors    --site=$D/site.yaml traj.dcd topology.pdb
+python $D/site.py joint        --site=$D/site.yaml traj.dcd topology.pdb
+```
 
-`CleanR.slurm` runs the two sequentially (16 CPUs, 96 GB, 2 days) and gives `ohH`
-lysH's `active_atoms`, so both use the same active region. Read the result as
-`sp_energy_disp` for each section: dE = E(ohH) - E(lysH), negative meaning the
-transfer to the hydroxide is still favourable.
+- **`sphere`** — what is coordinated to the metal, the monitored distances, and
+  how many hydrogens sit on each candidate oxygen and on the lysine. The quickest
+  way to see whether a structure is what you think it is.
+- **`nucleophiles`** — for one structure: every water near the electrophile, its
+  attack distance and angle, whether it is metal-bound, and for each of its
+  protons what lies within hydrogen-bond reach.
+- **`acceptors`** — over a trajectory, during the frames where a water is
+  genuinely on the Bürgi–Dunitz line, what is near its protons *at all*. Use it
+  when you do not want to presume which base is involved.
+- **`joint`** — over a trajectory, does any single water both reach the attack
+  geometry *and* donate to a named base, directly or through one bridging water?
+  A general-base mechanism needs both at once, and this is the test that ruled
+  the direct Asp92 route out twice.
 
-## `mk_gpubench.py` + `GpuBench.slurm` — D45, DFT/MM gradient timing on a GPU
+## Why the selector check exists
 
-Needs `gpu4pyscf` in the ASH env (installed 2026-10-18 with `cupy-cuda12x==13.3.0`
-and `numpy==1.26.4` pinned, so the install was purely additive and numpy stayed at
-1.26.4 — a newer cupy wants numpy >= 2, which would break OpenMM 8.4 and mdtraj).
-
-Three levels, each a few constrained optimisation steps with no single point, so the
-per-step wall time in `optimization_energies.log` is the DFT/MM gradient cost:
-wB97X (comparable to the measured CPU cost), r2SCAN-D4 (the proposed geometry level),
-and r2SCAN-D4 with `GPU_pcgrad` to price moving the MM point-charge gradient onto the
-device. Requests one GPU on `gpu_cuda`, QOS `gpu`.
+`sections.py` resolves every `chain:resid:atom` in a section against that
+section's own start structure and refuses to write if any is missing. Two days
+of compute were lost to a 2D grid whose second coordinate began 4.35 Å apart —
+which drags a group across space rather than transferring a proton. Check the
+coordinate against the structure it will actually start from.
 
 ## Email notifications
 
-Both job scripts carry `#SBATCH --mail-type=END,FAIL` but deliberately **no
-`--mail-user`**: this repository is public, so an address committed here would be
-scraped. SLURM mails the submitting user's configured address by default; if that
-is not set up, pass one at submit time, which overrides the directives:
+`run.slurm` carries `#SBATCH --mail-type=END,FAIL` but deliberately **no
+`--mail-user`**: this repository is public, so an address committed here would
+be scraped. Pass one at submit time, which overrides the directives:
 
 ```bash
-sbatch --mail-user=you@example.com CleanR.slurm
+sbatch --mail-user=you@example.com ... run.slurm ...
 ```
 
-The working copies under `/scratch/.../CSR_crystal_v2/` are not in git, so an
-address can be added there instead.
-
-For a job that is already queued or running, change it in place:
-
-```bash
-scontrol update JobId=<id> MailUser=you@example.com MailType=END,FAIL
-```
+For a job already queued or running: `scontrol update JobId=<id>
+MailUser=you@example.com MailType=END,FAIL`.

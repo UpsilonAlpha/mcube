@@ -1,0 +1,128 @@
+# CSR-1 / meropenem: the active site, and every calculation we run on it.
+#
+# Atom selectors are mcube's "chain:resid:atom". Everything CSR-specific lives
+# here, so site.py and sections.py stay general and no calculation needs its own
+# Python file.
+#
+#   python sections.py site.yaml <name> [<name> ...]   add sections to config.yaml
+#   python site.py sphere      <pdb> [pdb ...]         Zn sphere and protonation
+#   python site.py nucleophiles <pdb>                  attack geometry + proton acceptors
+#   python site.py acceptors   <traj> <top>            what can take the proton, counted
+#   python site.py joint       <traj> <top>            attack AND donate, same molecule
+
+site:
+  metal: B:1:ZN
+  electrophile: C:1:C4x        # the carbon under attack
+  carbonyl_o: C:1:O2x          # defines the attack angle Nu-C-O
+  leaving_n: C:1:N1x
+
+  # Candidate nucleophiles named explicitly; site.py also scans for any water
+  # near the electrophile, so this is for labelling rather than restriction.
+  nucleophiles:
+    O01 (Zn-bound, ex-HOH493): C:2:O01
+    HOH485 (Zn-bound): D:1:O
+
+  # Anything that could accept the nucleophile's proton.
+  bases:
+    Asp92 OD1: A:92:OD1
+    Asp92 OD2: A:92:OD2
+    Lys226 NZ: A:226:NZ
+    mer O4x: C:1:O4x           # the substrate's own C3 carboxylate
+    mer O3x: C:1:O3x
+    mer O1x: C:1:O1x           # 6-alpha-OH
+
+  # Reported for every structure, so the whole first shell is always visible.
+  monitor:
+    Zn-Asp92 OD2: [B:1:ZN, A:92:OD2]
+    Zn-O01: [B:1:ZN, C:2:O01]
+    Zn-HOH485: [B:1:ZN, D:1:O]
+    Zn-His88: [B:1:ZN, A:88:NE2]
+    Zn-His164: [B:1:ZN, A:164:NE2]
+    Zn-mer O2x: [B:1:ZN, C:1:O2x]
+    O01-C4x: [C:2:O01, C:1:C4x]
+    HOH485-C4x: [D:1:O, C:1:C4x]
+    C4x-N1x: [C:1:C4x, C:1:N1x]
+
+  # Near-attack criteria. The angle window is a working tolerance around the
+  # Burgi-Dunitz value of ~107 degrees, not a literature constant; the distance
+  # is the usual near-attack-conformation convention. Both are choices, so they
+  # live here where they can be seen and changed.
+  burgi_dunitz:
+    angle: [95, 120]
+    max_distance: 4.5
+    hbond: 2.6                 # H...acceptor, for "is a proton pointing at it"
+    metal_bound: 2.6           # Zn-O below this counts as a zinc ligand
+
+# Calculations. Each becomes a section in config.yaml; `start` is recorded for
+# the job script and checked to exist. Anything mcube's stage accepts can go in
+# `inputs` verbatim, so adding a calculation is a few lines here.
+sections:
+
+  cleanR_lysH:                 # D42: proton on Lys226
+    stage: qmmm
+    start: md_results/NVTtrajectory_lastframe.pdb
+    inputs:
+      skip_equilibrate: true
+      singlepoint: true
+      opt_maxiter: 600
+      sp_cores: 64
+      opt_constraints:
+        - [B:1:ZN, A:92:OD2, 2.80]
+        - [B:1:ZN, C:1:O2x, 2.90]
+        - [A:226:NZ, A:226:HZ1, 1.03]
+
+  cleanR_ohH:                  # D42: proton on O01
+    stage: qmmm
+    start: md_results/NVTtrajectory_lastframe.pdb
+    inputs:
+      skip_equilibrate: true
+      singlepoint: true
+      opt_maxiter: 600
+      sp_cores: 64
+      opt_constraints:
+        - [B:1:ZN, A:92:OD2, 2.80]
+        - [B:1:ZN, C:1:O2x, 2.90]
+        - [C:2:O01, A:226:HZ1, 0.98]
+
+  md_pose:                     # D59: is the substrate pose robust?
+    stage: qmmm
+    start: protdft/coscan/scan_08.pdb
+    inputs:
+      skip_equilibrate: false
+      skip_optimize: true
+      singlepoint: false
+      time: 25
+      timestep: 0.001
+      traj_frequency: 50
+      temp: 300
+      cores: 4                 # xTB saturates ~4 threads; see docs/csr/README.md
+
+  scan_znasp:                  # D53: pull Asp92 off the zinc
+    stage: scan
+    start: protdft/zncheck/relax/QM_MM_optimized.pdb
+    inputs:
+      atoms: [B:1:ZN, A:92:OD2]
+      start: 2.05
+      end: 3.05
+      points: 9
+      opt_maxiter: 300
+      resume: true
+
+  scan_znco:                   # D58: pull the substrate carbonyl off the zinc
+    stage: scan
+    start: protdft/zncheck/relax/QM_MM_optimized.pdb
+    inputs:
+      atoms: [B:1:ZN, C:1:O2x]
+      start: 2.15
+      end: 4.00
+      points: 9
+      opt_maxiter: 300
+      resume: true
+
+  sp_dft:                      # score a geometry someone else produced
+    stage: qmmm
+    inputs:
+      skip_equilibrate: true
+      skip_optimize: true
+      singlepoint: true
+      sp_cores: 64
