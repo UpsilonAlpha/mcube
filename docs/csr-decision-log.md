@@ -1001,6 +1001,44 @@ So the 64 CPUs now available should go to **DFT**, which genuinely saturates wha
 
 **So the answer to "can we just use their distance" is that borrowing from CphA means not coordinating the carbonyl at all** - which is what `constraint_exclude_residues` would give us (D59), and is consistent with the dominant B1 picture where the carbonyl is polarised and hydrogen-bonded rather than inner-sphere (D53). The caveat is that CphA is a B2 enzyme whose zinc sits in a Cys-containing site (Asp120, Cys221, His263) and is four-coordinate, while ours is B3-RQK with only two histidines; the coordination chemistry differs, so the transferable part is the principle, not a number.
 
+**D61 - Neither removable ligand opens a productive geometry. The substrate binding mode is now the thing to question.** (2026-10-20, jobs 30200387 and 30119957 both COMPLETED)
+
+**The carbonyl scan is a clear negative** (xTB/MM, nine points, all converged):
+
+| Zn-O2x (A) | rel (kcal/mol) | O01-C4x / angle | HOH485-C4x / angle | Zn-His88 | Zn-His164 |
+| --- | --- | --- | --- | --- | --- |
+| 2.15 | 0.00 | 3.62 / 36 | 3.65 / 34 | 2.089 | 2.031 |
+| 2.61 | 3.29 | 3.82 / - | 3.82 / - | 2.010 | 2.045 |
+| 3.08 | 8.53 | 4.13 / 46 | 3.86 / **11** | 1.966 | 2.081 |
+| 3.54 | 14.53 | 4.47 / - | 3.88 / - | 1.939 | 2.113 |
+| 4.00 | **22.36** | 4.74 / 66 | 3.83 / **19** | 1.920 | 2.158 |
+
+**It costs 22.4 kcal/mol and makes the geometry worse, not better.** O01's angle improves from 36 to 66 degrees but it moves *away*, 3.62 to 4.74 A; HOH485 stays at the same distance while its angle collapses from 34 to 19 degrees. Neither approaches the Burgi-Dunitz window at any point. The substrate does not rotate to expose the carbonyl face - it simply drifts off the metal, and the zinc contracts onto His88 (2.09 to 1.92 A) to compensate.
+
+**So both removable ligands have now been tested and neither helps**: Asp92 costs 5.7 kcal/mol at xTB (9.1 at DFT) and changes O01-C4x by 0.08 A (D57); the carbonyl costs 22.4 and makes things worse. The EcoRV precedent of a metal shedding a ligand to open a site (D56) does not transfer here.
+
+**The D58 DFT table is now complete** (job 30119957, wB97X-D3(BJ)/def2-SVP on the xTB scan geometries):
+
+| Zn-Asp92 (A) | xTB | DFT |
+| --- | --- | --- |
+| 2.05 | 0.00 | 0.00 |
+| 2.425 | +1.60 | +3.02 |
+| 2.80 | +5.72 | +9.12 |
+| 3.05 | +8.46 | **+13.72** |
+
+DFT is consistently about 1.6x steeper across the whole curve, confirming D58: xTB is not over-coordinating, and the six-coordinate zinc is real at both levels.
+
+**The planned pose-robustness MD (D59) is now pointless and has been cancelled.** It was to start unconstrained MD from the 4.00 A scan structure, but the scan itself shows that structure is 22.4 kcal/mol uphill, so the carbonyl would obviously return. The scan answered the question the MD was meant to ask, more cheaply. Displacing along Zn-O2x was never going to test the *pose*, only that one bond.
+
+**What is actually untested is the substrate binding mode.** Every structure descends from one modelled meropenem pose whose carbonyl was held on the zinc by a rigid MM constraint at 1.94 A through all of equilibration (D59). Scanning that bond explores one coordinate of that pose; it cannot find a different one. A genuinely different mode - carboxylate anchored on Arg90 and Lys226 with the carbonyl polarised at 3-3.5 A rather than inner-sphere, which is the dominant B1 picture (D53) and consistent with CphA's four-coordinate zinc having no room for it (D60) - has never been sampled, and could not have been, because the setup forbade it.
+
+**Three ways to test the binding mode, in increasing cost:**
+1. **Re-run `preprocess` with `constraint_exclude_residues: {C: [1]}`**, then MM equilibration and QM/MM MD. The substrate's coordination becomes an outcome rather than an input. This is the clean re-do deferred in D59 and is the one that removes the objection outright.
+2. **Re-dock meropenem** into the apo site and take the best poses, rather than relying on the single inherited one.
+3. **Build the literature pose by hand** - carboxylate on Arg90/Lys226 - and equilibrate it, then compare its energy with the current pose.
+
+Option 1 is the honest default: it changes one config key and lets the method decide. The cost is repeating the MM equilibration and a QM/MM MD, which is days, so it is the user's call.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
