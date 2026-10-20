@@ -1237,6 +1237,25 @@ The user's framing is the reason both of these are code: the only things left to
 
 **Not affected:** jobs 30226271 and 30226272 were already submitted, and Slurm spools the batch script at submit time, so they run the old script with the old arguments.
 
+**D72 - The unrestrained carbonyl is staying out, so far, at the MM level; and site.py was measuring across the box wrong.** (2026-10-20, job 30226271 still running)
+
+**site.py had no minimum-image convention.** An MD frame is written with every atom wrapped into the cell, so the ligand, sitting near a face of the 80.3 A box, came out on the far side of the protein. The warmup frame reported **Zn-mer O2x = 76.74 A**. It is 5.03 A. `load_pdb` now reads `CRYST1` and `dist`/`angle` apply the minimum image, which covers `sphere` and `nucleophiles` because both route through them; non-orthorhombic cells say so rather than being measured wrong. Everything measured before this on an imaged (`*_imaged.pdb`) or unsolvated structure is unaffected, which is all of D36-D70 - the trap only bites on a raw MD frame, and those were read through `_imaged` files or through mdtraj, which applies PBC itself.
+
+**What the equilibration is doing to the carbonyl, with nothing holding it:**
+
+| stage | Zn-O2x |
+| --- | --- |
+| input (docked pose 2) | 5.43 |
+| minimised | 5.56 |
+| gentle warm-up, cycle 2 | 5.03 |
+| NPT, first frame | **4.93** |
+
+The five detected contacts are held exactly where the constraint rule put them (Asp92 2.79-2.80, O01 2.14, His88 2.22, His164 2.09), and the carbonyl - the one contact the rule left free - is drifting inward slowly but is nowhere near the 2.6 A that counts as coordination. **Treat this as weak evidence only:** it is the MM force field with a non-bonded point-charge zinc, which D63 established cannot answer coordination questions, and the inward drift is small enough to be ordinary relaxation. The QM/MM MD is the measurement.
+
+**The job will probably not finish.** NPT has done 96.7 ps in 6h19m, i.e. about 4.3 steps/s. At 4 fs the 1 ns NVT needs about 16.3 h and only 17.7 h of the 1-day limit is left, before counting however much longer NPT runs - `OpenMM_box_equilibration` loops until volume and density converge, and it is still going. `scontrol update TimeLimit` is refused ("Access/permission denied"), as expected for a user raising their own limit. If md times out it will not be COMPLETED, so the chained `uqmmm` (30226272, `afterok`) is cancelled with it.
+
+The 1 ns came from copying `CSR_crystal`'s config, and the user's own position (D62) is that MM equilibration tells us nothing about coordination here - it only needs to settle the solvent. 200 ps would take about 3.3 h and do that.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
