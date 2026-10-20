@@ -31,6 +31,8 @@ from ash import (
     merge_pdb_files,
 )
 
+from .membrane import LIPID_XML, check_lipid_type, lipid_forcefields
+
 # ==============================
 # Utility
 # ==============================
@@ -549,6 +551,15 @@ def run(args) -> Dict[str, Any]:
         or ["amber14/protein.ff14SB.xml", "amber14/tip3p.xml"]
     )
 
+    membrane = bool(inputs.get("membrane"))
+    if membrane:
+        if inputs.get("implicit"):
+            raise ValueError("`membrane` and `implicit` cannot both be set: a bilayer needs explicit "
+                             "lipids and water, while `implicit` adds no solvent at all.")
+        # protein.ff14SB + tip3p have no lipid parameters, so addMembrane could not type
+        # the lipids without this
+        forcefields = lipid_forcefields(forcefields, inputs.get("membrane_lipid_xml") or LIPID_XML)
+
     resname = ligand_resname(inputs)
 
     if inputs.get("ligand"):
@@ -578,6 +589,32 @@ def run(args) -> Dict[str, Any]:
                 implicit=True,
                 forcefield_object=forcefield_obj,
                 pH=inputs.get("pH", 7.0),
+                residue_variants=inputs.get("residue_variants"),
+                use_higher_occupancy=True,
+            )
+        elif membrane:
+            # Explicit lipid bilayer plus water, through OpenMM's Modeller.addMembrane.
+            # The membrane normal is +z and the bilayer is centred on `membrane_center_z`:
+            # nothing here reorients the protein, so the transmembrane bundle must already
+            # be aligned with z with its hydrophobic belt on that plane (e.g. from OPM).
+            lipidtype = check_lipid_type(inputs.get("membrane_lipidtype"))
+            print(f"[INFO] Building a {lipidtype} bilayer in the xy plane, centred on z = "
+                  f"{inputs.get('membrane_center_z', 0.0)} Å. The input structure is assumed to be "
+                  "aligned with the membrane normal along z already.")
+            modeller, fragment = OpenMM_Modeller(
+                pdbfile=pdb_file,
+                forcefield_object=forcefield_obj,
+                watermodel="tip3p",
+                pH=inputs.get("pH", 8.0),
+                membrane=True,
+                membrane_lipidtype=lipidtype,
+                # ASH passes this on as addMembrane's `minimumPadding`: the smallest
+                # distance from any pre-existing atom to a box edge
+                membrane_padding=inputs.get("membrane_padding", 10.0),
+                membraneCenterZ=inputs.get("membrane_center_z", 0.0),
+                ionicstrength=inputs.get("ionic_strength", 0.1),
+                pos_iontype='Na+',
+                neg_iontype='Cl-',
                 residue_variants=inputs.get("residue_variants"),
                 use_higher_occupancy=True,
             )
