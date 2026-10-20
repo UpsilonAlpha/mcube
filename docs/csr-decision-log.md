@@ -1256,6 +1256,33 @@ The five detected contacts are held exactly where the constraint rule put them (
 
 The 1 ns came from copying `CSR_crystal`'s config, and the user's own position (D62) is that MM equilibration tells us nothing about coordination here - it only needs to settle the solvent. 200 ps would take about 3.3 h and do that.
 
+**D73 - NPT converged, the carbonyl is still out, and the hydroxide has moved onto the attack line.** (2026-10-21, job 30226271 still running)
+
+The walltime worry in D72 was misplaced: `OpenMM_box_equilibration` converged at **100 ps** rather than running open-endedly, and NVT is at 726 of 1000 ps at 70.3 ps/h, so it finishes about 3.9 h inside the 7.2 h left. No restart needed.
+
+**The carbonyl, with nothing holding it:**
+
+| stage | Zn-O2x |
+| --- | --- |
+| input (docked pose 2) | 5.43 |
+| minimised | 5.56 |
+| warm-up cycle 2 | 5.03 |
+| NPT first frame | 4.93 |
+| **NPT last frame (100 ps)** | **4.81** |
+
+A slow inward creep of about 0.6 A over the whole equilibration, nowhere near the 2.6 A that counts as coordination, while the five detected contacts stay exactly where the rule put them (Asp92 2.79, O01 2.14, HOH485 1.90, His88 2.22, His164 2.09).
+
+**The more interesting number is the attack geometry.** At the end of NPT:
+
+| | O01-C4x | angle | HOH485-C4x | angle |
+| --- | --- | --- | --- | --- |
+| restrained system (D60) | 3.62 A | **36 deg** | - | - |
+| unrestrained, end of NPT | **3.01 A** | **84 deg** | 4.92 A | 100 deg |
+
+The zinc-bound hydroxide is now 3.01 A from the electrophilic carbon at 84 degrees. That is inside the near-attack distance and much closer to the Burgi-Dunitz window (95-120) than the 36 degrees the restrained system ever managed - the geometry that D61 concluded was blocked. Releasing the carbonyl appears to have let the nucleophile swing onto the line.
+
+**Hold this loosely.** It is the MM force field with a non-bonded point-charge zinc, which D63 says cannot answer coordination questions; it is one frame, not an ensemble; and 84 degrees is still outside the window. But it is the first time in this project that a zinc-bound oxygen has been anywhere near a productive attack geometry, and it is consistent with the carbonyl's inner-sphere position having been what blocked it. The 25 ps QM/MM MD that follows is the measurement that counts, and `joint`/`acceptors` over its trajectory is the test of whether anything can take the proton.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
