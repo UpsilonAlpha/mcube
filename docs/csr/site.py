@@ -39,14 +39,27 @@ import yaml
 
 # --- structure handling ------------------------------------------------------
 
+class Structure(list):
+    """Atoms, carrying the unit cell so distances can cross the box edge."""
+    cell = None
+
+
 def load_pdb(path):
-    """[(chain, resid, atom, resname, (x, y, z)), ...] in file order."""
-    out = []
+    """[(chain, resid, atom, resname, (x, y, z)), ...] in file order, with .cell."""
+    out = Structure()
     for line in open(path):
         if line.startswith(("ATOM", "HETATM")):
             out.append((line[21], line[22:26].strip(), line[12:16].strip(),
                         line[17:20].strip(),
                         (float(line[30:38]), float(line[38:46]), float(line[46:54]))))
+        elif line.startswith("CRYST1"):
+            lengths = [float(line[6:15]), float(line[15:24]), float(line[24:33])]
+            angles = [float(line[33:40]), float(line[40:47]), float(line[47:54])]
+            if all(abs(a - 90.0) < 1e-3 for a in angles):
+                out.cell = lengths
+            else:
+                print("[WARNING] %s has a non-orthorhombic cell; distances are "
+                      "measured without the minimum-image convention" % path)
     return out
 
 
@@ -96,13 +109,27 @@ def label(atoms, i):
     return "%s:%s:%s:%s" % (a[0], a[1], a[3], a[2])
 
 
+def delta(atoms, i, j):
+    """j - i, as the shortest vector across the periodic box if there is one.
+
+    An MD frame is written with every atom wrapped into the cell, so a ligand
+    sitting near a face comes out on the far side of the protein: measured
+    naively, a 5.0 A contact reads as 76.7 A in an 80 A box. Only orthorhombic
+    cells are handled, which is what the solvated boxes here are.
+    """
+    v = [atoms[j][4][t] - atoms[i][4][t] for t in range(3)]
+    cell = getattr(atoms, "cell", None)
+    if cell:
+        v = [x - c * round(x / c) if c else x for x, c in zip(v, cell)]
+    return v
+
+
 def dist(atoms, i, j):
-    return math.dist(atoms[i][4], atoms[j][4])
+    return math.hypot(*delta(atoms, i, j))
 
 
 def angle(atoms, i, j, k):
-    v1 = [atoms[i][4][t] - atoms[j][4][t] for t in range(3)]
-    v2 = [atoms[k][4][t] - atoms[j][4][t] for t in range(3)]
+    v1, v2 = delta(atoms, j, i), delta(atoms, j, k)
     cos = sum(p * q for p, q in zip(v1, v2)) / (math.hypot(*v1) * math.hypot(*v2))
     return math.degrees(math.acos(max(-1.0, min(1.0, cos))))
 
