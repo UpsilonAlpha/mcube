@@ -338,8 +338,9 @@ def mode_poses(site, args):
         ref_c = centroid(ref_pts)
         print("reference %s: %d atoms, centroid to metal %.2f A"
               % (reference, len(ref_pts), math.dist(ref_c, zn)))
-    print("metal %s at %.2f %.2f %.2f in %s
-" % (site["metal"], zn[0], zn[1], zn[2], receptor))
+    print("metal %s at %.2f %.2f %.2f in %s"
+          % (site["metal"], zn[0], zn[1], zn[2], receptor))
+    print()
 
     print("%-6s %8s %7s %10s %12s" % ("pose", "score", "atoms", "to metal", "to reference"))
     for i, pts in enumerate(poses, 1):
@@ -350,8 +351,8 @@ def mode_poses(site, args):
     if ref_c and poses:
         near = min(range(len(poses)), key=lambda i: math.dist(centroid(poses[i]), ref_c))
         d = math.dist(centroid(poses[near]), ref_c)
-        print("
-closest pose to the reference: %d, centroids %.2f A apart%s"
+        print()
+        print("closest pose to the reference: %d, centroids %.2f A apart%s"
               % (near + 1, d, " - so the reference is that pose" if d < 0.5
                  else " - the reference matches no pose well, check its provenance"))
 

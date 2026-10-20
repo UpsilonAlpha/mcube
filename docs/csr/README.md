@@ -8,7 +8,7 @@ new system is a new YAML file.
 | --- | --- |
 | `site.yaml` | the active site (atoms, candidate bases, near-attack criteria) and every calculation we run |
 | `sections.py` | adds calculations from `site.yaml` to `config.yaml`, refusing to write if a selector does not resolve |
-| `site.py` | all the geometry analysis: `sphere`, `nucleophiles`, `acceptors`, `joint` |
+| `site.py` | all the geometry analysis: `sphere`, `nucleophiles`, `acceptors`, `joint`, `poses` |
 | `run.slurm` | one job script for every mcube stage; resources come from the `sbatch` line |
 | `cleanup.sh` | reclaim space and inodes in a run directory |
 
@@ -62,6 +62,7 @@ python $D/site.py sphere       --site=$D/site.yaml structure.pdb
 python $D/site.py nucleophiles --site=$D/site.yaml structure.pdb
 python $D/site.py acceptors    --site=$D/site.yaml traj.dcd topology.pdb
 python $D/site.py joint        --site=$D/site.yaml traj.dcd topology.pdb
+python $D/site.py poses        --site=$D/site.yaml docked.pdbqt receptor.pdb [ligand.pdb]
 ```
 
 - **`sphere`** — what is coordinated to the metal, the monitored distances, and
@@ -77,6 +78,11 @@ python $D/site.py joint        --site=$D/site.yaml traj.dcd topology.pdb
   geometry *and* donate to a named base, directly or through one bridging water?
   A general-base mechanism needs both at once, and this is the test that ruled
   the direct Asp92 route out twice.
+- **`poses`** — the docked poses in a PDBQT, each one's Vina score and how far
+  its centroid sits from the metal, and — given the ligand structure actually in
+  use — which pose that structure is. Vina scores within a couple of kcal/mol of
+  each other do not pick a pose, so check what the alternatives look like before
+  building a mechanism on one of them.
 
 ## Why the selector check exists
 
