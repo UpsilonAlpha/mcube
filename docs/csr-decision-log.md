@@ -1039,6 +1039,27 @@ DFT is consistently about 1.6x steeper across the whole curve, confirming D58: x
 
 Option 1 is the honest default: it changes one config key and lets the method decide. The cost is repeating the MM equilibration and a QM/MM MD, which is days, so it is the user's call.
 
+**D62 - Clean re-do started: the substrate's coordination becomes an outcome.** (2026-10-20, user chose the clean re-do; job 30205872)
+
+**Set up as a controlled experiment rather than a fresh pipeline.** `/scratch/user/uquadhik/CSR_crystal_v3` **reuses v2's solvated system verbatim** - its `preprocess.results` still point at `CSR_crystal_v2/preprocess_results/finalsystem.pdb` - and changes exactly one thing:
+
+| | v2 | v3 |
+| --- | --- | --- |
+| Zn-HOH485 | constrained | constrained |
+| Zn-His164 NE2 | constrained | constrained |
+| Zn-O01 | constrained | constrained |
+| Zn-His88 NE2 | constrained | constrained |
+| Zn-Asp92 OD2 | constrained | constrained |
+| **Zn-mer O2x (substrate carbonyl)** | **constrained, rigid, 1.94 A** | **free** |
+
+Done through `md.inputs.constraints`, which `md.py` prefers over the preprocess list, so it is a config change and no code was touched. Re-solvating would have given a different water configuration and made the comparison with v2 uncontrolled; this way the only variable is the one in question. The five protein and water contacts stay held because classical MD has no quantum description of the zinc and the site distorts without them - which is the documented over-coordination failure mode (Yang *et al.*, D53) - while the substrate, whose coordination is the thing in doubt, is left to the force field and then to QM/MM.
+
+**Submitted:** `v3_md` (30205872), MM equilibration, NPT plus 1 ns NVT at 4 fs on 16 CPUs. The v2 equivalent took about 4.5 h. Then the 50 ps QM/MM MD, about 19 h, giving a like-for-like comparison with v2's trajectory.
+
+**What the answer looks like.** If Zn-O2x drifts well beyond about 2.5 A once it is not held, the inner-sphere carbonyl was an artefact of our own setup and the Michaelis complex behind D52, D57, D58 and D61 was wrong. If it stays near 2 A unforced, the coordination is real, those conclusions stand, and the mechanistic difficulty is genuine rather than self-inflicted. Either outcome is worth having: the first rescues the mechanism question, the second closes off the last excuse for the geometry.
+
+**`run.slurm` gained `preprocess` and `md`**, which take no `--section`; for them the third argument only names the output directory. One script still covers every stage.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
