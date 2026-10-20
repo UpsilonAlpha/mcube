@@ -1082,6 +1082,41 @@ QM/MM corrected it immediately and never looked back. So the rigid constraint se
 
 If DFT also says the carbonyl is firmly bound, the coordination is settled at both levels and the Michaelis complex stands as modelled - the mechanistic difficulty is then real, and the remaining question is the binding **pose**, which needs re-docking rather than any constraint change. If DFT is much flatter, xTB is overbinding the substrate specifically, and the geometry that blocked every mechanism reopens.
 
+**D64 - No, the local-minimum concern is not accounted for, and there is direct evidence it is real: the docking kept nine poses and we used one.** (2026-10-20, user: "my concern is that xtb is stuck in a local minimum with regards to the carbonyl")
+
+**Taking the three pieces of evidence in turn, none of them can rule it out.**
+
+*The carbonyl scan cannot, and the numbers show why.* Measuring how far each part of the substrate moved from the zinc across the nine points:
+
+| | O2x | C4x | C17x | S1x | N3x | O5x | O4x |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| scan_00 | 2.15 | 3.34 | 5.39 | 7.78 | 12.28 | 10.17 | 4.09 |
+| scan_08 | 4.00 | 4.80 | 6.70 | 8.15 | 12.75 | 10.65 | **3.82** |
+| change | +1.85 | +1.46 | +1.31 | +0.37 | +0.47 | +0.48 | **-0.27** |
+
+The tail barely moves (0.4 A over the whole scan) and the carboxylate comes *closer*. The substrate **pivots about its anchored end** rather than leaving. So the scan explored one hinge motion of one pose - which is all a sequential relaxed scan can do, since each point starts from the previous geometry. The 22.4 kcal/mol is the cost of that hinge, not of reaching any alternative bound state.
+
+*The 25 ps MD cannot.* Ligand exchange at Zn(II) is orders of magnitude slower than 25 ps, so a trajectory that keeps the carbonyl bound shows the basin is locally stable and nothing more.
+
+*The DFT single points now running cannot either.* They are computed **on the xTB geometries**, so they test whether the method gets the energetics right at a fixed structure. If the structure is in the wrong basin, DFT inherits the wrong basin. Worth keeping - they answer a real question about the method - but they are not evidence about sampling, and I should not have implied in D63 that they were the last word.
+
+**The direct evidence.** `CSR_ligand/meropenem.pdbqt` holds **nine docked poses** from AutoDock Vina:
+
+| Pose | Vina score | RMSD from pose 1 (l.b. / u.b.) |
+| --- | --- | --- |
+| 1 | **-5.744** | - |
+| 2 | **-5.624** | **3.06 / 6.72 A** |
+| 3 | -4.733 | 2.19 / 3.38 |
+| 4-9 | -4.56 to -3.76 | 2.2-2.6 / 6.6-7.2 |
+
+**Pose 2 is 0.12 kcal/mol from pose 1 and 3-7 A away from it.** Vina's scoring function is good to a couple of kcal/mol at best, so that gap is meaningless: the docking provides **no basis at all** for preferring pose 1, and two structurally unrelated binding modes are tied. One of them was carried into every calculation since, and the other has never been looked at.
+
+So the honest position is that the Michaelis complex rests on an arbitrary choice among at least two equally scored poses, and every geometric conclusion - the six-coordinate zinc, the 33-40 degree attack angles, Asp92 and the carbonyl both being unremovable - is conditional on it.
+
+**Proposed next, and it is cheap because the poses already exist:** take the top few docked poses, build each into the same solvated system, optimise at xTB/MM and compare energies and attack geometry. Hours per pose rather than days, no docking software needed, and it directly tests whether the chosen basin is the right one. If pose 2 gives a four- or five-coordinate zinc with a water on the Burgi-Dunitz line, the mechanism question reopens entirely.
+
+**To check before relying on this:** `meropenem.pdbqt` lives in `CSR_ligand`, a different run directory, and `mer_crystal.pdb` in `CSR_crystal` carries no provenance header, so it is not yet established that these poses were docked into the same receptor and site that `CSR_crystal_v2` uses, nor that `mer_crystal.pdb` is pose 1. Verify both before building anything on them.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
