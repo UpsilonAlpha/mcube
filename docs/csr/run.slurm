@@ -19,8 +19,9 @@
 #   sbatch -J <name> [resources] run.slurm <profile> <stage> <section> [start.pdb]
 #
 #   profile  xtb | dft   threading only, see below
-#   stage    qmmm | scan | neb | ts
-#   section  the config.yaml section, e.g. scan_znco
+#   stage    preprocess | md | qmmm | scan | neb | ts
+#   section  the config.yaml section, e.g. scan_znco; for preprocess and md,
+#            which have no sections, it just names the output directory
 #   start    optional --pdb; omit to let mcube take it from the previous stage
 #
 # Measured efficiency on this system (seff), which is why profile matters:
@@ -38,9 +39,16 @@ export OMP_STACKSIZE=1G
 export PYTHONUNBUFFERED=1
 
 PROFILE=${1:?profile: xtb or dft}
-STAGE=${2:?stage: qmmm, scan, neb or ts}
-SECTION=${3:?config.yaml section}
+STAGE=${2:?stage: preprocess, md, qmmm, scan, neb or ts}
+SECTION=${3:?config.yaml section, or the stage name for preprocess/md}
 START=${4:-}
+
+# preprocess and md have no --section: they write to the one place in the
+# config. For them the third argument only names the output directory.
+case "$STAGE" in
+  preprocess|md) SECTION_ARGS=();            OUT=${STAGE}_results ;;
+  *)             SECTION_ARGS=(--section "$SECTION"); OUT=protdft/$SECTION ;;
+esac
 
 case "$PROFILE" in
   xtb)
@@ -64,7 +72,6 @@ source "$ROOTMINIFORGE/etc/profile.d/conda.sh"
 conda activate ASH
 
 ROOT=$PWD
-OUT=protdft/$SECTION
 mkdir -p "$OUT"
 
 if [ -n "$START" ]; then
@@ -77,7 +84,7 @@ fi
 
 cd "$OUT"
 date
-mcube "$STAGE" "$ROOT/config.yaml" --section "$SECTION" "${ARGS[@]}"
+mcube "$STAGE" "$ROOT/config.yaml" "${SECTION_ARGS[@]}" "${ARGS[@]}"
 date
 echo "[DONE] $SECTION"
 
