@@ -934,6 +934,29 @@ Neither has constraints: where Asp92 and the carbonyl end up, and which is lower
 
 Spending four days of DFT optimisation before reading an 18 h answer that is already running would be the wrong order.
 
+**D58 - The six-coordinate zinc is real: DFT binds Asp92 harder than xTB does, not softer.** (2026-10-20, job 30119957)
+
+**The comparison that D53 was built to make** (wB97X-D3(BJ)/def2-SVP single points on the xTB scan geometries, so only the method differs):
+
+| Zn-Asp92 OD2 (A) | GFN2-xTB | wB97X-D3(BJ) |
+| --- | --- | --- |
+| 2.05 | 0.00 | 0.00 |
+| 2.425 | +1.60 | **+3.02** |
+| 2.80 | +5.72 | **+9.12** |
+
+(The 3.05 A point was still running; three points already settle it.)
+
+**DFT is 1.6x steeper than xTB, which is the opposite of the concern.** The worry from D51/D53 was that GFN2-xTB over-coordinates the zinc and had invented the sixth ligand. It has not: at the DFT level Asp92 is bound *more* strongly, costing **9.1 kcal/mol** to reach its crystallographic 2.80 A rather than xTB's 5.7. **The six-coordinate site is a real feature of this model, not a semi-empirical artefact**, and the Yang *et al.* over-coordination failure mode - real in general, and a legitimate thing to have checked - does not apply to this result.
+
+Consequences:
+- **D51 and D52 stand on firmer ground.** The zinc is genuinely six-coordinate, so it is a Lewis acid activating the bound carbonyl rather than a hydroxide generator, and the two aqua ligands genuinely cannot reach the attack trajectory.
+- **The planned DFT geometry optimisations are unnecessary** and will not be run: they were insurance against an artefact that does not exist. That also removes the cost problem from D57, where a def2-TZVP gradient measured about two hours.
+- **Asp92 being a zinc ligand does not rule out the CphA mechanism**, since in CphA Asp120 is both ligand and base and protonation is what breaks its Zn-O bond. But at 9.1 kcal/mol the bond is not weak.
+
+**The sharper problem is geometric, not energetic.** D57 showed that pulling Asp92 off does **not** bring the nucleophile closer: O01-C4x moved only 3.62 to 3.70 A across the whole scan. Opening that site does not make the site competent, so paying 9 kcal/mol for it buys nothing.
+
+**Next, submitted as job 30200387 (`mk_coscan.py`, `CoScan.slurm`):** a relaxed xTB/MM scan pulling the **substrate carbonyl** off the zinc, Zn-O2x from 2.15 to 4.00 A in nine points, from the same relaxed structure as the Asp92 scan so the two coordinates are directly comparable. The carbonyl is the other removable ligand, and releasing it differs in kind from releasing Asp92: the two Zn-bound waters sit 34-36 degrees off the Burgi-Dunitz line **because** they are cis to a carbonyl pinned on the same metal, so freeing the substrate to rotate is the one move that could plausibly fix the geometry. Against that, leaving also gives up the Lewis-acid activation, so the scan is a genuine test rather than a foregone conclusion. Monitors both Zn-water distances to C4x, the rest of the first shell and C4x-N1x; attack angles come from `zn_sphere.py` over the scan structures afterwards, since `monitor` handles only distances. Start geometry checked first: Zn-O2x is 2.13 A, a real bond, so the coordinate is well posed.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
