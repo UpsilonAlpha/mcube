@@ -6,8 +6,8 @@
     python site.py joint        <traj> <topology>   attack AND donate, same molecule
     python site.py poses        <pdbqt> <receptor> [ligand.pdb]
                                                     docked poses vs the metal site
-    python site.py graft        <pdbqt> <ligand.pdb> <system.pdb> [1,3,4]
-                                                    a pose into the solvated system
+    python site.py graft        <pdbqt> <ligand.pdb> <receptor.pdb> <system.pdb>
+                                                [1,3,4]  a pose into the system
 
 Every atom, every candidate base and every criterion comes from `site.yaml`
 (override with --site), so this script carries no knowledge of a particular
@@ -50,27 +50,36 @@ def load_pdb(path):
     return out
 
 
+# AutoDock types are not elements: aromatic carbon is "A", and the acceptor
+# forms carry a trailing letter.
+AUTODOCK_ELEMENT = {"A": "C", "NA": "N", "OA": "O", "SA": "S", "HD": "H"}
+
+
 def load_pdbqt(path):
-    """([pose heavy-atom coordinates, ...], [Vina score, ...]).
+    """([pose heavy-atom coordinates, ...], [Vina score, ...], [element, ...]).
 
     Heavy atoms only. A PDBQT has no nonpolar hydrogens, so anything compared
     against it has to drop its own or the two are not the same molecule.
     """
-    poses, scores, current = [], [], []
+    poses, scores, elements, current = [], [], [], []
     for line in open(path):
         if line.startswith("MODEL"):
             current = []
         elif line.startswith("REMARK VINA RESULT"):
             scores.append(float(line.split()[3]))
         elif line.startswith(("ATOM", "HETATM")):
-            if (line[77:79].strip() or line[12:16].strip())[0] != "H":
+            raw = line[77:79].strip() or line[12:16].strip()[:1]
+            el = AUTODOCK_ELEMENT.get(raw, raw[0])
+            if el != "H":
                 current.append((float(line[30:38]), float(line[38:46]),
                                 float(line[46:54])))
+                if not poses:
+                    elements.append(el)
         elif line.startswith("ENDMDL"):
             poses.append(current)
     if not poses and current:
         poses = [current]
-    return poses, scores
+    return poses, scores, elements
 
 
 def index_of(atoms, selector):
@@ -359,7 +368,7 @@ def mode_poses(site, args):
         raise SystemExit("metal %s not found in %s" % (site["metal"], receptor))
     zn = load_pdb(receptor)[metal][4]
 
-    poses, scores = load_pdbqt(pdbqt)
+    poses, scores, _ = load_pdbqt(pdbqt)
 
     ref_pts = ref_c = None
     if reference:
@@ -406,33 +415,94 @@ def bond_graph(points, cutoff=1.9):
     return graph
 
 
-def map_pose_to_reference(pose, ref_pts):
+def map_pose_to_reference(pose, pose_el, ref_pts, ref_el):
     """Which reference heavy atom is which pose heavy atom.
 
-    The pose this is derived from must be the one the reference came from, so
-    the two differ by much less than a bond length and nearest-neighbour
-    assignment is unambiguous. That is an assumption, so it is checked: the
-    mapping has to be a bijection AND has to carry the pose's bond graph onto
-    the reference's. If it does, the atom names are transferable to every other
-    pose in the file, which all share the PDBQT's atom order.
+    Nearest-neighbour assignment is not safe even when the two structures are
+    close: meropenem has atoms nearer to a neighbour's position than to their
+    own, and the assignment collides. So match the molecules as graphs -- same
+    elements, same bonds -- which is exact and does not care how far apart the
+    two conformations are. RDKit is used only as the matcher; no bond orders
+    are perceived and nothing is sanitised, so a docked beta-lactam cannot be
+    misread on the way through.
     """
     if len(pose) != len(ref_pts):
         raise SystemExit("pose has %d heavy atoms, reference has %d"
                          % (len(pose), len(ref_pts)))
-    mapping = [min(range(len(ref_pts)), key=lambda j: math.dist(p, ref_pts[j]))
-               for p in pose]
-    if len(set(mapping)) != len(mapping):
-        raise SystemExit("mapping is not one-to-one; the reference is not this "
-                         "pose, so atom names cannot be transferred")
-    gp, gr = bond_graph(pose), bond_graph(ref_pts)
-    for i, nbrs in gp.items():
-        if {mapping[n] for n in nbrs} != gr[mapping[i]]:
-            raise SystemExit("mapping does not preserve bonding at pose atom %d; "
-                             "refusing to guess atom identities" % (i + 1))
-    worst = max(math.dist(pose[i], ref_pts[mapping[i]]) for i in range(len(pose)))
-    print("atom mapping verified: bijective, bond graph preserved, "
-          "worst atom %.2f A" % worst)
+    try:
+        from rdkit import Chem
+    except ImportError:
+        raise SystemExit("graft needs rdkit for the atom mapping")
+
+    def build(points, els):
+        mol = Chem.RWMol()
+        for e in els:
+            mol.AddAtom(Chem.Atom(e))
+        for i, nbrs in bond_graph(points).items():
+            for j in nbrs:
+                if j > i:
+                    mol.AddBond(i, j, Chem.BondType.SINGLE)
+        out = mol.GetMol()
+        Chem.FastFindRings(out)
+        return out
+
+    query, target = build(ref_pts, ref_el), build(pose, pose_el)
+    match = target.GetSubstructMatch(query)
+    if not match:
+        raise SystemExit("the pose and the reference are not the same molecule "
+                         "as graphs; refusing to guess atom identities")
+    mapping = [None] * len(pose)
+    for ref_i, pose_i in enumerate(match):
+        mapping[pose_i] = ref_i
+    if any(m is None for m in mapping):
+        raise SystemExit("graph match did not cover every atom")
+    print("atom mapping verified: %d atoms matched as a labelled graph"
+          % len(mapping))
     return mapping
+
+
+def kabsch(mobile, target):
+    """Rigid transform taking `mobile` onto `target`; returns (apply, rmsd)."""
+    import numpy as np
+    a, b = np.asarray(mobile, float), np.asarray(target, float)
+    ca, cb = a.mean(0), b.mean(0)
+    u, _, vt = np.linalg.svd((a - ca).T @ (b - cb))
+    d = np.sign(np.linalg.det(vt.T @ u.T))
+    rot = vt.T @ np.diag([1.0, 1.0, d]) @ u.T
+    rmsd = float(np.sqrt((((a - ca) @ rot.T - (b - cb)) ** 2).sum(1).mean()))
+    return (lambda pts: [tuple(v) for v in
+                         (np.asarray(pts, float) - ca) @ rot.T + cb], rmsd)
+
+
+def frame_transform(docked_in, system, metal_selector, radius=12.0):
+    """Put docking-frame coordinates into the simulated system's frame.
+
+    A solvated system is built in its own box, so it is translated and may be
+    rotated relative to the structure the ligand was docked into. Aligning on
+    the residues around the metal rather than on the whole protein keeps the
+    fit honest about the part the pose has to land in.
+    """
+    a, b = load_pdb(docked_in), load_pdb(system)
+    mi = index_of(b, metal_selector)
+    if mi is None:
+        raise SystemExit("metal %s not found in %s" % (metal_selector, system))
+    near = {(x[0], x[1], x[2]) for x in b
+            if x[3] not in ("HOH", "WAT", "SOL")
+            and math.dist(x[4], b[mi][4]) < radius}
+    key = lambda x: (x[0], x[1], x[2])
+    shared = [k for k in (key(x) for x in a) if k in near]
+    if len(shared) < 50:
+        raise SystemExit("only %d shared atoms near the metal; cannot align"
+                         % len(shared))
+    pa = {key(x): x[4] for x in a}
+    pb = {key(x): x[4] for x in b}
+    apply_, rmsd = kabsch([pa[k] for k in shared], [pb[k] for k in shared])
+    print("docking frame aligned onto the system on %d atoms within %.0f A of "
+          "the metal, RMSD %.2f A" % (len(shared), radius, rmsd))
+    if rmsd > 2.0:
+        print("  WARNING: that is a poor fit; the site has moved during MD and "
+              "a docked pose may not be meaningful in this frame")
+    return apply_
 
 
 def place_hydrogens(ref_atoms, heavy_idx, new_heavy):
@@ -485,25 +555,35 @@ def mode_graft(site, args):
     ligand into one equilibrated system keeps the protein and the waters fixed,
     so what differs between the runs is the thing under test.
 
-        site.py graft <pdbqt> <reference_ligand.pdb> <system.pdb> [poses]
+        site.py graft <pdbqt> <ligand.pdb> <receptor.pdb> <system.pdb> [poses]
 
-    With no pose list it only measures, which is the cheap triage: a pose that
-    puts nothing near the electrophile is not worth optimising.
+    `ligand.pdb` and `receptor.pdb` are the docking frame -- the ligand gives
+    the atom names and hydrogens, the receptor gives the alignment onto the
+    system. With no pose list it only measures, which is the cheap triage: a
+    pose that puts nothing near the electrophile is not worth optimising.
     """
-    pdbqt, ref_lig, system = args[0], args[1], args[2]
-    wanted = ([int(p) for p in args[3].split(",")] if len(args) > 3 else [])
+    pdbqt, ref_lig, receptor, system = args[0], args[1], args[2], args[3]
+    wanted = ([int(p) for p in args[4].split(",")] if len(args) > 4 else [])
 
-    poses, scores = load_pdbqt(pdbqt)
+    poses, scores, pose_el = load_pdbqt(pdbqt)
     ref_atoms = load_pdb(ref_lig)
     heavy_idx = [i for i, a in enumerate(ref_atoms) if a[2][0] != "H"]
     ref_pts = [ref_atoms[i][4] for i in heavy_idx]
+    ref_el = [ref_atoms[i][2][0] for i in heavy_idx]
 
     best = min(range(len(poses)),
                key=lambda i: sum(min(math.dist(p, q) for q in poses[i])
                                  for p in ref_pts))
     print("reference ligand matches pose %d; deriving atom names from it"
           % (best + 1))
-    mapping = map_pose_to_reference(poses[best], ref_pts)
+    mapping = map_pose_to_reference(poses[best], pose_el, ref_pts, ref_el)
+
+    # Everything from here on is in the system's frame, including the ligand
+    # the names came from, so distances mean what they say.
+    into_system = frame_transform(receptor, system, site["metal"])
+    poses = [into_system(p) for p in poses]
+    ref_atoms = [a[:4] + (c,) for a, c in
+                 zip(ref_atoms, into_system([a[4] for a in ref_atoms]))]
 
     # The reference ligand sits in the system, so find it there by name.
     sys_atoms = load_pdb(system)
