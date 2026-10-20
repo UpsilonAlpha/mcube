@@ -1117,6 +1117,36 @@ So the honest position is that the Michaelis complex rests on an arbitrary choic
 
 **To check before relying on this:** `meropenem.pdbqt` lives in `CSR_ligand`, a different run directory, and `mer_crystal.pdb` in `CSR_crystal` carries no provenance header, so it is not yet established that these poses were docked into the same receptor and site that `CSR_crystal_v2` uses, nor that `mer_crystal.pdb` is pose 1. Verify both before building anything on them.
 
+**D65 - DFT confirms xTB on the carbonyl coordinate.** The three wB97X-D3(BJ)/def2-SVP single points on carbonyl-scan points 0, 4 and 8 have landed:
+
+| Zn-O2x | DFT | GFN2-xTB | difference |
+| --- | --- | --- | --- |
+| 2.15 A | 0.00 | 0.00 | - |
+| 3.08 A | +8.09 | +8.53 | -0.44 |
+| 4.00 A | **+23.62** | **+22.36** | +1.26 |
+
+kcal/mol. Agreement to 1.3 kcal/mol over a 24 kcal/mol range. Note the contrast with D58, where DFT was 1.6x steeper than xTB for pulling **Asp92** off the same zinc: xTB is not uniformly soft on this metal, and on the carbonyl coordinate it is essentially right. **So xTB's description of the carbonyl-zinc bond is not the problem.** These are still single points on xTB geometries, so they validate the energetics along that coordinate and not the choice of basin (D64).
+
+**D66 - The reference ligand is pose 2, not pose 1.** Checked as D64 said to. Comparing `CSR_ligand/meropenem.pdbqt` against `CSR_crystal_v2/preprocess_results/mer_crystal.pdb` on heavy atoms, by symmetrised mean nearest-neighbour distance:
+
+| pose | 1 | **2** | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| overlap with the reference | 1.99 | **0.77** | 2.05 | 2.28 | 2.02 | 2.11 | 1.89 | 1.76 | 1.73 |
+
+Every calculation in this project has been built on **pose 2**, the second-ranked pose, moved or minimised by about 0.8 A. Pose 1, the top-scored one, has never been looked at. Nobody chose this; it was inherited. (D64 assumed the carried-forward pose was pose 1 and was wrong about that, though its point stands and is now sharper.)
+
+**D67 - The 1.94 A Zn-carbonyl bond was imposed, not found.** With the docking frame superposed onto the simulated system on 147 backbone atoms within 12 A of the zinc (RMSD 0.83 A; all 369 atoms fit to 2.05 A, which is how far the side chains moved during MD):
+
+- the docked pose puts the beta-lactam carbonyl **4.86 A** from the zinc;
+- **no** docked pose puts it inner-sphere - the closest are pose 2 at 4.14, pose 6 at 4.38, pose 5 at 4.50 and pose 8 at 4.58 A, while the top-scored pose 1 is at **10.13 A** and is not in a catalytic orientation at all;
+- and the simulated system has it at **1.94 A, to the last digit, in every structure from the first preprocess output through the restrained minimisation, solvation, NPT and the whole of NVT.** A distance that does not move by 0.01 A across molecular dynamics is a rigid constraint, which settles D59: the metal contact is holonomic and it was applied from the very first system file.
+
+So the Michaelis complex this project has been studying has a zinc-carbonyl bond that came from a configured metal contact, at exactly the canonical value, and not from the docking or from any energy. D61/D63's 22.4 kcal/mol - now DFT-confirmed at 23.6 (D65) - is the cost of breaking a bond that was put there by hand, measured from a state no evidence produced.
+
+**The fair counter-argument, which matters.** Vina has no metal-coordination term. It cannot place a carbonyl on a zinc and its failure to do so is not evidence that the carbonyl does not belong there. Substrate carbonyl coordination to Zn1 is well established in binuclear MBLs. So this does **not** show the assumption is wrong - it shows it is an assumption, that it was imposed rigidly rather than allowed to find its own distance, and that docking cannot adjudicate it either way. The QM/MM relaxation to 2.13-2.25 A once the constraint was released (D63) is the only unforced evidence we have, and it is consistent with real coordination.
+
+**Also:** `md_results/NVTtrajectory_lastframe.pdb` still carries the 1.94 A constraint, so the "clean re-do" of the MD without constraining meropenem has not actually produced a trajectory yet. Anything started from that last frame inherits the constrained pose.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
