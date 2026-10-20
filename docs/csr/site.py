@@ -314,11 +314,25 @@ def mode_poses(site, args):
         n = len(points)
         return tuple(sum(p[i] for p in points) / n for i in range(3))
 
+    def overlap(a, b):
+        """Mean nearest-neighbour distance, symmetrised.
+
+        PDBQT and PDB order and name their atoms differently and PDBQT merges
+        nonpolar hydrogens away, so there is no atom-to-atom correspondence to
+        take an RMSD over. This asks the question that actually matters anyway:
+        does this pose occupy the same space as that structure.
+        """
+        ab = sum(min(math.dist(p, q) for q in b) for p in a) / len(a)
+        ba = sum(min(math.dist(q, p) for p in a) for q in b) / len(b)
+        return (ab + ba) / 2
+
     metal = index_of(load_pdb(receptor), site["metal"])
     if metal is None:
         raise SystemExit("metal %s not found in %s" % (site["metal"], receptor))
     zn = load_pdb(receptor)[metal][4]
 
+    # Heavy atoms only, on both sides: PDBQT carries no nonpolar hydrogens, so
+    # including the reference's would shift its centroid and invent a difference.
     poses, scores, current = [], [], []
     for line in open(pdbqt):
         if line.startswith("MODEL"):
@@ -326,7 +340,9 @@ def mode_poses(site, args):
         elif line.startswith("REMARK VINA RESULT"):
             scores.append(float(line.split()[3]))
         elif line.startswith(("ATOM", "HETATM")):
-            current.append((float(line[30:38]), float(line[38:46]), float(line[46:54])))
+            if (line[77:79].strip() or line[12:16].strip())[0] != "H":
+                current.append((float(line[30:38]), float(line[38:46]),
+                                float(line[46:54])))
         elif line.startswith("ENDMDL"):
             poses.append(current)
     if not poses and current:
@@ -334,27 +350,36 @@ def mode_poses(site, args):
 
     ref_pts = ref_c = None
     if reference:
-        ref_pts = [a[4] for a in load_pdb(reference)]
+        atoms = load_pdb(reference)
+        ref_pts = [a[4] for a in atoms if a[2][0] != "H"]
         ref_c = centroid(ref_pts)
-        print("reference %s: %d atoms, centroid to metal %.2f A"
-              % (reference, len(ref_pts), math.dist(ref_c, zn)))
+        print("reference %s: %d heavy atoms of %d, centroid to metal %.2f A"
+              % (reference, len(ref_pts), len(atoms), math.dist(ref_c, zn)))
     print("metal %s at %.2f %.2f %.2f in %s"
           % (site["metal"], zn[0], zn[1], zn[2], receptor))
     print()
 
-    print("%-6s %8s %7s %10s %12s" % ("pose", "score", "atoms", "to metal", "to reference"))
+    print("%-6s %8s %7s %10s %11s %9s"
+          % ("pose", "score", "heavy", "to metal", "centroid", "overlap"))
     for i, pts in enumerate(poses, 1):
         c = centroid(pts)
         score = "%8.3f" % scores[i - 1] if i <= len(scores) else "       -"
-        ref = "%12.2f" % math.dist(c, ref_c) if ref_c else "           -"
-        print("%-6d %s %7d %9.2f A %s" % (i, score, len(pts), math.dist(c, zn), ref))
-    if ref_c and poses:
-        near = min(range(len(poses)), key=lambda i: math.dist(centroid(poses[i]), ref_c))
-        d = math.dist(centroid(poses[near]), ref_c)
+        cen = "%10.2f A" % math.dist(c, ref_c) if ref_c else "          -"
+        ov = "%8.2f A" % overlap(pts, ref_pts) if ref_pts else "         -"
+        print("%-6d %s %7d %9.2f A %s %s"
+              % (i, score, len(pts), math.dist(c, zn), cen, ov))
+
+    if ref_pts and poses:
+        best = min(range(len(poses)), key=lambda i: overlap(poses[i], ref_pts))
+        d = overlap(poses[best], ref_pts)
         print()
-        print("closest pose to the reference: %d, centroids %.2f A apart%s"
-              % (near + 1, d, " - so the reference is that pose" if d < 0.5
-                 else " - the reference matches no pose well, check its provenance"))
+        print("closest pose to the reference: %d, overlap %.2f A" % (best + 1, d))
+        if d < 0.3:
+            print("  the reference is that pose, essentially unchanged")
+        elif d < 1.5:
+            print("  the reference is that pose after being moved or minimised")
+        else:
+            print("  the reference matches no pose; check where it came from")
 
 
 # --- entry point -------------------------------------------------------------
