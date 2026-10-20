@@ -1211,11 +1211,13 @@ One candidate for part of the shortfall, untested: the stage also writes four cu
 
 Both of the traps this project fell into were being handled by telling people about them. That only works until someone is tired.
 
-**Restraint laundering (D68) is now refused.** `md` records every pair it restrained into the PDBs it writes, as `REMARK 100 MCUBE RESTRAINED <sel_i> <sel_j> <target> <k>` lines. Selectors rather than indices, so resolvation cannot shift them, and REMARK lines rather than a sidecar file, because the structure gets copied and renamed between runs and a REMARK travels with it. `preprocess` reads those stamps from its `protein_pdb` and, if the metal-contact detection would now freeze a stamped pair, **stops** and names it:
+**Restraint laundering (D68) is now refused.** `md` already writes what it imposed to `md.results.restraints`, so there was nothing to store: `preprocess` compares that list against the contacts it has just detected and **stops** if a pair is in both.
 
-    B:1:ZN - C:1:O2x: restrained to 2.20 A (k = 20.0) by an earlier run
+    4203 - 4209: restrained to 2.2 A by md
 
-offering the two honest choices - `constraint_exclude_residues` to leave it free, or `acknowledge_restrained: ["B:1:ZN C:1:O2x"]` to assert the coordination is real. Run this project's own history through it and `CSR_crystal_v2` would not have started. Real coordination (histidines, the hydroxide, waters) is untouched, because those pairs were never restrained.
+offering the two honest choices - `constraint_exclude_residues` to leave the contact free, or `acknowledge_restrained: [[4203, 4209]]` to assert the coordination is real. Real coordination (histidines, the hydroxide, waters) is untouched, because those pairs were never restrained.
+
+*(First written as `REMARK` lines stamped into the output PDBs so the record would travel with a copied structure. Wrong: the config is where that data already lives and belongs, and the stamping was 120 lines of parallel bookkeeping to maintain. The config-based check is about 30. The cost is that it sees one config - a run started from another run's structure, with its own config, is outside what it can check, and that restraint is recorded in the other config.)*
 
 **Thread placement is no longer a choice.** `mcube env <config> <stage> [--section]` derives the policy from the stage and the config and prints shell exports; `run.slurm` evals it after activating the environment and before anything starts. The profile argument is gone - `run.slurm <stage> <section> [start.pdb]`. The three cases are now decided rather than remembered:
 
@@ -1229,7 +1231,7 @@ It also warns at submit time when the allocation exceeds what the stage can use,
 
 The user's framing is the reason both of these are code: the only things left to choose are `--cpus-per-task`, `--mem`, `--time` and `config.yaml`. The documentation shrank accordingly - the three-recipe thread table in the README is two sentences now, and `run.slurm`'s header carries a worked `sbatch` line per stage instead.
 
-**Tested:** 20 new tests pass locally (`test_env.py`, which needs only PyYAML because `cli.py` imports no stage); `test_provenance.py` covers the stamp and the refusal and runs in the ASH environment. The provenance logic was also exercised standalone against a synthetic structure before being spliced in - round trip, idempotence, pair-order insensitivity, acknowledgement, and leaving genuine contacts alone.
+**Tested:** `test_env.py` (needs only PyYAML, because `cli.py` imports no stage) covers the policy table and the shell output; `test_provenance.py` covers the refusal, the acknowledgement and the cases that must pass through untouched.
 
 **Not affected:** jobs 30226271 and 30226272 were already submitted, and Slurm spools the batch script at submit time, so they run the old script with the old arguments.
 

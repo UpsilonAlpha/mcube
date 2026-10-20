@@ -173,125 +173,37 @@ def load_section(filename: str, section: str) -> Dict[str, Any]:
     return data.get(section, {})
 
 
-# A harmonic restraint says "we do not know this distance and are imposing one";
-# a constraint on an auto-detected contact says "this distance is structural".
-# Feeding a restrained structure into a new run turns the first into the second,
-# because the detector only sees the number in the file. These functions make that
-# visible: md stamps what it imposed into its output PDBs, and preprocess refuses
-# to constrain a stamped pair unless the config says to.
-RESTRAINT_REMARK = "REMARK 100 MCUBE RESTRAINED"
+def check_inherited_restraints(constraints, restraints, inputs) -> None:
+    """Refuse to constrain a pair that md held in place with a harmonic restraint.
 
+    A restraint says "we are imposing this distance"; a constraint on a detected
+    contact says "this distance is structural". Re-running preprocess after a
+    restrained md turns the first into the second, and nothing downstream can
+    then tell them apart. Both lists are already in the config, so this only
+    compares them.
 
-def atom_selectors(pdb_file: str) -> list:
-    """["chain:resid:atom", ...] in file order, for turning indices back into names."""
-    out = []
-    for line in open(pdb_file):
-        if line.startswith(("ATOM", "HETATM")):
-            out.append("%s:%s:%s" % (line[21], line[22:26].strip(), line[12:16].strip()))
-    return out
-
-
-def stamp_restraints(pdb_files, restraints, reference_pdb: str) -> None:
-    """Record the restrained pairs in these PDBs, as selectors rather than indices
-    so they survive resolvation and renumbering.
-
-    Written as REMARK lines rather than a sidecar file because a structure gets
-    copied and renamed between runs, and a REMARK travels with it.
+    It sees one config. A run started from another run's structure, with its own
+    config, is outside what this can check: that restraint is recorded in the
+    other config.
     """
-    if not restraints:
+    if not constraints or not restraints:
         return
-    names = atom_selectors(reference_pdb)
-    lines = []
-    for entry in restraints:
-        i, j = int(entry[0]), int(entry[1])
-        if i >= len(names) or j >= len(names):
-            continue
-        target = float(entry[2]) if len(entry) > 2 else 0.0
-        force = float(entry[3]) if len(entry) > 3 else 0.0
-        lines.append("%s %s %s %.3f %.3f\n"
-                     % (RESTRAINT_REMARK, names[i], names[j], target, force))
-    if not lines:
-        return
-    stamped = 0
-    for path in pdb_files:
-        if not path or not Path(path).exists():
-            continue
-        text = open(path).readlines()
-        if any(line.startswith(RESTRAINT_REMARK) for line in text):
-            continue
-        at = next((k for k, line in enumerate(text)
-                   if line.startswith(("ATOM", "HETATM"))), 0)
-        with open(path, "w") as fh:
-            fh.writelines(text[:at] + lines + text[at:])
-        stamped += 1
-    if stamped:
-        print("[INFO] Recorded %d restrained pair(s) in %d output structure(s), so a "
-              "later run cannot mistake an imposed distance for a measured one"
-              % (len(lines), stamped))
-
-
-def read_restraint_stamps(pdb_file) -> list:
-    """[(selector_i, selector_j, target, k), ...] stamped by an earlier run."""
-    if not pdb_file or not Path(pdb_file).exists():
-        return []
-    found = []
-    for line in open(pdb_file):
-        if line.startswith(RESTRAINT_REMARK):
-            parts = line.split()[4:]
-            if len(parts) >= 2:
-                found.append((parts[0], parts[1],
-                              float(parts[2]) if len(parts) > 2 else 0.0,
-                              float(parts[3]) if len(parts) > 3 else 0.0))
-        elif line.startswith(("ATOM", "HETATM")):
-            break
-    return found
-
-
-def check_inherited_restraints(constraints, inherited, pdb_file: str, inputs) -> None:
-    """Refuse to constrain a contact an earlier run held in place with a restraint.
-
-    This is the failure it exists to stop: a substrate carbonyl restrained to 2.2 A
-    of a zinc in one run came back as a 1.94 A "detected" contact in the next and
-    was frozen rigid, after which nothing downstream could tell it from
-    crystallography. Twelve days of results were measured in that state.
-    """
-    if not constraints or not inherited:
-        return
-    names = atom_selectors(pdb_file)
-    imposed = {frozenset((a, b)): (t, k) for a, b, t, k in inherited}
-    allowed = set()
-    for entry in inputs.get("acknowledge_restrained") or []:
-        parts = entry.replace(",", " ").split() if isinstance(entry, str) else list(entry)
-        if len(parts) >= 2:
-            allowed.add(frozenset(parts[:2]))
-
-    clashes = []
-    for pair in constraints:
-        i, j = int(pair[0]), int(pair[1])
-        if i >= len(names) or j >= len(names):
-            continue
-        key = frozenset((names[i], names[j]))
-        if key in imposed and key not in allowed:
-            target, force = imposed[key]
-            clashes.append((names[i], names[j], target, force))
+    allowed = {frozenset(map(str, pair)) for pair in (inputs.get("acknowledge_restrained") or [])}
+    imposed = {frozenset(str(r[r_i]) for r_i in (0, 1)): r for r in restraints if len(r) >= 2}
+    clashes = [imposed[key] for key in
+               (frozenset(str(c[i]) for i in (0, 1)) for c in constraints)
+               if key in imposed and key not in allowed]
     if not clashes:
         return
-
-    detail = "".join(
-        "    %s - %s: restrained to %.2f A (k = %.1f) by an earlier run\n" % c
-        for c in clashes)
+    detail = "".join("    %s - %s: restrained to %s A by md\n" % (c[0], c[1], c[2] if len(c) > 2 else "?")
+                     for c in clashes)
     raise ValueError(
-        "The starting structure records distances that an earlier run imposed with a "
-        "harmonic restraint, and this run would freeze them as detected metal "
-        "coordination:\n" + detail +
-        "\nThat turns an assumption into a structural fact, and nothing downstream "
-        "can tell the difference. Choose, in the preprocess inputs:\n"
-        "  - to leave the contact free: add the residue to constraint_exclude_residues\n"
-        "  - to assert the coordination is real: list the pair in "
-        "acknowledge_restrained, e.g.\n"
-        "      acknowledge_restrained: [\"%s %s\"]\n"
-        "  - or start from a structure that was not restrained into this geometry."
-        % (clashes[0][0], clashes[0][1]))
+        "md.results.restraints records distances this run imposed, and preprocess "
+        "would now freeze them as detected metal coordination:\n" + detail +
+        "\nThat makes an assumption look structural. In the preprocess inputs, either\n"
+        "add the residue to `constraint_exclude_residues` to leave it free, or list\n"
+        "the pair in `acknowledge_restrained` to assert the coordination is real:\n"
+        "    acknowledge_restrained: [[%s, %s]]\n" % (clashes[0][0], clashes[0][1]))
 
 
 def resolve_cores(requested, label: str = "cores") -> int:
@@ -782,9 +694,10 @@ def run(args) -> Dict[str, Any]:
         qm_residues, constraints = find_coordinators(pdb_file, inputs)
         # A contact an earlier run restrained into place must not become a rigid
         # constraint just because the detector now measures it there.
-        check_inherited_restraints(constraints,
-                                   read_restraint_stamps(inputs.get("protein_pdb")),
-                                   pdb_file, inputs)
+        check_inherited_restraints(
+            constraints,
+            (load_section(args.config, "md").get("results") or {}).get("restraints"),
+            inputs)
     else:
         # e.g. protein–protein complexes: no metal site to hold, no metal QM region
         print("[INFO] No metals given: no coordination constraints and no metal QM region")

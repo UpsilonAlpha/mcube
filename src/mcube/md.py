@@ -14,7 +14,6 @@ from ash import *
 
 from .preprocess import (
     resolve_cores,
-    stamp_restraints,
     save_result,
     load_section,
     resolve_atoms,
@@ -302,11 +301,6 @@ def run(args) -> Dict[str, Any]:
                     csvfile="membrane_box_production.csv")
             except Exception as exc:
                 print(f"[WARNING] Could not report the membrane box size: {exc}")
-
-    # Whatever this run imposed travels with the structures it produced, so the
-    # next run cannot read an imposed distance as a measured one.
-    stamp_restraints([result.get(k) for k in ("lastframe", "minimized", "gentle")],
-                     restraints, pdb_file)
 
     print("[DONE] Workflow complete")
     save_result(result,  filename=args.config, section="md")
