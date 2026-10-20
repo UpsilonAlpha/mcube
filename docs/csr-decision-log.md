@@ -1173,6 +1173,24 @@ That is the answer to "why did it not stay at 5.43 A": it was pulled in on purpo
 
 **What this means for the protocol.** Restrained structures must not be fed back in as `protein_pdb` without re-declaring what is assumed, or `constraint_exclude_residues` must be used to keep the substrate out of the auto-detected set. Worth considering in mcube itself: record restrained pairs in the preprocess/md results and refuse to auto-constrain a pair that a previous run restrained, or at least warn.
 
+**D69 - The unrestrained run (`CSR_unrestrained`), jobs 30226271 / 30226272.** The test D68 implies: apply the coordination rule honestly to the docked pose and impose nothing else. Atoms within coordination distance are constrained, atoms outside it are not - and nothing is pulled anywhere.
+
+Started from `CSR_crystal/preprocess_results/finalsystem.pdb`, the solvated system built from the docked pose, which has Zn-Asp92 2.80, Zn-O01 2.14 and **Zn-mer O2x 5.43 A**. The config is `CSR_crystal`'s with `md.inputs.restraints` and `md.inputs.constraints` set to null, so the MD falls back to what `find_coordinators` detects at `cutoff: 3.0`. It detects five contacts and the rule does the work by itself:
+
+| constrained to Zn | His88 NE2, His164 NE2, Asp92 OD2, O01, HOH D:1 |
+| --- | --- |
+| **not constrained** | **mer O2x, at 5.43 A** |
+
+No preprocess re-run was needed: every path in the copied config is absolute and points back at `CSR_crystal/preprocess_results`.
+
+Then the default qmmm flow with nothing added: **25 ps of QM/MM MD at 1 fs, QM/MM optimisation of the 8 A active region around the zinc, and a DFT single point.** `make_mm` builds the QM/MM MM object with `autoconstraints=None`, `rigidwater=False` and no `constraints`, and no `opt_constraints` are set, so there is **no bond constraint anywhere in the QM/MM stage** - only the non-QM active-region waters are frozen during the optimisation, which is unrelated to the metal. GFN2-xTB is trusted to hold the coordination geometry, which D65 supports on this coordinate.
+
+The single point is submitted separately rather than with `singlepoint: true`, purely for resources: DFT runs at 96% on 64 cores and 192 GB while the xTB MD saturates about four threads, so one job cannot size both. The science is identical.
+
+**What the result means either way.** If the carbonyl coordinates on its own during the 25 ps, the Michaelis complex used since D57 is vindicated and only its provenance was wrong. If it stays out, the six-coordinate zinc, the 33-40 degree attack angles and the 22-24 kcal/mol carbonyl detachment cost were all artefacts of the restraint traced in D68, and the mechanism question reopens from the start.
+
+**Caveat to carry.** The MM equilibration still runs with a non-bonded point-charge zinc, which is documented to over-coordinate, so if the carbonyl comes in during the MM stage rather than the QM/MM stage that is weak evidence. Record the Zn-O2x distance at the end of MM separately from the end of the QM/MM MD, and judge them separately.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
