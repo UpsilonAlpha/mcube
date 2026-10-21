@@ -20,7 +20,6 @@ try:
 except ImportError:  # Windows: no locking (single-user use)
     fcntl = None
 
-import numpy as np
 from rdkit import Chem
 from rdkit.Chem import AllChem, rdDetermineBonds
 from openmm.app import PDBFile, Topology, ForceField
@@ -544,10 +543,7 @@ def find_coordinators(
     constraint_exclude = inputs.get("constraint_exclude_residues") or {}
     cutoff = inputs.get("cutoff")
 
-    coords = np.array([[p.x, p.y, p.z] for p in pdb.positions]) * 10.0  # nm → Å
-
     elems = [a.element.symbol if a.element else "" for a in atoms]
-    names = [a.name for a in atoms]
 
     # Chain-aware residue info
     resids = [int(a.residue.id) for a in atoms]
@@ -556,7 +552,6 @@ def find_coordinators(
 
     metal_idx = [i for i, e in enumerate(elems) if e.upper() in inputs.get("metals")]
 
-    donor_elements = {e.upper() for e in inputs.get("donor_elements") or ["N", "O", "S"]}
     if inputs.get("donor_atoms"):
         print("[WARNING] donor_atoms is no longer used; donors are chosen by element (donor_elements)")
 
