@@ -158,7 +158,7 @@ A stale chain ID fails loudly in some places and silently in others: a `chain:re
 
 Minimisation always runs. Metal–donor `constraints` are applied as fixed-distance OpenMM constraints.
 
-`results`: `minimized`, `gentle`, `forcefields`, `trajfile`, `lastframe`, `csv`, and `coordination_start` / `coordination_end` — the metal's coordination sphere before and after the run, with md printing what changed between them. A donor that appears was outside `constraint_cutoff` and so was never held. In explicit solvent, `trajfile` and `lastframe` are the reimaged files.
+`results`: `minimized`, `gentle`, `forcefields`, `trajfile`, `lastframe`, `csv`, and `coordination_start` / `coordination_end` — the metal's coordination sphere before and after the run, with md printing what changed between them. A donor that appears was never held, so `hold_coordination` is the response. In explicit solvent, `trajfile` and `lastframe` are the reimaged files.
 
 ### `qmmm.inputs`
 
