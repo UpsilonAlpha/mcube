@@ -6,6 +6,7 @@ Protein/Ligand preprocessing utilities (pipeline-ready).
 from __future__ import annotations
 
 import argparse
+import math
 import yaml
 import os
 import shutil
@@ -244,6 +245,95 @@ def check_inherited_restraints(constraints, restraints, pdb_file: str, inputs) -
         '    acknowledge_restrained: [["%s", "%s"]]\n' % (clashes[0][0], clashes[0][1]))
 
 
+def coordination_shell(pdb_file: str, inputs) -> list:
+    """The metal coordination sphere: the closest donor of each residue within `cutoff`.
+
+    The one place that rule lives. `find_coordinators` builds the MD constraints
+    and the QM region from it, and `md` reports it before and after the run, so a
+    contact that appears or disappears during equilibration is visible instead of
+    being inherited silently. An MD frame is wrapped into the periodic cell, so
+    the minimum image is applied when the file carries an orthorhombic CRYST1.
+    """
+    metals = {m.upper() for m in (inputs.get("metals") or [])}
+    donors = {e.upper() for e in (inputs.get("donor_elements") or ["N", "O", "S"])}
+    cutoff = float(inputs.get("cutoff") or 2.8)
+
+    rows, cell = [], None
+    for line in open(pdb_file):
+        if line.startswith(("ATOM", "HETATM")):
+            element = (line[76:78].strip() or line[12:16].strip()[:1]).upper()
+            rows.append((line[21], line[22:26].strip(), line[12:16].strip(),
+                         line[17:20].strip(), element,
+                         (float(line[30:38]), float(line[38:46]), float(line[46:54]))))
+        elif line.startswith("CRYST1"):
+            if all(abs(float(line[c:c + 7]) - 90.0) < 1e-3 for c in (33, 40, 47)):
+                cell = [float(line[6:15]), float(line[15:24]), float(line[24:33])]
+
+    def separation(a, b):
+        v = [q - p for p, q in zip(a, b)]
+        if cell:
+            v = [x - c * round(x / c) if c else x for x, c in zip(v, cell)]
+        return math.sqrt(sum(x * x for x in v))
+
+    found = []
+    for mi, metal in enumerate(rows):
+        if metal[4] not in metals:
+            continue
+        closest = {}
+        for di, donor in enumerate(rows):
+            if di == mi or donor[4] not in donors:
+                continue
+            r = separation(metal[5], donor[5])
+            if r > cutoff:
+                continue
+            key = (donor[0], donor[1], donor[3])
+            if key not in closest or r < closest[key][0]:
+                closest[key] = (r, di, donor[2])
+        for (chain, resid, resname), (r, di, aname) in sorted(
+                closest.items(), key=lambda kv: kv[1][0]):
+            found.append({
+                "metal": "%s:%s:%s" % (metal[0], metal[1], metal[2]),
+                "donor": "%s:%s:%s" % (chain, resid, aname),
+                "resname": resname,
+                "distance": round(r, 2),
+                "metal_index": mi,
+                "donor_index": di,
+            })
+    return found
+
+
+def report_coordination(shell, label: str) -> None:
+    print("\n===== Metal coordination: %s =====" % label)
+    if not shell:
+        print("  none within the cutoff")
+    for row in shell:
+        print("  %-12s %-14s %-4s %5.2f A"
+              % (row["metal"], row["donor"], row["resname"], row["distance"]))
+
+
+def compare_coordination(before: list, after: list) -> list:
+    """Lines describing how the sphere changed, empty if it did not.
+
+    A ligand that appears during MD was not there to be constrained at setup, so
+    nothing held it: a non-bonded point-charge metal will pull a neutral donor in
+    and there is no Pauli repulsion to stop it. That has happened here (a Gln
+    amide oxygen went from 5.54 to 1.79 A), and it is invisible unless something
+    looks.
+    """
+    was = {(r["metal"], r["donor"]): r["distance"] for r in before or []}
+    now = {(r["metal"], r["donor"]): r["distance"] for r in after or []}
+    lines = []
+    for key in sorted(set(now) - set(was)):
+        lines.append("  APPEARED  %s - %s at %.2f A" % (key[0], key[1], now[key]))
+    for key in sorted(set(was) - set(now)):
+        lines.append("  LEFT      %s - %s (was %.2f A)" % (key[0], key[1], was[key]))
+    for key in sorted(set(was) & set(now)):
+        if abs(now[key] - was[key]) >= 0.2:
+            lines.append("  MOVED     %s - %s %.2f -> %.2f A"
+                         % (key[0], key[1], was[key], now[key]))
+    return lines
+
+
 def resolve_cores(requested, label: str = "cores") -> int:
     """How many threads a stage asks ASH for: the config value, else the job's.
 
@@ -471,34 +561,17 @@ def find_coordinators(
 
     print("\n===== Metal Coordination Analysis =====")
     print(f"Cutoff: {cutoff:.2f} Å")
+    shell = coordination_shell(pdb_file, inputs)
 
     for m in metal_idx:
         print(f"\nMetal {elems[m]} at {chains[m]}:{resids[m]} (atom index {m})")
         qm_residue_dict.setdefault(chains[m], {})[resids[m]] = resnames[m]
 
-        residue_min_dist = {}
-
-        for i in range(len(atoms)):
-            if i == m:
-                continue
-
-            # donor atom filter
-            if elems[i].upper() not in donor_elements:
-                continue
-
-            dist = np.linalg.norm(coords[i] - coords[m])
-            if dist > cutoff:
-                continue
-
-            key = (chains[i], resids[i], resnames[i])
-
-            if key not in residue_min_dist or dist < residue_min_dist[key][0]:
-                residue_min_dist[key] = (dist, i, names[i])
-
-        sorted_res = sorted(residue_min_dist.items(), key=lambda x: x[1][0])
-
         print("Coordinating residues:")
-        for (chain, resid, resn), (dist, idx, aname) in sorted_res:
+        for row in [r for r in shell if r["metal_index"] == m]:
+            chain, resid_text, aname = row["donor"].split(":")
+            resid, resn = int(resid_text), row["resname"]
+            dist, idx = row["distance"], row["donor_index"]
 
             if resid in (constraint_exclude.get(chain) or []):
                 print(f"[INFO] No bond constraint for {resn} {chain}:{resid} ({aname}) (constraint_exclude_residues)")

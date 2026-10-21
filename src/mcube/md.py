@@ -13,6 +13,9 @@ from openmm.app import PDBFile, ForceField, CutoffNonPeriodic, HBonds
 from ash import *
 
 from .preprocess import (
+    compare_coordination,
+    coordination_shell,
+    report_coordination,
     resolve_cores,
     to_selectors,
     save_result,
@@ -182,6 +185,14 @@ def run(args) -> Dict[str, Any]:
     if restraints:
         print(f"[INFO] {len(restraints)} distance restraints: {restraints}")
 
+    # The coordination sphere this run starts from. Reported again at the end,
+    # because a contact that was not there at setup was never constrained, and a
+    # non-bonded metal will happily pull one in.
+    preprocess_inputs = preprocess.get("inputs") or {}
+    shell_before = coordination_shell(pdb_file, preprocess_inputs)
+    report_coordination(shell_before, "before MD")
+    result["coordination_start"] = shell_before
+
     mm, default_forcefields = build_md_theory(inputs, preprocess, pdb_file, constraints, restraints,
                                               cores=resolve_cores(inputs.get("cores")))
 
@@ -304,6 +315,24 @@ def run(args) -> Dict[str, Any]:
                     csvfile="membrane_box_production.csv")
             except Exception as exc:
                 print(f"[WARNING] Could not report the membrane box size: {exc}")
+
+    final = result.get("lastframe") or result.get("gentle") or result.get("minimized")
+    if final and Path(final).exists():
+        shell_after = coordination_shell(final, preprocess_inputs)
+        report_coordination(shell_after, "after MD")
+        result["coordination_end"] = shell_after
+        changes = compare_coordination(shell_before, shell_after)
+        if changes:
+            print()
+            print("The coordination sphere changed during MD:")
+            for line in changes:
+                print(line)
+            print("Check these are physical before building on this structure: a "
+                  "contact that appeared was not constrained, and a non-bonded "
+                  "metal has no Pauli repulsion to stop a donor collapsing onto it.")
+        else:
+            print()
+            print("The coordination sphere is unchanged.")
 
     print("[DONE] Workflow complete")
     save_result(result,  filename=args.config, section="md")
