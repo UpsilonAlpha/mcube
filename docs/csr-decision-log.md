@@ -1352,6 +1352,29 @@ The low-temperature ramp lasts 0.055 ps and does nothing. Cycle 2 is 40 ps of or
 
 Worth noting for anyone reading the config: "gentle warm-up" is a misnomer for what cycle 2 does, and it is where a third of the pre-NPT equilibration time goes.
 
+**D77 - Constraining Gln93 worked, and the artefact moved to Asp92's other oxygen.** (2026-10-21, job 30302149 running)
+
+The new coordination report printed correctly on its first live run - five contacts before MD, Gln93 rightly absent at 5.54 A - and the Gln93 constraint held: it is not in the sphere after the warm-up. But the sphere now has six ligands anyway:
+
+| donor | distance | |
+| --- | --- | --- |
+| **A:92:ASP:OD1** | **1.75** | **not constrained** |
+| D:1:HOH:O | 1.90 | constrained |
+| A:164:HIS:NE2 | 2.09 | constrained |
+| C:2:OH:O01 | 2.14 | constrained |
+| A:88:HIS:NE2 | 2.22 | constrained |
+| A:92:ASP:OD2 | 2.80 | constrained, held exactly |
+
+Asp92's carboxylate has rotated so that **OD1** collapses to 1.75 A while the constrained **OD2** sits at its 2.80 A. A per-pair constraint pins one distance; it does not stop the residue turning so a different donor atom of the same residue takes the site. `find_coordinators` only ever constrains the closest donor per residue, so the second oxygen of every carboxylate - Asp, Glu - is free by construction.
+
+**So per-pair constraints cannot fix this.** Patching OD1 too would just invite the next donor in; the pathology is the non-bonded point-charge zinc, and each constraint only closes one route to it. Three real options:
+
+1. **Hold the whole first shell during MM.** If the MM stage exists only to settle solvent - which is the position taken in D62 and the reason the equilibration is run at all - then restrain the heavy atoms of the coordinating residues and the substrate, let the water relax around them, and release everything in QM/MM where the electronic structure can hold the site together. No whack-a-mole and nothing imposed that QM/MM does not immediately re-decide.
+2. **A zinc model that can say no**: cationic dummy atoms, or a bonded model. Correct, and a real change to how preprocess builds the system.
+3. Constrain both carboxylate oxygens and keep patching, which is option 1 done badly.
+
+Option 1 is the cheap one and matches what the MM stage is actually for. Worth noting it inverts the dichotomy's spirit for the MM stage only: everything in the site is held, because none of it is being measured there.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
