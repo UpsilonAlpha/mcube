@@ -337,6 +337,25 @@ def compare_coordination(before: list, after: list) -> list:
     return lines
 
 
+def coordination_atoms(pdb_file: str, constraints) -> list:
+    """Every atom of the metal and of each residue it is constrained to.
+
+    Whole residues, because the point of freezing them is that a residue cannot
+    turn and present a different donor: pinning one atom let Asp92's second
+    oxygen collapse onto the zinc while the first sat at its constrained
+    distance. Residues excluded from the constraints (the substrate, via
+    `constraint_exclude_residues`) are absent from `constraints` and so stay
+    free, which is deliberate - a frozen substrate cannot be measured.
+    """
+    rows = []
+    for line in open(pdb_file):
+        if line.startswith(("ATOM", "HETATM")):
+            rows.append((line[21], line[22:26].strip()))
+    wanted = {rows[int(a)] for pair in (constraints or []) for a in pair[:2]
+              if int(a) < len(rows)}
+    return sorted(i for i, residue in enumerate(rows) if residue in wanted)
+
+
 def resolve_cores(requested, label: str = "cores") -> int:
     """How many threads a stage asks ASH for: the config value, else the job's.
 

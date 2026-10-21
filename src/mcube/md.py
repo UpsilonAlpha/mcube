@@ -14,6 +14,7 @@ from ash import *
 
 from .preprocess import (
     compare_coordination,
+    coordination_atoms,
     coordination_shell,
     report_coordination,
     resolve_cores,
@@ -58,7 +59,7 @@ def md_membrane(inputs: Dict[str, Any], preprocess: Dict[str, Any]) -> bool:
 
 
 def build_md_theory(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file: str,
-                    constraints, restraints, cores=None):
+                    constraints, restraints, cores=None, frozen_atoms=None):
     """
     The classical system used by the md stage: force fields,
     HBond constraints, rigid water, 1.5 amu hydrogens, metal-site bond constraints
@@ -97,6 +98,7 @@ def build_md_theory(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file
             autoconstraints='HBonds',
             constraints=constraints,
             restraints=restraints,
+            frozen_atoms=frozen_atoms,
             nonbondedMethod_noPBC='CutoffNonPeriodic',
             nonbonded_cutoff_noPBC=20,
         )
@@ -132,6 +134,7 @@ def build_md_theory(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file
             autoconstraints='HBonds',
             constraints=constraints,
             restraints=restraints,
+            frozen_atoms=frozen_atoms,
             rigidwater=True,
         )
 
@@ -146,6 +149,7 @@ def build_md_theory(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file
             autoconstraints='HBonds',
             constraints=constraints,
             restraints=restraints,
+            frozen_atoms=frozen_atoms,
             rigidwater=True,
         )
     return mm, default_forcefields
@@ -193,8 +197,33 @@ def run(args) -> Dict[str, Any]:
     report_coordination(shell_before, "before MD")
     result["coordination_start"] = shell_before
 
+    # Freezing the metal site during MM. A non-bonded point-charge metal does
+    # not hold its coordination sphere -- Guven et al., J. Phys. Chem. B 2024,
+    # 128, 12416 (DOI 10.1021/acs.jpcb.4c06379) report the same for VIM-2 with
+    # two different zinc parameter sets, and drop their unrestrained MD in
+    # favour of holding the metal, its coordinating residues and the ligand in
+    # place. ASH has no harmonic positional restraint, so this freezes instead
+    # (zero mass). The MM stage is only settling solvent; QM/MM releases
+    # everything and decides the geometry itself.
+    frozen_atoms = resolve_atoms(inputs.get("frozen_atoms") or None, pdb_file)
+    if frozen_atoms is None and inputs.get("freeze_coordination"):
+        frozen_atoms = coordination_atoms(pdb_file, constraints)
+        print(f"[INFO] freeze_coordination: {len(frozen_atoms)} atoms frozen "
+              "(the metal and every atom of each residue constrained to it)")
+    if frozen_atoms:
+        # OpenMM rejects a constraint between two zero-mass particles, and a
+        # constraint between two frozen atoms says nothing anyway.
+        frozen = set(frozen_atoms)
+        kept = [c for c in (constraints or [])
+                if not (int(c[0]) in frozen and int(c[1]) in frozen)]
+        if constraints and len(kept) != len(constraints):
+            print(f"[INFO] {len(constraints) - len(kept)} of {len(constraints)} "
+                  "metal constraints dropped: both atoms are frozen")
+        constraints = kept or None
+
     mm, default_forcefields = build_md_theory(inputs, preprocess, pdb_file, constraints, restraints,
-                                              cores=resolve_cores(inputs.get("cores")))
+                                              cores=resolve_cores(inputs.get("cores")),
+                                              frozen_atoms=frozen_atoms)
 
     fragment = Fragment(pdbfile=pdb_file)
     result["forcefields"] = default_forcefields
