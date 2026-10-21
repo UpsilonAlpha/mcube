@@ -1513,6 +1513,23 @@ Checked against the paper's own text (D81), not from memory. Four things match a
 
 **Documentation audit.** All 112 config keys the code reads were checked against the README tables. One was genuinely undocumented (`irc_dx`, Sella's IRC step size) and now has a row. The rest were already covered - in combined rows, inside another key's description, as pass-throughs to ASH, or as fallback spellings of a documented `dft_*` key.
 
+**D86 - Correction: mcube's original approach did not fail, and the paper does not support the 6 A extension.** (2026-10-21, user)
+
+The user challenged the premise of D81-D85 and was right. Three facts, checked:
+
+1. **The original constraints were honoured exactly.** In run 1, at the end of 1 ns, every detected contact sat at its input distance: Asp92 2.80, O01 2.14, HOH485 1.90, His88 2.22, His164 2.09. mcube's metal constraints did precisely what they promise.
+2. **Gln93 was never in the held set.** It was 5.54 A at setup, outside `cutoff: 3.0`, so `find_coordinators` did not detect it and nothing held it. Not a mechanism failure - a residue that was not coordinating when the decision was taken.
+3. **Guven et al. would not have held it either.** They restrain *"the two zincs, their coordinating protein residues, and the ligand"*. Gln93 is not a coordinating residue in our input, so it is outside their set as well. **Their failure mode was coordination being lost; ours was coordination being gained.** The paper addresses theirs. It does not address ours, and D81/D84 presented a 6 A hold as following from it. It does not follow; that was extrapolation dressed as citation.
+
+**What the literature does offer for a spurious extra first-shell ligand**, neither of which is more restraints:
+
+- a metal model that can refuse one - cationic dummy atoms, bonded, or 12-6-4 - which is the documented answer to over-coordination and needs per-metal parameterisation;
+- **expanding the QM region** so the electronic structure sets the distance instead of the force field. mcube already has `extra_qm_residues`, and covering the first shell with QM is standard QM/MM practice. D63 shows it self-corrects: the carbonyl moved 1.94 -> 2.13-2.25 A as soon as QM/MM touched it.
+
+So the grounded configuration is near-stock: `cutoff: 3.0` with constraints as always, plus `extra_qm_residues: {A: [93]}` if the coordination report shows Gln93 arriving. That makes `hold_coordination` unnecessary surface in the package.
+
+**Job 30349571 is nonetheless running**, 11 minutes in and past minimisation - the first of the four mechanisms to get there (D79, D80, D83 all died before it). Its result is still the cleanest available test of the substrate question, because the site is held and the substrate is free, so the Gln93 confound cannot interfere with reading the carbonyl. Worth finishing on those grounds, not on the grounds that the protocol is what the paper did.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
