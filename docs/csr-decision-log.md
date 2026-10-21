@@ -1437,6 +1437,21 @@ Background on the root cause, older: Pang's cationic dummy atom model (four posi
 
 **The implementation problem.** ASH's `OpenMMTheory` takes `restraints=` (distance, via `add_bondrestraints`) and `frozen_atoms=` (which zeroes masses - `freeze_atoms`). It has **no harmonic positional restraint**, and mcube exposes neither `frozen_atoms` nor anything equivalent. So the published protocol is not reachable from the config as things stand.
 
+**D82 - Freezing the detected coordinators, which is 6 lines and no new machinery.** (2026-10-21, user)
+
+Following D81's literature: hold the metal site for the whole classical stage instead of letting it equilibrate. The implementation went through two wrong shapes before the right one, both corrected by the user:
+
+- a new `coordination_atoms()` helper that re-parsed the PDB to expand each coordinating residue to all its atoms - unnecessary, because the constraint list `preprocess` already produces names exactly the atoms to hold;
+- which makes the derivation a flattening of that list: `sorted({int(a) for c in constraints for a in c[:2]})`. Per-atom detection within `constraint_cutoff` (D78) already puts both oxygens of a carboxylate in it, so the D77 rotation route is closed without expanding to whole residues.
+
+`md.inputs.freeze_coordination: true` therefore **freezes what preprocess found instead of constraining it**, through ASH's existing `frozen_atoms=` argument. Constraints whose both atoms are frozen are dropped, because OpenMM rejects a constraint between zero-mass particles and one between two frozen atoms asserts nothing - which disposes of the D79/D80 NaN as a side effect, since all 18 pairs are in that category. `frozen_atoms` is also exposed for explicit control. Thirty-one lines in `md.py`, no new module, no new file.
+
+**Where this departs from the paper, stated plainly.** Guven et al. use harmonic positional restraints; freezing is the infinitely stiff limit of one. ASH has no harmonic positional restraint, but it does have `add_centerforce(center_coords, atomindices, forceconstant, distance)` - a flat-bottomed positional restraint with per-particle reference coordinates, which is nearer the paper's method and could be exposed later. Its penalty is `0.5*k*max(0, d^2 - r0)^2`, i.e. **quartic** in the displacement rather than harmonic, so `k` is not the force constant a paper would quote and the numbers would not be transferable. For an MM stage whose only job is to settle solvent, freezing is the simpler and more honest choice; if the site needs to breathe, that is the hook to use.
+
+**Jobs 30348138 (preprocess), 30348139 (md), 30348140 (qmmm)**, `constraint_cutoff: 6.0`, `gentle: false` (D76: it earns nothing after a successful minimisation), `nvt_time: 500`.
+
+**What to watch.** Frozen atoms are not integrated, but a Monte Carlo barostat translates whole molecules rigidly, so NPT should be unaffected - unverified, and the first thing to check if md fails. And the substrate stays free throughout: it is in `constraint_exclude_residues`, so it is absent from the constraints and therefore from the frozen set, which is the whole point.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
