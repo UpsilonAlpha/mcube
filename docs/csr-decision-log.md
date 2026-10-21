@@ -1334,6 +1334,20 @@ The default's 1.69 A minimum accounts for the observed 1.79 A collapse almost ex
 
 **Landed anyway, opt-in, because better radii are worth having**: `md.inputs.metal_parameters: iod` (`src/mcube/ions.py`), 40 ions across +2/+3/+4 including all twelve lanthanides, keyed on the element and the charge the force field already assigned - a metal in the PDB parameterises itself. **The table is vendored rather than read from AmberTools on purpose:** per the authors' own note, the `frcmod.ions234lm_iod_tip3p` shipped with AmberTools 2016-2019 carries the **12-6-4** values for +3 and +4 ions under an IOD label, and those are invalid without the accompanying C4 term. Transcribed from their corrected file and cross-checked against the local install on Zn2+, La3+, Ce3+ and Pr3+, which agree exactly - so this install is unaffected, but a user's might not be. 12-6-4 itself is not implemented: it needs per-ion C4 values and the partner atom's polarisability, which Amber supplies through ParmEd rather than in the frcmod file.
 
+**D88 - The restraint was not periodic, and that is what killed the run.** (2026-10-21, job 30349571 FAILED)
+
+The positional restraint cleared minimisation and ran **100 ps of NPT cleanly** - energy steady at -656,598 kJ/mol, density 1.016, temperature 298 K - then NaN'd on the first production step with **zero rows** written to `nvtsim.csv`.
+
+The cause is a bug in my implementation, not the method. The force was `0.5*k*((x-x0)^2+...)`, a plain Cartesian restraint. Coordinates are wrapped into the periodic box between stages, so an atom near a box face jumps a box length (80 A here) relative to its stored reference, and the restraint then applies on the order of 800 kcal/mol/A instantly. Fixed by using `periodicdistance(x, y, z, x0, y0, z0)`, which is exactly why ASH's own `add_centerforce` has a periodic variant - noted in D83 and then not applied.
+
+Worth recording how this was diagnosed, because the first attempt was wrong. Comparing the NPT end frame against a reference gave a 112 A displacement for every protein atom, which looked like the restraint being dragged - but the files had different atom counts (49400 vs 49373), because this run did its own preprocess and I had compared against another run's `finalsystem.pdb`. Against the right reference the counts match and the offset is still 112 A, uniform across the protein: output wrapping, not motion. What actually settled it was that NPT's potential energy was **negative and steady**. A restraint stretched by 112 A would have made it enormously positive, so the restraint was intact during NPT and only broke at the stage boundary.
+
+**On equilibrating longer at QM/MM instead** (the alternative considered): it cannot work. The intruding Gln93 is an **MM** atom; its interaction with the QM zinc runs through electrostatic embedding plus the same MM Lennard-Jones whose minimum sits at 1.69 A (1.89 with IOD). Longer QM/MM sampling does not relax an artefact that the MM terms are still actively maintaining - it would have to be in the QM region for the electronic structure to have any say, and putting it there risks the local minima and cost the user flagged. So the hold is the answer, with the restraint now periodic.
+
+**IOD is now the default** rather than opt-in, with `metal_parameters: none` to restore the force field's own values and `md.results.metal_parameters` recording what a run used. The stock radii are wrong in a way that matters and the replacement is published and fitted to that observable; defaulting to the better one and recording the choice is more honest than defaulting to the worse one.
+
+**Jobs 30354772 (md), 30354773 (qmmm).** Restarted from the existing preprocess, so no re-solvation.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
