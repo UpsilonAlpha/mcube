@@ -1316,6 +1316,24 @@ Also landed: `md` now reports the coordination sphere before and after a run and
 
 **Open.** The real cause is that a non-bonded +2 centre with no Pauli repulsion attracts donors from outside its coordination radius. Candidate responses, none yet adopted: a repulsive correction (12-6-4), a dummy-cation or bonded model (per-metal parameterisation, so poor defaults for an arbitrary metal), or excluding the metal's non-bonded interaction with non-coordinating atoms (see D87).
 
+**D87 - Why the metal model cannot fix this, and the parameter set that landed anyway.** (2026-10-21, user)
+
+**The puller is Coulomb, not Lennard-Jones.** For a Zn(II)-carbonyl pair with Amber parameters, moving from 5.54 to 1.79 A gains about **-143 kcal/mol** of Coulomb against roughly **8 kcal/mol** of available LJ repulsion (two-body, vacuum, so screened in practice - but the gradient is the point). Amber's Zn(II) has R* = 1.10 A and epsilon = 0.0125 kcal/mol: there is effectively no wall anywhere near 1.8 A. So the defect is missing Pauli repulsion, not excess attraction.
+
+**Turning the metal's charge off was considered and rejected.** It would remove the actual puller, but the +2 field is the dominant electrostatic feature of the site - it polarises the hydroxide, orients the second shell, and compensates the anionic ligands (Asp92-, OH-). Switch it off and the MM stage equilibrates solvent around a neutral cavity, leaving a locally very negative patch: a different and probably worse artefact. No published precedent found for doing this.
+
+**Better radii help and do not solve it.** Computing the Zn-O pair minimum:
+
+| parameters | pair minimum | repulsion at 1.79 A |
+| --- | --- | --- |
+| OpenMM `amber14/tip3p.xml` (R* 1.271) | **1.69 A** | +9 kcal/mol |
+| Li/Merz 12-6 IOD (R* 1.395) | **1.89 A** | +32 kcal/mol |
+| experiment | 2.0-2.1 A | - |
+
+The default's 1.69 A minimum accounts for the observed 1.79 A collapse almost exactly. IOD improves it but the minimum is still short, and more importantly **a 12-6 potential cannot distinguish a coordinating oxygen from a non-coordinating one** - the model holds only distance and atom type, so every oxygen in reach is rewarded for approaching. HFE and IOD are fitted to a *solvated* ion's hydration free energy or ion-oxygen distance; neither encodes a coordination number. Over-coordination is a limit of the functional form, not a parameter error, which is why the literature's answers are bonded models and dummy atoms (which impose coordination geometrically) or restraints. In a non-bonded framework only a restraint knows which atoms are ligands, so `hold_coordination` stands as the fix.
+
+**Landed anyway, opt-in, because better radii are worth having**: `md.inputs.metal_parameters: iod` (`src/mcube/ions.py`), 40 ions across +2/+3/+4 including all twelve lanthanides, keyed on the element and the charge the force field already assigned - a metal in the PDB parameterises itself. **The table is vendored rather than read from AmberTools on purpose:** per the authors' own note, the `frcmod.ions234lm_iod_tip3p` shipped with AmberTools 2016-2019 carries the **12-6-4** values for +3 and +4 ions under an IOD label, and those are invalid without the accompanying C4 term. Transcribed from their corrected file and cross-checked against the local install on Zn2+, La3+, Ce3+ and Pr3+, which agree exactly - so this install is unaffected, but a user's might not be. 12-6-4 itself is not implemented: it needs per-ion C4 values and the partner atom's polarisability, which Amber supplies through ParmEd rather than in the frcmod file.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
