@@ -1490,6 +1490,29 @@ Verified on a synthetic site before submission: metal held, both Asp92 oxygens h
 
 **Jobs 30349570 (preprocess), 30349571 (md), 30349572 (qmmm).** An earlier attempt at this submission was lost when the code-server session expired mid-command; nothing had been submitted, which the OnDemand Active Jobs page confirmed.
 
+**D85 - How our protocol compares with Guven et al., point by point.** (2026-10-21)
+
+Checked against the paper's own text (D81), not from memory. Four things match and four differ, and the differences are choices rather than oversights.
+
+| | Guven et al. 2024 (VIM-2) | this run |
+| --- | --- | --- |
+| mechanism | harmonic positional restraints | **same** |
+| unrestrained MM | *"removed entirely"* | **none** - `mm` is built once and the restraint force is added before minimisation, so it applies through minimisation, warm-up, NPT and NVT alike |
+| QM region | two zincs, ligand, water, coordinating residues to the beta-carbon, link atoms | **same in kind**: Zn, substrate, hydroxide, HOH485, His88, His164, Asp92, Arg90, Lys226, cut at CA-CB with link atoms, 119 atoms |
+| released for QM/MM | yes | **yes** |
+| what is held | the zincs, their coordinating **residues**, and the ligand | the metal and the donor **atoms** within 6 A |
+| the substrate | restrained | **free** |
+| force constant | not stated for the metal site; their solute ladder runs 100 -> 10 kcal/mol/A^2 | fixed 10, held constant |
+| restraint schedule | stepped down over 1 ns stages, then 1 ns unrestrained before production | no ladder; held throughout, released only at `qmmm` |
+
+**The substrate is the important difference and it is deliberate.** Their ligand is an inhibitor in a binding free-energy study, so restraining it costs them nothing. Ours is the substrate whose position is the measurement - D69's whole question is whether its carbonyl reaches the zinc on its own - so restraining it would answer the question by assumption. It is excluded via `constraint_exclude_residues`, and that exclusion is the reason the comparison is not a straight copy.
+
+**Atoms rather than whole residues** is a lighter touch than theirs. Every atom that could reach the metal inside 6 A is held, so migration is blocked; what stays free is the rest of each residue, including backbone. Sufficient for the failure modes observed (D74, D77), and the user's call.
+
+**No ladder, and the force constant is ours not theirs.** The paper gives no constant for the metal site, so 10 kcal/mol/A^2 is our choice - the bottom rung of their solute ladder. We also do not relax the restraints before production, which makes our MM stricter than theirs: they end with 1 ns unrestrained, we never let MM decide the coordination at all. That suits a mechanism study where MM is only settling solvent (D62) and would be wrong for a study measuring MM observables.
+
+**Documentation audit.** All 112 config keys the code reads were checked against the README tables. One was genuinely undocumented (`irc_dx`, Sella's IRC step size) and now has a row. The rest were already covered - in combined rows, inside another key's description, as pass-throughs to ASH, or as fallback spellings of a documented `dft_*` key.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
