@@ -1466,6 +1466,30 @@ The alternatives are to drop `autoconstraints`, which forces a 1 fs timestep and
 
 ASH's nearest built-in is `add_centerforce(center_coords, atomindices, forceconstant, distance)`, a flat-bottomed positional restraint with per-particle reference coordinates. Its penalty is `0.5*k*max(0, d^2 - r0)^2`, **quartic** rather than harmonic, so `k` is not a force constant any paper would quote and published values will not transfer. A true harmonic positional restraint is one `CustomExternalForce("0.5*k*((x-x0)^2+(y-y0)^2+(z-z0)^2)")` and would be about ten lines in `md.py`, at the cost of mcube reaching past ASH to OpenMM directly - which it does not currently do anywhere.
 
+**D84 - One radius, positional restraints, and three config options removed.** (2026-10-21, user)
+
+The mechanism that survives all of D77-D83, and the config surface cut to match.
+
+**`md.inputs.hold_coordination: <radius>`** holds the metal and every donor within that radius in place with harmonic positional restraints at a fixed 10 kcal/mol/A^2, for the whole MM stage. It replaces `constraint_cutoff`, `restrain_coordination` and `coordination_force`. `preprocess` is back to its original form - one `cutoff` driving the constraints and the QM region together, per residue, exactly as before this project touched it - because the holding belongs in `md`, not in the detection. `freeze_coordination` and `frozen_atoms` are deleted rather than left as options: D83 makes them a trap that fails on any site with a hydrogen-bearing donor.
+
+Why a positional restraint is the only mechanism that works, which took four failures to establish:
+
+| mechanism | outcome |
+| --- | --- |
+| constraints within 3 A (original) | works, but leaves a donor at 5.5 A free to migrate in (D74) |
+| constraint on one atom per residue | the residue rotates another donor in (D77) |
+| rigid constraints across 6 A | over-determines the network, NaN at minimisation (D79, D80) |
+| freezing (zero mass) | OpenMM refuses any constraint touching a massless particle (D83) |
+| **harmonic positional restraint** | **adds a force, so none of the above applies** |
+
+And it is the only one that needs no element-specific parameters, which is what makes it general: a bonded model, cationic dummy atoms and the 12-6-4 model all need per-metal parameterisation, so none of them could be a default for an arbitrary metalloprotein. The force constant is not exposed, because no result should depend on tuning it; the radius is the honest knob. The cost, documented: a positional restraint references fixed coordinates while a barostat rescales the box, mildly for an isotropic one and more for the anisotropic membrane barostat - the usual trade in a restrained equilibration, and nothing holds the site during `qmmm`.
+
+Verified on a synthetic site before submission: metal held, both Asp92 oxygens held, both His88 nitrogens held, a donor at 5.5 A held, the coordinating water held, a donor beyond the radius free, and the substrate free.
+
+**Config surface added by this entire project: three keys** - `hold_coordination`, `acknowledge_restrained` and `cubes` - of which the latter two surface only when relevant. `src/mcube` is smaller than it was at the start.
+
+**Jobs 30349570 (preprocess), 30349571 (md), 30349572 (qmmm).** An earlier attempt at this submission was lost when the code-server session expired mid-command; nothing had been submitted, which the OnDemand Active Jobs page confirmed.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
