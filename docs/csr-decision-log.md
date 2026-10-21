@@ -1397,6 +1397,20 @@ Eighteen donors are held (everything within 6 A except the substrate and water),
 
 Two earlier attempts at this are worth remembering as what not to do: a hand-written six-pair constraint list (D75), then a hand-computed thirteen-pair restraint list, both of which encoded in a config what the pipeline derives from a structure, and the second of which I was part-way through submitting when the user stopped it.
 
+**D79 - 18 rigid constraints on one zinc is not a system OpenMM can solve.** (2026-10-21, job 30312015 FAILED)
+
+The `constraint_cutoff: 6.0` setup validated cleanly - preprocess printed both radii, held 18 donors per atom including both Asp92 oxygens and both His88 nitrogens, excluded the substrate's O1x and O2x, and left the QM region at 119 atoms. Then md died in 10 seconds:
+
+    openmm.OpenMMException: Particle coordinate is NaN
+
+in the first minimisation step. The same `finalsystem.pdb` minimised fine with 5 constraints and again with 6; it fails with 18. Four of them tie Arg90's N, NE, NH1 and NH2 to the zinc, and both atoms of His88, His164 and Asp92 as well. Rigid distance constraints that far out, on top of `HBonds` and rigid water, over-determine the constraint network and CCMA diverges.
+
+**So the radius was right and the mechanism was wrong.** Inside `cutoff` a contact is real and a rigid constraint says the right thing. Beyond it we are only saying "stay where the input put you", which is a harmonic restraint - and cannot over-determine anything. `find_coordinators` now returns both: constraints within `cutoff`, restraints at their input distance (20 kcal/mol/A^2) out to `constraint_cutoff`. Both lists go to `preprocess.results` and `md` uses them unless `md.inputs.constraints` / `restraints` override, so the default needs no thought and what is held stays visible in the config.
+
+This is the third time this problem has been approached and the first time it has been in the right place: a hand-written constraint list (D75), a hand-computed restraint list (rejected), and now one radius with mcube choosing the mechanism.
+
+**Resubmitted as 30313764 (preprocess), 30313765 (md), 30313766 (qmmm).**
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
