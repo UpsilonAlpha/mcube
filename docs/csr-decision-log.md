@@ -1314,6 +1314,28 @@ So the carbonyl did not coordinate on its own - it left, ending further out than
 
 **Limitation this exposes in the protocol.** The constraint dichotomy (D71) holds the contacts that exist at setup. It cannot stop MM from creating new ones during the run, and nothing in the pipeline checks the coordination sphere afterwards. A `sphere` comparison between the start and end of md would have caught this in seconds, and should be routine.
 
+**D75 - Restarted with Gln93 constrained, and the coordination sphere is now reported at both ends of md.** (2026-10-21, user)
+
+**The instruction and the wrinkle.** The user asked to restart from the last NPT frame with Gln93 constrained like a primary sphere ligand. The first half could not be done as stated: mcube constraints hold the distance in the structure they start from, and at the NPT last frame Gln93 is **already at 1.77 A**, so constraining there would have frozen the artifact rather than prevented it - the D68 pattern again. The collapse happens during the gentle warm-up, so the earliest clean structure is the solvated input. `CSR_unrestrained2` therefore restarts md from `CSR_crystal/preprocess_results/finalsystem.pdb`, where Gln93 is at its crystal distance of 5.54 A, and constrains it there. The intent is served exactly - the constraint machinery holds the input distance, which is what "like a primary sphere ligand" means - at the cost of redoing the warm-up and the 100 ps NPT.
+
+The constraints are written out as selectors rather than left to detection, so the config shows what is held:
+
+    constraints:
+      - [B:1:ZN, A:88:NE2]      - [B:1:ZN, C:2:O01]
+      - [B:1:ZN, A:164:NE2]     - [B:1:ZN, D:1:O]
+      - [B:1:ZN, A:92:OD2]      - [B:1:ZN, A:93:OE1]    <- the new one
+
+Note what this is: a deliberate exception to the D71 dichotomy. Gln93 is at 5.54 A in the input, so the rule would not constrain it; it is held anyway, to stop the force field creating a contact that does not exist. The substrate carbonyl is still free, which is the thing being tested. `nvt_time` is 500 ps rather than 1000, since the MM stage only has to settle the solvent.
+
+**Jobs 30302149 (md) and 30302151 (qmmm, afterok).** The QM/MM started from the contaminated frame, 30226272, was cancelled.
+
+**And the pipeline now checks.** `coordination_shell` is the single place the detection rule lives - `find_coordinators` builds the constraints and the QM region from it, and `md` runs it before and after, saves both to `md.results.coordination_start` / `coordination_end`, and prints what changed:
+
+      APPEARED  B:1:ZN - A:93:OE1 at 1.79 A
+      MOVED     B:1:ZN - C:1:O2x 4.81 -> 6.89 A
+
+with a note that an appeared contact was never constrained and a non-bonded metal has no Pauli repulsion to stop one. It applies the minimum image, which matters because the frame md ends on is wrapped into the cell - without that, the check that is supposed to catch artefacts would itself have reported 76.74 A for a 5.03 A contact.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
