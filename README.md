@@ -249,6 +249,7 @@ Each point is optimised from the previous one with the scanned distance fixed. W
 | `imag_threshold` | 50 | Imaginary frequencies smaller than this (cm⁻¹) are reported separately as numerical noise |
 | `irc` | `true` | Follow the TS downhill both ways |
 | `irc_method` | `mode` | `mode`: displace ±`irc_step` Å (largest atom displacement) along the imaginary mode and minimise each side. `sella`: Sella IRC on the active region (`irc_dx`; needs `sella`, expensive for a large active region). |
+| `irc_dx` | 0.1 | Sella IRC step size, A (`irc_method: sella` only) |
 | `opt_maxiter` | 300 | Steps per IRC minimisation |
 | `rigid_water` | `true` | Keep MM active-region waters rigid, as in the `qmmm` minimisations. Waters in the QM region are never constrained, so they stay free to transfer protons. |
 
