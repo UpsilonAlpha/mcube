@@ -76,7 +76,7 @@ md:
     skip_nvt: false
     implicit: true
     implicit_eps: 20
-    gentle: true
+    gentle: false            # see the README: only if minimisation leaves it unstable
 qmmm:
   inputs:
     cores: 1

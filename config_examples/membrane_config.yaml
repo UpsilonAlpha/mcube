@@ -39,4 +39,4 @@ md:
     nvt_timestep: 0.004                    # production keeps the membrane barostat (NPT)
     nvt_time: 100000
     traj_frequency: 2500
-    gentle: true
+    gentle: false            # see the README: only if minimisation leaves it unstable

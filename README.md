@@ -143,7 +143,7 @@ A stale chain ID fails loudly in some places and silently in others: a `chain:re
 | `pressure` | 1.0 | Barostat pressure in bar (membrane only) |
 | `barostat_frequency` | 25 | Steps between barostat moves (membrane only) |
 | `nonbonded_cutoff` | 12.0 | Periodic nonbonded cutoff in Å (membrane only; ASH's own default elsewhere) |
-| `gentle` | `false` | Gentle warm-up (1 → 10 → 300 K) after minimisation |
+| `gentle` | `false` | Warm-up after minimisation, for a system that will not start otherwise. Despite the name it is 10 steps at 1 K and 50 at 10 K (0.055 ps in total) followed by **40 ps of ordinary 300 K MD**, so after a successful minimisation it buys nothing NPT does not, and the 300 K leg is long enough to let a force-field artefact develop before any equilibration you are watching |
 | `skip_npt` | `false` | Skip NPT box equilibration (timestep `npt_timestep`) |
 | `skip_nvt` | `false` | Skip production MD |
 | `nvt_timestep`, `nvt_time` | | Production timestep and length (ps) |
