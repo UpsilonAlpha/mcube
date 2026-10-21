@@ -14,7 +14,6 @@ from ash import *
 
 from .preprocess import (
     compare_coordination,
-    coordination_atoms,
     coordination_shell,
     report_coordination,
     resolve_cores,
@@ -207,12 +206,13 @@ def run(args) -> Dict[str, Any]:
     # everything and decides the geometry itself.
     frozen_atoms = resolve_atoms(inputs.get("frozen_atoms") or None, pdb_file)
     if frozen_atoms is None and inputs.get("freeze_coordination"):
-        frozen_atoms = coordination_atoms(pdb_file, constraints)
-        print(f"[INFO] freeze_coordination: {len(frozen_atoms)} atoms frozen "
-              "(the metal and every atom of each residue constrained to it)")
+        # Freeze what preprocess already detected, instead of constraining it.
+        frozen_atoms = sorted({int(a) for c in (constraints or []) for a in c[:2]})
+        print(f"[INFO] freeze_coordination: freezing the {len(frozen_atoms)} atoms "
+              "preprocess found within constraint_cutoff, instead of constraining them")
     if frozen_atoms:
-        # OpenMM rejects a constraint between two zero-mass particles, and a
-        # constraint between two frozen atoms says nothing anyway.
+        # OpenMM rejects a constraint between two zero-mass particles, and one
+        # between two frozen atoms asserts nothing.
         frozen = set(frozen_atoms)
         kept = [c for c in (constraints or [])
                 if not (int(c[0]) in frozen and int(c[1]) in frozen)]
