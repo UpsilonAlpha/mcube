@@ -1452,6 +1452,20 @@ Following D81's literature: hold the metal site for the whole classical stage in
 
 **What to watch.** Frozen atoms are not integrated, but a Monte Carlo barostat translates whole molecules rigidly, so NPT should be unaffected - unverified, and the first thing to check if md fails. And the substrate stays free throughout: it is in `constraint_exclude_residues`, so it is absent from the constraints and therefore from the frozen set, which is the whole point.
 
+**D83 - Freezing is incompatible with HBonds constraints, so positional restraints are the only route.** (2026-10-21, job 30348139 FAILED)
+
+The freezing worked exactly as designed - 19 atoms frozen (18 donors plus the metal), all 18 metal constraints dropped as both-ends-frozen, ASH confirming *"Freezing 19 atoms by setting particles masses to zero"* - and md still died in 18 seconds, this time at context creation rather than minimisation:
+
+    openmm.OpenMMException: A constraint cannot involve a massless particle
+
+The culprit is `autoconstraints='HBonds'`. The frozen donors include Lys226 NZ, Arg90 N/NE/NH1/NH2, Ser186 OG, Tyr192 OH, Asn225 ND2 and the histidine NE2/ND1 atoms, every one of which carries a hydrogen, and every one of those X-H bonds is an HBonds constraint. OpenMM rejects a constraint involving **any** massless particle, so freezing both ends would not have helped either - which also means the `coordination_atoms()` whole-residue expansion deleted in D82 would have failed in the same way. Nothing about the derivation was wrong; the mechanism is simply unavailable.
+
+The alternatives are to drop `autoconstraints`, which forces a 1 fs timestep and so gives up the 4 fs NVT, or to hold the site with something that is not a constraint.
+
+**This is why Guven et al. used positional restraints.** It reads as a detail of their protocol and it is not: a positional restraint adds a force, not a constraint, so it cannot collide with HBonds, cannot over-determine a constraint network (D79), and holds an atom in place rather than fixing a distance so a residue cannot rotate a different donor in (D77). Every failure in D77-D83 is avoided by it and by nothing else we have tried.
+
+ASH's nearest built-in is `add_centerforce(center_coords, atomindices, forceconstant, distance)`, a flat-bottomed positional restraint with per-particle reference coordinates. Its penalty is `0.5*k*max(0, d^2 - r0)^2`, **quartic** rather than harmonic, so `k` is not a force constant any paper would quote and published values will not transfer. A true harmonic positional restraint is one `CustomExternalForce("0.5*k*((x-x0)^2+(y-y0)^2+(z-z0)^2)")` and would be about ten lines in `md.py`, at the cost of mcube reaching past ASH to OpenMM directly - which it does not currently do anywhere.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
