@@ -1423,6 +1423,20 @@ And the cause is not a cold start. Every constrained distance is measured from t
 
 So holding an entire 6 A shell with holonomic constraints is not available, and the approach to restraints has to be reconsidered rather than patched. Literature review commissioned: how metal sites are actually equilibrated in classical MD ahead of QM/MM, 2020 onwards - restraint type and force constants, non-bonded versus bonded versus cationic dummy atom models, and whether anyone reports the two failure modes seen here (D74, D77).
 
+**D81 - The literature says what we hit is expected, and the remedy is positional restraints, which ASH does not have.** (2026-10-21)
+
+The central reference, and it is close enough to our system to copy: **Guven, Hanzevacki, Kalita, Mulholland, Mey, "Protocols for Metallo- and Serine-beta-Lactamase Free Energy Predictions: Insights from Cross-Class Inhibitors", J. Phys. Chem. B 2024, 128(50), 12416-12424, DOI 10.1021/acs.jpcb.4c06379.** VIM-2, a dizinc MBL, Amber MM into DFTB3 QM/MM. Read from the paper's own text, not inferred:
+
+- **Our D74/D77 observation is their published result.** The abstract: *"the crystallographically observed zinc coordination is not retained in MM simulations with either zinc parameter set"*. They tested harmonic zinc-ligand restraints with ff14SB zinc, and an upgraded force field with redistributed partial charges on the coordinating residues. Neither holds the site. So a non-bonded zinc losing its coordination sphere in MM is the expected behaviour of the method, not a mistake in our setup.
+- **Their remedy is positional, and they drop the free MD.** The *"unrestrained NVT equilibration run was removed entirely"*, and *"additional positional restraints based on the zinc-residue distances from the crystal structure were added to the two zincs, their coordinating protein residues, and the ligand"*. Note what that is not: not distance restraints, not constraints. A positional restraint pins atoms to coordinates, so it cannot over-determine a constraint network - which is exactly why it does not hit our NaN - and it holds a whole residue, so a carboxylate cannot rotate its other oxygen in (D77).
+- **They name the residual limitation:** *"the zinc ion is still modeled with a point charge of +2 e"*.
+- **Their QM region is ours:** *"the two zinc ions, the ligand, the single water molecule, and the zinc-coordinating residues up to their beta-carbons"*, link atoms at the boundary. Their QM/MM is 1000 steps of minimisation, 10 ps NPT, 100 ps production.
+- **What the paper does not give:** force constants or durations for the zinc-specific positional restraints. Their general ladder is solute positional restraints from 100 down to 10 kcal/mol/A^2 over 1 ns stages. So the mechanism is citable; the numbers are not.
+
+Background on the root cause, older: Pang's cationic dummy atom model (four positive dummies around a neutral centre) holds four-coordinate zinc stable over nanoseconds where non-bonded models fail, and was extended in 2017 to include ion-induced dipole terms (DOI 10.1021/acs.jpclett.7b02358). A 2025 MBL study drew zinc parameters from a CaDA database and equilibrated with 1 ns of heating plus 2 ns at 300 K under positional restraints on the solute. ZAFF, MCPB.py and the 12-6-4 Lennard-Jones model are the other routes to a zinc that can refuse a sixth ligand.
+
+**The implementation problem.** ASH's `OpenMMTheory` takes `restraints=` (distance, via `add_bondrestraints`) and `frozen_atoms=` (which zeroes masses - `freeze_atoms`). It has **no harmonic positional restraint**, and mcube exposes neither `frozen_atoms` nor anything equivalent. So the published protocol is not reachable from the config as things stand.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
