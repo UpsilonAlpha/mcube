@@ -1283,6 +1283,37 @@ The zinc-bound hydroxide is now 3.01 A from the electrophilic carbon at 84 degre
 
 **Hold this loosely.** It is the MM force field with a non-bonded point-charge zinc, which D63 says cannot answer coordination questions; it is one frame, not an ensemble; and 84 degrees is still outside the window. But it is the first time in this project that a zinc-bound oxygen has been anywhere near a productive attack geometry, and it is consistent with the carbonyl's inner-sphere position having been what blocked it. The 25 ps QM/MM MD that follows is the measurement that counts, and `joint`/`acceptors` over its trajectory is the test of whether anything can take the proton.
 
+**D74 - The MM equilibration invented a sixth ligand, and the QM/MM run started from it.** (2026-10-21, md 30226271 COMPLETED 20:44:49, qmmm 30226272 RUNNING)
+
+md finished the full 1 ns. Two things happened over it, and the second one matters more than the first.
+
+**Gln93 collapsed onto the zinc.** It is a second-shell residue in the input and it is now the closest thing to the metal:
+
+| structure | Zn-Gln93 OE1 |
+| --- | --- |
+| input (`finalsystem.pdb`) | **5.54** |
+| minimised | 4.31 |
+| gentle warm-up, cycle 2 | **1.84** |
+| NPT last frame | 1.77 |
+| NVT last frame (1 ns) | **1.79** |
+
+A 3.8 A collapse during the warm-up, settling at a distance no crystallographic Zn-O bond reaches - 2.0-2.1 A is the physical range. This is the non-bonded point-charge zinc doing exactly what D63 said it does, now measured rather than cited: a neutral amide oxygen falling onto a +2 charge with nothing to stop it. It was never restrained because `find_coordinators` did not detect it at setup, when it was 5.54 A away.
+
+**And the substrate went the other way:**
+
+| stage | Zn-O2x | O01-C4x | angle |
+| --- | --- | --- | --- |
+| NPT last frame | 4.81 | 3.01 | 84 |
+| **NVT last frame (1 ns)** | **6.89** | 4.45 | **100** |
+
+So the carbonyl did not coordinate on its own - it left, ending further out than it started (5.43 -> 6.89 A). The attack angle reached the Burgi-Dunitz window (100 degrees) but the distance grew to the edge of the near-attack cutoff. D73's encouraging 3.01 A / 84 deg was a transient.
+
+**The problem is that these two are not independent.** Gln93 occupies a first-shell position, and the carbonyl moved out over the same nanosecond. The obvious reading is that the artifact took the site, though that is an inference and not established.
+
+**What this does to the running job.** `uqmmm` (30226272) started from the 1 ns frame 22 minutes ago. Gln93 is **not** in the QM region - the region is Zn, His88, His164, Asp92, Arg90, Lys226, the hydroxide, HOH485 and the substrate - so it stays an MM point charge at 1.79 A from a QM zinc under electrostatic embedding, with no Pauli repulsion to push it back. The QM/MM cannot correct the artifact; it will carry it, and the substrate starts 6.89 A out rather than the 5.43 A the experiment was designed around.
+
+**Limitation this exposes in the protocol.** The constraint dichotomy (D71) holds the contacts that exist at setup. It cannot stop MM from creating new ones during the run, and nothing in the pipeline checks the coordination sphere afterwards. A `sphere` comparison between the start and end of md would have caught this in seconds, and should be routine.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
