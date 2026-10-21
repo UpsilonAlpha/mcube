@@ -181,12 +181,7 @@ def run(args) -> Dict[str, Any]:
     constraints = md_constraints(inputs, preprocess, pdb_file)
     # Harmonic distance restraints [[i, j, distance_A, k_kcal_per_mol_A2], ...], e.g. to pull a
     # substrate into place during equilibration. Constraints stay as [i, j] pairs (current distance).
-    # md.inputs.restraints if given, else the outer-shell holds preprocess
-    # derived from `constraint_cutoff` (see find_coordinators).
-    restraints = inputs.get("restraints")
-    if restraints is None:
-        restraints = (preprocess.get("results") or {}).get("restraints")
-    restraints = resolve_atoms(restraints or None, pdb_file)
+    restraints = resolve_atoms(inputs.get("restraints") or None, pdb_file)
     if restraints:
         print(f"[INFO] {len(restraints)} distance restraints: {restraints}")
 

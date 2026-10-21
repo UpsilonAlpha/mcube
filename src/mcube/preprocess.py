@@ -531,11 +531,6 @@ def merge_ligand(protein_pdb: str, ligand: str, model: int = 1, charge: int = 0,
 # Coordination
 # ==============================
 
-# Stiff enough to stop a donor migrating onto the metal, soft enough not to
-# fight the force field's own geometry. Override by writing md.inputs.restraints.
-OUTER_SHELL_FORCE = 20.0  # kcal/mol/A^2
-
-
 def find_coordinators(
     pdb_file: str,
     inputs=None,
@@ -562,25 +557,18 @@ def find_coordinators(
 
     qm_residue_dict = {}  # OpenMM-style: {"A": {80: "HIS"}}
     bondconstraints = []
-    bondrestraints = []
 
     print("\n===== Metal Coordination Analysis =====")
     constraint_cutoff = float(inputs.get("constraint_cutoff") or cutoff)
     print(f"Cutoff: {cutoff:.2f} Å (QM region); {constraint_cutoff:.2f} Å (constraints)")
 
     # Two radii, because they answer different questions. The QM region takes
-    # whole residues that coordinate the metal, within `cutoff`. The site also
-    # has to be held out to `constraint_cutoff`, because a non-bonded metal
-    # pulls donors in during MM and only something holding them stops it.
-    #
-    # How they are held differs with distance, and it has to. Inside `cutoff`
-    # the contact is real, so a rigid constraint is right. Beyond it we are
-    # only saying "stay where the input put you", and a rigid bond there
-    # over-determines the constraint network: 18 of them on one zinc, four of
-    # them to the same arginine, made OpenMM's solver diverge to NaN in the
-    # first minimisation step. So those are harmonic restraints instead.
-    # Per atom rather than per residue, so both oxygens of a carboxylate are
-    # held - the second one is how Asp92 OD1 collapsed with OD2 pinned.
+    # whole residues that coordinate the metal. The constraints have to cover
+    # everything that could *become* a contact during MM, since a non-bonded
+    # metal will pull a donor in and only an existing constraint stops it;
+    # `constraint_cutoff` widens that net without dragging more residues into
+    # the QM region. Per atom rather than per residue, so both oxygens of a
+    # carboxylate are held.
     shell = coordination_shell(pdb_file, inputs)
     held = coordination_shell(pdb_file, inputs, radius=constraint_cutoff,
                               per_residue=False)
@@ -593,13 +581,10 @@ def find_coordinators(
             chain, resid_text, aname = row["donor"].split(":")
             resid = int(resid_text)
             if resid in (constraint_exclude.get(chain) or []):
-                print(f"[INFO] Not held: {row['resname']} {chain}:{resid} "
+                print(f"[INFO] No bond constraint for {row['resname']} {chain}:{resid} "
                       f"({aname}) (constraint_exclude_residues)")
-            elif row["distance"] <= cutoff:
-                bondconstraints.append([m, row["donor_index"]])
             else:
-                bondrestraints.append([m, row["donor_index"], row["distance"],
-                                       OUTER_SHELL_FORCE])
+                bondconstraints.append([m, row["donor_index"]])
 
         print("Coordinating residues:")
         for row in [r for r in shell if r["metal_index"] == m]:
@@ -622,10 +607,7 @@ def find_coordinators(
                 if (res.chain.id == chain and int(res.id) == resid):
                     qm_residue_dict.setdefault(chain, {})[resid] = resn
 
-    if bondrestraints:
-        print(f"\n{len(bondrestraints)} outer-shell donors held by harmonic restraint "
-              f"at their input distance ({OUTER_SHELL_FORCE} kcal/mol/A^2)")
-    return qm_residue_dict, bondconstraints, bondrestraints
+    return qm_residue_dict, bondconstraints
 
 
 # ==============================
@@ -834,7 +816,7 @@ def run(args) -> Dict[str, Any]:
 
     if inputs.get("metals"):
         print("[STEP] Detecting coordination constraints...")
-        qm_residues, constraints, restraints = find_coordinators(pdb_file, inputs)
+        qm_residues, constraints = find_coordinators(pdb_file, inputs)
         # A contact an earlier run restrained into place must not become a rigid
         # constraint just because the detector now measures it there.
         check_inherited_restraints(
@@ -844,7 +826,7 @@ def run(args) -> Dict[str, Any]:
     else:
         # e.g. protein–protein complexes: no metal site to hold, no metal QM region
         print("[INFO] No metals given: no coordination constraints and no metal QM region")
-        qm_residues, constraints, restraints = {}, [], []
+        qm_residues, constraints = {}, []
 
     # Residues added to the QM region beyond the metal's coordination sphere
     extra = inputs.get("extra_qm_residues") or {}
@@ -871,7 +853,6 @@ def run(args) -> Dict[str, Any]:
         "qm_atoms": qm_atoms,
         "boundary_excluded": boundary_excluded,
         "constraints": constraints,
-        "restraints": restraints,
     }
     save_result(result, filename=args.config, section="preprocess")
 
