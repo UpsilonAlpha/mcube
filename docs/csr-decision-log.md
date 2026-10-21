@@ -1336,6 +1336,22 @@ Note what this is: a deliberate exception to the D71 dichotomy. Gln93 is at 5.54
 
 with a note that an appeared contact was never constrained and a non-bonded metal has no Pauli repulsion to stop one. It applies the minimum image, which matters because the frame md ends on is wrapped into the cell - without that, the check that is supposed to catch artefacts would itself have reported 76.74 A for a 5.03 A contact.
 
+**D76 - The gentle warm-up did not cause the Gln93 collapse; 40 ps of ordinary 300 K MD did.** (2026-10-21)
+
+Tested rather than assumed, because the proposed remedy was to drop the warm-up. Gln93 is **not** in the coordination sphere (>2.8 A) at the minimised structure, nor at warm-up cycle 0, nor at cycle 1. It is at **1.84 A** at cycle 2.
+
+ASH's `Gentle_warm_up_MD` as mcube calls it is `steps=[10, 50, 10000]`, `temperatures=[1, 10, 300]`, `time_steps=[0.0005, 0.001, 0.004]`:
+
+| cycle | steps | T | duration |
+| --- | --- | --- | --- |
+| 0 | 10 | 1 K | 0.005 ps |
+| 1 | 50 | 10 K | 0.05 ps |
+| 2 | 10,000 | **300 K** | **40 ps** |
+
+The low-temperature ramp lasts 0.055 ps and does nothing. Cycle 2 is 40 ps of ordinary 300 K dynamics, and that is where the collapse happened - so `gentle: false` would not have prevented it, because NPT at 300 K would have done the same in its first 40 ps. The cause is plain MM dynamics with a non-bonded point-charge zinc, and the remedies are the constraint (D75) or a better zinc model: a bonded model, or cationic dummy atoms.
+
+Worth noting for anyone reading the config: "gentle warm-up" is a misnomer for what cycle 2 does, and it is where a third of the pre-NPT equilibration time goes.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
