@@ -59,6 +59,13 @@ def md_membrane(inputs: Dict[str, Any], preprocess: Dict[str, Any]) -> bool:
     return bool(value)
 
 
+# Firm enough that a donor cannot migrate onto the metal, loose enough that the
+# site still vibrates: 1 A of displacement costs about 8 kT at 300 K. Not a
+# config option because no result should depend on tuning it; widen or narrow
+# `hold_coordination` instead.
+COORDINATION_FORCE = 10.0  # kcal/mol/A^2
+
+
 def restrain_positions(mm, atom_indices, pdb_file: str, force_constant: float):
     """Harmonic positional restraints, referenced to `pdb_file`'s coordinates.
 
@@ -232,25 +239,27 @@ def run(args) -> Dict[str, Any]:
     report_coordination(shell_before, "before MD")
     result["coordination_start"] = shell_before
 
-    # `restrain_coordination` holds the detected metal site with positional
-    # restraints instead of constraining it. The same atoms either way, from the
-    # same detection; see restrain_positions for why a restraint and not a
-    # constraint. Applied after the theory is built, so the constraints are not.
+    # One radius: hold everything that could reach the metal (see
+    # restrain_positions). The metal bond constraints inside `cutoff` are
+    # unaffected - those are real bonds and they already worked.
+    hold = inputs.get("hold_coordination")
     restrained_atoms = []
-    if inputs.get("restrain_coordination"):
-        restrained_atoms = sorted({int(a) for c in (constraints or []) for a in c[:2]})
-        constraints = None
+    if hold:
+        exclude = preprocess_inputs.get("constraint_exclude_residues") or {}
+        rows = coordination_shell(pdb_file, preprocess_inputs,
+                                  radius=float(hold), per_residue=False)
+        restrained_atoms = sorted({r["metal_index"] for r in rows} | {
+            r["donor_index"] for r in rows
+            if int(r["donor"].split(":")[1]) not in
+            (exclude.get(r["donor"].split(":")[0]) or [])})
 
     mm, default_forcefields = build_md_theory(inputs, preprocess, pdb_file, constraints, restraints,
                                               cores=resolve_cores(inputs.get("cores")))
 
     if restrained_atoms:
-        force_constant = float(inputs.get("coordination_force") or 10.0)
-        restrain_positions(mm, restrained_atoms, pdb_file, force_constant)
-        print(f"[INFO] restrain_coordination: {len(restrained_atoms)} atoms held by "
-              f"harmonic positional restraint at {force_constant} kcal/mol/A^2 "
-              "(the metal and the donors within constraint_cutoff); the metal bond "
-              "constraints are not applied")
+        restrain_positions(mm, restrained_atoms, pdb_file, COORDINATION_FORCE)
+        print(f"[INFO] hold_coordination {hold} A: {len(restrained_atoms)} atoms held "
+              f"by harmonic positional restraint at {COORDINATION_FORCE} kcal/mol/A^2")
         names = atom_names(pdb_file)
         result["restrained_atoms"] = [names[i] for i in restrained_atoms]
 

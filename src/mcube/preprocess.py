@@ -559,38 +559,24 @@ def find_coordinators(
     bondconstraints = []
 
     print("\n===== Metal Coordination Analysis =====")
-    constraint_cutoff = float(inputs.get("constraint_cutoff") or cutoff)
-    print(f"Cutoff: {cutoff:.2f} Å (QM region); {constraint_cutoff:.2f} Å (constraints)")
-
-    # Two radii, because they answer different questions. The QM region takes
-    # whole residues that coordinate the metal. The constraints have to cover
-    # everything that could *become* a contact during MM, since a non-bonded
-    # metal will pull a donor in and only an existing constraint stops it;
-    # `constraint_cutoff` widens that net without dragging more residues into
-    # the QM region. Per atom rather than per residue, so both oxygens of a
-    # carboxylate are held.
+    print(f"Cutoff: {cutoff:.2f} Å")
     shell = coordination_shell(pdb_file, inputs)
-    held = coordination_shell(pdb_file, inputs, radius=constraint_cutoff,
-                              per_residue=False)
 
     for m in metal_idx:
         print(f"\nMetal {elems[m]} at {chains[m]}:{resids[m]} (atom index {m})")
         qm_residue_dict.setdefault(chains[m], {})[resids[m]] = resnames[m]
-
-        for row in [r for r in held if r["metal_index"] == m]:
-            chain, resid_text, aname = row["donor"].split(":")
-            resid = int(resid_text)
-            if resid in (constraint_exclude.get(chain) or []):
-                print(f"[INFO] No bond constraint for {row['resname']} {chain}:{resid} "
-                      f"({aname}) (constraint_exclude_residues)")
-            else:
-                bondconstraints.append([m, row["donor_index"]])
 
         print("Coordinating residues:")
         for row in [r for r in shell if r["metal_index"] == m]:
             chain, resid_text, aname = row["donor"].split(":")
             resid, resn = int(resid_text), row["resname"]
             dist, idx = row["distance"], row["donor_index"]
+
+            if resid in (constraint_exclude.get(chain) or []):
+                print(f"[INFO] No bond constraint for {resn} {chain}:{resid} "
+                      f"({aname}) (constraint_exclude_residues)")
+            else:
+                bondconstraints.append([m, idx])
 
             # Excluded residues keep their bond constraint but are left out of the QM region
             if exclude_residues and chain in exclude_residues:
