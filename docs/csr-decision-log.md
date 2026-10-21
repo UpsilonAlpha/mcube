@@ -1375,6 +1375,28 @@ Asp92's carboxylate has rotated so that **OD1** collapses to 1.75 A while the co
 
 Option 1 is the cheap one and matches what the MM stage is actually for. Worth noting it inverts the dichotomy's spirit for the MM stage only: everything in the site is held, because none of it is being measured there.
 
+**D78 - One radius, not a hand-built list: `constraint_cutoff`.** (2026-10-21, user)
+
+D77's options were a false choice. mcube already applies metal constraints; the only thing wrong was the radius they are drawn at, and the user's instruction was to change that and nothing else. Two things stood in the way, both now fixed:
+
+- **`cutoff` drove the constraints and the QM region together**, so widening it to reach Gln93 would have pulled thirteen more residues into the QM region. `constraint_cutoff` now sets the constraint radius on its own, defaulting to `cutoff`.
+- **`find_coordinators` constrained the closest donor of each residue**, which is exactly how Asp92 OD1 stayed free to collapse to 1.75 A while OD2 sat pinned at 2.80. Constraints are now drawn **per atom**, so both oxygens of a carboxylate and both nitrogens of a histidine are held.
+
+The config is two lines, and the pipeline does the rest:
+
+    preprocess:
+      inputs:
+        constraint_cutoff: 6.0
+        constraint_exclude_residues: {C: [1]}
+
+The exclusion is the substrate, and it is the whole point: `C:1:O1x` at 3.13 A and `C:1:O2x` at 5.43 A are inside the 6 A net, and holding them would freeze the thing the experiment measures. `constraint_exclude_residues` already existed for this - it keeps a residue out of the constraints while leaving it in the QM region.
+
+Eighteen donors are held (everything within 6 A except the substrate and water), the substrate is free, the QM region is unchanged at `cutoff: 3.0`.
+
+**Jobs 30312014 (preprocess), 30312015 (md), 30312016 (qmmm), chained on afterok**, with `gentle: false` (D76) and `nvt_time: 500`. Preprocess re-runs because the constraint list is its output; the run directory is rebuilt from `csr_crystal_start.pdb` and `mer_crystal.pdb` so it is self-contained.
+
+Two earlier attempts at this are worth remembering as what not to do: a hand-written six-pair constraint list (D75), then a hand-computed thirteen-pair restraint list, both of which encoded in a config what the pipeline derives from a structure, and the second of which I was part-way through submitting when the user stopped it.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
