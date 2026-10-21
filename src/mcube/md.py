@@ -128,14 +128,20 @@ def restrain_positions(mm, atom_indices, pdb_file: str, force_constant: float):
     parameters, so this works for any metal without parameterisation - unlike a
     bonded, dummy-cation or 12-6-4 model.
 
-    The restraint references fixed Cartesian coordinates, so it is in mild
-    tension with a barostat rescaling the box around it - more so with the
-    anisotropic membrane barostat than an isotropic one. That is the usual
-    trade in a restrained equilibration and the reason restraints are stepped
-    down or released; nothing here holds the site during the QM/MM stage.
+    The reference positions are fixed, so the restraint is in mild tension with
+    a barostat rescaling the box around it - more so with the anisotropic
+    membrane barostat than an isotropic one. That is the usual trade in a
+    restrained equilibration and the reason restraints are stepped down or
+    released; nothing here holds the site during the QM/MM stage.
     """
     positions = PDBFile(pdb_file).positions
-    force = openmm.CustomExternalForce("0.5*k*((x-x0)^2+(y-y0)^2+(z-z0)^2)")
+    # periodicdistance, not (x-x0)^2: coordinates are wrapped into the box
+    # between stages, so an atom near a face jumps a box length relative to its
+    # reference and a plain Cartesian restraint then applies ~800 kcal/mol/A.
+    # That killed job 30349571 on the first production step, after NPT had run
+    # clean for 100 ps.
+    force = openmm.CustomExternalForce(
+        "0.5*k*periodicdistance(x, y, z, x0, y0, z0)^2")
     force.addGlobalParameter(
         "k", force_constant * unit.kilocalorie_per_mole / unit.angstrom ** 2)
     for name in ("x0", "y0", "z0"):
@@ -300,9 +306,13 @@ def run(args) -> Dict[str, Any]:
     mm, default_forcefields = build_md_theory(inputs, preprocess, pdb_file, constraints, restraints,
                                               cores=resolve_cores(inputs.get("cores")))
 
-    metal_set = inputs.get("metal_parameters")
-    if metal_set:
+    # IOD by default: Amber's stock metal radii put the metal-oxygen minimum too
+    # close (~1.69 A for Zn(II) against 2.0-2.1 A measured). `none` keeps whatever
+    # the force field supplies. Recorded in the results, so a run says which it used.
+    metal_set = inputs.get("metal_parameters", "iod")
+    if metal_set and str(metal_set).lower() != "none":
         apply_metal_parameters(mm, pdb_file, preprocess_inputs.get("metals"), metal_set)
+        result["metal_parameters"] = str(metal_set).lower()
 
     if restrained_atoms:
         restrain_positions(mm, restrained_atoms, pdb_file, COORDINATION_FORCE)
