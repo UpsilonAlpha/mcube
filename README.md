@@ -119,6 +119,7 @@ A stale chain ID fails loudly in some places and silently in others: a `chain:re
 | `donor_elements` | `[N, O, S]` | Elements that count as metal donors (matched on element, not atom name) |
 | `require_his_variants` | `false` | Fail if any histidine has no tautomer in `residue_variants`. A warning is printed either way. |
 | `extra_qm_residues` | none | `{chain: [resid, ...]}`: residues added to the QM region on top of the metal's coordination sphere (e.g. catalytic Lys/Arg) |
+| `constraint_cutoff` | `cutoff` | Radius for the metal bond constraints, separately from the QM region. Constraints are applied **per atom** inside it, so both oxygens of a carboxylate are held. Widen it when MM drags a donor onto the metal: only an existing constraint stops that, and a contact that was outside `cutoff` at setup has none |
 | `constraint_exclude_residues` | none | `{chain: [resid, ...]}`: residues whose metal–donor distance is left unconstrained during MD (e.g. the substrate) |
 | `acknowledge_restrained` | none | `[["B:1:ZN", "C:1:O2x"], ...]`: pairs in `md.results.restraints` that this run may still constrain. Without it, preprocess **refuses**, because an imposed distance would become an apparently structural one |
 | `exclude_residues` | none | `{chain: [resid, ...]}`: coordinating residues left out of the QM region. Their metal–donor bond constraints are still applied in classical MD. Not the same as `boundary_excluded`, which lists the non-amino-acid QM atoms that ASH should not place link atoms on. |

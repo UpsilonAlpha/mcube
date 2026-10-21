@@ -245,7 +245,7 @@ def check_inherited_restraints(constraints, restraints, pdb_file: str, inputs) -
         '    acknowledge_restrained: [["%s", "%s"]]\n' % (clashes[0][0], clashes[0][1]))
 
 
-def coordination_shell(pdb_file: str, inputs) -> list:
+def coordination_shell(pdb_file: str, inputs, radius=None, per_residue: bool = True) -> list:
     """The metal coordination sphere: the closest donor of each residue within `cutoff`.
 
     The one place that rule lives. `find_coordinators` builds the MD constraints
@@ -256,7 +256,7 @@ def coordination_shell(pdb_file: str, inputs) -> list:
     """
     metals = {m.upper() for m in (inputs.get("metals") or [])}
     donors = {e.upper() for e in (inputs.get("donor_elements") or ["N", "O", "S"])}
-    cutoff = float(inputs.get("cutoff") or 2.8)
+    cutoff = float(radius if radius is not None else (inputs.get("cutoff") or 2.8))
 
     rows, cell = [], None
     for line in open(pdb_file):
@@ -286,15 +286,19 @@ def coordination_shell(pdb_file: str, inputs) -> list:
             r = separation(metal[5], donor[5])
             if r > cutoff:
                 continue
-            key = (donor[0], donor[1], donor[3])
+            # Per residue for the QM region, which takes whole residues anyway.
+            # Per atom for constraints: a carboxylate can rotate its second
+            # oxygen in while the first is held, which is how Asp92 OD1 reached
+            # 1.75 A with OD2 pinned at 2.80.
+            key = (donor[0], donor[1], donor[3]) if per_residue else di
             if key not in closest or r < closest[key][0]:
                 closest[key] = (r, di, donor[2])
-        for (chain, resid, resname), (r, di, aname) in sorted(
-                closest.items(), key=lambda kv: kv[1][0]):
+        for (r, di, aname) in sorted(closest.values()):
+            donor = rows[di]
             found.append({
                 "metal": "%s:%s:%s" % (metal[0], metal[1], metal[2]),
-                "donor": "%s:%s:%s" % (chain, resid, aname),
-                "resname": resname,
+                "donor": "%s:%s:%s" % (donor[0], donor[1], aname),
+                "resname": donor[3],
                 "distance": round(r, 2),
                 "metal_index": mi,
                 "donor_index": di,
@@ -560,23 +564,38 @@ def find_coordinators(
     bondconstraints = []
 
     print("\n===== Metal Coordination Analysis =====")
-    print(f"Cutoff: {cutoff:.2f} Å")
+    constraint_cutoff = float(inputs.get("constraint_cutoff") or cutoff)
+    print(f"Cutoff: {cutoff:.2f} Å (QM region); {constraint_cutoff:.2f} Å (constraints)")
+
+    # Two radii, because they answer different questions. The QM region takes
+    # whole residues that coordinate the metal. The constraints have to cover
+    # everything that could *become* a contact during MM, since a non-bonded
+    # metal will pull a donor in and only an existing constraint stops it;
+    # `constraint_cutoff` widens that net without dragging more residues into
+    # the QM region. Per atom rather than per residue, so both oxygens of a
+    # carboxylate are held.
     shell = coordination_shell(pdb_file, inputs)
+    held = coordination_shell(pdb_file, inputs, radius=constraint_cutoff,
+                              per_residue=False)
 
     for m in metal_idx:
         print(f"\nMetal {elems[m]} at {chains[m]}:{resids[m]} (atom index {m})")
         qm_residue_dict.setdefault(chains[m], {})[resids[m]] = resnames[m]
+
+        for row in [r for r in held if r["metal_index"] == m]:
+            chain, resid_text, aname = row["donor"].split(":")
+            resid = int(resid_text)
+            if resid in (constraint_exclude.get(chain) or []):
+                print(f"[INFO] No bond constraint for {row['resname']} {chain}:{resid} "
+                      f"({aname}) (constraint_exclude_residues)")
+            else:
+                bondconstraints.append([m, row["donor_index"]])
 
         print("Coordinating residues:")
         for row in [r for r in shell if r["metal_index"] == m]:
             chain, resid_text, aname = row["donor"].split(":")
             resid, resn = int(resid_text), row["resname"]
             dist, idx = row["distance"], row["donor_index"]
-
-            if resid in (constraint_exclude.get(chain) or []):
-                print(f"[INFO] No bond constraint for {resn} {chain}:{resid} ({aname}) (constraint_exclude_residues)")
-            else:
-                bondconstraints.append([m, idx])
 
             # Excluded residues keep their bond constraint but are left out of the QM region
             if exclude_residues and chain in exclude_residues:
