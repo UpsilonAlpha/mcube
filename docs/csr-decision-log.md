@@ -1411,6 +1411,18 @@ This is the third time this problem has been approached and the first time it ha
 
 **Resubmitted as 30313764 (preprocess), 30313765 (md), 30313766 (qmmm).**
 
+**D80 - The gentle warm-up cannot rescue this, because minimisation runs first.** (2026-10-21, job 30314535 FAILED)
+
+Tested at the user's direction, with `gentle: true` and the 18 rigid constraints restored (the mechanism-switching hack of D79 was reverted: a config key that means two different things depending on distance is not something a user can predict, and it hid a real result behind a workaround). Same failure, 13 seconds:
+
+    openmm.OpenMMException: Particle coordinate is NaN
+
+`md.run()` calls `OpenMM_Opt` and only then `Gentle_warm_up_MD`, so the warm-up never executes. It is the right tool for a system that will not *start*; this one dies upstream of it.
+
+And the cause is not a cold start. Every constrained distance is measured from the same structure, so the set is mutually consistent by construction. What fails is the constraint topology: four atoms of Arg90 (N, NE, NH1, NH2), both atoms of His88, His164 and Asp92, all rigidly tied to one centre, on top of `HBonds` and rigid water. CCMA diverges.
+
+So holding an entire 6 A shell with holonomic constraints is not available, and the approach to restraints has to be reconsidered rather than patched. Literature review commissioned: how metal sites are actually equilibrated in classical MD ahead of QM/MM, 2020 onwards - restraint type and force constants, non-bonded versus bonded versus cationic dummy atom models, and whether anyone reports the two failure modes seen here (D74, D77).
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
