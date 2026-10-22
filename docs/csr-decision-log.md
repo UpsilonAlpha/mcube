@@ -1384,6 +1384,20 @@ Earlier in the same thread I had also argued the docked pose was wrong because i
 
 **Energy caveat (D95).** Pre-merge, so stock Zn radii in the MM while the input geometry came from IOD-parameterised MD. Do not compare -447.37695 Eh against a post-merge run.
 
+**Scratch cleanup, 2026-10-22.** `rquota` showed scratch **over quota at 315 GB against a 300 GB limit** (816,052 / 1,000,000 files), so writes were at risk with a job running. Freed 19 GB / 47 files, down to 296 GB. What went, and why it was safe:
+
+| removed | size | why |
+| --- | --- | --- |
+| `OpenMMMD_traj_wrapped.xyz` x4 | 8.4 GB | ASH writes it; **nothing in `src/` or `docs/csr/` reads it**, and the same trajectory exists as `QM_MM.dcd` |
+| `relaxbox_NPT*.dcd` x12 | 7.1 GB | box equilibration, not production. `relaxbox_NPT_lastframe.pdb` is what `md.results` records and is kept |
+| `NVTtrajectory.dcd` x6 | 1.3 GB | exact-size duplicates of the `_imaged` twins, which are what `md.results.trajfile` points at and what `postprocess` reads. All six twins kept |
+| `geometric_OPTtraj_*.xyz` | 1.1 GB | optimiser traces, read only mid-run (`qmmm.py:363`) and deleted by `clean_geometric_files()` at each run's start anyway |
+| 3 slurm `.out` **gzipped, not deleted** | ~0.5 GB | 189/189/166 MB of text; the record is kept |
+
+**Kept deliberately**: every `*_lastframe*.pdb`, `finalsystem.pdb`, `QM_MM_optimized.pdb`, all `.chk` / `final_state.xml` restart files, and the **QM/MM trajectories** (`QM_MM.dcd` x4, `qmmm_snap.dcd`, ~2.3 GB) - those are the analysable artefact for `postprocess` and for `site.py acceptors` / `joint`, so they are the user's call rather than mine. `CSR_gln93` was excluded apart from the finished qmmm run's own trace, because job 30409808 is writing there.
+
+Verified by `find`/`ls` returning empty and by `rquota`, not by an echo after `rm` - a `;`-chained echo prints success unconditionally and has produced a false "deleted" report before.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
