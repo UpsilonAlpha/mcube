@@ -353,6 +353,30 @@ level and details proposed, not yet decided)
   bases (`dft_ecp` overrides it), and reads `dft_basis_file` / `dft_ecp_file` (NWChem format)
   for elements PySCF lacks. Only DFT runs with heavy elements are affected; CSR runs are xTB.
 
+**F7 – Neither SCC remedy makes xTB/MM of Ln³⁺ stable; the second shell in QM makes the shell wrong.** (2026-10-23)
+- The 10 ps xTB/MM reruns on the finished MM boxes (jobs 30416204–09; shell from the RDF minimum
+  of the QM/MM trajectory, first 2 ps skipped):
+
+  | Box | Remedy | Result | Ln–O (Å) | CN |
+  |---|---|---|---|---|
+  | La 1264 | etemp 1000 K | SCC failed at step 7092, gap 0.0042 Eh | 2.39 | 9.0 |
+  | Lu IOD | etemp 1000 K | SCC failed at step 8984, gap 0.00005 Eh | 2.23 | 8.0 |
+  | Lu 1264 | etemp 1000 K | completed 10 ps | 2.25 | 7.09 |
+  | La 1264 | 2nd shell QM | SCC failed at step 6404, gap 0.0035 Eh | 2.63 | 11.3 |
+  | Lu IOD | 2nd shell QM | completed 10 ps | 2.51 | 11.3 |
+  | Lu 1264 | 2nd shell QM | SCC failed at step 6594, gap 0.0007 Eh | 2.43 | 9.70 |
+
+  Targets (C15): La ~2.54 Å / CN 9, Lu 2.33 Å / CN 8.
+- The gap still collapses with the second shell in the QM region, where no bare MM charge is
+  near the ion. So the boundary is not the main cause; GFN2-xTB's own description of Ln³⁺
+  (4f in core) puts empty states near the occupied ones. The failures came 1–3 ps later than
+  in F4, not never.
+- With more water in the QM region xTB pulls 11–12 waters inside the first-shell minimum, and
+  the Ln–O peak moves 0.1–0.2 Å *out*. With the first shell only and 1000 K, Ln–O is 0.08–0.15 Å
+  too *short* and CN is right for La and Lu IOD. Neither is a usable reference structure.
+- Consequence: xTB/MM is not reliable for any window where an Ln³⁺ is in the QM region, not only
+  the desolvation step (C16). Untested remedy: softer MM point charges (`hardness_PC`).
+
 ## Planned checks, not yet done
 
 - Q1: answered 2026-10-22 (`docs/channel/probe_env.py` on bun147): the ASH env has Python 3.11.14,
