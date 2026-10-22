@@ -1426,6 +1426,8 @@ Every one of those directories keeps its own `QM_MM_optimized.pdb`, so the geome
 
 **Kept deliberately**: every `*_lastframe*.pdb`, `finalsystem.pdb`, `QM_MM_optimized.pdb`, all `.chk` / `final_state.xml` restart files, and the **QM/MM trajectories** (`QM_MM.dcd` x4, `qmmm_snap.dcd`, ~2.3 GB) - those are the analysable artefact for `postprocess` and for `site.py acceptors` / `joint`, so they are the user's call rather than mine. `CSR_gln93` was excluded apart from the finished qmmm run's own trace, because job 30409808 is writing there.
 
+**Second pass, after the manifest above was committed.** The six QM/MM trajectories and the `warmup_MD_cycle*.dcd` ramps went too (~3.5 GB): the warm-up is a 1-10-300 K thermal ramp whose last frames are kept as PDBs, and the QM/MM frames are recoverable only as the optimised structures each frame directory already holds. Verified empty by `find`. Scratch then read **202 GB / 495,641 files**, but only ~3.5 GB of that drop is this project - the GLP-1R and ion-channel sessions were clearing their own trees at the same time, so the 279 -> 202 GB figure is not attributable here.
+
 Verified by `find`/`ls` returning empty and by `rquota`, not by an echo after `rm` - a `;`-chained echo prints success unconditionally and has produced a false "deleted" report before.
 
 ## Resources (see `running-on-bunya.md`)
