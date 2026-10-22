@@ -14,6 +14,8 @@
 # RUN=/scratch/user/uquadhik/channel/bulk/<ION>_<SET>. Settings by --export:
 #   NS, EQUIL, QMPS   MM length (ns), MM equilibration (ps), QM/MM length (ps)
 #   SKIP_MM=1         reuse $RUN's finished MM box and report; run only the QM/MM leg
+#   MMOPTS            extra `bulk_ion.py run` options, e.g. "--timestep 0.001 --friction 5 --waters 722"
+#   SKIP_QM=1         stop after the MM leg
 #   QMDIR             subdirectory for the QM/MM leg (default qmmm); its report goes to
 #                     $RUN/${QMDIR}_report
 #   XTB_ETEMP         xTB electronic temperature (K); SHELL2 a QM cutoff (A) that takes in
@@ -45,9 +47,10 @@ if [ "${SKIP_MM:-0}" = 1 ]; then
     [ -f $RUN/report.json ] && [ -f $RUN/system.pdb ] || { echo "no MM box in $RUN"; exit 1; }
 else
     echo "== MM $ION $SET, $NS ns"
-    python $B run --ion $ION --set $SET --ns $NS --equil $EQUIL --out $RUN || exit $?
+    python $B run --ion $ION --set $SET --ns $NS --equil $EQUIL --out $RUN $MMOPTS || exit $?
 fi
 
+[ "${SKIP_QM:-0}" = 1 ] && { echo "== QM/MM skipped"; exit 0; }
 echo "== xTB/MM, $QMPS ps, in $QMDIR (etemp ${XTB_ETEMP:-default}, shell2 ${SHELL2:-no})"
 OPTS=""
 [ -n "$XTB_ETEMP" ] && OPTS="$OPTS --etemp $XTB_ETEMP"

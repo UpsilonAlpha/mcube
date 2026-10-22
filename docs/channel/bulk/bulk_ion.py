@@ -151,7 +151,7 @@ def threads() -> int:
     return 1
 
 
-def build_box(ion: str, box_nm: float):
+def build_box(ion: str, box_nm: float, waters=None):
     import openmm
     from openmm import unit
     from openmm.app import ForceField, Modeller, Topology, element
@@ -161,8 +161,14 @@ def build_box(ion: str, box_nm: float):
     centre = openmm.Vec3(box_nm / 2, box_nm / 2, box_nm / 2)
     modeller = Modeller(top, [centre] * unit.nanometer)
     ff = ForceField("amber14/tip3p.xml")
-    modeller.addSolvent(ff, model="tip3p", boxSize=openmm.Vec3(box_nm, box_nm, box_nm) * unit.nanometer,
-                        positiveIon="Na+", negativeIon="Cl-", neutralize=True)
+    if waters:
+        # A fixed number of waters, as in a published protocol (cubic box chosen by Modeller)
+        modeller.addSolvent(ff, model="tip3p", numAdded=int(waters), boxShape="cube",
+                            positiveIon="Na+", negativeIon="Cl-", neutralize=True)
+    else:
+        modeller.addSolvent(ff, model="tip3p",
+                            boxSize=openmm.Vec3(box_nm, box_nm, box_nm) * unit.nanometer,
+                            positiveIon="Na+", negativeIon="Cl-", neutralize=True)
     return modeller, ff
 
 
@@ -184,7 +190,7 @@ def run(args):
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    modeller, ff = build_box(args.ion, args.box)
+    modeller, ff = build_box(args.ion, args.box, args.waters)
     top = modeller.topology
     system = ff.createSystem(top, nonbondedMethod=PME, nonbondedCutoff=1.0 * unit.nanometer,
                              constraints=HBonds, rigidWater=True)
@@ -195,8 +201,9 @@ def run(args):
     nb = next(f for f in system.getForces() if isinstance(f, openmm.NonbondedForce))
     q, sigma, eps = nb.getParticleParameters(ion)
 
-    integrator = openmm.LangevinMiddleIntegrator(args.temp * unit.kelvin, 1.0 / unit.picosecond,
-                                                 0.002 * unit.picoseconds)
+    integrator = openmm.LangevinMiddleIntegrator(args.temp * unit.kelvin,
+                                                 args.friction / unit.picosecond,
+                                                 args.timestep * unit.picoseconds)
     import time
     platform = openmm.Platform.getPlatformByName(args.platform)
     props = {"Threads": str(threads())} if args.platform == "CPU" else {"Precision": "mixed"}
@@ -205,14 +212,14 @@ def run(args):
     sim.minimizeEnergy(maxIterations=1000)
     sim.context.setVelocitiesToTemperature(args.temp * unit.kelvin)
     t0 = time.time()
-    n_eq = int(args.equil / 0.002)
+    n_eq = int(args.equil / args.timestep)
     sim.step(n_eq)
     # Printed so a run's speed (and whether it will fit its time limit) shows in the log
     print(f"[INFO] {args.platform}: equilibration {args.equil} ps in {time.time() - t0:.0f} s, "
-          f"{n_eq * 0.002e-3 / max(time.time() - t0, 1e-9) * 86400:.1f} ns/day", flush=True)
+          f"{n_eq * args.timestep * 1e-3 / max(time.time() - t0, 1e-9) * 86400:.1f} ns/day", flush=True)
 
     oxygens = [a.index for a in top.atoms() if a.residue.name == "HOH" and a.name == "O"]
-    stride = int(round(args.dt / 0.002))
+    stride = int(round(args.dt / args.timestep))
     n = int(round(args.ns * 1000.0 / args.dt))
     frames = np.empty((n, len(oxygens) + 1, 3), dtype=np.float32)
     boxes = np.empty((n, 3))
@@ -232,6 +239,7 @@ def run(args):
 
     report = analyse(frames, boxes, 0, list(range(1, len(keep))), args.dt, args.tstar)
     report.update({"mode": "mm", "ion": args.ion, "set": args.set, "temp_K": args.temp,
+                   "timestep_ps": args.timestep, "friction_per_ps": args.friction,
                    "atoms": top.getNumAtoms(), "waters": len(oxygens),
                    "sigma_nm": round(sigma.value_in_unit(unit.nanometer), 5),
                    "epsilon_kJ": round(eps.value_in_unit(unit.kilojoule_per_mole), 5),
@@ -325,6 +333,9 @@ def main():
     r.add_argument("--temp", type=float, default=300.0)
     r.add_argument("--tstar", type=float, default=2.0)
     r.add_argument("--platform", default="CPU", help="OpenMM platform (CPU, or CUDA on gpu_cuda)")
+    r.add_argument("--timestep", type=float, default=0.002, help="ps")
+    r.add_argument("--friction", type=float, default=1.0, help="Langevin friction, 1/ps")
+    r.add_argument("--waters", type=int, help="solvate with this many waters instead of --box")
     r.add_argument("--out", required=True)
     a = sub.add_parser("analyse")
     a.add_argument("--top", required=True)
