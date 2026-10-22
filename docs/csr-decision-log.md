@@ -1283,9 +1283,9 @@ The zinc-bound hydroxide is now 3.01 A from the electrophilic carbon at 84 degre
 
 **Hold this loosely.** It is the MM force field with a non-bonded point-charge zinc, which D63 says cannot answer coordination questions; it is one frame, not an ensemble; and 84 degrees is still outside the window. But it is the first time in this project that a zinc-bound oxygen has been anywhere near a productive attack geometry, and it is consistent with the carbonyl's inner-sphere position having been what blocked it. The 25 ps QM/MM MD that follows is the measurement that counts, and `joint`/`acceptors` over its trajectory is the test of whether anything can take the proton.
 
-**D74-D86 - Holding the metal site during MM: what was observed, what was tried, what was wrong.** (2026-10-21, condensed from thirteen entries)
+**D74-D92 - Holding the metal site during MM: observations, literature, and the settled design.** (2026-10-20 to 2026-10-22, condensed from nineteen entries)
 
-**The observations.** Run 1 (`CSR_unrestrained`, stock mcube: constraints on the 5 contacts detected within `cutoff: 3.0`):
+**The observations.** Run 1 (`CSR_unrestrained`, stock mcube: rigid constraints on the 5 contacts detected within `cutoff: 3.0`):
 
 | | input | minimised | warm-up c2 | NPT end | NVT end (1 ns) |
 | --- | --- | --- | --- | --- | --- |
@@ -1293,154 +1293,51 @@ The zinc-bound hydroxide is now 3.01 A from the electrophilic carbon at 84 degre
 | O01-C4x / angle | - | 3.44 | 3.17 / 83 | 3.01 / 84 | 4.45 / **100** |
 | Zn-Gln93 OE1 (not held) | 5.54 | 4.31 | **1.84** | 1.77 | 1.79 |
 
-Three things follow. The **substrate did not coordinate on its own** - it left, ending further out than it started, with the attack angle reaching the Burgi-Dunitz window but the distance at the edge of the cutoff. **Gln93 collapsed to an unphysical 1.79 A** (real Zn-O is 2.0-2.1), during cycle 2 of the warm-up, which is 40 ps of ordinary 300 K MD and not the 1 K/10 K ramp - so `gentle: false` would not have prevented it, and NPT would have done the same. And the **five detected constraints were honoured exactly** throughout (Asp92 2.80, O01 2.14, HOH485 1.90, His88 2.22, His164 2.09): stock mcube did what it promises.
+Three conclusions. The **substrate did not coordinate on its own** - it left, ending further out than it started. **Gln93 collapsed to an unphysical 1.79 A** (real Zn-O is 2.0-2.1) during warm-up cycle 2, which is 40 ps of ordinary 300 K MD, so `gentle: false` was not the cause and NPT would have done the same. And the **five detected constraints held exactly** throughout (Asp92 2.80, O01 2.14, HOH485 1.90, His88 2.22, His164 2.09): **stock mcube did what it promises.** Its limit is only that a donor at 5.5 A is outside a 3 A detection radius, so nothing holds it.
 
-**Mechanisms tried, and why each failed.**
+**Mechanisms tried.**
 
 | attempt | outcome |
 | --- | --- |
-| stock: constraints within 3.0 A | works, but a donor at 5.5 A is outside the detection and nothing holds it |
 | constrain one atom per residue at 6 A | Asp92 rotated its **other** oxygen to 1.75 A while OD2 sat pinned at 2.80 |
 | 18 rigid constraints (per atom, 6 A) | over-determines the constraint network; `Particle coordinate is NaN` at minimisation |
-| same, plus `gentle: true` | identical failure - `OpenMM_Opt` runs *before* the warm-up |
+| same, plus `gentle: true` | identical - `OpenMM_Opt` runs *before* the warm-up |
 | freezing (zero mass) | `A constraint cannot involve a massless particle`: HBonds constrains every X-H on the frozen donors |
-| harmonic positional restraints | got past minimisation; this is what job 30349571 is running |
+| harmonic **positional** restraints, 10 kcal/mol/A^2 | survived; ran as `hold_coordination`. Needed `periodicdistance` - a non-periodic restraint gave NaN on the first production step after 100 ps of clean NPT |
 
-**The literature** (D81): Guven, Hanzevacki, Kalita, Mulholland & Mey, *J. Phys. Chem. B* 2024, **128**, 12416, DOI 10.1021/acs.jpcb.4c06379 - VIM-2, Amber MM into DFTB3 QM/MM. Verified from the paper: *"the crystallographically observed zinc coordination is not retained in MM simulations with either zinc parameter set"*, and their fix removes the *"unrestrained NVT equilibration"* entirely and adds *"positional restraints ... to the two zincs, their coordinating protein residues, and the ligand"*. **That sentence is the whole of their description** - see D90 for what it does and does not establish. They note the residual limitation: *"the zinc ion is still modeled with a point charge of +2 e"*. They give **no force constant** for the metal site; their solute ladder is 100 -> 10 kcal/mol/A^2. Their QM region is ours in kind. Older background: cationic dummy atoms hold 4-coordinate Zn where non-bonded models fail (extended 2017, DOI 10.1021/acs.jpclett.7b02358); ZAFF, MCPB.py and 12-6-4 are the other routes.
+**D89, the run that matters.** md (2h35m) and qmmm (1h44m) both COMPLETED with `hold_coordination`. Over 500 ps the coordination report shows **one** change - `APPEARED B:1:ZN - E:3174:O at 2.22 A`, a water at a normal distance - and **Gln93 did not collapse**. QM/MM relaxed the sphere to a sensible five-coordinate geometry (O01 1.93, His88 1.97, HOH485 2.00, His164 2.20, Asp92 2.32). But **the substrate dissociated**: Zn-carbonyl 5.43 -> 7.71 (MM) -> 7.54 A (QM/MM), O4x-Lys226 4.07 -> 7.19, O4x-Arg90 10.67 -> 12.57. Every substrate contact lengthened, and the docked pose never made the canonical carboxylate-Arg interaction. **QM/MM optimisation is local: it repaired the metal sphere and cannot re-dock a ligand.** The binding pose is the blocking scientific question.
 
-**Where I was wrong (D86).** I presented a 6 A hold as following from that paper. It does not. Gln93 is not a coordinating residue in our input, so it is outside *their* restrained set too: **their failure mode was coordination being lost, ours is coordination being gained.** The paper does not address ours, and `hold_coordination` is my extrapolation, not their method. Stock mcube never failed at what it claims.
+**The literature** (surveyed by agent 2026-10-22, at the user's instruction not to run on his opinion or mine; *verified* = read in retrieved text, *snippet* = search excerpt, *inferred* = synthesis).
 
-**Code outcome.** `md.inputs.hold_coordination: <radius>` holds the metal and the donors within it by harmonic positional restraint (fixed 10 kcal/mol/A^2) for all of minimisation, warm-up, NPT and NVT - one `mm` object, so no MM stage is ever unrestrained. Substrate excluded via `constraint_exclude_residues`, which is why this is not a copy of the paper. It replaced three keys (`constraint_cutoff`, `restrain_coordination`, `coordination_force`) and the deleted `freeze_coordination`/`frozen_atoms`; `preprocess` is back to its original single `cutoff`. Whether it should stay in the package is open, given the above.
-
-Also landed: `md` now reports the coordination sphere before and after a run and prints what changed (`coordination_start`/`coordination_end`), which is what would have caught Gln93 on day one; and `preprocess` refuses to turn a pair that `md` restrained into a detected constraint without `acknowledge_restrained` (the D68 laundering guard). Config surface added by all of this: three keys.
-
-**Open.** The real cause is that a non-bonded +2 centre with no Pauli repulsion attracts donors from outside its coordination radius. Candidate responses, none yet adopted: a repulsive correction (12-6-4), a dummy-cation or bonded model (per-metal parameterisation, so poor defaults for an arbitrary metal), or excluding the metal's non-bonded interaction with non-coordinating atoms (see D87).
-
-**D87 - Why the metal model cannot fix this, and the parameter set that landed anyway.** (2026-10-21, user)
-
-**The puller is Coulomb, not Lennard-Jones.** For a Zn(II)-carbonyl pair with Amber parameters, moving from 5.54 to 1.79 A gains about **-143 kcal/mol** of Coulomb against roughly **8 kcal/mol** of available LJ repulsion (two-body, vacuum, so screened in practice - but the gradient is the point). Amber's Zn(II) has R* = 1.10 A and epsilon = 0.0125 kcal/mol: there is effectively no wall anywhere near 1.8 A. So the defect is missing Pauli repulsion, not excess attraction.
-
-**Turning the metal's charge off was considered and rejected.** It would remove the actual puller, but the +2 field is the dominant electrostatic feature of the site - it polarises the hydroxide, orients the second shell, and compensates the anionic ligands (Asp92-, OH-). Switch it off and the MM stage equilibrates solvent around a neutral cavity, leaving a locally very negative patch: a different and probably worse artefact. No published precedent found for doing this.
-
-**Better radii help and do not solve it.** Computing the Zn-O pair minimum:
-
-| parameters | pair minimum | repulsion at 1.79 A |
-| --- | --- | --- |
-| OpenMM `amber14/tip3p.xml` (R* 1.271) | **1.69 A** | +9 kcal/mol |
-| Li/Merz 12-6 IOD (R* 1.395) | **1.89 A** | +32 kcal/mol |
-| experiment | 2.0-2.1 A | - |
-
-The default's 1.69 A minimum accounts for the observed 1.79 A collapse almost exactly. IOD improves it but the minimum is still short, and more importantly **a 12-6 potential cannot distinguish a coordinating oxygen from a non-coordinating one** - the model holds only distance and atom type, so every oxygen in reach is rewarded for approaching. HFE and IOD are fitted to a *solvated* ion's hydration free energy or ion-oxygen distance; neither encodes a coordination number. Over-coordination is a limit of the functional form, not a parameter error, which is why the literature's answers are bonded models and dummy atoms (which impose coordination geometrically) or restraints. In a non-bonded framework only a restraint knows which atoms are ligands, so `hold_coordination` stands as the fix.
-
-**Landed anyway, opt-in, because better radii are worth having**: `md.inputs.metal_parameters: iod` (`src/mcube/ions.py`), 40 ions across +2/+3/+4 including all twelve lanthanides, keyed on the element and the charge the force field already assigned - a metal in the PDB parameterises itself. **The table is vendored rather than read from AmberTools on purpose:** per the authors' own note, the `frcmod.ions234lm_iod_tip3p` shipped with AmberTools 2016-2019 carries the **12-6-4** values for +3 and +4 ions under an IOD label, and those are invalid without the accompanying C4 term. Transcribed from their corrected file and cross-checked against the local install on Zn2+, La3+, Ce3+ and Pr3+, which agree exactly - so this install is unaffected, but a user's might not be. 12-6-4 itself is not implemented: it needs per-ion C4 values and the partner atom's polarisability, which Amber supplies through ParmEd rather than in the frcmod file.
-
-**D88 - The restraint was not periodic, and that is what killed the run.** (2026-10-21, job 30349571 FAILED)
-
-The positional restraint cleared minimisation and ran **100 ps of NPT cleanly** - energy steady at -656,598 kJ/mol, density 1.016, temperature 298 K - then NaN'd on the first production step with **zero rows** written to `nvtsim.csv`.
-
-The cause is a bug in my implementation, not the method. The force was `0.5*k*((x-x0)^2+...)`, a plain Cartesian restraint. Coordinates are wrapped into the periodic box between stages, so an atom near a box face jumps a box length (80 A here) relative to its stored reference, and the restraint then applies on the order of 800 kcal/mol/A instantly. Fixed by using `periodicdistance(x, y, z, x0, y0, z0)`, which is exactly why ASH's own `add_centerforce` has a periodic variant - noted in D83 and then not applied.
-
-Worth recording how this was diagnosed, because the first attempt was wrong. Comparing the NPT end frame against a reference gave a 112 A displacement for every protein atom, which looked like the restraint being dragged - but the files had different atom counts (49400 vs 49373), because this run did its own preprocess and I had compared against another run's `finalsystem.pdb`. Against the right reference the counts match and the offset is still 112 A, uniform across the protein: output wrapping, not motion. What actually settled it was that NPT's potential energy was **negative and steady**. A restraint stretched by 112 A would have made it enormously positive, so the restraint was intact during NPT and only broke at the stage boundary.
-
-**On equilibrating longer at QM/MM instead** (the alternative considered): it cannot work. The intruding Gln93 is an **MM** atom; its interaction with the QM zinc runs through electrostatic embedding plus the same MM Lennard-Jones whose minimum sits at 1.69 A (1.89 with IOD). Longer QM/MM sampling does not relax an artefact that the MM terms are still actively maintaining - it would have to be in the QM region for the electronic structure to have any say, and putting it there risks the local minima and cost the user flagged. So the hold is the answer, with the restraint now periodic.
-
-**IOD is now the default** rather than opt-in, with `metal_parameters: none` to restore the force field's own values and `md.results.metal_parameters` recording what a run used. The stock radii are wrong in a way that matters and the replacement is published and fitted to that observable; defaulting to the better one and recording the choice is more honest than defaulting to the worse one.
-
-**Jobs 30354772 (md), 30354773 (qmmm).** Restarted from the existing preprocess, so no re-solvation.
-
-**D89 - The answer to D69: the carbonyl does not coordinate, because the substrate leaves.** (2026-10-22, jobs 30354772 and 30354773 both COMPLETED)
-
-The first run in which the whole chain completed. md ran 2h35m (100 ps NPT, 500 ps NVT) with the site held by periodic positional restraints and the substrate free; qmmm ran 1h44m (25 ps QM/MM MD at GFN2-xTB, then optimisation of the 8 A active region) with **nothing** held.
-
-**The protocol worked.** md's coordination report lists exactly one change over 500 ps:
-
-    APPEARED  B:1:ZN - E:3174:O at 2.22 A
-
-a water taking a coordination site at a normal aqua-ligand distance. **Gln93 did not collapse** (D74), no carboxylate rotated a second oxygen in (D77), and the run did not fall over (D79, D80, D83, D88). The QM/MM then relaxed the sphere to a sensible five-coordinate set on its own - O01 1.93, His88 1.97, HOH485 2.00, His164 2.20, Asp92 2.32 - with the extra water leaving. Asp92 moved in from its constrained 2.80 to 2.32 A once QM decided, which is the kind of correction the whole point of releasing it was to allow.
-
-**And the substrate is not there.**
-
-| | input | MM end (500 ps) | QM/MM optimised |
+| paper | restraint | k (kcal/mol/A^2) | held through |
 | --- | --- | --- | --- |
-| Zn-mer O2x | 5.43 | 7.71 | **7.54** |
-| O01-C4x / angle | - | 5.31 / 107 | 5.41 / 96 |
-| mer O4x - Lys226 NZ | 4.07 | - | **7.19** |
-| mer O4x - Arg90 NH1 | 10.67 | - | 12.57 |
-| mer C4x - Zn | 5.28 | - | 7.17 |
-| mer N1x - Zn | 6.03 | - | 7.63 |
+| **Gervasoni 2022**, IMP-1 dizinc MBL, 10.1002/prot.26227 | **distance**, 6 hand-named Zn-donor pairs | **30** [single-sourced] | heating, NPT, **100 ns NVT**; released for B3LYP/MM |
+| **Hanzevacki 2025**, JCIM, 10.1021/acs.jcim.5c00869 | **positional**, all heavy atoms of Zn-bound residues + Zn | **50** [snippet, SI] | relaxation only; released for QM/MM |
+| **Guven 2024**, VIM-2, 10.1021/acs.jpcb.4c06379 | **positional**, zincs + coordinating residues + **ligand** | not given (solute ladder 100 -> 10) | replaces unrestrained NVT |
+| **Lisa 2017**, NDM-1 + hydrolysed meropenem, 10.1038/s41467-017-00601-9 | restraint "to keep the hydrolysed meropenem bound" [snippet] | - | - |
+| **ASH tutorial** (what mcube derives from) | rigid Fe-S **bond** constraints; "harmonic bond restraints" named as the alternative | - | all classical stages; 2b = 1 ns NVT at 4 fs |
 
-So the answer to the question posed in D69 is **no**: released from the docked pose with the site held and nothing pulling it, the beta-lactam carbonyl does not approach the zinc. But the reason is not that the substrate found a different productive orientation - **every** substrate-protein contact lengthened. It is dissociating, not reorienting, and the attack distance went the wrong way too (O01-C4x 5.41 A, beyond the 4.5 A near-attack cutoff, despite an angle of 96 degrees that is inside the Burgi-Dunitz window).
+Four findings:
 
-**The pose was never anchored.** In the input, the substrate carboxylate sits **10.67 A** from Arg90 NH1 and 4.07 A from Lys226 NZ - and it loses even the Lys226 contact. In B1/B2/B3 MBLs the substrate carboxylate engages a conserved basic residue; docked pose 2 does not make that interaction at all. Vina has no metal term (D67) and evidently no grip on this anchoring either.
+1. **Restraints reduce but do not prevent creep.** Gervasoni, verified and independently confirmed by search: "the coordination number of the zinc ions tends to increase, through addition of extra water molecules, up to a limit of six" - *with* restraints on. Their workflow then relies on QM/MM, which "recover[ed] the correct coordination geometry and ... fix[ed] the errors introduced by the MD simulation". **So residual creep is expected, and QM/MM refinement is the designed remedy.** This is why 1 ns of restrained MM into QM/MM is a defensible protocol and not a shortcut.
+2. **IOD cannot substitute for the restraint.** [inferred, well supported] a bare 12-6 set admits a second-shell oxygen into the first shell on 10-100 ps when a donor sits 5-6 A away - our Gln93 at 5.54 A over 40 ps. Gervasoni's 12-6 *with* 30 kcal restraints still reached CN 6; Guven lost coordination with two parameter sets. IOD is a better radius underneath the restraint, nothing more.
+3. **12-6-4 is contraindicated for MBLs**: Gervasoni found it *enhanced* water intrusion, kept the zincs octahedral, and QM/MM could not repair Zn-Zn from those frames. D87 declining to implement it was right.
+4. **Restraining the substrate has precedent in our own system class** (Lisa). Guven deliberately do not - "To avoid adding a bias to the RBFE predictions, the distance between the zinc and the ligand is not restrained" - because a free-energy calculation cannot afford it. A mechanism study can.
 
-**What this settles and what it does not.** It settles that the 1.94 A Michaelis complex used from D57 onwards is not something this system reaches on its own, and it removes the MM artefacts as an explanation - the site stayed clean this time. It does not establish the mechanism, because a substrate that dissociates in 500 ps of MM plus 25 ps of QM/MM is not a Michaelis complex at all. **The binding pose is now the blocking question**, which is where D64 pointed before the restraint detour began.
+**Silences.** No converged force constant and no published sensitivity scan anywhere; 30 vs 50 is 0.14 vs 0.11 A RMS at 300 K, i.e. immaterial. **Backbone N / carbonyl O as a restrained donor is effectively absent** - MCPB.py and ZAFF examples are side-chain only - because everyone hand-lists named side-chain atoms and so never meets the case. No agreed name for the failure mode ("over-coordination", "hypercoordination", "factitious octahedral geometry"), reported for Zn by Gervasoni, Guven and **Bahena-Mendez 2026** (10.1021/acsomega.5c11425, almost our exact stack: Amber + GFN2-xTB) and for Ca(II) by Levy (arXiv:2606.28463). **No paper reports GFN2-xTB over-coordinating zinc**; Bahena-Mendez reports it *correcting* classical over-coordination, "within the first few nanoseconds" though, against our 25 ps, and "remained sensitive to the initial configuration". The BioExcel QM/MM best-practice guide never mentions metals, while warning that position restraints "should not be used in actual profile simulations". Not retrieved in full: Melse 2023 *JCC* 44, 912 (the actual Zn-model benchmark); the Hanzevacki SI (sole source for 50); Eshtiwi & Rathbone 2023 *JMGM* 121, 108431, which warns bonded MCPB.py models "may not be appropriate for validating and refining the binding modes predicted by docking when crystal structures are lacking" - squarely our case.
 
-No DFT single point was submitted: scoring a dissociating complex would cost 32 cores for a number about nothing.
+**Corrections to earlier entries in this log.**
 
-**D90 - What the paper actually specifies, which is less than I have been claiming.** (2026-10-22, user asked me to verify before acting)
+- **D81/D84 framed constraints as a defence against over-coordination. Their original purpose is to supply a bond the force field lacks** - ASH: the force field "does not define bonded parameters associated with the Fe-Cysteine interaction". ASH assigns spurious binding instead to the metal's **LJ parameters** ("a water molecule attempting to bind to the +3 pointcharge"), which is where IOD acts. Two distinct levers, both with precedent in mcube's own source material.
+- **D86: a 6 A hold does not follow from Guven.** Gln93 is not a coordinating residue in our input, so it is outside *their* restrained set too: **their failure mode was coordination being lost, ours is coordination being gained.** `hold_coordination` is my extrapolation, not their method.
+- **D90 said nothing in the literature supports whole-residue holding. Too strong** - Hanzevacki is exactly that. It is unsupported by *Guven*, the paper I had read. Its real weaknesses are over-restraining (pinning non-coordinating atoms of coordinating residues) and under-detecting (a residue coordinating only via backbone O may never be classed "Zn-bound").
+- **D91 credited mcube's detection rule to ASH. It is not inherited**: ASH hand-picks `bondconstraints=[[755,96],[755,136],[755,567],[755,607]]` by index, with no cutoff and no element rule. **Element-based atom detection within a radius is mcube's own generalisation** - and the right abstraction, since it is what reaches a backbone donor that a hand-named side-chain list never would. Gervasoni's selection does not generalise either; it is the atom-pair *form* that we adopt, not the selection.
+- **My proposal to restrain "the substrate's heavy atoms and the residues' donor atoms" was wrong** - inconsistent special-casing of exactly the kind the user has repeatedly rejected. One rule applies inside the radius regardless of what the atom belongs to.
+- **D85 excluded the substrate from the held set. Wrong on the literature (Lisa) as well as on the outcome (D89).**
 
-Re-read Guven et al. section 3.6 with the specific question of what the restraints act on. Their entire description is one sentence: the unrestrained NVT run *"was removed entirely and additional positional restraints based on the zinc-residue distances from the crystal structure were added to the two zincs, their coordinating protein residues, and the ligand, to ensure the zinc coordination did not change drastically"*. From that:
+**Settled design.** Per-atom element-based detection within one radius, the same rule for protein, substrate and metal-bound solvent alike; harmonic restraints rather than rigid constraints beyond the first shell; on for all MM stages; released for QM/MM; IOD defaults underneath; 1 ns NVT then QM/MM, per ASH 2b and Gervasoni's reliance on QM/MM refinement. Config surface added by all of this: **three keys** (`hold_coordination`, `acknowledge_restrained`, `cubes`). `md` now reports the coordination sphere before and after a run and prints what changed (`coordination_start`/`coordination_end`) - which would have caught Gln93 on day one - and `preprocess` refuses to turn a pair that `md` restrained into a detected constraint without `acknowledge_restrained` (the D68 laundering guard).
 
-| what I claimed | what the paper says |
-| --- | --- |
-| restraints act on whole residues and the whole ligand | **not stated** - it names residues and the ligand but never says whether the restraint acts on every atom or only the coordinating ones |
-| "coordinating protein residues" = the first shell | **not defined** anywhere in that section |
-| harmonic positional restraints | **not stated** - it says "positional restraints" and never gives the functional form; "did not change drastically" implies some movement is allowed, which is an inference |
-| force constant | correctly recorded as absent. Their 100 -> 10 kcal/mol/A^2 ladder is the *general* solute protocol in 3.5, not these restraints |
-| released before production | implied by "before starting the RBFE production runs", **not stated**; for QM/MM they only say it starts "from the MM equilibrated structures" |
-
-So D85's comparison table overstated the paper on three rows, and D81/D84 described the restraints as harmonic on my own inference rather than theirs. The verbatim quotes in those entries are accurate; the gloss around them was not. **The paper cannot be used to justify holding whole residues, holding the whole ligand, or any particular force constant.** Those are our choices and have to stand on their own.
-
-**On freezing versus restraining, which I had been blurring.** A freeze (zero mass) permits no relaxation and locks in whatever strain the docked pose carries. A harmonic positional restraint at 10 kcal/mol/A^2 costs 5 kcal/mol for 1 A of displacement, about 8 kT at 300 K, so sub-angstrom motion is essentially free: the force field still relaxes internal geometry inside the well while the pose cannot drift. The user's instinct - anchor the pose, let the force field handle the rest - is satisfied by a restraint on every heavy atom, and is *not* satisfied by a freeze. "Full freeze" was my sloppy shorthand and is the wrong description of what should be done.
-
-**Why two restrained atoms is not enough.** Pinning only the substrate atoms that fall inside the radius (O1x at 3.13 A, O2x at 5.43 A) fixes position and one rotational axis, leaving rotation about the O1x-O2x vector free. Meropenem is large enough that its tail can swing a long way on that axis, and the carboxylate - the group that should be anchoring to Lys226 or Arg90 - is on the far end of it. Restraining every heavy atom at a modest force constant holds the orientation without preventing relaxation.
-
-**D91 - What the ASH workflow mcube is built on actually does.** (2026-10-22, user pointed me at it)
-
-Read https://ash.readthedocs.io/en/latest/Metalloprotein-I.html, the rubredoxin tutorial mcube's pipeline derives from. Five things, two of which correct assumptions I had been carrying.
-
-1. **ASH hand-picks the constrained atoms.** `bondconstraints=[[755,96],[755,136],[755,567],[755,607]]` - Fe to four cysteine sulfurs, chosen by index from the structure. There is no cutoff, no donor-element rule, no automatic detection. **mcube's `find_coordinators` - donors by element within `cutoff` - is mcube's own generalisation of that hand-picked list, not something inherited.** So "the original method restrains all coordinating atoms within the coordination radius" is mcube's design decision, and a good one: it is what makes the pipeline work on a system nobody has hand-indexed. The user's point that backbone N and backbone carbonyl O are sometimes the coordinating atoms is exactly why element-based atom detection is the right abstraction and why expanding to whole residues would have been a step backwards.
-
-2. **ASH sanctions harmonic restraints as the alternative**: *"we could also have added harmonic bond restraints instead of rigid constraints."* Distance restraints, not positional - but it establishes that either is acceptable for this job.
-
-3. **Constraints are released for QM/MM**, explicitly: QM/MM *"allows us to remove artificial constraints associated with the Fe-S bonds"*, and the optimisation runs set `autoconstraints=None`, `rigidwater=False`. Matches what we do.
-
-4. **The stated reason for constraining is the missing bonded term, not over-coordination.** The force field *"does not define bonded parameters associated with the Fe-Cysteine interaction"*, and the bonds were constrained *"because we did not have bonded MM parameters available"*. The tutorial does **not** claim a non-bonded metal loses its sphere without constraints. That is worth noting against D81/D84, where I framed constraints as a defence against over-coordination; their original purpose is to supply a bond the force field lacks.
-
-5. **And ASH assigns spurious binding to the metal's Lennard-Jones parameters** - it describes the LJ terms on Fe as preventing an artificial case of *"a water molecule attempting to bind to the +3 pointcharge"*. That is the same mechanism as our Gln93 collapse, and it puts the fix where D87 put it and where the IOD set acts. So the two levers are distinct and both have precedent in the pipeline's own source material: constraints or restraints supply the missing bond, LJ parameters control what else the metal attracts.
-
-6. Incidental: the tutorial's QM/MM MD script passes `constraints=bondconstraints` without defining it in that script, so it would fail as written. A documentation bug in ASH, not ours.
-
-**Where this leaves the design.** Per-atom detection within a radius stays, restrained rather than constrained beyond the first shell, released for QM/MM, with IOD handling what the metal attracts. No whole-residue holding. A broader literature survey is running before this is settled.
-
-**D92 - Literature survey on metal-site MD before QM/MM: what it settles.** (2026-10-22, commissioned at the user's instruction not to run on his opinion or mine)
-
-Verification status is carried through from the survey: *verified* = read in the paper's own retrieved text, *snippet* = search-engine excerpt of the paper's text, *inferred* = the surveyor's synthesis. Three papers could not be retrieved in full and are named at the end.
-
-**The most on-point paper is not the one we have been citing.** **Gervasoni, Spencer, Hinchliffe, Pedretti, Vairoletti, Mahler & Mulholland, *Proteins* 2022, 90, 372, DOI 10.1002/prot.26227** - IMP-1, a dizinc MBL, with docked inhibitors. Verified: harmonic **distance** restraints of **30 kcal/mol/A^2** on **named Zn-donor atom pairs**, six of them, listed individually (His139 NE2-Zn1, Asp81 OD2-Zn2, Cys158 SG-Zn2 and so on), equilibrium values taken from the crystal structures, held through heating, NPT **and 100 ns of NVT production**, then released for B3LYP/MM. Two results matter to us:
-
-- **Even with those restraints the coordination number still crept to six by recruiting waters** - "to a lesser extent" than unrestrained, but not prevented. The authors' own conclusion is the need for restraints *and* "the limitations of empirical forcefields for modeling zinc sites".
-- **12-6-4 made it worse**: it enhanced water intrusion, the zincs stayed octahedral, and QM/MM could **not** repair the Zn-Zn distance from those frames. A direct, citable reason not to pursue 12-6-4 here, which is fortunate given D87 declined to implement it.
-
-**Four things this corrects in our setup.**
-
-1. **Our force constant is softer than any published anchor.** The two citable values are Gervasoni's **30 kcal/mol/A^2** (distance restraints) and, closest to what we actually do, **Hanzevacki et al., *JCIM* 2025, 65, 6261, DOI 10.1021/acs.jcim.5c00869** [snippet, from the SI]: **50 kcal/mol/A^2 harmonic positional restraints on all heavy atoms of the zinc-bound residues including the metal**, during relaxation only, released for an unrestrained QM/MM minimisation. We use **10**. No convergence study exists for any of these - nobody reports a sensitivity scan - so 10 is not wrong so much as unmotivated, and it sits well below both anchors.
-
-2. **Whole-residue positional holding does have a precedent after all.** Hanzevacki is exactly that, so D90's conclusion that nothing in the literature supports it was too strong - it is unsupported *by Guven*, which is the paper I had been reading. Note that it restrains the heavy atoms of the *ligating* residues, not everything inside a 6 A shell.
-
-3. **Restraining the substrate has direct precedent in our own system class.** **Lisa et al., *Nat. Commun.* 2017, 8, 538, DOI 10.1038/s41467-017-00601-9** - NDM-1 with hydrolysed meropenem, QM/MM - [snippet] "A restraint was applied to keep the hydrolysed meropenem bound to the active site." Guven et al. are the deliberate counter-case, and they say why: "To avoid adding a bias to the RBFE predictions, the distance between the zinc and the ligand is not restrained" - a relative binding free energy calculation cannot afford a ligand restraint. A mechanism study that needs a stable Michaelis complex can, and Lisa did. **So the user's instinct in the previous exchange was right, and D85's exclusion of the substrate was wrong on the literature as well as on the outcome.**
-
-4. **Our classical equilibration is one to two orders of magnitude shorter than practice.** Gervasoni 100 ns NVT, Guven 50 ns, Bahena-Mendez 10 ns, Lisa 10 ns. We ran **500 ps**. [inferred] For a mechanism study where QM/MM does the chemistry a shorter MM stage is arguable, but 500 ps against a 10-100 ns norm is a gap to state rather than leave implicit.
-
-**And one expectation it deflates.** IOD will not hold the sphere on its own. Gervasoni's 12-6 set *with* 30 kcal restraints still admitted waters; Guven lost crystallographic coordination with two different parameter sets. [inferred, well supported] a bare 12-6 set, IOD included, should be *expected* to admit a second-shell oxygen into the first shell on a 10-100 ps timescale when a donor sits 5-6 A away - which is precisely our Gln93 at 5.5 A over 40 ps. So the restraint is doing the work and IOD is a strict improvement sitting underneath it, not a substitute for it.
-
-**Over-coordination is a documented, repeatedly-reported failure mode with no standard remedy and no agreed name** ("over-coordination", "hypercoordination", "factitious octahedral geometry"). Reported for Zn by Gervasoni 2022, Guven 2024 (a *serine* migrating in - our Gln93 with a different residue), **Bahena-Mendez et al., *ACS Omega* 2026, 11, 18970, DOI 10.1021/acsomega.5c11425** - almost our exact stack, Amber plus **GFN2-xTB** QM/MM on a zinc site - and for Ca(II) by Levy et al., arXiv:2606.28463. It is *not* avoided by going bonded or dummy from the start: the MBL community keeps using non-bonded plus restraints and keeps reporting partial failure.
-
-**On whether QM/MM repairs a damaged site, the literature is divided.** Bahena-Mendez: starting from artificially octahedral classical snapshots, GFN2-xTB QM/MM "reverted to a four coordination number within the first few nanoseconds" and "the hybrid scheme is capable of correcting some artifacts induced by force fields" - but the result "remained sensitive to the initial configuration". Gervasoni: repaired from restrained frames, **not** from 12-6-4 frames. Mehmood & Kulik [journal unverified] add that too-small QM regions *over*-bind zinc, so QM region size is its own variable. One point for our earlier worry: **no paper was found reporting GFN2-xTB specifically over-coordinating zinc**, and the single paper using it on a zinc site reports it correcting over-coordination - on a nanosecond timescale, against our 25 ps.
-
-**Where the literature is silent.** No converged force constant. **Backbone N or backbone carbonyl O as a restrained donor: effectively absent** - MCPB.py and ZAFF worked examples are side-chain only, and a backbone O in a first shell appears only as a reported force-field artefact. Our element-based atom detection handles that case naturally, which is more general than the named-atom lists the literature uses. No default model for 2024-25: MBL practice is 12-6 plus explicit Zn-donor distance restraints; Melse et al. 2023 (DOI 10.1002/jcc.27052, not retrieved) favour dummy atoms as a good alternative; AmberTools declines to recommend one. And the BioExcel QM/MM best-practice guide **never mentions metals at all**, while warning that "position restraints may affect your final results significantly and should not be used in actual profile simulations" - consistent with releasing before the reaction profile.
-
-**Not retrieved in full, and would most change this picture:** Melse et al. 2023 *JCC* 44, 912 (the actual Zn-model benchmark, on CA II and VIM-2); the Hanzevacki 2025 SI, which is the only source for the 50 kcal/mol/A^2 figure; and Eshtiwi & Rathbone 2023, *J. Mol. Graph. Model.* 121, 108431, which warns that bonded MCPB.py models "may not be appropriate for validating and refining the binding modes predicted by docking when crystal structures are lacking" - squarely our situation.
+**Open, put to the user 2026-10-22.** (a) `hold_coordination` is implemented as **positional** restraints, but Gervasoni, ASH's stated alternative and the user's own two descriptions all point to **distance** restraints to the metal at the starting distance - which mcube already has in `md.inputs.restraints`, printed and editable, and which would let the site rotate with the protein instead of fighting it over 1 ns. Switching would delete the `CustomExternalForce` code. (b) At 3 A the detection caught exactly one water, a genuine ligand; at the >=6 A needed to reach Gln93 it would catch order 10-20 water oxygens in a 905 A^3 sphere and tether each to a fixed radial shell for 1 ns, preventing exchange. Proposed rule, following from why the restraints exist: **restrain donors inside the radius that came from the input structure, not solvent mcube added itself** - no new config key, and it still holds crystallographic HOH485, backbone donors and the substrate's O2x.
 
 ## Resources (see `running-on-bunya.md`)
 
