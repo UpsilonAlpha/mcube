@@ -1552,6 +1552,26 @@ What survives from D97 and is worth keeping: the 1.79 A contact sits ~5.6 kcal/m
 
 **Feasibility of the long run, which is not free.** D89's md stage took 2h35m for 500 ps of NVT on 16 CPU cores, so roughly 4 ps/min: **10 ns is about 42 h and 50 ns about 9 days** of CPU. `run.slurm` defaults to `--time=1-00:00:00`, so neither fits in one job as configured. The options are a GPU (`md.inputs.platform: CUDA`, which md already supports on all three of its MD calls) or chained restarts from `OpenMM_MD_final_checkpoint.chk`. Whether OpenMM in the ASH env can use Bunya's mi355x cards is **unknown** - it is one of the things the ion-channel session set out to probe, and the answer decides between those two routes.
 
+**D98 - The 1 ns restrained run: `CSR_nac`, jobs 30416229 (preprocess) and 30416230 (md).** (2026-10-23)
+
+First run with the restraint scheme as it now stands, to establish it behaves before committing to 10-50 ns. A fresh directory and a **fresh preprocess**, not `md` on an existing config, because every older CSR config carries the pre-rename `constraints` key and would therefore have run with the metal site free (the guard above now refuses that rather than letting it happen).
+
+Set up from `CSR_unrestrained2`: same `preprocess.inputs` - docked pose `model: 2`, `cutoff: 3.0`, the HIS variants, `extra_qm_residues` A:[90,226] C:[1], and `constraint_exclude_residues: {C: [1]}` keeping the ligand out of the automatic set. Inputs stage into `preprocess_results/` because that is the stage's working directory. `ligand_xmlfile: null`, so OpenFF re-derives the meropenem parameters rather than borrowing CSR_crystal's - self-contained, at the cost of AM1-BCC charges that may differ in the last decimal.
+
+What `md_nac` adds over `md.inputs`, and nothing else:
+
+```
+restraints:
+  - [C:2:O01, C:1:C4x, 3.47]   # force constant inherited from coordination_force
+nvt_time: 1000
+```
+
+So the metal site gets whatever `preprocess` detects within 3.0 A, each held at its own measured distance at 50 kcal/mol/A^2, and the substrate gets one restraint on the attack coordinate at the distance the docked pose already has. Nothing asserts the carbonyl coordinates the zinc.
+
+**What this run has to show**, decided in advance: after the restraint is released, O01-C4x and the Nu-C-O angle stay inside the Burgi-Dunitz window and the zinc keeps a sound first shell - which `site.py nucleophiles` prints as its verdict. Those holding makes the 10-50 ns run confirmation; either failing makes it required, and the barrier waits for it.
+
+Two things to watch rather than assume. The copied config still carries inert `hold_coordination: 6.0` and `constraints: null` in `md.inputs`; both are keys the code no longer reads, so they are clutter rather than risk. And `md.results.coordination_restraints` is the thing to read first on completion: if it is empty the guard failed and nothing held the site.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
