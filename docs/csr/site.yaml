@@ -151,6 +151,51 @@ sections:
       opt_maxiter: 300
       resume: true
 
+  # ---- Which protonation state is the reactant? Blocks every barrier. ----
+  #
+  # D96: starting from Lys226-H+ with a Zn-bound hydroxide, a QM/MM optimisation
+  # moved the proton to O01 on its own, leaving Zn-OH2 and a neutral Lys226. So
+  # "the Michaelis complex" is presently two different chemical species and a
+  # barrier computed from either is undefined until one is chosen.
+  #
+  # These differ from `cleanR_lysH` / `cleanR_ohH` (D42) in what they do NOT
+  # constrain. Those hold Zn-Asp92 at 2.80 A and Zn-carbonyl at 2.90 A; the
+  # first is stale - a free optimisation puts Asp92 at 2.17 - and the second
+  # asserts the carbonyl coordinates this zinc, which for a mono-Zn B3 site is
+  # not established and which we declined to impose in `md_nac`. Both sit next
+  # to O01 and so bias the proton transfer being measured. Here the only
+  # constraint is the one that defines the protonation state; everything else
+  # relaxes, so the two runs differ in one thing and are comparable.
+  #
+  # Same total charge either way (the proton moves inside the QM region), so the
+  # energies are directly comparable. Score both with `sp_dft` afterwards rather
+  # than trusting xTB to order proton affinities. Then confirm the winner is a
+  # minimum before building any path from it.
+
+  protH_lys:                   # proton on Lys226 NZ: nucleophile is hydroxide
+    stage: qmmm
+    inputs:
+      skip_equilibrate: true
+      opt_maxiter: 600
+      opt_constraints:
+        - [A:226:NZ, A:226:HZ1, 1.03]
+      monitor:
+        - [B:1:ZN, C:2:O01]
+        - [B:1:ZN, A:92:OD2]
+        - [C:2:O01, C:1:C4x]
+
+  protH_oh:                    # proton on O01: nucleophile is water, Lys226 neutral
+    stage: qmmm
+    inputs:
+      skip_equilibrate: true
+      opt_maxiter: 600
+      opt_constraints:
+        - [C:2:O01, A:226:HZ1, 0.98]
+      monitor:
+        - [B:1:ZN, C:2:O01]
+        - [B:1:ZN, A:92:OD2]
+        - [C:2:O01, C:1:C4x]
+
   # ---- Reaction path. One NEB per elementary step, never one path for both. ----
   #
   # Hydrolysis is at least two elementary steps, and a single NEB spanning both
