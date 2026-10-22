@@ -1572,6 +1572,24 @@ So the metal site gets whatever `preprocess` detects within 3.0 A, each held at 
 
 Two things to watch rather than assume. The copied config still carries inert `hold_coordination: 6.0` and `constraints: null` in `md.inputs`; both are keys the code no longer reads, so they are clutter rather than risk. And `md.results.coordination_restraints` is the thing to read first on completion: if it is empty the guard failed and nothing held the site.
 
+**D99 - GPU benchmark: the long equilibration is cheap, and my ROCm conclusion was wrong.** (2026-10-23, job 30416305)
+
+`scripts/gpu_probe.py` on a **NVIDIA H100 PCIe** (`gpu_cuda`), on the real 49,373-atom CSR system at md's settings (PME, 12 A, HBonds, rigid water, 1.5 amu H, 4 fs):
+
+| platform | 2000 steps | ns/day |
+| --- | --- | --- |
+| **CUDA** | 0.8 s | **845** |
+| OpenCL | 1.2 s | 591 |
+| CPU (4 cores) | 299 s | 2.3 |
+
+**So a 10-50 ns equilibration stops being a scheduling problem.** At even a third of the benchmark rate - the benchmark has no barostat, writes no trajectory and ran single precision, so real throughput will be lower - 50 ns is a few hours in one job rather than nine days. `md.inputs.platform: CUDA` with `properties: {Precision: mixed}` is all it needs; md already passes `platform` to all three of its OpenMM calls. Chained restarts from the checkpoint are not required.
+
+**Correction to the ROCm conclusion recorded earlier today.** That entry said the ASH env's OpenMM reports only Reference/CPU/CUDA and therefore cannot touch an AMD card. **The enumeration was run on the interactive node, which has no GPU.** On the H100 node the same build reports `['Reference', 'CPU', 'CUDA', 'OpenCL']` and OpenCL drove the card at 591 ns/day. OpenCL is compiled in; it simply does not enumerate without a device and ICD to find. So **the mi210/mi300x/mi355x are not ruled out** - whether ROCm's OpenCL ICD is visible on `gpu_rocm` nodes is a separate question, settled by running the same probe there, and nothing about the mi355x has actually been tested. `gpu_probe.py`'s own docstring warns that listing platforms off a GPU node says only what OpenMM was compiled with; the inverse holds just as strongly and I ignored it.
+
+Not that it changes the recommendation: CUDA is the faster platform on hardware that is known to work, so `gpu_cuda` is where the long run belongs either way. The correction matters for anyone who later needs the ROCm queue's much larger GPU count.
+
+**The 1 ns restrained run (30416230) is still early** - minimisation done, warm-up in progress - and `md_nac.results.coordination_start` records the five detected contacts, so the restraints were read. On CPU it has 4-10 h left. At the benchmark rate the same run is minutes on the H100, which makes the CPU job a poor use of the time now that this is known.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
