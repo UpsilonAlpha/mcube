@@ -1448,6 +1448,24 @@ Scan coordinates, both measured rather than assumed: attack drives O01-C4x to 1.
 
 **A naming limitation found while staging this.** `sections.py` writes each entry as `<stage>_<name>`, and the key namespace is flat, so **two stages cannot share a key**: `step1` is the NEB's and the matching TS section had to be `saddle1`. The same rule means several existing keys double - `scan_znasp` becomes `scan_scan_znasp`, `sp_dft` becomes `sp_sp_dft` - which is harmless but means `run.slurm`'s documented examples (`run.slurm scan scan_znco`) disagree with what those keys actually produce. Left alone, since results may already exist under the doubled names.
 
+**The barrier chain crosses two different potential surfaces.** (2026-10-22, found while staging the NEB)
+
+`make_mm` builds every QM/MM system with `rigidwater=False` and `autoconstraints=None`, so MM water O-H bonds are flexible at the OpenMM level. `qmmm`, `scan` and `ts` then restore rigidity for active-region MM waters as **optimizer** constraints (`water_constraints`, which excludes QM waters so a QM water can still give up a proton). **`neb` does not, and cannot**: ASH's NEB exposes no constraints argument - its whole keyword set is `CI`, `free_end`, `maxiter`, tolerances, interpolation and restart files.
+
+So a barrier computed end to end crosses surfaces twice:
+
+| stage | active-region MM waters |
+| --- | --- |
+| `qmmm` / `scan` endpoints | **rigid** (optimizer constraints) |
+| `neb` path | **free**, intramolecular geometry included |
+| `ts` refinement | **rigid** again |
+
+Two consequences. The endpoint geometries are not minima of the surface the NEB evaluates them on. And interior images can lower their energy by relaxing water geometry unrelated to the reaction, so a path can dip below its own reactant - which is the observable symptom.
+
+`neb.check_path_shape` now warns when an interior image lies below both endpoints, and says both things it can mean: a genuine intermediate, in which case the step is not elementary and wants splitting at that minimum, or this inconsistency. Diagnostic only - the fix is a methodological choice, not mine. The options are to drop the water constraints from the endpoint optimisations so everything sits on one surface (at the cost of what those constraints were added to prevent), to keep MM waters out of the active region entirely so no stage can move them, or to accept the offset and quote barriers with it stated.
+
+Worth noting the same applies to anyone else's NEB through mcube, not just CSR.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

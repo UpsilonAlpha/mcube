@@ -79,6 +79,36 @@ def check_same_system(reactant_pdb: str, product_pdb: str, react, prod) -> None:
     print(f"[INFO] Endpoints are the same {react.numatoms} atoms in the same order")
 
 
+def check_path_shape(energies) -> None:
+    """Warn when an interior image lies below both endpoints.
+
+    Either reading is worth knowing. It can be a genuine intermediate, in which
+    case the step is not elementary and belongs as two NEBs with that minimum
+    optimised as the endpoint of each - a single NEB over two barriers returns
+    one saddle and hides the other.
+
+    Or it is the water treatment. `make_mm` builds every QM/MM system with
+    `rigidwater=False`, and `qmmm`, `scan` and `ts` restore rigidity for
+    active-region MM waters as *optimizer* constraints. ASH's NEB takes no
+    constraints, so those waters are flexible along the path and were rigid in
+    the endpoint optimisations that produced it. Interior images can then shed
+    energy by relaxing water geometry that has nothing to do with the reaction,
+    and the dip is the visible symptom of endpoints and path sitting on
+    different surfaces.
+    """
+    if len(energies) < 3:
+        return
+    interior, ends = energies[1:-1], (energies[0], energies[-1])
+    low = min(interior)
+    if low < min(ends):
+        drop = (min(ends) - low) * 627.509474
+        print(f"[WARNING] an interior NEB image is {drop:.1f} kcal/mol below both "
+              "endpoints. Either the step is not elementary (split it at that "
+              "minimum), or the endpoints were optimised with active-region MM "
+              "waters held rigid while the path leaves them free - see "
+              "check_path_shape.")
+
+
 def run(args) -> Dict[str, Any]:
     result: Dict[str, Any] = {}
     section = getattr(args, "section", None) or "neb"
@@ -158,6 +188,7 @@ def run(args) -> Dict[str, Any]:
     energies = getattr(NEB_result, "MEP_energies_dict", None)
     if energies:
         result["mep_energies"] = {str(k): float(v) for k, v in energies.items()}
+        check_path_shape(list(energies.values()))
 
     saddlepoint = getattr(NEB_result, "saddlepoint_fragment", None) if NEB_result is not None else None
     if saddlepoint is None:

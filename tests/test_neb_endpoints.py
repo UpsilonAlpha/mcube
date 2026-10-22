@@ -79,3 +79,21 @@ def test_the_message_names_the_first_offending_atoms(neb, tmp_path):
     assert "atom 1: reactant E:1:O, product E:2:O" in text
     assert "2 positions differ" in text
     assert "scan" in text          # points at how to build a product that passes
+
+
+class TestPathShape:
+    """A dip below both endpoints is either a hidden intermediate or the water artefact."""
+
+    def test_monotonic_rise_then_fall_is_quiet(self, neb, capsys):
+        neb.check_path_shape([0.0, 0.01, 0.03, 0.02, -0.01])
+        assert "WARNING" not in capsys.readouterr().out
+
+    def test_interior_dip_below_both_ends_warns(self, neb, capsys):
+        neb.check_path_shape([0.0, 0.02, -0.05, 0.02, -0.01])
+        out = capsys.readouterr().out
+        assert "below both" in out
+        assert "25.1 kcal/mol" in out      # (-0.01 - -0.05) Eh
+
+    def test_too_few_images_is_quiet(self, neb, capsys):
+        neb.check_path_shape([0.0, -1.0])
+        assert "WARNING" not in capsys.readouterr().out
