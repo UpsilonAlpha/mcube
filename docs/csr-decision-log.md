@@ -1408,6 +1408,27 @@ Starting QM/MM from run 1's frame therefore costs either laundering (re-run prep
 
 **What this settles about D89.** The dissociation was the absence of CSR_crystal's two restraints, not evidence against the docked pose - D89 ran with the carbonyl outside `cutoff: 3.0` and therefore unrestrained. Both of my earlier arguments that the pose is wrong are withdrawn: the carboxylate-Arg criterion (circular against questions 1-3) and the dissociation inference (an artefact of my own restraint set).
 
+**D94 - Is the 1.79 A Zn-Gln93 contact a real QM/MM minimum? (`CSR_gln93`, job 30394832)** (2026-10-22)
+
+Run 1's 1 ns frame has a usable substrate geometry and a six-coordinate zinc (D93). Before paying for new MD, test the cheaper question: does QM/MM reject the Gln93 contact, or is it a genuine minimum?
+
+**No preprocess re-run was needed** - the user's point, and correct. `preprocess.results.qm_atoms` are indices into `processed_pdb`, MD preserves atom order, so run 1's last frame is already indexed consistently. Gln93's side chain was added to the QM region by editing the config:
+
+| | before | after |
+| --- | --- | --- |
+| `qm_atoms` | 119 | **130** (added 1421-1431) |
+| `qm_residues.A` | 164, 88, 92, 90, 226 | + **93: GLN** |
+
+1421-1431 are Gln93's eleven non-backbone atoms (CB, HB2, HB3, CG, HG2, HG3, CD, NE2, HE21, HE22, OE1), read from `CSR_crystal/preprocess_results/finalsystem.pdb` - which is what run 1's `processed_pdb` points at, since run 1 reused CSR_crystal's prepared system rather than making its own. The side chain is neutral, so `charge: 2` is unchanged, and the CA-CB cut is ASH's standard amino-acid treatment, so `boundary_excluded` needs nothing.
+
+Run in a copied directory so run 1's config stays as the record of what produced the frame.
+
+**An optimisation alone cannot answer the local-minimum question** - it reports only the basin it started in. So the probe is two-stage: `qmmm` with `skip_equilibrate: true` for a relaxed QM/MM geometry (fast), then **`scan_zngln`** - a relaxed scan along Zn-Gln93 OE1 from 1.80 to 4.20 A, nine points - which gives the depth of the well and whether a barrier traps it. This is the test D53 ran on Asp92 and D58 on the carbonyl, so site.yaml already had the machinery. 25 ps of QM/MM MD was considered and dropped: it is slower than the scan and still two orders of magnitude short of the nanosecond timescale on which Bahena-Mendez report GFN2-xTB correcting over-coordination, so a negative result would mean nothing.
+
+**What each outcome means.** Gln93 moving out to >3 A under optimisation, or the scan showing 1.79 A is not a minimum: the contact is an MM artefact, QM/MM clears it, and run 1's frame is usable as a QM/MM starting point - no new MD needed. The scan showing a real well at ~1.9-2.1 A: a six-coordinate zinc is genuine on this surface, and the restrained MD run becomes the way to avoid biasing the site. Either way the answer is cheap.
+
+**Also landed for this**: `md` now accepts `--section` like qmmm/sp/scan/neb/ts (it was the only stage without one), so a second MD run inherits the first's inputs and both read one `preprocess.results.coordination` instead of a duplicated directory whose copy can drift - the D68 hazard. `run.slurm` passes it and keeps md's `<section>_results` convention, so `run.slurm md md` is unchanged.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
