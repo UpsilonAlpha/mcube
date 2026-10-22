@@ -181,6 +181,7 @@ Minimisation always runs, with the metal-site restraints already active. `mcube 
 | `metal_parameters` | `md.results.metal_parameters` | The metals' nonbonded set (`iod`, `1264`, `none`), applied to the MM system before the QMMMTheory is built, in qmmm, scan, neb, ts and sp alike. Until this, QM/MM ignored md's set and used Amber's stock metal radii. Under `1264` the C4 term is off for QM atoms, which the embedding already polarises |
 | `xtb_method` | `GFN2` | |
 | `xtb_runmode` | `inputfile` | `library` avoids file I/O at every step (needs xtb-python) |
+| `xtb_etemp`, `xtb_maxiter`, `xtb_pc_hardness` | ASH's (300 K, 500, 1000) | xTB SCC electronic temperature (K), SCC iteration limit, and the hardness of the MM point charges (large = bare point charges). For a highly charged metal in the QM region, electrostatic embedding can close the HOMO–LUMO gap and stop the SCC converging mid-MD (seen for Ln³⁺ aqua ions after a few ps): raise `xtb_etemp` (e.g. 1000–3000 K) or lower `xtb_pc_hardness`, or enlarge the QM region. Settable per scan/neb/ts/umbrella section too |
 | `temp`, `timestep`, `time` | | QM/MM MD settings (K, ps, ps) |
 | `traj_frequency` | 1000 | QM/MM MD save interval (steps) |
 | `skip_equilibrate` | `false` | Skip QM/MM MD |

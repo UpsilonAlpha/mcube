@@ -236,11 +236,20 @@ def make_qm(inputs: Dict[str, Any], cores: int, runmode: Optional[str] = None):
     runmode = runmode or inputs.get("xtb_runmode", "inputfile")
     # xTB's thread placement comes from the job script's environment, which it
     # inherits as a separate process.
+    # SCC controls, ASH's defaults unless set. A highly charged metal next to bare MM point
+    # charges can close the HOMO-LUMO gap and stop the SCC converging mid-MD (an Ln3+ aqua
+    # ion did after ~6 ps); a higher electronic temperature or softer point charges is the
+    # usual remedy.
+    scc = {key: inputs[name] for key, name in (("electronic_temp", "xtb_etemp"),
+                                               ("maxiter", "xtb_maxiter"),
+                                               ("hardness_PC", "xtb_pc_hardness"))
+           if inputs.get(name) is not None}
     return xTBTheory(xtbmethod=inputs.get("xtb_method", "GFN2"), numcores=cores, runmode=runmode,
-                     )
+                     **scc)
 
 
-QM_LEVEL_KEYS = ("qm_engine", "xtb_method", "xtb_runmode")
+QM_LEVEL_KEYS = ("qm_engine", "xtb_method", "xtb_runmode", "xtb_etemp", "xtb_maxiter",
+                 "xtb_pc_hardness")
 
 
 def qm_level_inputs(qmmm_inputs: Dict[str, Any], stage_inputs_: Optional[Dict[str, Any]]) -> Dict[str, Any]:

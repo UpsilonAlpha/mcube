@@ -230,6 +230,39 @@ constriction, MM→QM/MM reweighting, then xTB→DFT single-point reweighting.**
   and resubmitted on 51d2965: **30410512** Ca IOD, **30410513** Ca 1264, **30410514** La IOD,
   **30410515** La 1264, **30410516** Lu IOD, **30410517** Lu 1264.
   A 4 ns MM run measures structure (peak, CN); it is too short for La/Lu exchange kinetics.
+- **Results, 2026-10-23** (TIP3P box of 1376 waters, 300 K NPT, 4 ns, samples every 0.5 ps; CN to
+  the RDF minimum; exchange with t* = 2 ps). Ca IOD, Ca 1264 and La IOD hit the 6 h limit in MM
+  (6-h CPU allocations ran ~15–20 ns/day for this 4.1k-atom box), so they have no result yet.
+
+  | ion / set | peak Å (target) | CN (target) | first-shell residence | verdict |
+  |---|---|---|---|---|
+  | La³⁺ 1264, MM | 2.51 (2.52–2.56) | 9.65: 9 ×36 %, 10 ×64 % (~9.1) | 157 ps, 57 exchanges/ns | distance passes; CN +0.5, at the limit |
+  | Lu³⁺ IOD, MM | 2.33 (2.33–2.34) | 8.88 (8) | 145 ps | distance passes; CN +0.9 fails |
+  | Lu³⁺ 1264, MM | 2.33 (2.33–2.34) | 7.62: 7 ×38 %, 8 ×62 % (8) | 71 ps | both pass |
+  | La³⁺ 1264, xTB/MM 4.3 ps | 2.43 | 8.83 | none in the run | Ln–O 0.1 Å short |
+  | Lu³⁺ IOD box, xTB/MM 8 ps | 2.33 | 7.88 | none | both pass |
+  | Lu³⁺ 1264 box, xTB/MM 5.1 ps | 2.25 | 7.03 | none | Ln–O 0.08 Å short, CN −1 |
+
+  Three findings.
+  1. **For Lu³⁺, 12-6-4 is the better model, the opposite of the C15 expectation.** IOD over-hydrates
+     (CN 8.9 against 8); 12-6-4 gives 7.6. The expected 12-6-4 over-hydration shows instead for La³⁺
+     (9.65 against ~9.1). The parameter choice per ion waits for La IOD and both Ca runs.
+  2. **The MM first shells exchange water about 10–100× faster than experiment**: residence
+     70–160 ps against ~2–25 ns for heavy Ln³⁺ (Cossy, Helm & Merbach 1988; Helm & Merbach 2005).
+     So in MM umbrella windows of several ns, hydration is sampled rather than frozen (the C15 worry
+     about frozen windows does not apply to MM). But a shell that is this labile is also probably
+     easier to strip, so the MM desolvation barrier is suspect, and correcting it is the reason for
+     the QM/MM leg. Unsettled: whether the speed is the model's or the t* = 2 ps rule's (Laage &
+     Hynes); a stable-states count would decide.
+  3. **xTB/MM of Ln³⁺ aqua ions loses SCC convergence after a few ps.** In La 1264 (step 6328) and
+     Lu 1264 (step 7142) xTB stopped with "SCC iterator did not converge": the HOMO–LUMO gap had
+     fallen to 0.0006 and 0.0009 Eh, with fractional occupations of the frontier orbitals. An
+     Ln³⁺–water cluster should have a large gap. The likeliest cause is the known boundary problem
+     of electrostatic embedding: a +3 QM region with low-lying Ln 5d orbitals next to bare positive
+     MM charges (the H-bonded second-shell water hydrogens). Every QM/MM umbrella window would meet
+     the same failure. Remedies in order: raise xTB's electronic temperature, soften the MM point
+     charges (ASH `hardness_PC`), and put the second shell in the QM region (Rode-style QMCF
+     practice). The xTB/MM distances above come from short runs and are provisional.
 
 ## Findings
 

@@ -292,7 +292,13 @@ def qmmm_config(args):
             "traj_frequency": args.every, "skip_optimize": True,
             "metal_parameters": str(mm["set"])}},
     }
-    out = run_dir / "qmmm" / "config.yaml"
+    for key, value in (("xtb_etemp", args.etemp), ("xtb_pc_hardness", args.pc_hardness)):
+        if value is not None:
+            config["qmmm"]["inputs"][key] = value
+    if args.shell2:
+        # Second shell in the QM region too: preprocess takes every water inside this cutoff
+        config["preprocess"]["inputs"]["cutoff"] = args.shell2
+    out = run_dir / args.dir / "config.yaml"
     out.parent.mkdir(exist_ok=True)
     out.write_text(yaml.safe_dump(config, sort_keys=False))
     print(out)
@@ -334,6 +340,10 @@ def main():
     q.add_argument("--ps", type=float, default=10.0, help="QM/MM MD length")
     q.add_argument("--every", type=int, default=20, help="steps between saved frames")
     q.add_argument("--cores", type=int, default=4)
+    q.add_argument("--etemp", type=float, help="xTB electronic temperature (K)")
+    q.add_argument("--pc-hardness", type=float, help="xTB hardness of the MM point charges")
+    q.add_argument("--shell2", type=float, help="QM cutoff (A) taking in the second shell")
+    q.add_argument("--dir", default="qmmm", help="subdirectory of --run for this QM/MM run")
     args = p.parse_args()
     {"run": run, "analyse": analyse_traj, "qmmm-config": qmmm_config}[args.mode](args)
 
