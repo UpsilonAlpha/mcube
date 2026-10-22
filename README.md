@@ -2,7 +2,7 @@
 
 A pipeline for protein–ligand systems, often metalloproteins, built on [ASH](https://github.com/RagnarB83/ash). It runs:
 
-1. **preprocess**: ligand parameterisation (OpenFF), protonation and solvation (explicit water, implicit solvent or an explicit lipid bilayer), metal-coordination bond constraints and QM-region selection
+1. **preprocess**: ligand parameterisation (OpenFF), protonation and solvation (explicit water, implicit solvent or an explicit lipid bilayer), metal-coordination restraints and QM-region selection
 2. **md**: OpenMM minimisation, optional gentle warm-up, NPT box equilibration and production MD
 3. **qmmm**: xTB/MM MD and geometry optimisation
 4. **scan**: relaxed QM/MM distance scan (builds intermediates/products in the reactant's box)
@@ -86,9 +86,9 @@ Restraints rather than rigid constraints, for three reasons: many constraints sh
 
 Expect some residual drift even so. Gervasoni report the coordination number still rising by recruiting waters *with* restraints on, and rely on the QM/MM stage to recover the geometry — which is what `qmmm` does here. `md` prints the coordination sphere before and after the run, so a contact that appeared or vanished is visible rather than inherited silently.
 
-**Restraints do not silently become constraints.** `md` writes the pairs it restrained to `md.results.restraints`. If `preprocess` is then re-run and its metal-contact detection would freeze one of them, it stops and asks which you meant: `constraint_exclude_residues` to leave the contact free, or `acknowledge_restrained` to say the coordination is real. A restraint says a distance is imposed; a constraint on a detected contact says it is structural, and once the second has happened nothing downstream can tell them apart.
+**A distance you imposed does not silently become a measurement.** `md` records the restraints *you* asked for in `md.results.restraints`, separately from the detected coordination it restrained (`md.results.coordination_restraints`). If `preprocess` is then re-run and its detection would report one of yours as a found contact, it stops and asks which you meant: `constraint_exclude_residues` to leave the contact free, or `acknowledge_restrained` to say the coordination is real. Holding a contact at the distance it already had asserts nothing, so the automatic restraints are not checked — only a distance someone chose can look like structure to a later run.
 
-**Atom selectors.** Wherever an input takes atoms (`md` `constraints`/`restraints`; `actregion_origin`, `opt_constraints`; scan `atoms`/`constraints`; ts `hessian_atoms`/`monitor`; neb `hessian_atoms`/`partial_hessian_atoms`), each atom can be a 0-based index or a `"chain:resid:atom"` string matched against the stage's structure, e.g. `"B:1:ZN"` or `"A:88:NE2"`. Numbers in the same entry (distances, force constants) are left alone, so `restraints: [["B:1:ZN", "C:1:O2x", 2.2, 20.0]]` works. Selectors keep a config valid when the solvent box (and so every index after the solute) changes, and make configs readable for new systems. The resolved indices are printed.
+**Atom selectors.** Wherever an input takes atoms (`md` `restraints`; `actregion_origin`, `opt_constraints`; scan `atoms`/`constraints`; ts `hessian_atoms`/`monitor`; neb `hessian_atoms`/`partial_hessian_atoms`), each atom can be a 0-based index or a `"chain:resid:atom"` string matched against the stage's structure, e.g. `"B:1:ZN"` or `"A:88:NE2"`. Numbers in the same entry (distances, force constants) are left alone, so `restraints: [["B:1:ZN", "C:1:O2x", 2.2, 20.0]]` works. Selectors keep a config valid when the solvent box (and so every index after the solute) changes, and make configs readable for new systems. The resolved indices are printed.
 
 **Chain IDs after solvation.** ASH writes its PDB files with OpenMM's `PDBFile.writeFile` and no `keepIds`, so `processed_pdb` (`finalsystem.pdb`) carries OpenMM's own chain letters: `A`, `B`, `C`, … in chain order, whatever the input used. An input with chains `R` and `P` comes back as `A` and `B`, and in a membrane system the lipids, water and ions take the letters after those. This is true of every solvation mode — it simply goes unnoticed when a single input chain is already `A`. So:
 - `residue_variants` and `require_his_variants` are matched against the **input** PDB, before solvation, so they use the input's chain IDs;
@@ -120,24 +120,24 @@ A stale chain ID fails loudly in some places and silently in others: a `chain:re
 | `pH` | 8.0 explicit / 7.0 implicit | Protonation pH |
 | `solvent_padding` | 10.0 | Water padding in Å (explicit only) |
 | `ionic_strength` | 0.1 | NaCl concentration in M (explicit only) |
-| `metals` | none | Element symbols treated as metals. Empty or absent (e.g. protein–protein complexes): no coordination constraints and no QM region. |
+| `metals` | none | Element symbols treated as metals. Empty or absent (e.g. protein–protein complexes): no coordination restraints and no QM region. |
 | `cutoff` | required with `metals` | Metal–donor distance cutoff (Å) |
 | `donor_elements` | `[N, O, S]` | Elements that count as metal donors (matched on element, not atom name) |
 | `require_his_variants` | `false` | Fail if any histidine has no tautomer in `residue_variants`. A warning is printed either way. |
 | `extra_qm_residues` | none | `{chain: [resid, ...]}`: residues added to the QM region on top of the metal's coordination sphere (e.g. catalytic Lys/Arg) |
 | `constraint_exclude_residues` | none | `{chain: [resid, ...]}`: residues whose metal–donor distance is left unconstrained during MD (e.g. the substrate) |
 | `acknowledge_restrained` | none | `[["B:1:ZN", "C:1:O2x"], ...]`: pairs in `md.results.restraints` that this run may still constrain. Without it, preprocess **refuses**, because an imposed distance would become an apparently structural one |
-| `exclude_residues` | none | `{chain: [resid, ...]}`: coordinating residues left out of the QM region. Their metal–donor bond constraints are still applied in classical MD. Not the same as `boundary_excluded`, which lists the non-amino-acid QM atoms that ASH should not place link atoms on. |
+| `exclude_residues` | none | `{chain: [resid, ...]}`: coordinating residues left out of the QM region. Their metal–donor restraints are still applied in classical MD. Not the same as `boundary_excluded`, which lists the non-amino-acid QM atoms that ASH should not place link atoms on. |
 | `backbone_atoms` | standard backbone | Atoms of amino-acid QM residues that stay in MM |
 | `amino_acids` | 20 standard + Amber variants | Residues cut at CA–CB. Any other residue (metals, ligands, waters) is put fully into the QM region and excluded from boundary detection. |
 
-`results`: `processed_pdb` (`finalsystem.pdb`), `ligand_xml`, `ligand_resname`, `qm_residues` (`{chain: {resid: resname}}`), `qm_atoms` and `boundary_excluded` (atom indices into `processed_pdb`), and `constraints` (metal–donor atom-index pairs).
+`results`: `processed_pdb` (`finalsystem.pdb`), `ligand_xml`, `ligand_resname`, `qm_residues` (`{chain: {resid: resname}}`), `qm_atoms` and `boundary_excluded` (atom indices into `processed_pdb`), and `coordination` — the metal–donor contacts it detected, as `[[i, j, d_Å, k_kcal/mol/Å²], …]`, which `md` restrains. Both numbers are written out, so the distance each contact is held at and the force constant are visible and editable per pair before `md` runs.
 
 ### `md.inputs`
 
 | Key | Default | Description |
 | --- | --- | --- |
-| `pdb_file`, `constraints`, `ligand_xml`, `default_forcefields` | from preprocess | Overrides |
+| `pdb_file`, `ligand_xml`, `default_forcefields` | from preprocess | Overrides |
 | `cores` | | OpenMM CPU threads |
 | `platform`, `properties` | `CPU` | OpenMM platform, e.g. `CUDA` with `{Precision: mixed}` on a GPU node (see `docs/running-on-bunya.md`) |
 | `temp` | | Temperature (K) |
@@ -155,10 +155,9 @@ A stale chain ID fails loudly in some places and silently in others: a `chain:re
 | `skip_nvt` | `false` | Skip production MD |
 | `nvt_timestep`, `nvt_time` | | Production timestep and length (ps) |
 | `traj_frequency` | 1000 | Production trajectory save interval (steps) |
-| `constraints` | none | *Rigid* fixed distances as `[[i, j], …]`, for a system that genuinely wants an inflexible bond. Detected coordination is restrained instead, so this is normally left unset. (ASH silently ignores `[i, j, d]` entries with an explicit distance.) |
-| `restraints` | detected coordination | Harmonic distance restraints `[[i, j, d_Å, k_kcal/mol/Å²], …]`, active during minimisation, warm-up, NPT and NVT. Every contact `preprocess` detected is restrained automatically at its starting distance and 50 kcal/mol/Å² (0.11 Å RMS at 300 K), so this is only for extra restraints — pulling a substrate into place, say. An entry naming a pair that was detected replaces the automatic one. Edit `preprocess.results.constraints` to change which contacts are held |
+| `restraints` | `preprocess.results.coordination` | Harmonic distance restraints `[[i, j, d_Å, k_kcal/mol/Å²], …]`, active during minimisation, warm-up, NPT and NVT. Everything `preprocess` detected is already restrained, so this is only for *extra* restraints — pulling a substrate into place, say. An entry naming a pair `preprocess` detected replaces that row. To change how the metal site itself is held, edit `preprocess.results.coordination`: its rows carry both the distance and the force constant |
 
-Minimisation always runs. Metal–donor `constraints` are applied as fixed-distance OpenMM constraints.
+Minimisation always runs, with the metal-site restraints already active.
 
 `results`: `minimized`, `gentle`, `forcefields`, `trajfile`, `lastframe`, `csv`, `coordination_restraints` — the detected contacts this run restrained, kept apart from `restraints` (the ones you chose) because only a distance you chose can look like structure to a later `preprocess` — and `coordination_start` / `coordination_end`, the metal's coordination sphere before and after the run, with md printing what changed between them. A donor that appears was outside `cutoff` and so was never restrained; widening `cutoff` holds it. In explicit solvent, `trajfile` and `lastframe` are the reimaged files.
 
@@ -361,7 +360,7 @@ All are in `scripts/`:
 
 ## Notes and limitations
 
-- **Atom order.** QM atoms, constraints and `actregion_origin` are atom indices into `processed_pdb`. Any structure passed to later stages must keep that atom order, which OpenMM and mdtraj outputs from this pipeline do.
-- **Fixed-distance metal constraints.** Metal–donor constraints hold each bond at its initial length during classical MD. In QM/MM, the QM region is free.
+- **Atom order.** QM atoms, restraints and `actregion_origin` are atom indices into `processed_pdb`. Any structure passed to later stages must keep that atom order, which OpenMM and mdtraj outputs from this pipeline do.
+- **Metal-site restraints.** Metal–donor contacts are held near their initial length by harmonic restraint during classical MD. In QM/MM, the QM region is free.
 - **NPT with implicit solvent.** NPT is not possible with implicit solvent and is skipped automatically.
 - **No checkpointing.** Each stage reruns from the start. Results are saved after each step, so partial results survive a crash.

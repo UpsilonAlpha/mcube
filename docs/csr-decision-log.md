@@ -1335,13 +1335,15 @@ Four findings:
 - **My proposal to restrain "the substrate's heavy atoms and the residues' donor atoms" was wrong** - inconsistent special-casing of exactly the kind the user has repeatedly rejected. One rule applies inside the radius regardless of what the atom belongs to.
 - **D85 excluded the substrate from the held set. Wrong on the literature (Lisa) as well as on the outcome (D89).**
 
-**Settled design (2026-10-22, after the user cut the detour short).** Every metal-donor contact `preprocess` detects within one `cutoff` is held by a **harmonic distance restraint at the distance the input structure already has**, 50 kcal/mol/A^2, for all MM stages, released for QM/MM, with IOD metal radii underneath and 1 ns of NVT before `qmmm` - ASH 2b's length, and Gervasoni's protocol in kind. Pairs come from `preprocess.results.constraints`, the list printed into the config, so editing that list is what changes the run.
+**Settled design (2026-10-22, after the user cut the detour short).** Every metal-donor contact `preprocess` detects within one `cutoff` is held by a **harmonic distance restraint at the distance the input structure already has**, 50 kcal/mol/A^2, for all MM stages, released for QM/MM, with IOD metal radii underneath and 1 ns of NVT before `qmmm` - ASH 2b's length, and Gervasoni's protocol in kind. Rows come from `preprocess.results.coordination`, printed into the config with their distance and force constant, so editing them is what changes the run.
+
+**`md.inputs.constraints` is gone too** (2026-10-22): two keys named for the same job confused the one that matters, and harmonic restraints are now simply what mcube does. `preprocess` writes its detected contacts to **`preprocess.results.coordination`** as full `[i, j, d, k]` rows - the measured distance and the 50 kcal/mol/A^2 constant both literally in the config, editable per pair before `md` runs, so the force constant is transparent without a config key for it. `md.inputs.restraints` is now only for *extra* restraints, and an entry naming a detected pair replaces that row.
 
 **This is stock mcube with three changes**, and the whole restraint excursion is worth exactly those:
 
 | change | why it survives |
 | --- | --- |
-| detected coordination restrained, not rigidly constrained | ASH sanctions it outright; avoids both constraint failures (over-determination at one centre, and OpenMM refusing a constraint on a massless atom); a real bond vibrates. `md.inputs.constraints` stays for anyone who wants rigid |
+| detected coordination restrained, not rigidly constrained | ASH sanctions it outright; avoids both constraint failures (over-determination at one centre, and OpenMM refusing a constraint on a massless atom); a real bond vibrates |
 | IOD metal LJ parameters as the default | Amber's stock Zn-O minimum sits at ~1.69 A against 2.0-2.1 A measured; ASH attributes spurious binding to exactly these terms. Does not fix over-coordination and is not asked to |
 | coordination sphere reported before and after MD | would have caught Gln93 on day one |
 

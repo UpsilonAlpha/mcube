@@ -22,7 +22,7 @@ import yaml
 
 from mcube.preprocess import _locked
 
-SELECTOR_KEYS = ("atoms", "atoms2", "opt_constraints", "constraints",
+SELECTOR_KEYS = ("atoms", "atoms2", "opt_constraints", "constraints", "coordination",
                  "monitor", "hessian_atoms", "partial_hessian_atoms",
                  "actregion_origin")
 
