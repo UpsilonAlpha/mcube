@@ -117,11 +117,14 @@ def main():
                          .value_in_unit(unit.angstrom))
     pos = pdb.getPositions(asNumpy=True)
     my_xyz = np.asarray(pos.value_in_unit(unit.angstrom))
-    key = lambda x: tuple(np.round(x, 2))
-    where = {key(x): i for i, x in enumerate(my_xyz)}
-    order = [where[key(x)] for x in ref_xyz]       # ref atom k is mcube atom order[k]
-    if sorted(order) != list(range(len(my_xyz))):
-        raise SystemExit("could not match every prmtop atom to a PDB atom by position")
+    # tleap also translates the system, so match after removing the centroid shift
+    ref_xyz = ref_xyz - ref_xyz.mean(axis=0) + my_xyz.mean(axis=0)
+    from scipy.spatial import cKDTree
+    dist, order = cKDTree(my_xyz).query(ref_xyz)   # ref atom k is mcube atom order[k]
+    order = [int(i) for i in order]
+    if sorted(order) != list(range(len(my_xyz))) or dist.max() > 0.01:
+        raise SystemExit(f"could not match every prmtop atom to a PDB atom by position "
+                         f"(max mismatch {dist.max():.3f} A)")
     ion_ref = order.index(ion)
 
     rows = []
