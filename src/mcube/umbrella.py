@@ -80,6 +80,7 @@ DEFAULTS = {
     "cv_frequency": 25,       # steps
     "traj_frequency": 25000,  # steps
     "platform": "CPU",
+    "frames_at": "auto",      # MM windows that save full-system frames (see frames_wanted)
 }
 
 
@@ -229,12 +230,18 @@ def image_ion(coords, ion: int, reference, masses, box) -> np.ndarray:
     return coords
 
 
-def bias_force(ion: int, reference, k: float, z0: float, cylinder=None, masses=None):
+def bias_force(ion: int, reference, k: float, z0: float, cylinder=None, masses=None,
+               cn_groups=None, cn_cutoff: float = 3.0):
     """The umbrella: 0.5 k (z - z0)^2 + 0.5 k_cyl max(0, r - R)^2 (k in kcal/mol/A^2, A).
 
     The reference centre is weighted by element masses (`masses`, per atom), not by
     the System's, which carry repartitioned hydrogen masses: the analysis computes
     the same centre from the trajectory, so the two must agree.
+
+    `cn_groups` ({name: atoms}) adds a coordination number per group as a further
+    collective variable, sum_j 1/(1 + (r_ij/r0)^12) with r0 = `cn_cutoff` (A): 1 inside,
+    0 outside, 1/2 at r0. They do not enter the energy; they are there so each window can
+    log its hydration state as cheaply as it logs z, and could be biased later.
     """
     import openmm
     z = openmm.CustomCentroidBondForce(2, "z2-z1")
@@ -251,6 +258,14 @@ def bias_force(ion: int, reference, k: float, z0: float, cylinder=None, masses=N
                                  " + 0.5*mcube_cyl_k*max(0, rcv-mcube_cyl_r)^2")
     force.addCollectiveVariable("zcv", z)
     force.addCollectiveVariable("rcv", r)
+    for name, atoms in (cn_groups or {}).items():
+        cn = openmm.CustomBondForce("1/(1+(r/r0)^12)")
+        cn.addPerBondParameter("r0")
+        for j in atoms:
+            if int(j) != int(ion):
+                cn.addBond(int(ion), int(j), [float(cn_cutoff) / 10.0])
+        cn.setUsesPeriodicBoundaryConditions(True)
+        force.addCollectiveVariable(f"cn_{name}", cn)
     force.addGlobalParameter("mcube_us_k", float(k) * TO_KJ_NM2)
     force.addGlobalParameter("mcube_us_z0", float(z0) / 10.0)
     force.addGlobalParameter("mcube_cyl_k", float(cyl.get("k", 0.0)) * TO_KJ_NM2)
@@ -374,8 +389,52 @@ def write_coords_pdb(topology, coords_A, filename: str) -> str:
 
 
 def cv_now(force, context):
-    z, r = force.getCollectiveVariableValues(context)
-    return 10.0 * z, 10.0 * r
+    """(z, r) in A, then the coordination numbers in the order the groups were given."""
+    values = force.getCollectiveVariableValues(context)
+    return (10.0 * values[0], 10.0 * values[1], *values[2:])
+
+
+WATER_NAMES = ("HOH", "WAT", "TIP3")
+
+
+def cn_atom_groups(topology, ion: int) -> Dict[str, List[int]]:
+    """Oxygens a permeating ion can be coordinated by: water, and protein (backbone and side
+    chain). Lipid and other oxygens are left out; they are not part of the path."""
+    from .preprocess import AMINO_ACIDS
+    water, protein = [], []
+    for atom in topology.atoms():
+        if atom.index == ion or atom.element is None or atom.element.symbol != "O":
+            continue
+        if atom.residue.name in WATER_NAMES:
+            water.append(atom.index)
+        elif atom.residue.name in AMINO_ACIDS:
+            protein.append(atom.index)
+    return {"water": water, "protein": protein}
+
+
+def cn_cutoff(inputs, preprocess) -> float:
+    """r0 of the coordination numbers: `cn_cutoff`, else preprocess's metal cutoff, else 3.0 A."""
+    return float(inputs.get("cn_cutoff") or (preprocess.get("inputs") or {}).get("cutoff") or 3.0)
+
+
+def frames_wanted(config: str, section: str, inputs, z0: float) -> bool:
+    """
+    Whether a window saves full-system frames. WHAM needs only cv.csv; frames are for
+    `energies`, which the stitch needs at the two ends of the QM/MM range and the DFT
+    reweighting needs in the QM/MM windows. So: always for QM/MM windows; for MM windows
+    at the z0 values in `frames_at`, or with `frames_at: auto` (the default) at the first
+    and last centres of the `umbrella_qmmm` section, if there is one.
+    """
+    if str(inputs.get("engine", "mm")).lower() == "qmmm":
+        return True
+    wanted = inputs.get("frames_at", "auto")
+    if wanted == "auto":
+        qm = load_section(config, "umbrella_qmmm").get("inputs")
+        if not qm:
+            return False
+        centres = window_centres(umbrella_inputs(config, "umbrella_qmmm"))
+        wanted = [centres[0], centres[-1]]
+    return any(abs(float(z) - z0) < 1e-6 for z in (wanted or []))
 
 
 # ==============================
@@ -403,7 +462,9 @@ def run_pull(config: str, section: str, inputs, preprocess, md) -> Dict[str, Any
     system, _ = mm_system(pdb, inputs, preprocess, md)
     z_start = float(cv_values(coords, ion, reference, masses, box)[0][0])
     k = float(inputs.get("pull_k", inputs["k"]))
-    bias = bias_force(ion, reference, k, z_start, inputs.get("cylinder"), masses)
+    groups = cn_atom_groups(pdb.topology, ion)
+    bias = bias_force(ion, reference, k, z_start, inputs.get("cylinder"), masses,
+                      groups, cn_cutoff(inputs, preprocess))
     system.addForce(bias)
     simulation, temp = make_simulation(pdb, system, coords, inputs, md)
     print("[STEP] Minimisation...")
@@ -422,7 +483,7 @@ def run_pull(config: str, section: str, inputs, preprocess, md) -> Dict[str, Any
     seeds, z0, t = {}, z_start, 0.0
     with open("pull_cv.csv", "w", newline="") as fh:
         out = csv.writer(fh)
-        out.writerow(["time_ps", "z0_A", "z_A", "r_A"])
+        out.writerow(["time_ps", "z0_A", "z_A", "r_A"] + [f"cn_{g}" for g in groups])
         for a, b in legs:
             direction = 1.0 if b >= a else -1.0
             n = int(math.ceil(abs(b - a) / step_dz)) if b != a else 0
@@ -432,8 +493,9 @@ def run_pull(config: str, section: str, inputs, preprocess, md) -> Dict[str, Any
                 simulation.context.setParameter("mcube_us_z0", z0 / 10.0)
                 simulation.step(chunk)
                 t += chunk * dt
-                z, r = cv_now(bias, simulation.context)
-                out.writerow([round(t, 4), round(z0, 4), round(z, 4), round(r, 4)])
+                z, r, *cn = cv_now(bias, simulation.context)
+                out.writerow([round(t, 4), round(z0, 4), round(z, 4), round(r, 4)]
+                             + [round(c, 3) for c in cn])
                 lo, hi = sorted((previous, z0))
                 for index, c in enumerate(centres):
                     key = window_key(index)
@@ -485,7 +547,9 @@ def run_mm_window(config, section, inputs, preprocess, md, index: int) -> Dict[s
     start = write_coords_pdb(pdb.topology, coords, "start.pdb")
 
     system, _ = mm_system(pdb, inputs, preprocess, md)
-    bias = bias_force(ion, reference, float(inputs["k"]), z0, inputs.get("cylinder"), masses)
+    groups = cn_atom_groups(pdb.topology, ion)
+    bias = bias_force(ion, reference, float(inputs["k"]), z0, inputs.get("cylinder"), masses,
+                      groups, cn_cutoff(inputs, preprocess))
     system.addForce(bias)
     prep_in = preprocess.get("inputs") or {}
     restraint, shell = (coordination_force(start, prep_in) if prep_in.get("metals") else (None, []))
@@ -507,26 +571,39 @@ def run_mm_window(config, section, inputs, preprocess, md, index: int) -> Dict[s
 
     n_prod = int(round(float(inputs["time"]) / dt))
     freq = int(inputs["traj_frequency"])
-    simulation.reporters.append(DCDReporter("window.dcd", freq))
+    frames = frames_wanted(config, section, inputs, z0)
+    if frames:
+        simulation.reporters.append(DCDReporter("window.dcd", freq))
     simulation.reporters.append(StateDataReporter("window.csv", freq, step=True, time=True,
                                                   potentialEnergy=True, temperature=True,
                                                   volume=True))
-    print(f"[STEP] Sampling, {inputs['time']} ps, CV every {chunk} steps...")
+    print(f"[STEP] Sampling, {inputs['time']} ps, CV every {chunk} steps, "
+          f"{'frames every ' + str(freq) + ' steps' if frames else 'no full-system frames'}...")
+    cns = []
     with open("cv.csv", "w", newline="") as fh:
         out = csv.writer(fh)
-        out.writerow(["time_ps", "z_A", "r_A"])
+        out.writerow(["time_ps", "z_A", "r_A"] + [f"cn_{g}" for g in groups])
         for i in range(n_prod // chunk):
             simulation.step(chunk)
-            z, r = cv_now(bias, simulation.context)
-            out.writerow([round((i + 1) * chunk * dt, 4), round(z, 4), round(r, 4)])
+            z, r, *cn = cv_now(bias, simulation.context)
+            cns.append(cn)
+            out.writerow([round((i + 1) * chunk * dt, 4), round(z, 4), round(r, 4)]
+                         + [round(c, 3) for c in cn])
     last = write_state_pdb(simulation, pdb.topology, "lastframe.pdb")
 
     after = coordination_shell(last, prep_in) if prep_in.get("metals") else []
+    cns = np.array(cns) if cns else np.zeros((0, len(groups)))
     entry = {"z0": z0, "k": float(inputs["k"]), "engine": "mm", "seed": seed, "start": start,
-             "cv": Path("cv.csv").resolve().as_posix(), "dcd": Path("window.dcd").resolve().as_posix(),
+             "cv": Path("cv.csv").resolve().as_posix(),
+             "frames": frames, "dcd": Path("window.dcd").resolve().as_posix() if frames else None,
              "lastframe": last, "equilibrate_ps": float(inputs["equilibrate"]),
              "time_ps": float(inputs["time"]), "timestep": dt,
-             "traj_frequency": freq, "shell_start": len(shell), "shell_end": len(after),
+             "traj_frequency": freq if frames else None,
+             "shell_start": len(shell), "shell_end": len(after),
+             "cn_cutoff": cn_cutoff(inputs, preprocess),
+             "cn": {g: {"mean": round(float(cns[:, k].mean()), 3) if len(cns) else None,
+                        "std": round(float(cns[:, k].std()), 3) if len(cns) else None}
+                    for k, g in enumerate(groups)},
              "done": True}
     save_nested(config, section, ["windows", key], entry)
     return entry
@@ -691,6 +768,9 @@ def run_energies(config, section, inputs, preprocess, md, index: int, level: str
     entry = section_windows(config, section).get(key) or {}
     if not entry.get("done"):
         raise ValueError(f"window {key} of {section} has not finished")
+    if not entry.get("dcd"):
+        raise ValueError(f"window {key} of {section} saved no full-system frames (frames: false). "
+                         "Add its z0 to `frames_at` and run the window again.")
     traj = mdtraj.load(entry["dcd"], top=entry["lastframe"])[::max(1, int(stride))]
     pdb = PDBFile(entry["lastframe"])
     ion = ion_atom(pdb.topology, inputs["ion"])

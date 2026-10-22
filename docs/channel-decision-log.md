@@ -192,6 +192,32 @@ constriction, MM→QM/MM reweighting, then xTB→DFT single-point reweighting.**
   preprocess), restrains it at the distances it has for `equilibrate`, then releases it (C8).
   QM/MM windows start from the finished MM window at the same z0.
 
+**C15 – Desolvation is validated in bulk first, and watched in every window.** (user, 2026-10-22:
+"especially the key desolvation step with reference to the literature")
+- Bulk targets (experiment): Ca²⁺ Ca–O 2.46 Å, CN 8 (Jalilehvand et al., *JACS* 2001, 123, 431);
+  La³⁺ 2.52–2.56 Å, CN ≈ 9; Lu³⁺ 2.33–2.34 Å, CN ≈ 8 (Persson et al., *Chem. Eur. J.* 2008,
+  10.1002/chem.200701281; compiled in Alanís-Manzano et al., *ACS Omega* 2024,
+  10.1021/acsomega.4c04947). Water exchange: heavy Ln³⁺ 4e7–5e8 s⁻¹ (Cossy, Helm & Merbach,
+  *Inorg. Chem.* 1988, 27, 1973; Helm & Merbach, *Chem. Rev.* 2005, 10.1021/cr030726o); no direct
+  Lu³⁺ value; Ca²⁺ fast and uncertain (ps to tens of ps; Koskamp et al. 2019, 10.1021/acs.jpcc.9b06403).
+- What the models are known to do (Li/Merz papers): for Ca²⁺ in TIP3P, IOD gives 2.45 Å, CN 8.0 but a
+  hydration free energy ~17 kcal/mol too weak; 12-6-4 gives 2.46 Å, CN 8.0 and the right HFE. For
+  M³⁺ the IOD set under-binds by ~80 kcal/mol on average; 12-6-4 fixes HFE and distance but gives
+  Ln³⁺ CN ≈ 9–10, so **Lu³⁺ under 12-6-4 is expected to over-hydrate** (target 8), which would
+  inflate its desolvation cost. Which set the PMF uses is decided by the bulk results, not assumed.
+- Bulk protocol (`docs/channel/bulk/`): per ion and set, MM NPT in TIP3P with the RDF first peak
+  and minimum, CN from the minimum, and first-shell exchange counted with the Impey t* = 2 ps
+  rule; then xTB/MM MD of the same box through mcube's preprocess + qmmm, analysed the same way.
+  Pass: peak within ±0.05 Å of experiment, CN within ±0.5. Exchange within ~10× of experiment;
+  the first short runs give structure only, and a long run (≥ 100 ns, larger box) is needed for
+  kinetics.
+- In the channel: every window records CN_water and CN_protein-O around the ion. A 1D z PMF is
+  kept unless constriction windows show bimodal CN histograms, CN that depends on the seeding
+  direction, or fewer than ~5 exchanges per window; then the constriction goes to a 2D (z, CN)
+  treatment or replica exchange. QM/MM windows (ps) cannot exchange water at all, so they are
+  seeded from MM windows and stitched per CN state; they correct the chemistry of a given
+  hydration state and do not sample desolvation.
+
 ## Findings
 
 **F1 – `qmmm` did not apply `metal_parameters`.** (2026-10-22; fixed on branch `umbrella`)

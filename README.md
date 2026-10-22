@@ -322,8 +322,10 @@ for a first run: what each step does, what to check, and common mistakes.
 | `pull_speed`, `pull_k` | 10 Å/ns, `k` | The steered run that seeds the windows: z0 moves from the ion's position to the nearer end of the range, then across it |
 | `equilibrate`, `time` | 100, 5000 ps | Per window. MM: equilibration holds the ion's shell, as `preprocess` would detect it in that window's starting frame, then releases it. QM/MM: never restrained; equilibration is the discarded start of one run |
 | `timestep` | 0.004 ps | 0.001 for QM/MM (no constraints there) |
-| `cv_frequency` | 25 | Steps between CV samples (`cv.csv`) |
-| `traj_frequency` | 25000 | Steps between saved frames (`window.dcd`), which `energies` scores |
+| `cv_frequency` | 25 | Steps between CV samples (`cv.csv`: z, r and, in MM windows, the ion's coordination numbers by water and by protein oxygens) |
+| `cn_cutoff` | `preprocess.inputs.cutoff`, else 3.0 | r0 (Å) of those coordination numbers, Σ 1/(1+(r/r0)¹²). Use the first minimum of the ion–O RDF in bulk |
+| `traj_frequency` | 25000 | Steps between saved full-system frames (`window.dcd`), which only `energies` reads |
+| `frames_at` | `auto` | MM windows (by z0, Å) that save frames at all. `auto`: the first and last centres of the `umbrella_qmmm` section, which is where `stitch` needs them; none if there is no such section. QM/MM windows always save frames. WHAM needs only `cv.csv`, so this keeps the MM leg to megabytes per window |
 | `platform`, `properties` | `CPU` | OpenMM platform |
 | `qm_waters` | the detected shell | QM/MM: number of nearest waters in the QM region |
 | `qm_residues` | none | QM/MM: `{chain: [resid, …]}` always in the QM region. Keep the QM composition fixed across the QM/MM leg, so its energy offset cancels in `stitch` |
@@ -343,7 +345,7 @@ mcube umbrella config.yaml wham [--section S] [--reweight dft]  # PMF; dft: weig
 mcube umbrella config.yaml stitch                                # BAR MM <-> xTB/MM at both ends of the QM/MM range
 ```
 
-- **Results** go to `<section>.results.windows.<NNN>` (z0, seed, cv, dcd, lastframe, done…), `pull`, `pmf` and `stitch`, each written with a locked read-modify-write, so concurrent window jobs do not overwrite each other. Each window runs in `./<section>_<NNN>/`.
+- **Results** go to `<section>.results.windows.<NNN>` (z0, seed, cv, `frames` and dcd, lastframe, mean and spread of each coordination number, done…), `pull`, `pmf` and `stitch`, each written with a locked read-modify-write, so concurrent window jobs do not overwrite each other. Each window runs in `./<section>_<NNN>/`.
 - **energies** scores every `--stride`-th saved frame without the bias. For `xtb`/`dft` each frame's QM region follows `--qm-section`'s rule, so MM and QM/MM frames meet the same Hamiltonian. Frames are re-imaged about the reference chains first.
 - **wham** is a self-contained numpy WHAM with a block bootstrap. It warns where neighbouring windows overlap by less than 0.05. With `--reweight dft` it uses the frames that have both `energies_dft` and `energies_xtb`, weighting each by exp(−βΔE) (Li et al., *JCTC* 2018, 14, 5583).
 - **stitch** follows Heimdal & Ryde (*PCCP* 2012): the constriction is sampled directly at xTB/MM, and the two ends are joined to the MM profile by BAR free energies there. The cycle closure — QM/MM rise across the range minus (MM rise + ΔA_hi − ΔA_lo) — is reported, and shows as the step at the far end.

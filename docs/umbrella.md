@@ -129,6 +129,7 @@ start with a large stride.
 | bulk is flat | both ends of the PMF | F(z) levels off; if not, extend the range |
 | stitch closure | `umbrella_qmmm.results.stitch.closure_kcal` | within ~1 kcal/mol; a larger value shows as a step in the stitched profile |
 | QM region intact | `shell_changes` in each QM/MM window entry | empty, or only second-shell waters |
+| hydration is sampled, not frozen | `cn_water`/`cn_protein` columns of each MM window's `cv.csv`, and `cn` in its entry | in the constriction: one peak per window, and the same values whether the window was seeded from above or below. Two peaks, or seed-dependent values, mean the ion's water exchange is too slow for the window length; the constriction then needs longer windows or a 2D (z, CN) treatment |
 
 A large stitch closure means one of two things: the QM/MM windows are too short, or the
 correction from MM to QM/MM changes beyond the ends of the QM/MM range. Lengthen the QM/MM
@@ -170,7 +171,7 @@ covered. A ligand's atom types are not: give them as
 | file | written by | contents |
 |---|---|---|
 | `pull/seed_NNN.pdb`, `pull/pull_cv.csv` | `pull` | the starting structure of each window; the pull trace |
-| `<section>_NNN/cv.csv` | `window` | the ion's z (and sideways distance r) over time |
+| `<section>_NNN/cv.csv` | `window` | the ion's z, sideways distance r and (MM) its water and protein-oxygen coordination numbers over time |
 | `<section>_NNN/window.dcd`, `lastframe.pdb` | `window` | saved frames; the final structure |
 | `<section>_NNN/energies_<level>.csv` | `energies` | the energy of each saved frame at that level |
 | `<section>_pmf.csv` | `wham` | z, F (kcal/mol), bootstrap error |

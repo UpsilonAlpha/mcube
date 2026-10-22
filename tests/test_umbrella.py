@@ -77,6 +77,34 @@ class TestConfig:
         assert umbrella.find_window(config, "umbrella", -0.5) == {"z0": -0.5}
 
 
+class TestFrames:
+    def test_qmmm_windows_always_keep_frames(self, umbrella, tmp_path):
+        config = write(tmp_path, "umbrella:\n  inputs: {}\n")
+        assert umbrella.frames_wanted(config, "umbrella_qmmm", {"engine": "qmmm"}, 0.0)
+
+    def test_auto_picks_the_ends_of_the_qmmm_range(self, umbrella, tmp_path):
+        config = write(tmp_path, """
+            umbrella:
+              inputs: {z_start: -35, z_end: 35, spacing: 0.5}
+            umbrella_qmmm:
+              inputs: {engine: qmmm, z_start: -8, z_end: 8}
+            """)
+        inputs = umbrella.umbrella_inputs(config)
+        wanted = [z for z in umbrella.window_centres(inputs)
+                  if umbrella.frames_wanted(config, "umbrella", inputs, z)]
+        assert wanted == [-8.0, 8.0]
+
+    def test_auto_without_a_qmmm_section_keeps_none(self, umbrella, tmp_path):
+        config = write(tmp_path, "umbrella:\n  inputs: {z_start: -1, z_end: 1, spacing: 0.5}\n")
+        assert not umbrella.frames_wanted(config, "umbrella", umbrella.umbrella_inputs(config), 0.0)
+
+    def test_explicit_list(self, umbrella, tmp_path):
+        config = write(tmp_path, "umbrella:\n  inputs: {}\n")
+        inputs = {"frames_at": [-0.5, 2.0]}
+        assert umbrella.frames_wanted(config, "umbrella", inputs, 2.0)
+        assert not umbrella.frames_wanted(config, "umbrella", inputs, 0.0)
+
+
 class TestGeometry:
     MASSES = np.array([12.0, 12.0, 138.9])
 
@@ -157,6 +185,26 @@ class TestBias:
         ctx, force = self.context(umbrella, [[0, 0, 0], [0, 0, 3.0], [0, 0, 4.0]],
                                   masses=[1.0, 2.0, 138.9])
         assert umbrella.cv_now(force, ctx)[0] == pytest.approx(2.0)
+
+    def test_coordination_numbers_are_logged_not_biased(self, umbrella):
+        """CN = sum 1/(1+(r/r0)^12): ~1 inside r0, ~0 outside; it adds no energy."""
+        system = openmm.System()
+        for m in (12.0, 12.0, 138.9, 16.0, 16.0, 16.0):
+            system.addParticle(m)
+        system.setDefaultPeriodicBoxVectors(*(openmm.Vec3(*v) for v in np.eye(3) * 5.0))
+        force = umbrella.bias_force(2, [0, 1], 10.0, 0.0, None, None,
+                                    {"water": [3, 4], "protein": [5]}, cn_cutoff=3.0)
+        system.addForce(force)
+        ctx = openmm.Context(system, openmm.VerletIntegrator(0.001),
+                             openmm.Platform.getPlatformByName("Reference"))
+        # ion at z = 0 above the reference centre; waters at 2 and 5 A, a protein O at 3 A
+        pos = [[0, 0, -1.0], [0, 0, 1.0], [0, 0, 0], [2.0, 0, 0], [0, 5.0, 0], [0, 0, 3.0]]
+        ctx.setPositions(np.asarray(pos) / 10.0 * unit.nanometer)
+        z, r, cn_water, cn_protein = umbrella.cv_now(force, ctx)
+        s = lambda d: 1 / (1 + (d / 3.0) ** 12)
+        assert cn_water == pytest.approx(s(2.0) + s(5.0), rel=1e-6)
+        assert cn_protein == pytest.approx(0.5, rel=1e-6)
+        assert self.energy(ctx) == pytest.approx(0.0, abs=1e-9)
 
     def test_coordination_release(self, umbrella):
         system = openmm.System()
@@ -310,6 +358,7 @@ class TestEndToEnd:
                 timestep: 0.002
                 cv_frequency: 5
                 traj_frequency: 10
+                frames_at: [-0.5]
                 metal_parameters: "1264"
             """)
         monkeypatch.chdir(tmp_path)
@@ -324,12 +373,20 @@ class TestEndToEnd:
             args.action, args.window = "window", index
             entry = umbrella.run(args)
             assert entry["done"] and entry["shell_start"] > 0
+            assert entry["frames"] is (index == 0)
             cv = umbrella.read_csv(entry["cv"])
             assert len(cv["z_A"]) == 10
+            # A first shell is logged (the box is barely equilibrated, so only a range)
+            assert 3.0 < entry["cn"]["water"]["mean"] < 12.0
+            assert entry["cn"]["protein"]["mean"] == 0.0
         monkeypatch.chdir(tmp_path)
         args.action, args.window = "energies", 0
         out = umbrella.run(args)
         assert out["frames"] == 5
+        monkeypatch.chdir(tmp_path)
+        args.window = 1
+        with pytest.raises(ValueError, match="saved no full-system frames"):
+            umbrella.run(args)
         monkeypatch.chdir(tmp_path)
         args.action = "wham"
         result = umbrella.run(args)
