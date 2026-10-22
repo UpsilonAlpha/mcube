@@ -1512,6 +1512,34 @@ That is what the defaults already do, and it makes `sp` a real refinement: an xT
 
 **QM region.** Known to over-bind somewhat (Mehmood & Kulik), accepted because it contains every relevant coordinator. Recorded as a stated limitation rather than an open question, so it belongs in the methods rather than in the backlog.
 
+**D97 - The Gln93 scan died of memory, not slowness. Three points, question unanswered.** (2026-10-23, job 30409808)
+
+`sacct`: **OUT_OF_MEMORY, ExitCode 0:125, elapsed 59:21, MaxRSS 24.0 GB** against the 24 GB requested. Not the slow convergence it looked like from outside.
+
+The mechanism is in the `.err`, repeated dozens of times:
+
+```
+SVD Error - saving HT.v_nan.txt, increasing v by 0.001 and trying again ( nan ->  nan)
+```
+
+geomeTRIC's internal-coordinate SVD produced NaN on point 3 (target 2.70 A). It then **retried in a loop, writing a 23 MB dump per attempt** - `nan -> nan`, so it never recovered - until SLURM OOM-killed it. 19 of those files, 437 MB, deleted; `CSR_gln93` went 634 -> 216 MB. **More memory would only delay this**, because the retry loop is unbounded.
+
+What survived, all converged, relative to point 0:
+
+| Zn-Gln93 OE1 | rel kcal/mol |
+| --- | --- |
+| 1.80 | 0.00 |
+| 2.10 | -5.06 |
+| 2.40 | -5.60 |
+
+**So one thing is now quantified and the main question is not.** The 1.79 A contact MM produced sits **~5.6 kcal/mol up a repulsive wall**, which puts a number on D96's qualitative finding that the optimiser pushed it out. But points 4-8 (2.70-4.20 A) never ran, so **the well depth - whether six-coordinate zinc is genuine on this surface - remains open**. `surface_results.txt` and the plot were never written; scan.py only writes them at the end.
+
+**Code gap this exposed.** `coordsystem` was not reachable from the config: `optimize()` called ASH's `Optimizer` without it, so every stage was pinned to ASH's default `tric` - the system that degenerated here. Now `opt_coordsystem` (`tric`, `hdlc`, `dlc`, `prim`, `cart`), unset by default so nothing changes for existing runs. `cart` cannot degenerate this way, at the cost of slower convergence.
+
+**Provenance, per the agreed policy.** `qm_level` is GFN2-xTB, so these are path-finding numbers, not energies; a depth, once measured, needs wB97X-V single points. It also ran pre-merge, with stock Zn radii in the MM while the input geometry came from IOD-parameterised MD (D95), so do not compare against a post-merge run.
+
+Not resubmitted. `resume: true` means a rerun continues from point 3 - the point that failed - so it needs `opt_coordsystem: cart` or a smaller active region first, not just more memory.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

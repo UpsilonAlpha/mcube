@@ -253,7 +253,8 @@ def run(args) -> Dict[str, Any]:
         bonds = [list(c) for c in held] + [[i, j, d1]] + ([[i2, j2, d2]] if two_d else [])
         # A point that runs out of steps keeps its last geometry (converged: false) and the scan goes on
         energy, converged = optimize(fragment, qmmm_theory, actatoms, {"charge": charge, "mult": mult},
-                                     {'bond': bonds}, True, inputs.get("opt_maxiter", 200))
+                                     {'bond': bonds}, True, inputs.get("opt_maxiter", 200),
+                                     inputs.get("opt_coordsystem"))
         energy = float(energy)
         if e_first is None:
             e_first = energy

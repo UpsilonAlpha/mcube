@@ -364,17 +364,28 @@ def last_traj_frame(xyzfile: str, natoms: int):
     return coords, energy
 
 
-def optimize(fragment, theory, actatoms, inputs, constraints, constrainvalue, maxiter):
+def optimize(fragment, theory, actatoms, inputs, constraints, constrainvalue, maxiter,
+             coordsystem=None):
     """
     ASH/geomeTRIC optimisation that survives running out of steps: geomeTRIC
     raises at maxiter and ASH then leaves the fragment at its start, so on
     non-convergence the fragment is set to the last step of the trajectory.
     Returns (energy, converged).
+
+    `coordsystem` is geomeTRIC's internal-coordinate system, from
+    `opt_coordsystem` (`tric`, `hdlc`, `dlc`, `prim` or `cart`). Unset leaves
+    ASH's own default, so existing runs are unaffected. It is worth reaching for
+    when an optimisation reports `SVD Error ... ( nan -> nan)`: the coordinate
+    system has degenerated, and geomeTRIC then retries in a loop, writing a
+    ~23 MB dump each time until the job is killed for memory rather than
+    failing. `cart` cannot degenerate that way, at the cost of slower
+    convergence.
     """
     try:
+        extra = {"coordsystem": coordsystem} if coordsystem else {}
         opt = Optimizer(fragment=fragment, theory=theory, ActiveRegion=True, actatoms=actatoms,
                         maxiter=maxiter, constraints=constraints, constrainvalue=constrainvalue,
-                        charge=inputs.get("charge"), mult=inputs.get("mult"))
+                        charge=inputs.get("charge"), mult=inputs.get("mult"), **extra)
     except Exception as e:
         if type(e).__name__ != "GeomOptNotConvergedError":
             raise
@@ -499,7 +510,8 @@ def run(args) -> Dict[str, Any]:
 
         print("[STEP] Running QM/MM Optimisation...")
         energy, converged = optimize(fragment, qmmm_theory, actatoms, inputs, constraints, constrainvalue,
-                                     inputs.get("opt_maxiter", 200))
+                                     inputs.get("opt_maxiter", 200),
+                                     inputs.get("opt_coordsystem"))
 
         # Full optimised system with the MM topology, e.g. as an NEB endpoint. If the
         # optimisation ran out of steps, this is its last geometry (converged: false).
