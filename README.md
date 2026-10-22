@@ -318,6 +318,24 @@ Every gradient-driven stage (`qmmm` optimisation, `scan`, `neb`, `ts` and its fr
 
 `qm_engine` and the `dft_*` / `sp_*` keys may be set on `qmmm.inputs` or on an individual `scan` / `neb` / `ts` section, which overrides it; everything else about the QM/MM setup (charge, multiplicity, force fields) always comes from `qmmm.inputs`.
 
+## Membrane simulations
+
+`membrane: true` runs the unchanged `preprocess` and `md` stages on a protein in an explicit lipid bilayer. The config is the one in [`config_examples/membrane_config.yaml`](config_examples/membrane_config.yaml): `preprocess.inputs.membrane` builds the bilayer, `md.inputs.membrane` (which defaults to the preprocess value) runs it, and every other key keeps its meaning and default. Nothing else in the config selects the membrane mode.
+
+```bash
+mcube preprocess config.yaml   # CPU: bilayer, water and ions around the protein
+mcube md config.yaml           # GPU (platform: CUDA): minimise, membrane NPT, production
+```
+
+- **Input.** `protein_pdb` (and a `ligand`, or a peptide as a second chain) must already be oriented: membrane normal along z, hydrophobic belt centred on `membrane_center_z`. mcube never rotates or shifts the protein. The [OPM database](http://opm.phar.umich.edu) publishes oriented structures.
+- **Defaults** are those of the explicit-solvent path (PME, 12 Å cutoff, HBond constraints, rigid water, 1.5 amu hydrogens, pH 8.0 and 0.1 M NaCl unless set) with amber14 + Lipid17 and a POPC bilayer with 10 Å padding. What you must give is `temp` and, for a usable speed, `platform: CUDA`.
+- **Ensemble.** The system carries one `MonteCarloMembraneBarostat` (XYIsotropic, ZFree, tensionless, 1 bar), so the area per lipid and the thickness relax independently. NPT equilibration and production both keep it, so production is NPT, not NVT. ASH's isotropic barostat is never added, and `md` checks that exactly one barostat is present before and after every stage. [`docs/membrane-validation.md`](docs/membrane-validation.md) has the area-per-lipid and thickness checks behind this.
+- **Outputs** are the usual ones plus `membrane_box.csv` (box and area per lipid per NPT frame) and `membrane_box_production.csv`, summarised in `md.results.membrane` and `md.results.membrane_production`. `trajfile` and `lastframe` are the reimaged files.
+- **Segments and restarts.** `md` starts from `md.inputs.pdb_file` (default: `preprocess.results.processed_pdb`). To continue a run, or split it into short jobs that fit a queue, point `pdb_file` at the previous last frame and set `skip_npt: true`. `relaxbox_NPT_lastframe.pdb` is the equilibrated box (equilibrate alone with `skip_nvt: true`) and `NVTtrajectory_lastframe.pdb` the end of production. Each segment minimises again and draws new velocities, so it restarts the structure, not the trajectory.
+- **A new partner in an equilibrated bilayer.** To compare many peptides or designed binders in one bilayer without rebuilding it, equilibrate the receptor once, write each partner's coordinates (superposed onto the receptor) into a copy of that last frame, remove the solvent that overlaps it, re-neutralise, and set `md.inputs.pdb_file` to the result. The minimisation then relaxes the remaining contacts. The partner's chain follows the water in that file, so select it by its chain letter.
+- **Other modes.** `membrane` and `implicit` are mutually exclusive and raise at once. With `membrane` unset the explicit and implicit paths are unchanged (`tests/test_membrane_pipeline.py` asserts it). `qmmm` and the later stages read the structure `md` wrote and do not use the membrane barostat; a QM/MM region in a membrane system has not been run.
+- **Analysis.** `scripts/membrane_report.py` (below) reads the trajectory of any membrane run.
+
 ## Running on Bunya
 
 See [docs/running-on-bunya.md](docs/running-on-bunya.md) for thread and memory settings, queue behaviour, system-preparation problems we hit, and the NEB endpoint workflow.
@@ -337,6 +355,7 @@ All are in `scripts/`:
 - `extract_frames.py <topology.pdb> <traj.dcd> --frames 300 400 -1`: writes chosen frames as full-system PDBs (same atom order and ids, the frame's own box in CRYST1), e.g. as `mcube qmmm --pdb` inputs
 - `d3_correction.py <structure.pdb> config.yaml [--section S] [--method wb97x] [--damping d3bj]`: post-SCF DFT-D3 energy of the QM region (QM atoms + ASH-style link atoms), to add to single points run without dispersion
 - `check_bonds.py <topology.pdb> <traj.dcd> --config config.yaml [--tol 0.25] [--contact 1.75]`: checks that bond geometry in the QM region (or `--sel`) is preserved: stretched bonds, new heavy-atom contacts and proton transfers per frame, with an `intact` flag per frame in `bond_frames.csv`
+- `membrane_report.py <topology.pdb> <traj.dcd ...> --out PREFIX [--receptor A] [--partner B] [--site RES ...] [--core-exclude LO-HI] [--footprint FILE] [--track N=RES] [--distance N=R1,R2] [--angle N=R1,R2,R3]`: membrane health per frame for any membrane run (box, area per lipid, P-P thickness, leaflet imbalance, lipids and water inside the bundle). With a receptor and a partner chain it adds the partner's pose: RMSF in the receptor frame and internal, RMSD, drift, contacts and their retention, and occupancy of chosen receptor residues and of a reference contact set (`--write-footprint` on a reference run writes one). Receptor readouts are named on the command line, so the same call works for any protein.
 - `site_report.py <topology.pdb> <traj.dcd> [--metal SEL] [--pair A B] [--angle A B C] [--rmsd-sel SEL]`: metal coordination shell (bound fraction, distances), chosen distances/angles and RMSD over a trajectory (or a single PDB as the trajectory). Atoms as mdtraj selections, `chain:resid:atom` or indices.
 - `build_product_box.py <reactant_solvated.pdb> <product_solute.pdb> <out.pdb>`: builds a solvated NEB product in the reactant's water box. NEB endpoints must share every atom, waters included, so solvating reactant and product separately does not work. The product solute must have the same atoms in the same order as the reactant solute. The script aligns on the non-reactive solute atoms and reports water clashes. QM/MM-optimise both endpoints before running NEB.
 
