@@ -175,7 +175,8 @@ def md_inputs(config: str, section: Optional[str] = None) -> Dict[str, Any]:
     starting from the first's last frame - inherits the first's whole setup and
     states only what differs. Both runs then read one
     `preprocess.results.coordination`, instead of a duplicated config directory
-    whose copy can drift from the original (which is how D68 happened).
+    whose copy can drift from the original - which is how a distance one run
+    imposed came to be read as detected coordination by the next.
     """
     inputs: Dict[str, Any] = dict(load_section(config, "md").get("inputs") or {})
     if section and section != "md":
@@ -203,8 +204,8 @@ def md_restraints(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file: 
 
     Returns (restraints, detected) with `detected` the auto-generated subset, so
     the results can record which restraints were a measurement and which were a
-    choice. Only a distance someone chose can launder an assumption into a
-    later run (D68).
+    choice. Only a distance someone chose can launder an assumption into a later
+    run: holding a contact where it already was asserts nothing new.
     """
     asked = [list(r) for r in (resolve_atoms(inputs.get("restraints") or None, pdb_file) or [])]
     rows = resolve_atoms((preprocess.get("results") or {}).get("coordination"), pdb_file) or []
@@ -272,7 +273,7 @@ def run(args) -> Dict[str, Any]:
     # something against the structure they were resolved on. The two lists are
     # kept apart because only a distance this run chose can turn into apparent
     # structure in a later one - a detected pair restrained at the distance it
-    # already had asserts nothing new (D68).
+    # already had asserts nothing new. `check_inherited_restraints` enforces it.
     chosen = [r for r in (restraints or []) if r not in detected]
     result["restraints"] = to_selectors(chosen, pdb_file)
     result["coordination_restraints"] = to_selectors(detected, pdb_file)
