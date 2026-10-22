@@ -111,6 +111,9 @@ def residence(inside, dt_ps: float, tstar_ps: float):
 
 
 def analyse(frames, box, ion: int, oxygens, dt_ps: float, tstar_ps: float = 2.0) -> dict:
+    if len(frames) < 2:
+        raise ValueError(f"only {len(frames)} frame(s) to analyse: the trajectory is shorter than "
+                         "the time discarded with --skip")
     dist = shell_distances(frames, box, ion, oxygens)
     r, g = rdf(dist, np.prod(box, axis=1))
     peak, minimum = first_shell(r, g)
