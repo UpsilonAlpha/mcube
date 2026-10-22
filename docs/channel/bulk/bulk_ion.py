@@ -59,12 +59,28 @@ def rdf(dist, volumes):
 
 
 def first_shell(r, g):
-    """(peak, minimum) of the first shell in A."""
+    """
+    (peak, minimum) of the first shell in A.
+
+    For a tightly bound ion g(r) is flat at (or near) zero between the first and second
+    shells, so the "minimum" is a plateau, and its first bin sits at the tail of the peak.
+    Taking that bin as the shell boundary (and so as the QM-region cutoff) can cut off
+    first-shell waters, so the minimum is the middle of the first plateau within 5% of
+    the peak height of the lowest value.
+    """
     window = (r > 1.8) & (r < 3.4)
     peak = r[window][np.argmax(g[window])]
-    after = (r > peak) & (r < peak + 1.6)
-    minimum = r[after][np.argmin(g[after])]
-    return float(peak), float(minimum)
+    g_peak = float(g[window].max())
+    after = np.where((r > peak) & (r < peak + 1.6))[0]
+    low = g[after].min()
+    flat = after[g[after] <= low + 0.05 * g_peak]
+    run = [flat[0]]
+    for i in flat[1:]:
+        if i != run[-1] + 1:
+            break
+        run.append(i)
+    minimum = float(np.mean(r[run]))
+    return float(peak), minimum
 
 
 def residence(inside, dt_ps: float, tstar_ps: float):
