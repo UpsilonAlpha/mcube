@@ -1443,6 +1443,33 @@ On branch `umbrella` (uncommitted, not merged) the implementation moves to `ions
 
 Also on that branch: `qmmm.inputs.platform` and `properties` now reach `make_mm`.
 
+**D96 - QM/MM does not rescue run 1's frame: Gln93 relaxes but does not leave, and Lys226 protonates the nucleophile.** (2026-10-22, job 30394832, `CSR_gln93`)
+
+COMPLETED in 8m58s, exit 0:0, geomeTRIC converged in 95 steps (`converged: True`), final energy **-447.37695 Eh**. The `.err` holds only optimiser progress. Gln93's side chain was in the QM region by config edit (D94), so this is a genuine QM/MM answer and not an MM artefact held in place by the force field.
+
+**(1) Gln93 moved out, but not away.**
+
+| Zn-ligand | run 1 MM frame | after QM/MM |
+| --- | --- | --- |
+| His88 NE2 | 2.22 | 1.96 |
+| O01 (nucleophile) | 2.14 | 2.07 |
+| HOH485 | 1.90 | 2.10 |
+| His164 NE2 | 2.09 | 2.16 |
+| Asp92 OD2 | 2.80 | 2.17 |
+| **Gln93 OE1** | **1.79** | **2.65** |
+
+So QM/MM rejected the 1.79 A contact - it is not a minimum on this surface - but relaxed it only to 2.65 A, not past the ~3 A that would have meant the artefact was cleared. **(2) The site is therefore still formally six-coordinate**: five proper bonds at 1.96-2.17 A plus one long weak contact. The honest reading is neither of the two outcomes D94 anticipated: the contact is an artefact *and* QM/MM at this level does not remove it, it merely loosens it.
+
+**(3) The attack geometry got worse, and the nucleophile was destroyed.** O01-C4x went **4.45 -> 4.94 A** with the angle holding at 100 degrees, so it is now outside the 4.5 A tolerance as well as far from the ~3 A a near-attack conformation wants. Zn-mer O2x went 6.89 -> 7.28.
+
+Worse than the distance: **Lys226 transferred a proton to the Zn-bound hydroxide.** In run 1's MM frame, `site.py sphere` reported Lys226 NZ with three hydrogens and O01 with one. After the optimisation Lys226 NZ has **two** and O01 has **two** - HZ2, still carrying its Lys atom name, now sits 0.99 A from O01 and 1.74 A from Lys226 NZ. The nucleophile is water, not hydroxide, and Lys226 is a neutral amine. The original hydroxide proton H03 has turned to hydrogen-bond Gln93 OE1 at 1.85 A. Total QM charge is unchanged, so `charge: 2` was still right.
+
+This is the `cleanR_lysH` / `cleanR_ohH` question from D42 answering itself unprompted: given a free choice the proton went to O01. Relevant to question 1, though in the opposite direction to the hypothesis - here Lys226 acts as a proton *donor* that quenches the nucleophile rather than as a stabiliser of the transition state. One structure cannot separate that from a consequence of the artefactual Gln93 contact sitting 2.65 A from the same metal, so it is a flag, not a finding.
+
+**Conclusion: run 1's frame is not a usable QM/MM starting point, and the restrained MD run is the way forward.** The substrate is further out than it was, the nucleophile no longer exists as a nucleophile, and the zinc keeps a sixth contact. `scan_zngln` was not submitted: the optimisation already showed 1.79 A is not a minimum, and the remaining question - the depth of the well around 2.65 A - does not change the conclusion that this frame cannot start a reaction path.
+
+**Energy caveat (D95).** This job ran pre-merge, so its MM used Amber's stock Zn radii while the geometry it started from came from IOD-parameterised MD. Do not compare -447.37695 Eh against any post-merge run.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
