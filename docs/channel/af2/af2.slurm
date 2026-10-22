@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --partition=gpu_rocm --qos=gpu --gres=gpu:mi355x:1 --account=a_imb_ccbcd
+#SBATCH --partition=gpu_cuda --qos=gpu --gres=gpu:a100:1 --account=a_imb_ccbcd
 #SBATCH --cpus-per-task=8 --mem=96G --time=12:00:00
 #SBATCH --output=%x-%j.out --error=%x-%j.err
 #
@@ -8,14 +8,14 @@
 # `alphafold_multimer` functions, except pdb_seqres: both modules point
 # `alphafold_multimer` at .../databses/pdb_seqres/... (missing "a"), which does not exist.
 #
-# Default: an MI355X on gpu_rocm, with the alphafold/2.3.2-rocm build. To run on NVIDIA
-# instead, override the partition and GPU on the sbatch line; the script picks the CUDA
-# build from the partition. Only A100 there: RCC's CUDA container wrapper notes it is
-# incompatible with H100 (CUDA < 11.8).
+# Default: an A100 on gpu_cuda with the CUDA build. Only A100 there: RCC's CUDA container
+# wrapper notes it is incompatible with H100 (CUDA < 11.8). The script picks the build from
+# the partition, so `-p gpu_rocm --gres=gpu:mi300x:1` (or mi210) runs the ROCm build. NOT
+# MI355X: the ROCm container is ROCm 6.1.1 and JAX finds "No visible GPU devices" there
+# (2026-10-22).
 #
 #   sbatch -J af2_mono   docs/channel/af2/af2.slurm monomer  docs/channel/af2/mature.fasta        $OUT/monomer
 #   sbatch -J af2_trimer docs/channel/af2/af2.slurm multimer docs/channel/af2/mature_trimer.fasta $OUT/trimer
-#   sbatch -p gpu_cuda --gres=gpu:a100:1 -J ... (same arguments)          # the CUDA build
 #
 # Monomer uses monomer_ptm (pTM and PAE as well as pLDDT). Multimer makes one prediction
 # per model (5 models); raise NPRED for the full 25.

@@ -38,6 +38,14 @@ channel, built with mcube's existing stages as closely as possible.
   wrapper notes it is incompatible with H100 (CUDA < 11.8); 8 CPUs, 96 GB, 12 h. Database paths are
   the module's own except `pdb_seqres`, which points at the real
   `.../databases/pdb_seqres/pdb_seqres.txt` (226 MB). Scratch was 241/300 GB at submission.
+- Moved to AMD at the user's request ("use the MI355X where possible"), then back (2026-10-22).
+  `alphafold/2.3.2-rocm` on MI355X (30410147, 30410148) failed in under a minute: JAX found
+  "No visible GPU devices". RCC's container is ROCm 6.1.1, which predates MI355X (gfx950)
+  support, so AF2 cannot use those nodes as installed. `sbatch --test-only` estimates then gave
+  A100 25 Oct, MI300X 28 Oct, MI210 29 Oct (independent of a 4 h or 12 h limit; the per-user
+  4-GPU-job QOS is shared with the GLP-1R session's queued MD). Resubmitted on A100:
+  **30410203 `af2_mono` (4 h)** and **30410204 `af2_trimer` (8 h)**. The script defaults to
+  `gpu_cuda` A100 again; AMD is chosen on the sbatch line (MI300X or MI210, not MI355X).
 
 **C3 – Bilayer: POPE, single lipid type, at 310 K.** (2026-10-22; open)
 - mcube already accepts `membrane_lipidtype: POPE` (`membrane.py:LIPID_TYPES`), but only POPC
