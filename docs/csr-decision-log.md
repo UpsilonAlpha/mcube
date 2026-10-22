@@ -1353,6 +1353,33 @@ Net: `md.results` gains `coordination_restraints` (the detected subset, kept apa
 
 **Still open, and now clearly separate from the restraint question.** The D89 substrate dissociation is a **pose** problem, not a restraint problem. A coordination-radius restraint of either kind holds bond lengths near the metal; it cannot hold a ligand whose carboxylate sits 10.67 A out, and restraining a wrong pose harder would only buy a clean QM/MM barrier for a Michaelis complex that does not exist. The docked pose never made the canonical carboxylate-Arg interaction every MBL substrate complex has. That is the next scientific question.
 
+**D93 - The D89 attack geometry, measured; and which runs actually restrained the substrate.** (2026-10-22)
+
+`site.py nucleophiles` on `CSR_unrestrained2/protdft/qmmm/QM_MM_optimized.pdb` (jobs p6md-30354772 / p6qm-30354773, the D89 run):
+
+| nucleophile | O-C | Nu-C-O angle | Zn-O | verdict |
+| --- | --- | --- | --- | --- |
+| **C:2:OH (the Zn-bound hydroxide)** | **5.41** | **96** | 1.93 | metal-bound, **far** |
+| E:3174:HOH | 6.00 | 128 | 3.03 | angle off, far |
+| E:3097:HOH | 5.34 | 109 | 10.07 | far |
+| E:3687 / E:8623 HOH | 4.08 / 4.09 | 65 / 60 | 8.91 / 6.59 | angle off |
+
+**The orientation is right and the distance is wrong.** 96 degrees sits inside the 95-120 Burgi-Dunitz window; the only failing criterion is distance, 5.41 A against the 4.5 A tolerance and the ~3 A a near-attack conformation wants. The substrate has not tumbled or flipped - it is correctly presented and too far away. That is a far more salvageable failure than a bad trajectory, and it means a restraint pulling O01-C4x in to 3.0 A would be shortening an already-correct approach rather than forcing a wrong orientation into a right one. (The triangle-inequality bound of >=4.38 A I quoted before the measurement was correct and conservative.)
+
+Incidental, and relevant to question 1: the hydroxide's proton H03 points at mer O1x (2.95) and **Lys226 NZ (3.39)**, and the intruding water E:3174 has a proton 3.87 from Lys226 NZ and 3.77 from Asp92 OD2. Lys226 is in H-bonding reach of the nucleophile without anything having been imposed.
+
+**Correction to the project's own record.** The two-row restraint set is **`CSR_crystal`'s**, not `CSR_hydrolysed`'s or `CSR_ligand`'s:
+
+```
+md.inputs.restraints:
+- [4203, 4209, 2.2, 20.0]   # Zn -> beta-lactam carbonyl O
+- [4255, 4208, 3.0, 20.0]   # hydroxide -> carbonyl carbon
+```
+
+`grep -c restraints` returns **0** for `CSR_hydrolysed/config.yaml` and `CSR_ligand/config.yaml`, for every one of their `.bak` copies, and for every `.slurm` in both directories. Those two runs used no restraints at all - only detected coordination constraints, with the ligand left free via `constraint_exclude_residues: {C: [1]}`. The restrained run is CSR_crystal (2 hits) and its v2/v3 descendants (1 each). Worth stating because the choice of which prior run to copy depends on it.
+
+**What this settles about D89.** The dissociation was the absence of CSR_crystal's two restraints, not evidence against the docked pose - D89 ran with the carbonyl outside `cutoff: 3.0` and therefore unrestrained. Both of my earlier arguments that the pose is wrong are withdrawn: the carboxylate-Arg criterion (circular against questions 1-3) and the dissociation inference (an artefact of my own restraint set).
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
