@@ -12,12 +12,14 @@
 #
 # Writes $RUN/report.json (MM) and $RUN/qmmm_report/report.json (xTB/MM),
 # RUN=/scratch/user/uquadhik/channel/bulk/<ION>_<SET>. NS and QMPS set the lengths; RUN can be
-# overridden, e.g. for a smoke test: RUN=$S/channel/bulk/smoke NS=0.01 QMPS=0.05 bash bulk.slurm LA iod
+# overridden, e.g. for a smoke test:
+#   sbatch --export=ALL,RUN=$S/channel/bulk/smoke,NS=0.01,EQUIL=10,QMPS=0.2 -t 1:00:00 bulk.slurm LA iod
 
 ION=$1
 SET=$2
 NS=${NS:-4}
 QMPS=${QMPS:-10}
+EQUIL=${EQUIL:-200}           # ps of MM NPT before sampling
 EVERY=20                      # QM/MM steps between saved frames (1 fs steps)
 DT=0.02                       # ps between saved QM/MM frames = EVERY * 1 fs
 S=/scratch/user/uquadhik
@@ -31,7 +33,7 @@ conda activate ASH
 export PYTHONPATH=$S/mcube/src PYTHONUNBUFFERED=1
 
 echo "== MM $ION $SET, $NS ns"
-python $B run --ion $ION --set $SET --ns $NS --out $RUN || exit $?
+python $B run --ion $ION --set $SET --ns $NS --equil $EQUIL --out $RUN || exit $?
 
 echo "== xTB/MM, $QMPS ps"
 python $B qmmm-config --run $RUN --ion $ION --ps $QMPS --every $EVERY --cores 4 || exit $?
