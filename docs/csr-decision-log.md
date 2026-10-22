@@ -1306,7 +1306,7 @@ Three things follow. The **substrate did not coordinate on its own** - it left, 
 | freezing (zero mass) | `A constraint cannot involve a massless particle`: HBonds constrains every X-H on the frozen donors |
 | harmonic positional restraints | got past minimisation; this is what job 30349571 is running |
 
-**The literature** (D81): Guven, Hanzevacki, Kalita, Mulholland & Mey, *J. Phys. Chem. B* 2024, **128**, 12416, DOI 10.1021/acs.jpcb.4c06379 - VIM-2, Amber MM into DFTB3 QM/MM. Verified from the paper: *"the crystallographically observed zinc coordination is not retained in MM simulations with either zinc parameter set"*, and their fix removes the *"unrestrained NVT equilibration"* entirely and adds *"positional restraints ... to the two zincs, their coordinating protein residues, and the ligand"*. They note the residual limitation: *"the zinc ion is still modeled with a point charge of +2 e"*. They give **no force constant** for the metal site; their solute ladder is 100 -> 10 kcal/mol/A^2. Their QM region is ours in kind. Older background: cationic dummy atoms hold 4-coordinate Zn where non-bonded models fail (extended 2017, DOI 10.1021/acs.jpclett.7b02358); ZAFF, MCPB.py and 12-6-4 are the other routes.
+**The literature** (D81): Guven, Hanzevacki, Kalita, Mulholland & Mey, *J. Phys. Chem. B* 2024, **128**, 12416, DOI 10.1021/acs.jpcb.4c06379 - VIM-2, Amber MM into DFTB3 QM/MM. Verified from the paper: *"the crystallographically observed zinc coordination is not retained in MM simulations with either zinc parameter set"*, and their fix removes the *"unrestrained NVT equilibration"* entirely and adds *"positional restraints ... to the two zincs, their coordinating protein residues, and the ligand"*. **That sentence is the whole of their description** - see D90 for what it does and does not establish. They note the residual limitation: *"the zinc ion is still modeled with a point charge of +2 e"*. They give **no force constant** for the metal site; their solute ladder is 100 -> 10 kcal/mol/A^2. Their QM region is ours in kind. Older background: cationic dummy atoms hold 4-coordinate Zn where non-bonded models fail (extended 2017, DOI 10.1021/acs.jpclett.7b02358); ZAFF, MCPB.py and 12-6-4 are the other routes.
 
 **Where I was wrong (D86).** I presented a 6 A hold as following from that paper. It does not. Gln93 is not a coordinating residue in our input, so it is outside *their* restrained set too: **their failure mode was coordination being lost, ours is coordination being gained.** The paper does not address ours, and `hold_coordination` is my extrapolation, not their method. Stock mcube never failed at what it claims.
 
@@ -1376,6 +1376,24 @@ So the answer to the question posed in D69 is **no**: released from the docked p
 **What this settles and what it does not.** It settles that the 1.94 A Michaelis complex used from D57 onwards is not something this system reaches on its own, and it removes the MM artefacts as an explanation - the site stayed clean this time. It does not establish the mechanism, because a substrate that dissociates in 500 ps of MM plus 25 ps of QM/MM is not a Michaelis complex at all. **The binding pose is now the blocking question**, which is where D64 pointed before the restraint detour began.
 
 No DFT single point was submitted: scoring a dissociating complex would cost 32 cores for a number about nothing.
+
+**D90 - What the paper actually specifies, which is less than I have been claiming.** (2026-10-22, user asked me to verify before acting)
+
+Re-read Guven et al. section 3.6 with the specific question of what the restraints act on. Their entire description is one sentence: the unrestrained NVT run *"was removed entirely and additional positional restraints based on the zinc-residue distances from the crystal structure were added to the two zincs, their coordinating protein residues, and the ligand, to ensure the zinc coordination did not change drastically"*. From that:
+
+| what I claimed | what the paper says |
+| --- | --- |
+| restraints act on whole residues and the whole ligand | **not stated** - it names residues and the ligand but never says whether the restraint acts on every atom or only the coordinating ones |
+| "coordinating protein residues" = the first shell | **not defined** anywhere in that section |
+| harmonic positional restraints | **not stated** - it says "positional restraints" and never gives the functional form; "did not change drastically" implies some movement is allowed, which is an inference |
+| force constant | correctly recorded as absent. Their 100 -> 10 kcal/mol/A^2 ladder is the *general* solute protocol in 3.5, not these restraints |
+| released before production | implied by "before starting the RBFE production runs", **not stated**; for QM/MM they only say it starts "from the MM equilibrated structures" |
+
+So D85's comparison table overstated the paper on three rows, and D81/D84 described the restraints as harmonic on my own inference rather than theirs. The verbatim quotes in those entries are accurate; the gloss around them was not. **The paper cannot be used to justify holding whole residues, holding the whole ligand, or any particular force constant.** Those are our choices and have to stand on their own.
+
+**On freezing versus restraining, which I had been blurring.** A freeze (zero mass) permits no relaxation and locks in whatever strain the docked pose carries. A harmonic positional restraint at 10 kcal/mol/A^2 costs 5 kcal/mol for 1 A of displacement, about 8 kT at 300 K, so sub-angstrom motion is essentially free: the force field still relaxes internal geometry inside the well while the pose cannot drift. The user's instinct - anchor the pose, let the force field handle the rest - is satisfied by a restraint on every heavy atom, and is *not* satisfied by a freeze. "Full freeze" was my sloppy shorthand and is the wrong description of what should be done.
+
+**Why two restrained atoms is not enough.** Pinning only the substrate atoms that fall inside the radius (O1x at 3.13 A, O2x at 5.43 A) fixes position and one rotational axis, leaving rotation about the O1x-O2x vector free. Meropenem is large enough that its tail can swing a long way on that axis, and the carboxylate - the group that should be anchoring to Lys226 or Arg90 - is on the far end of it. Restraining every heavy atom at a modest force constant holds the orientation without preventing relaxation.
 
 ## Resources (see `running-on-bunya.md`)
 
