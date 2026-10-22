@@ -14,6 +14,7 @@ from openmm.app import PDBFile, ForceField, CutoffNonPeriodic, HBonds
 from ash import *
 
 from .preprocess import (
+    COORDINATION_FORCE,
     compare_coordination,
     coordination_shell,
     pair_distances,
@@ -60,15 +61,6 @@ def md_membrane(inputs: Dict[str, Any], preprocess: Dict[str, Any]) -> bool:
     return bool(value)
 
 
-# The force constant a detected metal-donor contact is restrained with. 50
-# kcal/mol/A^2 leaves the contact 0.11 A RMS of room at 300 K, so the site still
-# vibrates but a donor cannot migrate onto the metal. Gervasoni et al., Proteins
-# 2022, 90, 372 hold a dizinc metallo-beta-lactamase site at 30 through 100 ns of
-# NVT; Hanzevacki et al., JCIM 2025, 65, 6261 use 50. The difference is 0.03 A,
-# so nothing here depends on the choice. Per-pair constants can still be given
-# in `md.inputs.restraints`.
-COORDINATION_FORCE = 50.0  # kcal/mol/A^2
-
 
 def apply_metal_parameters(mm, pdb_file: str, metals, which: str) -> list:
     """Override the metals' Lennard-Jones terms with a published ion set.
@@ -114,11 +106,11 @@ def apply_metal_parameters(mm, pdb_file: str, metals, which: str) -> list:
 
 
 def build_md_theory(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file: str,
-                    constraints, restraints, cores=None):
+                    restraints, cores=None):
     """
-    The classical system used by the md stage: force fields,
-    HBond constraints, rigid water, 1.5 amu hydrogens, metal-site bond constraints
-    and optional harmonic restraints. Returns (OpenMMTheory, force-field list).
+    The classical system used by the md stage: force fields, HBond constraints,
+    rigid water, 1.5 amu hydrogens and the harmonic distance restraints that
+    hold the metal site. Returns (OpenMMTheory, force-field list).
     """
     default_forcefields = md_forcefields(inputs, preprocess)
 
@@ -151,7 +143,6 @@ def build_md_theory(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file
             platform=inputs.get("platform", "CPU"),  # e.g. CUDA on a GPU node
             properties=inputs.get("properties"),
             autoconstraints='HBonds',
-            constraints=constraints,
             restraints=restraints,
             nonbondedMethod_noPBC='CutoffNonPeriodic',
             nonbonded_cutoff_noPBC=20,
@@ -186,7 +177,6 @@ def build_md_theory(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file
             platform=inputs.get("platform", "CPU"),  # e.g. CUDA on a GPU node
             properties=inputs.get("properties"),
             autoconstraints='HBonds',
-            constraints=constraints,
             restraints=restraints,
             rigidwater=True,
         )
@@ -200,21 +190,10 @@ def build_md_theory(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file
             platform=inputs.get("platform", "CPU"),  # e.g. CUDA on a GPU node
             properties=inputs.get("properties"),
             autoconstraints='HBonds',
-            constraints=constraints,
             restraints=restraints,
             rigidwater=True,
         )
     return mm, default_forcefields
-
-
-def md_constraints(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file: str):
-    """Rigid metal-site bond constraints, only if `md.inputs.constraints` asks for them.
-
-    Detected coordination is restrained, not constrained (see `md_restraints`).
-    This stays for a system that genuinely wants a rigid bond.
-    """
-    # Atoms may be named as "chain:resid:atom" instead of indices; none -> None
-    return resolve_atoms(inputs.get("constraints") or None, pdb_file) or None
 
 
 def md_restraints(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file: str):
@@ -229,22 +208,28 @@ def md_restraints(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file: 
     touches a massless atom. A restraint also carries no element-specific
     parameters, so it works for any metal without parameterisation.
 
-    Each detected pair is restrained at the distance it already has, so this
-    preserves the input geometry instead of imposing one. The pairs come from
-    `preprocess.results.constraints` - the list printed into the config - so
-    editing that list is what changes the run.
+    `preprocess.results.coordination` already carries the distance and force
+    constant for every contact it detected, printed into the config, so editing
+    a row there is what changes the run. A row given as a bare `[i, j]` pair is
+    restrained at whatever distance this run starts from, at the default
+    constant.
 
     Returns (restraints, detected) with `detected` the auto-generated subset, so
     the results can record which restraints were a measurement and which were a
-    choice. Only the chosen ones can launder an assumption into a later run.
+    choice. Only a distance someone chose can launder an assumption into a
+    later run (D68).
     """
     asked = [list(r) for r in (resolve_atoms(inputs.get("restraints") or None, pdb_file) or [])]
-    pairs = resolve_atoms((preprocess.get("results") or {}).get("constraints"), pdb_file) or []
+    rows = resolve_atoms((preprocess.get("results") or {}).get("coordination"), pdb_file) or []
     # An explicit restraint on a pair wins: the user named a distance for it.
     named = {frozenset(r[:2]) for r in asked}
-    pairs = [p for p in pairs if frozenset(p[:2]) not in named]
-    detected = [[p[0], p[1], d, COORDINATION_FORCE]
-                for p, d in zip(pairs, pair_distances(pdb_file, pairs))]
+    rows = [list(r) for r in rows if frozenset(r[:2]) not in named]
+    bare = [r for r in rows if len(r) < 3]
+    measured = dict(zip((frozenset(r[:2]) for r in bare), pair_distances(pdb_file, bare)))
+    detected = [r if len(r) >= 4 else
+                [r[0], r[1], r[2] if len(r) > 2 else measured[frozenset(r[:2])],
+                 COORDINATION_FORCE]
+                for r in rows]
     return (asked + detected) or None, detected
 
 
@@ -266,12 +251,10 @@ def run(args) -> Dict[str, Any]:
         raise ValueError("`membrane` and `implicit` cannot both be set in the md inputs: a bilayer "
                          "needs an explicit, periodic box.")
 
-    constraints = md_constraints(inputs, preprocess, pdb_file)
     restraints, detected = md_restraints(inputs, preprocess, pdb_file)
     if restraints:
-        print(f"[INFO] {len(restraints)} distance restraints "
-              f"({len(detected)} detected coordination at {COORDINATION_FORCE} "
-              f"kcal/mol/A^2): {restraints}")
+        print(f"[INFO] {len(restraints)} harmonic distance restraints "
+              f"({len(detected)} detected metal coordination): {restraints}")
 
     # The coordination sphere this run starts from. Reported again at the end,
     # because a contact that was not there at setup was never restrained, and a
@@ -281,7 +264,7 @@ def run(args) -> Dict[str, Any]:
     report_coordination(shell_before, "before MD")
     result["coordination_start"] = shell_before
 
-    mm, default_forcefields = build_md_theory(inputs, preprocess, pdb_file, constraints, restraints,
+    mm, default_forcefields = build_md_theory(inputs, preprocess, pdb_file, restraints,
                                               cores=resolve_cores(inputs.get("cores")))
 
     # IOD by default: Amber's stock metal radii put the metal-oxygen minimum too

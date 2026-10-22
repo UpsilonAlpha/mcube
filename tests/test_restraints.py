@@ -7,8 +7,8 @@ import pytest
 
 pytest.importorskip("ash", reason="mcube.md imports ASH")
 
-from mcube.md import COORDINATION_FORCE, md_restraints  # noqa: E402
-from mcube.preprocess import pair_distances  # noqa: E402
+from mcube.md import md_restraints  # noqa: E402
+from mcube.preprocess import COORDINATION_FORCE, pair_distances  # noqa: E402
 
 # Zn, one donor at 2.10 A, and a pair that is only close across a box face.
 ATOMS = [("B", "1", "ZN", 0.0, 0.0, 0.0),
@@ -54,12 +54,18 @@ class TestPairDistances:
 
 
 class TestMdRestraints:
-    def test_detected_coordination_is_restrained_at_its_own_distance(self, pdb):
+    def test_rows_preprocess_wrote_are_used_as_given(self, pdb):
+        """preprocess writes [i, j, d, k], so an edited k in the config is what runs."""
         restraints, detected = md_restraints(
-            {}, {"results": {"constraints": [[0, 1]]}}, pdb)
-        assert restraints == [[0, 1, 2.1, COORDINATION_FORCE]]
+            {}, {"results": {"coordination": [[0, 1, 2.1, 12.5]]}}, pdb)
+        assert restraints == [[0, 1, 2.1, 12.5]]
         # Recorded apart from chosen restraints: it asserts nothing new (D68).
         assert detected == restraints
+
+    def test_a_bare_pair_is_measured_at_this_run_s_geometry(self, pdb):
+        restraints, _ = md_restraints(
+            {}, {"results": {"coordination": [[0, 1]]}}, pdb)
+        assert restraints == [[0, 1, 2.1, COORDINATION_FORCE]]
 
     def test_nothing_detected_gives_no_restraints(self, pdb):
         assert md_restraints({}, {"results": {}}, pdb) == (None, [])
@@ -67,18 +73,18 @@ class TestMdRestraints:
     def test_an_explicit_restraint_on_the_same_pair_wins(self, pdb):
         restraints, detected = md_restraints(
             {"restraints": [[0, 1, 2.2, 20.0]]},
-            {"results": {"constraints": [[0, 1]]}}, pdb)
+            {"results": {"coordination": [[0, 1, 2.1, 50.0]]}}, pdb)
         assert restraints == [[0, 1, 2.2, 20.0]]
         assert detected == []
 
     def test_chosen_and_detected_restraints_coexist(self, pdb):
         restraints, detected = md_restraints(
             {"restraints": [[0, 3, 3.0, 20.0]]},
-            {"results": {"constraints": [[0, 1]]}}, pdb)
-        assert restraints == [[0, 3, 3.0, 20.0], [0, 1, 2.1, COORDINATION_FORCE]]
-        assert detected == [[0, 1, 2.1, COORDINATION_FORCE]]
+            {"results": {"coordination": [[0, 1, 2.1, 50.0]]}}, pdb)
+        assert restraints == [[0, 3, 3.0, 20.0], [0, 1, 2.1, 50.0]]
+        assert detected == [[0, 1, 2.1, 50.0]]
 
     def test_selectors_resolve(self, pdb):
         restraints, _ = md_restraints(
-            {}, {"results": {"constraints": [["B:1:ZN", "A:88:NE2"]]}}, pdb)
+            {}, {"results": {"coordination": [["B:1:ZN", "A:88:NE2"]]}}, pdb)
         assert restraints == [[0, 1, 2.1, COORDINATION_FORCE]]

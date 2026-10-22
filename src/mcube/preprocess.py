@@ -209,26 +209,28 @@ def to_selectors(entries, pdb_file: str) -> list:
     return out
 
 
-def check_inherited_restraints(constraints, restraints, pdb_file: str, inputs) -> None:
-    """Refuse to constrain a pair that md held in place with a harmonic restraint.
+def check_inherited_restraints(coordination, restraints, pdb_file: str, inputs) -> None:
+    """Refuse to detect a pair that md pulled to a distance someone chose.
 
-    A restraint says "we are imposing this distance"; a constraint on a detected
-    contact says "this distance is structural". Re-running preprocess after a
-    restrained md turns the first into the second, and nothing downstream can
-    then tell them apart. Both lists are already in the config, so this only
-    compares them.
+    `md.inputs.restraints` says "we are imposing this distance"; a detected
+    contact says "this distance is structural". Re-running preprocess after such
+    a run turns the first into the second, and nothing downstream can then tell
+    them apart. Both lists are already in the config, so this only compares
+    them. The restraints md generated for the coordination it detected are
+    recorded separately and are not checked here: holding a contact at the
+    distance it already had asserts nothing new.
 
     It sees one config. A run started from another run's structure, with its own
     config, is outside what this can check: that restraint is recorded in the
     other config.
     """
-    if not constraints or not restraints:
+    if not coordination or not restraints:
         return
     imposed = {frozenset(entry[:2]): entry for entry in to_selectors(restraints, pdb_file)}
     allowed = {frozenset(entry[:2]) for entry in
                to_selectors(inputs.get("acknowledge_restrained"), pdb_file)}
     clashes = [imposed[key] for key in
-               (frozenset(entry[:2]) for entry in to_selectors(constraints, pdb_file))
+               (frozenset(entry[:2]) for entry in to_selectors(coordination, pdb_file))
                if key in imposed and key not in allowed]
     if not clashes:
         return
@@ -236,12 +238,22 @@ def check_inherited_restraints(constraints, restraints, pdb_file: str, inputs) -
     detail = "".join("    %s - %s: restrained to %s A by md\n"
                      % (c[0], c[1], c[2] if len(c) > 2 else "?") for c in clashes)
     raise ValueError(
-        "md.results.restraints records distances this run imposed, and preprocess "
-        "would now freeze them as detected metal coordination:\n" + detail +
+        "md.results.restraints records distances a run imposed, and preprocess "
+        "would now report them as detected metal coordination:\n" + detail +
         "\nThat makes an assumption look structural. In the preprocess inputs, either\n"
         "add the residue to `constraint_exclude_residues` to leave it free, or list\n"
         "the pair in `acknowledge_restrained` to assert the coordination is real:\n"
         '    acknowledge_restrained: [["%s", "%s"]]\n' % (clashes[0][0], clashes[0][1]))
+
+
+# The force constant a detected metal-donor contact is restrained with, written
+# into `preprocess.results.coordination` so it is visible and editable per pair.
+# 50 kcal/mol/A^2 leaves the contact 0.11 A RMS of room at 300 K, so the site
+# still vibrates but a donor cannot migrate onto the metal. Gervasoni et al.,
+# Proteins 2022, 90, 372 hold a dizinc metallo-beta-lactamase site at 30 through
+# 100 ns of NVT; Hanzevacki et al., JCIM 2025, 65, 6261 use 50. The difference is
+# 0.03 A, so no result here turns on the choice.
+COORDINATION_FORCE = 50.0  # kcal/mol/A^2
 
 
 def separation(a, b, cell=None) -> float:
@@ -278,7 +290,7 @@ def pair_distances(pdb_file: str, pairs) -> list:
 def coordination_shell(pdb_file: str, inputs, radius=None, per_residue: bool = True) -> list:
     """The metal coordination sphere: the closest donor of each residue within `cutoff`.
 
-    The one place that rule lives. `find_coordinators` builds the MD constraints
+    The one place that rule lives. `find_coordinators` builds the MD restraints
     and the QM region from it, and `md` reports it before and after the run, so a
     contact that appears or disappears during equilibration is visible instead of
     being inherited silently. An MD frame is wrapped into the periodic cell, so
@@ -311,7 +323,7 @@ def coordination_shell(pdb_file: str, inputs, radius=None, per_residue: bool = T
             if r > cutoff:
                 continue
             # Per residue for the QM region, which takes whole residues anyway.
-            # Per atom for constraints: a carboxylate can rotate its second
+            # Per atom for restraints: a carboxylate can rotate its second
             # oxygen in while the first is held, which is how Asp92 OD1 reached
             # 1.75 A with OD2 pinned at 2.80.
             key = (donor[0], donor[1], donor[3]) if per_residue else di
@@ -581,7 +593,7 @@ def find_coordinators(
         print("[WARNING] donor_atoms is no longer used; donors are chosen by element (donor_elements)")
 
     qm_residue_dict = {}  # OpenMM-style: {"A": {80: "HIS"}}
-    bondconstraints = []
+    coordination = []
 
     print("\n===== Metal Coordination Analysis =====")
     print(f"Cutoff: {cutoff:.2f} Å")
@@ -598,12 +610,14 @@ def find_coordinators(
             dist, idx = row["distance"], row["donor_index"]
 
             if resid in (constraint_exclude.get(chain) or []):
-                print(f"[INFO] No bond constraint for {resn} {chain}:{resid} "
+                print(f"[INFO] No restraint for {resn} {chain}:{resid} "
                       f"({aname}) (constraint_exclude_residues)")
             else:
-                bondconstraints.append([m, idx])
+                # The distance it already has, so the restraint preserves the
+                # input geometry rather than imposing one. Editable per pair.
+                coordination.append([m, idx, round(dist, 3), COORDINATION_FORCE])
 
-            # Excluded residues keep their bond constraint but are left out of the QM region
+            # Excluded residues keep their restraint but are left out of the QM region
             if exclude_residues and chain in exclude_residues:
                 if resid in exclude_residues[chain]:
                     continue
@@ -618,7 +632,7 @@ def find_coordinators(
                 if (res.chain.id == chain and int(res.id) == resid):
                     qm_residue_dict.setdefault(chain, {})[resid] = resn
 
-    return qm_residue_dict, bondconstraints
+    return qm_residue_dict, coordination
 
 
 # ==============================
@@ -826,18 +840,18 @@ def run(args) -> Dict[str, Any]:
     # With skip_solvate, pdb_file stays as protein_pdb, or merged.pdb if a ligand was merged in
 
     if inputs.get("metals"):
-        print("[STEP] Detecting coordination constraints...")
-        qm_residues, constraints = find_coordinators(pdb_file, inputs)
+        print("[STEP] Detecting metal coordination...")
+        qm_residues, coordination = find_coordinators(pdb_file, inputs)
         # A contact an earlier run restrained into place must not become a rigid
         # constraint just because the detector now measures it there.
         check_inherited_restraints(
-            constraints,
+            coordination,
             (load_section(args.config, "md").get("results") or {}).get("restraints"),
             pdb_file, inputs)
     else:
         # e.g. protein–protein complexes: no metal site to hold, no metal QM region
-        print("[INFO] No metals given: no coordination constraints and no metal QM region")
-        qm_residues, constraints = {}, []
+        print("[INFO] No metals given: no coordination restraints and no metal QM region")
+        qm_residues, coordination = {}, []
 
     # Residues added to the QM region beyond the metal's coordination sphere
     extra = inputs.get("extra_qm_residues") or {}
@@ -863,7 +877,7 @@ def run(args) -> Dict[str, Any]:
         "qm_residues": qm_residues,
         "qm_atoms": qm_atoms,
         "boundary_excluded": boundary_excluded,
-        "constraints": constraints,
+        "coordination": coordination,
     }
     save_result(result, filename=args.config, section="preprocess")
 

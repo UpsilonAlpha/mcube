@@ -128,7 +128,7 @@ def main():
     if not len(lipid_p):
         sys.exit(f"No lipid phosphorus found (residue names {sorted(LIPID_RESNAMES)}): not a membrane system?")
 
-    keep = np.unique(np.concatenate([lipid_p, water_o, top0.select("protein")]))
+    keep = np.unique(np.concatenate([lipid_p, water_o, top0.select("protein")]).astype(int))
     traj = mdtraj.load(a.traj, top=a.topology, atom_indices=keep)[a.skip_frames:]
     mapping = {int(old): new for new, old in enumerate(keep)}
     top, n = traj.topology, traj.n_frames
