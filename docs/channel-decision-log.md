@@ -244,10 +244,15 @@ constriction, MM→QM/MM reweighting, then xTB→DFT single-point reweighting.**
   | Lu³⁺ 1264 box, xTB/MM 5.1 ps | 2.25 | 7.03 | none | Ln–O 0.08 Å short, CN −1 |
 
   Three findings.
-  1. **For Lu³⁺, 12-6-4 is the better model, the opposite of the C15 expectation.** IOD over-hydrates
-     (CN 8.9 against 8); 12-6-4 gives 7.6. The expected 12-6-4 over-hydration shows instead for La³⁺
-     (9.65 against ~9.1). The parameter choice per ion waits for La IOD and both Ca runs.
-  2. **The MM first shells exchange water about 10–100× faster than experiment**: residence
+  1. **Lu³⁺: in our runs 12-6-4 gives CN 7.6 and IOD 8.9 (experiment ~8).** Withdrawn as "12-6-4
+     is the better model" (user, 2026-10-23: a claim against the literature needs strong
+     justification). What is established: the implementation is Amber's (F5); one 4 ns run per set
+     with ~400 exchanges, so the CN means are converged for this protocol. Not established: how
+     this compares to Li/Song/Merz's own Lu³⁺ 12-6-4 value (C15 quoted only their Ln³⁺ average,
+     CN ≈ 9–10). Until that number is in hand, no model is preferred for Lu³⁺. La³⁺ 12-6-4 gives
+     9.65 (~9.1 expected). The choice per ion also waits for La IOD and both Ca runs.
+  2. **The MM first shells exchange water about 10–100× faster than experiment** (known; it is why
+     the hydration shell is restrained while the MM system is prepared for QM/MM, user): residence
      70–160 ps against ~2–25 ns for heavy Ln³⁺ (Cossy, Helm & Merbach 1988; Helm & Merbach 2005).
      So in MM umbrella windows of several ns, hydration is sampled rather than frozen (the C15 worry
      about frozen windows does not apply to MM). But a shell that is this labile is also probably
@@ -269,6 +274,22 @@ constriction, MM→QM/MM reweighting, then xTB→DFT single-point reweighting.**
   **30416205** Lu IOD, **30416206** Lu 1264; second shell in QM (cutoff 5.2 Å La, 5.0 Å Lu),
   default 300 K, `qm_s2/`: **30416207** La 1264, **30416208** Lu IOD, **30416209** Lu 1264.
 
+**C16 – DFT/MM for the desolvation step; xTB/MM for the rest of the QM/MM leg.** (user, 2026-10-23;
+level and details proposed, not yet decided)
+- Why: xTB is an approximation that, for Ln³⁺ aqua ions, shortens Ln–O by up to 0.1 Å and loses
+  SCC convergence after a few ps (F4). Desolvation is the step the PMF turns on, so it gets a
+  proper DFT; the parts of the path where the hydration shell is intact stay at xTB/MM.
+- Where: the constriction windows whose MM hydration profile (`wham` → `<section>_hydration.csv`)
+  shows the water count falling, i.e. where waters are being exchanged for protein oxygens.
+- Proposed level: r2SCAN (a fast meta-GGA, no exact exchange, so density fitting makes it cheap)
+  with def2-SVP and def2 ECPs, D3(BJ) dispersion if ASH carries its gradient. Available in the ASH
+  env: PySCF 2.13 with libxc r2SCAN, simple-dftd3. Missing: `basis_set_exchange` (PySCF's bundled
+  def2 stops at La, so Lu needs it), dftd4, gpu4pyscf.
+- Mechanics: `qm_engine: dft` with the `dft_*` keys in the `umbrella_qmmm` section already runs
+  QM/MM MD at DFT/MM; the stitch and reweighting are unchanged.
+- First: time one DFT/MM gradient on the bulk La box (ion + first shell) at 16 and 32 cores, then
+  a few ps of bulk DFT/MM MD for La³⁺ and Lu³⁺ against EXAFS, which also gives xTB a reference.
+
 ## Findings
 
 **F1 – `qmmm` did not apply `metal_parameters`.** (2026-10-22; fixed on branch `umbrella`)
@@ -281,6 +302,16 @@ constriction, MM→QM/MM reweighting, then xTB→DFT single-point reweighting.**
   region is known and before the QMMMTheory is built. The set is the stage's
   `metal_parameters`, else `md.results.metal_parameters`, else md's input, else `iod`.
 - **This changes the CSR runs** from now on: a QM Zn now meets MM atoms through IOD radii, as in md.
+
+**F5 – mcube's 12-6-4 reproduces Amber's exactly.** (2026-10-23, `docs/channel/bulk/check_1264.py`)
+- Reference: the Lu³⁺ 12-6-4 bulk box built with tleap (frcmod.ions234lm_1264_tip3p) and ParmEd
+  `add12_6_4 :LU watermodel TIP3P` (AmberTools in the ASH env), read by OpenMM's AmberPrmtopFile.
+  mcube: amber14/tip3p.xml + `ions.apply_metal_parameters(..., "1264")`. Same frame, PME, 1 nm.
+- The energy change for moving the ion by −0.2, +0.2, +0.4 Å (18.3935, 15.0358, 92.7867
+  kcal/mol) and the force on the ion in all four positions agree to every printed digit. The
+  totals differ by a constant 0.15 kcal/mol out of ~14,000, unchanged when the ion moves, so it
+  does not involve the ion (most likely how the two apply the long-range LJ correction to
+  water–water pairs).
 
 **F2 – OpenMM's stock La³⁺/Lu³⁺ are the 12-6-4 model's 12-6 terms without its C4.** (2026-10-22)
 - `amber14/tip3p.xml` (OpenMM 8.4, built from AmberTools 17 `frcmod.ions234lm_126_tip3p`) gives
