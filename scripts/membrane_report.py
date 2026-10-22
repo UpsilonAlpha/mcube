@@ -16,8 +16,9 @@ superposing on the receptor's transmembrane core:
   and z), --distance and --angle readouts between named CA atoms;
 
 With a partner (the second protein chain, or --partner: a peptide, binder, ...):
-- partner CA RMSD, receptor-partner heavy-atom contacts (< --contact A) and the
-  closest approach to --site residues;
+- partner CA RMSD, receptor-partner heavy-atom contacts (< --contact A), the closest
+  approach to --site residues, and the insertion depth: how far the deepest partner
+  heavy atom (and the mean CA) lies below the upper phosphate plane (Å, +z = outside);
 - one-row summary (`_partner.tsv`): pose RMSF (in the receptor frame) and internal RMSF,
   CA RMSD and centre-of-mass drift, contact retention, site occupancy and, against a
   reference --footprint, the fraction of the reference contact set it reaches.
@@ -210,6 +211,11 @@ def main():
         contacts = np.array(contacts)
         cols["partner_ca_rmsd"] = rms(xyz, ref, p_ca)
         cols["partner_contacts"] = contacts
+        # Insertion depth: how far the partner reaches below the upper phosphate plane
+        # (the membrane normal is +z, so the upper leaflet is the extracellular one)
+        plane = np.array([zp[f][up[f]].mean() for f in range(n)])
+        cols["partner_depth_max"] = plane - xyz[:, p_heavy, 2].min(1)
+        cols["partner_depth_ca"] = plane - xyz[:, p_ca, 2].mean(1)
         if site:
             cols["partner_site_min_d"] = np.array(site_d)
 
@@ -238,13 +244,15 @@ def main():
         names = ["frames", "partner_len", "pose_rmsf_mean", "pose_rmsf_max", "internal_rmsf_mean",
                  "internal_rmsf_max", "ca_rmsd_mean", "ca_rmsd_last", "com_drift_mean", "com_drift_last",
                  "contacts_first", "contacts_mean", "contacts_retention", "site_d_mean", "site_d_max",
-                 "site_occ", "footprint_n", "site_cov_mean", "site_cov_last", "iface_n", "iface_rmsf"]
+                 "site_occ", "footprint_n", "site_cov_mean", "site_cov_last", "iface_n", "iface_rmsf",
+                 "depth_max_mean", "depth_max_last", "depth_ca_mean"]
         nan = float("nan")
         values = [n, len(p_ca), pose.mean(), pose.max(), internal.mean(), internal.max(), rmsd.mean(), rmsd[-1],
                   drift.mean(), drift[-1], contacts[0], contacts.mean(), contacts[-k:].mean() / max(contacts[0], 1),
                   np.mean(site_d) if site else nan, np.max(site_d) if site else nan,
                   occ[site].mean() if site else nan, fp_n, cov_mean, cov_last, len(iface),
-                  rmsf(xyz[:, iface]).mean() if len(iface) else nan]
+                  rmsf(xyz[:, iface]).mean() if len(iface) else nan,
+                  cols["partner_depth_max"].mean(), cols["partner_depth_max"][-1], cols["partner_depth_ca"].mean()]
         fmt = lambda v: f"{v:.3f}" if isinstance(v, (float, np.floating)) else str(v)  # noqa: E731
         Path(a.out + "_partner.tsv").write_text("\t".join(names) + "\n" + "\t".join(fmt(v) for v in values) + "\n")
         with open(a.out + "_residues.tsv", "w") as fh:
