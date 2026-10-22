@@ -1384,6 +1384,36 @@ Earlier in the same thread I had also argued the docked pose was wrong because i
 
 **Energy caveat (D95).** Pre-merge, so stock Zn radii in the MM while the input geometry came from IOD-parameterised MD. Do not compare -447.37695 Eh against a post-merge run.
 
+**Trajectory manifest, recorded 2026-10-22 before deleting the QM/MM trajectories.** Frame-to-time mapping, so a structure named after a frame index stays interpretable once the trajectory it came from is gone.
+
+**Conversion.** `md` NVT: `nvt_timestep: 0.004` x `traj_frequency: 500` = **2.0 ps per frame**. `qmmm`: `timestep: 0.001` x `traj_frequency: 50` (the default; v2 states it explicitly) = **0.05 ps per frame**.
+
+| trajectory | frames | ps/frame | span | fate |
+| --- | --- | --- | --- | --- |
+| `CSR_crystal/md_restrained/NVTtrajectory_imaged.dcd` | 500 | 2.0 | 1000 ps | **kept** |
+| `CSR_crystal_v2/md_results/NVTtrajectory_imaged.dcd` | 500 | 2.0 | 1000 ps | **kept** |
+| `CSR_hydrolysed`, `CSR_ligand`, `CSR_unrestrained2` md NVT (imaged) | 250 | 2.0 | 500 ps | **kept** |
+| `CSR_crystal_v2/qmmm_results/QM_MM.dcd` | 1000 | 0.05 | 50 ps | deleted |
+| `CSR_hydrolysed/qmmm_results/QM_MM.dcd` | 1000 | 0.05 | 50 ps | deleted |
+| `CSR_ligand/qmmm_results/QM_MM.dcd` | **878** | 0.05 | **43.9 ps of a requested 50** - run ended early | deleted |
+| `CSR_crystal_v2/protdft/md2_ohH/QM_MM.dcd` | 500 | 0.05 | 25 ps (`time: 25`) | deleted |
+| `CSR_crystal_v2/qmmm_analysis/qmmm_snap.dcd` | 791 | n/a | analysis-derived subset, **no uniform spacing** | deleted |
+| `CSR_unrestrained/protdft/qmmm/QM_MM.dcd` | 5 | 0.05 | 0.25 ps | deleted |
+
+**Structures named after a frame, with the time each corresponds to.** Index ranges identify the source: f00300-f00499 fit the 500-frame md NVT, f00192-f00910 the 1000-frame QM/MM run.
+
+| structures | frames | source | time |
+| --- | --- | --- | --- |
+| `CSR_crystal/qmmm_probe/f00300`, `f00400`, `f00499` | 300, 400, 499 | md NVT @ 2.0 ps | **600, 800, 998 ps** |
+| `CSR_crystal_v2/protdft/f00192`, `f00395`, `f00575` | 192, 395, 575 | QM/MM @ 0.05 ps | **9.6, 19.75, 28.75 ps** |
+| `CSR_crystal_v2/scans/qmmm_R_H1_f00365`, `_f00497`, `_f00635` | 365, 497, 635 | QM/MM @ 0.05 ps | **18.25, 24.85, 31.75 ps** |
+| `CSR_crystal_v2/scans/qmmm_R_H2_f00395`, `_f00775`, `_f00910` | 395, 775, 910 | QM/MM @ 0.05 ps | **19.75, 38.75, 45.5 ps** |
+| `CSR_crystal_v2/scans/qmmm_R_H3_f00192`, `_f00575`, `_f00888` | 192, 575, 888 | QM/MM @ 0.05 ps | **9.6, 28.75, 44.4 ps** |
+
+Every one of those directories keeps its own `QM_MM_optimized.pdb`, so the geometries survive; what is lost is the ability to extract a *different* frame from the same run.
+
+**One file was destroyed by the quota, not by this cleanup.** `CSR_ligand/md_results/warmup_MD_cycle0.dcd` was **0 bytes and unreadable** - a write that failed while scratch was full. It is 10 frames of a 1 K warm-up ramp, so nothing of value, but it is direct evidence the over-quota period damaged output. An audit of every `.dcd` under `CSR_*` found this one and no others.
+
 **Scratch cleanup, 2026-10-22.** `rquota` showed scratch **over quota at 315 GB against a 300 GB limit** (816,052 / 1,000,000 files), so writes were at risk with a job running. Freed 19 GB / 47 files, down to 296 GB. What went, and why it was safe:
 
 | removed | size | why |
