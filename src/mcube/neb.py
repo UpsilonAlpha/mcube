@@ -29,6 +29,7 @@ from .qmmm import (
     write_pdb,
     resolve_stage_atoms,
     qm_level_inputs,
+    qm_level_label,
 )
 from ash import *
 
@@ -149,6 +150,7 @@ def run(args) -> Dict[str, Any]:
     qm_atoms, boundary_excluded = resolve_qm_region({**qmmm_inputs, **{k: neb_inputs[k] for k in ('qm_residues', 'extra_qm_residues') if k in neb_inputs}}, preprocess, args.reactant)
     # The same metal parameters as md, before the QMMMTheory is built
     apply_stage_metal_parameters(qmmm_inputs, preprocess, md, mm, forcefields, qm_atoms)
+    result["qm_level"] = qm_level_label(qmmm_inputs)
     result["qm_atoms"] = qm_atoms
     result["boundary_excluded"] = boundary_excluded
 

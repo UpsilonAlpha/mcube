@@ -67,6 +67,7 @@ from .qmmm import (
     write_pdb,
     resolve_stage_atoms,
     qm_level_inputs,
+    qm_level_label,
 )
 
 from ash import *
@@ -105,6 +106,7 @@ def run(args) -> Dict[str, Any]:
     md = load_section(args.config, "md")
     qmmm_inputs = load_section(args.config, "qmmm").get("inputs") or {}
     inputs = stage_inputs(args.config, "ts", section)
+    result["qm_level"] = qm_level_label(qmmm_inputs)
     qmmm_inputs = qm_level_inputs(qmmm_inputs, inputs)  # qm_engine/dft_* may be set per section
 
     pdb_file = getattr(args, "pdb", None) or inputs.get("pdb_file") or \

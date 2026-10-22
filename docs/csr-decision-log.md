@@ -1492,7 +1492,7 @@ That gap passes a real false positive: a saddle whose imaginary mode is a water 
 **Dropped, and most consequential - in order.**
 
 1. **Equilibration is 1 ns against a published 10-100 ns.** Gervasoni 100 ns NVT, Guven 50, Lisa 10, Bahena-Mendez 10. The justification on file is ASH protocol 2b, which is a **tutorial**, not a production protocol. D92 recorded the gap and then it stopped being pressed. A 10-100x shortfall is the weakest point in the current setup.
-2. **GFN2-xTB is a path-finding method, not a barrier method.** Gervasoni refine with B3LYP/MM; Guven sample with DFTB3 and refine with DFT. `qm_engine: dft` and `sp_dft` exist, but nothing in the staged path *forces* refinement, so an xTB number could be quoted as a barrier by accident.
+2. **GFN2-xTB is a path-finding method, not a barrier method.** Gervasoni refine with B3LYP/MM; Guven sample with DFTB3 and refine with DFT. `qm_engine: dft` and `sp_dft` exist, but nothing in the staged path *forces* refinement, so an xTB number could be quoted as a barrier by accident. **Partly addressed the same day**: every stage reporting an energy now records `qm_level` in its results (`GFN2-xTB` or `functional/basis`), so a number's provenance travels with it and an xTB energy cannot be mistaken for a refined one. That makes the omission visible; it still does not force the refinement.
 3. **`sp_basis: def2-svp` is a geometry basis, not an energetics one.** wB97X-V is a good functional choice; def2-SVP undercuts it for a barrier. A config change, not a code change.
 4. **QM region size never tested.** Mehmood & Kulik report that too-small QM regions *over*-bind zinc, and D92 flagged region size as its own variable. We sit at ~130 QM atoms and an 8 A active region with no convergence check.
 

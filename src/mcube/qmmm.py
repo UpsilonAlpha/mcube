@@ -195,6 +195,25 @@ def make_dft(inputs: Dict[str, Any], cores: int, mult: Optional[int], prefix: st
                        numcores=cores)
 
 
+def qm_level_label(inputs: Dict[str, Any]) -> str:
+    """How the QM energies in a stage's results were produced.
+
+    Recorded by every stage that reports an energy, because a barrier assembled
+    from `opt_energy`, a scan's `energy`, `mep_energies` or `saddlepoint_energy`
+    is otherwise indistinguishable from one computed at another level. That
+    matters here specifically: GFN2-xTB is a path-finding method and its
+    energies are not barriers. Published practice is to find the path
+    semiempirically and refine the stationary points at DFT - Gervasoni et al.,
+    Proteins 2022, 90, 372 refine with B3LYP/MM, and Guven et al., J. Phys.
+    Chem. B 2024, 128, 12416 sample with DFTB3 and refine with DFT.
+    """
+    engine = str(inputs.get("qm_engine", "xtb")).lower()
+    if engine in ("dft", "pyscf"):
+        return "%s/%s" % (level_option(inputs, "dft", "functional", "wb97x-v"),
+                          level_option(inputs, "dft", "basis", "def2-svp"))
+    return "%s-xTB" % inputs.get("xtb_method", "GFN2")
+
+
 def make_qm(inputs: Dict[str, Any], cores: int, runmode: Optional[str] = None):
     """
     The QM theory for the gradient-driven stages (optimisation, scan, NEB, TS, frequencies).
@@ -422,6 +441,7 @@ def run(args) -> Dict[str, Any]:
         "qm_atoms": qm_atoms,
         "boundary_excluded": boundary_excluded,
     }
+    result["qm_level"] = qm_level_label(inputs)
     result["metal_parameters"] = apply_stage_metal_parameters(inputs, preprocess, md, mm,
                                                               forcefields, qm_atoms)
     save_result(result, filename=args.config, section=section)

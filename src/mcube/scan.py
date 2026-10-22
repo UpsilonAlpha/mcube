@@ -65,6 +65,7 @@ from .qmmm import (
     write_pdb,
     resolve_stage_atoms,
     qm_level_inputs,
+    qm_level_label,
     optimize,
 )
 
@@ -214,6 +215,7 @@ def run(args) -> Dict[str, Any]:
     result: Dict[str, Any] = {
         "pdb_file": Path(pdb_file).resolve().as_posix(),
         "atoms": [i, j],
+        "qm_level": qm_level_label(qmmm_inputs),
         "constraints": bond_constraints(extra, fragment.coords),
         "points": [],
     }
