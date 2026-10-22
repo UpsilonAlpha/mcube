@@ -184,6 +184,21 @@ def md_inputs(config: str, section: Optional[str] = None) -> Dict[str, Any]:
     return inputs
 
 
+def fill_restraints(rows, pdb_file: str) -> list:
+    """`[i, j]` -> `[i, j, current_distance, COORDINATION_FORCE]`, filling what is absent.
+
+    One rule for every pair, whatever it belongs to: a row with no distance is
+    held where the structure already has it, and a row with no force constant
+    gets the one default. Give either explicitly to override it.
+    """
+    rows = [list(r) for r in rows]
+    bare = [r for r in rows if len(r) < 3]
+    measured = dict(zip((frozenset(r[:2]) for r in bare), pair_distances(pdb_file, bare)))
+    return [[r[0], r[1],
+             r[2] if len(r) > 2 else measured[frozenset(r[:2])],
+             r[3] if len(r) > 3 else COORDINATION_FORCE] for r in rows]
+
+
 def md_restraints(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file: str):
     """Harmonic distance restraints: the detected metal coordination, plus any asked for.
 
@@ -196,28 +211,22 @@ def md_restraints(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file: 
     touches a massless atom. A restraint also carries no element-specific
     parameters, so it works for any metal without parameterisation.
 
-    `preprocess.results.coordination` already carries the distance and force
-    constant for every contact it detected, printed into the config, so editing
-    a row there is what changes the run. A row given as a bare `[i, j]` pair is
-    restrained at whatever distance this run starts from, at the default
-    constant.
+    Both lists go through `fill_restraints`, so a pair named in
+    `md.inputs.restraints` is treated exactly as a detected one: same default
+    force constant, same "hold it where it is" if no distance is given. Nothing
+    here distinguishes a residue from a ligand.
 
     Returns (restraints, detected) with `detected` the auto-generated subset, so
     the results can record which restraints were a measurement and which were a
     choice. Only a distance someone chose can launder an assumption into a later
     run: holding a contact where it already was asserts nothing new.
     """
-    asked = [list(r) for r in (resolve_atoms(inputs.get("restraints") or None, pdb_file) or [])]
+    asked = fill_restraints(resolve_atoms(inputs.get("restraints") or None, pdb_file) or [],
+                            pdb_file)
     rows = resolve_atoms((preprocess.get("results") or {}).get("coordination"), pdb_file) or []
     # An explicit restraint on a pair wins: the user named a distance for it.
     named = {frozenset(r[:2]) for r in asked}
-    rows = [list(r) for r in rows if frozenset(r[:2]) not in named]
-    bare = [r for r in rows if len(r) < 3]
-    measured = dict(zip((frozenset(r[:2]) for r in bare), pair_distances(pdb_file, bare)))
-    detected = [r if len(r) >= 4 else
-                [r[0], r[1], r[2] if len(r) > 2 else measured[frozenset(r[:2])],
-                 COORDINATION_FORCE]
-                for r in rows]
+    detected = fill_restraints([r for r in rows if frozenset(r[:2]) not in named], pdb_file)
     return (asked + detected) or None, detected
 
 

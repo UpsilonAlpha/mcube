@@ -131,7 +131,7 @@ sections:
     stage: md
     inputs:
       restraints:
-        - [C:2:O01, C:1:C4x, 3.47, 20.0]   # hydroxide O -> beta-lactam carbonyl C
+        - [C:2:O01, C:1:C4x, 3.47]   # Zn-bound O -> beta-lactam carbonyl C
       nvt_time: 1000                       # 1 ns, per the ASH 2b protocol
 
   # D94: is the 1.79 A Zn-Gln93 contact that MM produced a real minimum on the

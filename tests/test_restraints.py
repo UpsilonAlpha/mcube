@@ -106,6 +106,18 @@ class TestMdRestraints:
         assert restraints == [[0, 3, 3.0, 20.0], [0, 1, 2.1, 50.0]]
         assert detected == [[0, 1, 2.1, 50.0]]
 
+    def test_an_asked_row_inherits_the_default_force_constant(self, mc, pdb):
+        """One rule for every pair: a named restraint is filled like a detected one."""
+        restraints, detected = mc.md.md_restraints(
+            {"restraints": [[0, 1, 2.2]]}, {"results": {}}, pdb)
+        assert restraints == [[0, 1, 2.2, mc.preprocess.COORDINATION_FORCE]]
+        assert detected == []
+
+    def test_an_asked_row_with_no_distance_is_held_where_it_is(self, mc, pdb):
+        restraints, _ = mc.md.md_restraints(
+            {"restraints": [[0, 1]]}, {"results": {}}, pdb)
+        assert restraints == [[0, 1, 2.1, mc.preprocess.COORDINATION_FORCE]]
+
     def test_selectors_resolve(self, mc, pdb):
         restraints, _ = mc.md.md_restraints(
             {}, {"results": {"coordination": [["B:1:ZN", "A:88:NE2"]]}}, pdb)
