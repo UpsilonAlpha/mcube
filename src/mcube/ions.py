@@ -21,16 +21,49 @@ IOD label, which are not valid without the accompanying C4 term. The +2 rows
 are unaffected in both. Checked against a local AmberTools install: Zn2+,
 La3+, Ce3+ and Pr3+ agree exactly.
 
+OpenMM carries the same defect in a force field: `amber14/tip3p.xml` (checked
+in OpenMM 8.4; built from AmberTools 17 `frcmod.ions234lm_126_tip3p`) gives
+La3+ sigma 0.31324 nm and Lu3+ 0.28954 nm, i.e. Rmin/2 1.758 and 1.625 A -
+exactly the 12-6-4 rows below (LM_1264_TIP3P), with no C4 term. IOD has 1.718
+and 1.588. So for the lanthanides the stock values are not a valid 12-6 model.
+That makes `none` asymmetric: for Zn2+ it is a legitimate control (Amber's
+stock radii are only suboptimal), but for a lanthanide it is a known-wrong
+parameterisation and cannot be the baseline arm of a comparison.
+
 Sources, as given per row in the file itself:
   +2 ions   Li, Roberts, Chakravorty & Merz, J. Chem. Theory Comput. 2013, 9, 2733
   +3/+4     Li, Song & Merz, J. Phys. Chem. B 2015, 119, 883
 
-The 12-6-4 model does better for highly charged ions but needs an r^-4 term
-with per-ion C4 values and the partner atom's polarisability, which Amber
-supplies through ParmEd rather than in the frcmod file. Not implemented here.
+The 12-6-4 model (`metal_parameters: 1264`) does better for highly charged
+ions: it adds an ion-induced-dipole term -C4/r^4 between the ion and every
+other atom, with its own refitted 12-6 terms. It is built the way Amber's
+ParmEd `add12_6_4` builds it (read: parmed/tools/add1264.py):
+
+  C4(ion, j) = C4(ion) * alpha_j / alpha_OW,     alpha_OW = 1.444 A^3
+
+with C4(ion) the ion-water value and alpha_j the polarisability of j's Amber
+atom type, from `data/lj_1264_pol.dat` (ParmEd's copy of AmberTools'
+lj_1264_pol.dat, unmodified). Between two such ions the two terms add.
+
+  12-6 terms   frcmod.ions34lsm_1264_tip3p (Li, Song & Merz, J. Phys. Chem. B
+               2015, 119, 883), ParmEd test/files/parm copy
+  C4 values    ParmEd DEFAULT_C4_PARAMS['TIP3P']
+
+Only +3/+4 ions are tabulated: the +2 12-6-4 file (frcmod.ions234lm_1264_tip3p,
+Li & Merz, J. Chem. Theory Comput. 2014, 10, 289) was not available to check
+against, so a +2 ion such as Ca2+ raises rather than run on guessed values.
+
+Lipid17 atom types are not in lj_1264_pol.dat. They are GAFF-derived (Lipid14,
+Dickson et al. 2014), so each is given the polarisability of its GAFF analogue
+(`LIPID17_ANALOGUE`). That mapping is mcube's, not Amber's.
+
+C4 is not fitted to protein ligands, and the alpha-ratio rule tends to
+over-bind carboxylates (Jafari et al., J. Phys. Chem. B 2024, 128, 684).
 """
 
 from __future__ import annotations
+
+from pathlib import Path
 
 # element -> charge -> (Rmin/2 in Angstrom, epsilon in kcal/mol)
 IOD_TIP3P = {
@@ -73,7 +106,47 @@ IOD_TIP3P = {
     "TH": {4: (1.708, 0.14364160)},
 }
 
-SETS = {"iod": IOD_TIP3P}
+# element -> charge -> (Rmin/2 in Angstrom, epsilon in kcal/mol, C4 in kcal/mol/A^4)
+LM_1264_TIP3P = {
+    "AL": {3: (1.369, 0.01128487, 399.0)},
+    "FE": {3: (1.443, 0.02387506, 428.0)},
+    "CR": {3: (1.415, 0.01827024, 258.0)},
+    "IN": {3: (1.491, 0.03625449, 347.0)},
+    "TL": {3: (1.571, 0.06573030, 456.0)},
+    "Y":  {3: (1.630, 0.09509276, 216.0)},
+    "LA": {3: (1.758, 0.17997960, 152.0)},
+    "CE": {3: (1.782, 0.19865859, 230.0), 4: (1.766, 0.18612361, 706.0)},
+    "PR": {3: (1.780, 0.19707431, 264.0)},
+    "ND": {3: (1.724, 0.15486311, 213.0)},
+    "SM": {3: (1.711, 0.14571499, 230.0)},
+    "EU": {3: (1.716, 0.14920231, 259.0)},
+    "GD": {3: (1.658, 0.11129023, 198.0)},
+    "TB": {3: (1.671, 0.11928915, 235.0)},
+    "DY": {3: (1.637, 0.09900804, 207.0)},
+    "ER": {3: (1.635, 0.09788018, 251.0)},
+    "TM": {3: (1.647, 0.10475707, 282.0)},
+    "LU": {3: (1.625, 0.09235154, 249.0)},
+    "HF": {4: (1.600, 0.07934493, 827.0)},
+    "ZR": {4: (1.609, 0.08389240, 761.0)},
+    "U":  {4: (1.792, 0.20665151, 1034.0)},
+    "PU": {4: (1.752, 0.17542802, 828.0)},
+    "TH": {4: (1.770, 0.18922704, 512.0)},
+}
+
+SETS = {"iod": IOD_TIP3P, "1264": LM_1264_TIP3P}
+
+WATER_POL = 1.444  # A^3, water oxygen (OW) in lj_1264_pol.dat
+
+# Lipid17 type -> the GAFF type it was derived from, for its polarisability
+LIPID17_ANALOGUE = {
+    "cA": "c3", "cB": "c2", "cC": "c", "cD": "c3",
+    "hA": "hc", "hB": "ha", "hE": "h1", "hL": "hc", "hN": "hn", "hO": "ho", "hX": "hx",
+    "nA": "n4",
+    "oC": "o", "oH": "oh", "oO": "o", "oP": "o", "oS": "os", "oT": "os",
+    "pA": "p5",
+}
+
+POL_FILE = Path(__file__).with_name("data") / "lj_1264_pol.dat"
 
 
 def lookup(name: str, element: str, charge: float):
@@ -85,5 +158,203 @@ def lookup(name: str, element: str, charge: float):
     entry = table.get(element.upper(), {}).get(int(round(charge)))
     if entry is None:
         return None
-    rmin_half, eps_kcal = entry
+    rmin_half, eps_kcal = entry[:2]
     return (2.0 * rmin_half / 2.0 ** (1.0 / 6.0) / 10.0, eps_kcal * 4.184)
+
+
+def metal_parameter_set(inputs: dict, md: dict) -> str:
+    """The metal parameter set for a stage after md: its own input, else what md used."""
+    which = inputs.get("metal_parameters")
+    if which is None:
+        which = (md.get("results") or {}).get("metal_parameters")
+    if which is None:
+        which = (md.get("inputs") or {}).get("metal_parameters", "iod")
+    return str(which).lower()
+
+
+def c4_value(element: str, charge: float):
+    """The 12-6-4 ion-water C4 (kcal/mol/A^4), or None if not tabulated."""
+    entry = LM_1264_TIP3P.get(element.upper(), {}).get(int(round(charge)))
+    return None if entry is None else entry[2]
+
+
+def read_polarizabilities(path=POL_FILE) -> dict:
+    """{Amber atom type: polarisability in A^3} from a two-column file."""
+    pol = {}
+    for line in open(path):
+        parts = line.split()
+        if len(parts) >= 2:
+            pol[parts[0]] = float(parts[1])
+    return pol
+
+
+def type_polarizability(atom_class: str, table: dict, overrides=None):
+    """
+    Polarisability of an OpenMM atom class, or None if unknown.
+
+    OpenMM's Amber XMLs keep the Amber type as the class for proteins, but prefix
+    water and ions (`tip3p-O`, `tip3p_standard-Na+`), and Lipid17 has its own
+    types, so those are translated first. `overrides` (by class) wins over all.
+    """
+    if overrides and atom_class in overrides:
+        return float(overrides[atom_class])
+    name = {"tip3p-O": "OW", "tip3p-H": "HW"}.get(atom_class, atom_class)
+    if name.startswith("tip3p_standard-"):
+        name = name[len("tip3p_standard-"):]
+    name = LIPID17_ANALOGUE.get(name, name)
+    return table.get(name)
+
+
+def atom_classes(topology, forcefields) -> list:
+    """The force-field atom class of every atom, in topology order.
+
+    Uses the matching OpenMM's own createSystem does. `_getResidueTemplateMatches`
+    is private API, but it is the only way to know which template atom each
+    residue atom became, and atom names do not have to agree with the template.
+    """
+    from openmm.app import ForceField
+    ff = ForceField(*forcefields)
+    bonded = ff._buildBondedToAtomList(topology)
+    classes = [None] * topology.getNumAtoms()
+    for residue in topology.residues():
+        template, matches = ff._getResidueTemplateMatches(residue, bonded)
+        if matches is None:
+            raise ValueError(f"No force-field template for residue {residue.name} "
+                             f"{residue.chain.id}:{residue.id}")
+        for atom, k in zip(residue.atoms(), matches):
+            classes[atom.index] = ff._atomTypes[template.atoms[k].type].atomClass
+    return classes
+
+
+def add_c4_force(system, topology, forcefields, ion_indices, ion_c4, qm_atoms=(),
+                 polarizabilities=None):
+    """
+    Add the 12-6-4 ion-induced-dipole term as a CustomNonbondedForce. Returns it.
+
+    Per particle: `cfour` (C4, nonzero only for the ions) and `alpha` (alpha /
+    alpha_OW). The pair energy -(cfour1*alpha2 + cfour2*alpha1)/r^4 is C4(ion)*alpha_j/alpha_OW
+    for an ion and any atom, and the sum of both terms for two ions, as in
+    ParmEd. It is restricted to ion x everything by an interaction group, and
+    takes the NonbondedForce's cutoff and exceptions.
+
+    `qm_atoms` get cfour = alpha = 0: in QM/MM the QM region is polarised by the
+    embedding already, so a QM ion's C4 would count that induction twice.
+    """
+    import openmm
+
+    existing = next((f for f in system.getForces() if f.getName() == "mcube_1264_C4"), None)
+    if existing is not None:
+        return existing  # already added to this system (stages may rebuild their theory)
+    table = read_polarizabilities()
+    classes = atom_classes(topology, forcefields)
+    ions = {int(i): float(c) for i, c in zip(ion_indices, ion_c4)}
+    qm = {int(a) for a in qm_atoms}
+
+    pol, missing = [], set()
+    for index, atom_class in enumerate(classes):
+        value = type_polarizability(atom_class, table, polarizabilities)
+        if value is None:
+            # A C4 ion's own polarisability matters only against another C4 ion
+            if index not in ions:
+                missing.add(atom_class)
+            value = 0.0
+        pol.append(value)
+    if missing:
+        raise ValueError(
+            "12-6-4 needs a polarisability for every atom type; none for "
+            f"{', '.join(sorted(missing))}. Give them as `polarizabilities: "
+            "{class: A^3}` in the stage inputs.")
+
+    nonbonded = next(f for f in system.getForces() if isinstance(f, openmm.NonbondedForce))
+    force = openmm.CustomNonbondedForce("-(cfour1*alpha2 + cfour2*alpha1)/r^4")
+    force.setName("mcube_1264_C4")
+    force.addPerParticleParameter("cfour")
+    force.addPerParticleParameter("alpha")
+    for index in range(system.getNumParticles()):
+        if index in qm:
+            force.addParticle([0.0, 0.0])
+        else:
+            # kcal/mol/A^4 -> kJ/mol/nm^4
+            force.addParticle([ions.get(index, 0.0) * 4.184e-4, pol[index] / WATER_POL])
+    # Every exception, not only the ions': OpenMM's CPU and GPU platforms refuse
+    # nonbonded forces whose exclusions differ ("All Forces must have identical
+    # exclusions"); OpenMM's own Amber 12-6-4 path copies them all the same way
+    for k in range(nonbonded.getNumExceptions()):
+        i, j = nonbonded.getExceptionParameters(k)[:2]
+        force.addExclusion(i, j)
+    method = nonbonded.getNonbondedMethod()
+    if method == openmm.NonbondedForce.NoCutoff:
+        force.setNonbondedMethod(openmm.CustomNonbondedForce.NoCutoff)
+    elif method == openmm.NonbondedForce.CutoffNonPeriodic:
+        force.setNonbondedMethod(openmm.CustomNonbondedForce.CutoffNonPeriodic)
+    else:
+        force.setNonbondedMethod(openmm.CustomNonbondedForce.CutoffPeriodic)
+        # As OpenMM's own Amber 12-6-4 path (AmberPrmtopFile) does
+        force.setUseLongRangeCorrection(True)
+    force.setCutoffDistance(nonbonded.getCutoffDistance())
+    force.addInteractionGroup(sorted(ions), range(system.getNumParticles()))
+    system.addForce(force)
+    return force
+
+
+def apply_metal_parameters(system, topology, metals, which: str, forcefields=None,
+                           qm_atoms=(), polarizabilities=None) -> list:
+    """
+    Override the metals' Lennard-Jones terms with a published ion set, and for
+    `1264` add the C4 term. Returns the indices changed.
+
+    The one place this happens, for md and every QM/MM stage alike, so a metal
+    cannot be parameterised one way in MM and another in QM/MM. The ion is
+    identified from the structure's element and the charge the force field
+    assigned. Under IOD an untabulated metal is left alone with a warning; under
+    1264 it raises, because 12-6-4 terms without the C4, or the reverse, are
+    neither model.
+    """
+    import openmm
+    from openmm import unit
+
+    which = str(which).lower()
+    nonbonded = next((f for f in system.getForces()
+                      if isinstance(f, openmm.NonbondedForce)), None)
+    if nonbonded is None:
+        print("[WARNING] no NonbondedForce: metal parameters unchanged")
+        return []
+
+    wanted = {m.upper() for m in (metals or [])}
+    changed, c4s = [], []
+    for atom in topology.atoms():
+        element = (atom.element.symbol if atom.element else "").upper()
+        if element not in wanted:
+            continue
+        charge, sigma, epsilon = nonbonded.getParticleParameters(atom.index)
+        q = charge.value_in_unit(unit.elementary_charge)
+        entry = lookup(which, element, q)
+        if entry is None:
+            if which == "1264":
+                raise ValueError(f"no 1264 parameters for {element} with charge {q:+.0f} "
+                                 "(only +3/+4 ions are tabulated; see ions.py)")
+            print(f"[WARNING] no {which} parameters for {element} with charge "
+                  f"{charge}: left at the force field's own values")
+            continue
+        new_sigma, new_epsilon = entry
+        nonbonded.setParticleParameters(atom.index, charge,
+                                        new_sigma * unit.nanometer,
+                                        new_epsilon * unit.kilojoule_per_mole)
+        changed.append(atom.index)
+        note = ""
+        if which == "1264":
+            c4s.append(c4_value(element, q))
+            note = f", C4 {c4s[-1]} kcal/mol/A^4"
+        print(f"[INFO] {which.upper()} parameters for {element} "
+              f"{atom.residue.chain.id}:{atom.residue.id}: sigma "
+              f"{sigma.value_in_unit(unit.nanometer):.4f} -> {new_sigma:.4f} nm, "
+              f"epsilon {epsilon.value_in_unit(unit.kilojoule_per_mole):.4f} -> "
+              f"{new_epsilon:.4f} kJ/mol{note}")
+
+    if which == "1264" and changed:
+        if forcefields is None:
+            raise ValueError("1264 needs the force-field files, to type every atom")
+        add_c4_force(system, topology, forcefields, changed, c4s, qm_atoms, polarizabilities)
+        if set(changed) & {int(a) for a in qm_atoms}:
+            print("[INFO] 12-6-4: C4 is off for QM atoms (the embedding polarises them)")
+    return changed

@@ -39,6 +39,7 @@ from typing import Any, Dict, Optional
 
 from .preprocess import load_section, resolve_cores, save_result
 from .qmmm import (
+    apply_stage_metal_parameters,
     d3_energy,
     make_dft,
     make_mm,
@@ -111,6 +112,8 @@ def run(args) -> Dict[str, Any]:
 
     print("[STEP] Building QM region...")
     qm_atoms, boundary_excluded = resolve_qm_region(inputs, preprocess, pdb_file)
+    # The same metal parameters as md, before the QMMMTheory is built
+    apply_stage_metal_parameters(inputs, preprocess, md, mm, forcefields, qm_atoms)
     result: Dict[str, Any] = {
         "pdb_file": Path(pdb_file).resolve().as_posix(),
         "qm_atoms": qm_atoms,

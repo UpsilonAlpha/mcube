@@ -1,6 +1,6 @@
 # Ion-channel permeation PMF: umbrella sampling plan
 
-How we go from a sequence to PMFs for Ca²⁺, La³⁺ and a heavy lanthanide crossing the channel.
+How we go from a sequence to PMFs for Ca²⁺, La³⁺ and Lu³⁺ crossing the channel.
 Decisions are in [channel-decision-log.md](channel-decision-log.md) (C*, F*, Q*).
 
 ## Working notes (read first in a new session)
@@ -30,35 +30,55 @@ Decisions are in [channel-decision-log.md](channel-decision-log.md) (C*, F*, Q*)
 7 analysis  WHAM/MBAR, MM→QM/MM and xTB→DFT reweighting                   C5
 ```
 
-## The `umbrella` stage (design, to be finalised)
+## System build per ion
 
-One config section, `umbrella`, read and written like every other stage. Sketch:
+1. Equilibrate the apo channel in POPE once (`preprocess` membrane + `md`).
+2. Per ion, put the ion into a bulk water position of that box and re-neutralise, as in the
+   README's "new partner in an equilibrated bilayer" route.
+3. `preprocess` on that file with `skip_solvate: true`, `membrane: true`, `metals: [LA]`,
+   `cutoff`: it detects the hydration shell and defines the QM region. (Checked in the code:
+   with `skip_solvate`, `membrane` only adds the lipid force field, which is what is wanted.)
+4. `md`, short: minimise, NPT and ~1 ns NVT with the shell restrained (C8). Its `lastframe` is
+   where `pull` starts.
 
-```yaml
-umbrella:
-  inputs:
-    ion: "B:1:LA"                       # selector for the permeating ion
-    reference: {chain: A, atoms: CA}    # channel atoms whose COM defines z = 0
-    start: -35.0                        # Å, CV range along the membrane normal
-    end: 35.0
-    spacing: 0.5
-    k: 10.0                             # kcal/mol/Å², umbrella force constant
-    radial: {r_max: 8.0, k: 10.0}       # flat-bottomed cylinder around the axis
-    engine: mm                          # mm | qmmm
-    equilibrate: 100                    # ps per window, coordination restrained
-    time: 5000                          # ps per window, unrestrained sampling
-  results: {}                           # windows, CV files, PMF
+## The `umbrella` stage (implemented on branch `umbrella`)
+
+`src/mcube/umbrella.py`. The full input table and the actions are in the README
+(`### umbrella.inputs`); a complete config is `config_examples/umbrella_config.yaml`. In short:
+
+```bash
+mcube umbrella config.yaml pull                                   # one MM job (GPU)
+mcube umbrella config.yaml window --window N                      # MM window N (GPU), one job each
+mcube umbrella config.yaml window --window N --section umbrella_qmmm      # QM/MM window (CPU xTB)
+mcube umbrella config.yaml energies --window N --level mm|xtb|dft [--section S]
+mcube umbrella config.yaml wham [--section S] [--reweight dft]
+mcube umbrella config.yaml stitch
 ```
 
-Open design questions: OpenMM force vs PLUMED (ASH check), how windows map to jobs
-(`--window N`), and what the WHAM step writes back.
+What differs from the first design, and why (decision log): the bias is a CustomCVForce of two
+centroid CVs with explicit element-mass weights (C10); MM windows run on OpenMM directly (C13);
+the QM region has a fixed composition, `qm_waters` + `qm_residues` (C9); `pull_speed` in Å/ns
+replaces `pull_time` (C14); per-window results use their own locked merge, not `save_result`,
+which replaces a whole section's results. There is no MBAR: WHAM is self-contained numpy.
+
+Order of operations for one ion:
+
+1. `pull`, then every MM window (about 141 for ±35 Å at 0.5 Å).
+2. `wham` on the MM leg; read the overlap warnings and add windows where they are flagged.
+3. Choose `qm_residues` from the MM windows around the constriction (the residues that ever
+   coordinate), then every `umbrella_qmmm` window.
+4. `energies --level mm` and `--level xtb` on the MM and QM/MM windows at both ends of the QM/MM
+   range; `wham --section umbrella_qmmm`; `stitch`. Read the cycle closure.
+5. `energies --level dft --stride K` on the QM/MM windows, then `wham --section umbrella_qmmm
+   --reweight dft`.
 
 ## Status
 
 | step | state |
 |---|---|
-| decisions C1–C9 recorded | done 2026-10-22 |
-| ASH biasing / PLUMED / GPU check | in progress |
-| literature, lanthanide partner, 12-6-4 | in progress |
-| Bunya probes Q1, Q2 | waiting for the VS Code session |
+| decisions C1–C14, F1–F2 recorded | done 2026-10-22 |
+| ASH biasing / PLUMED / GPU check | done from source (C10, C11); no HIP in the ASH env, MD on gpu_cuda |
+| literature, lanthanide partner, 12-6-4 | done (C4, C5, C12); La³⁺ vs Lu³⁺ chosen |
+| `umbrella.py`, 12-6-4, F1 fix | implemented on branch `umbrella` (worktree `Structures/mcube-umbrella`); 104 tests pass locally, QM/MM paths untested without ASH (Q6); not merged, not on Bunya |
+| Bunya probes Q1, Q2, Q5 | waiting for the browser pane (the ASH session holds it) |
 | fold | not started |

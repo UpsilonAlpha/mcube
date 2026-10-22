@@ -32,7 +32,7 @@ def thread_policy(stage: str, inputs: dict, cpus: int) -> dict:
         return {"OMP_NUM_THREADS": 1, "bind": False,
                 "why": "PySCF runs in-process and sets its own thread count from "
                        "sp_cores/dft_cores; binding would pin its BLAS threads"}
-    if stage == "md":
+    if stage == "md" or (stage == "umbrella" and str(inputs.get("engine", "mm")).lower() != "qmmm"):
         return {"OMP_NUM_THREADS": half, "bind": False,
                 "why": "OpenMM runs in-process; binding would pin it"}
     if stage == "neb":
@@ -49,7 +49,7 @@ def thread_policy(stage: str, inputs: dict, cpus: int) -> dict:
 
 # What each stage can actually use, from seff on real jobs (docs/running-on-bunya.md).
 # Asking for more is silently wasted, so `mcube env` says so at submit time.
-USEFUL_CPUS = {"preprocess": 2, "md": 16, "qmmm": 8, "scan": 8, "ts": 8, "sp": 32}
+USEFUL_CPUS = {"preprocess": 2, "md": 16, "qmmm": 8, "scan": 8, "ts": 8, "sp": 32, "umbrella": 8}
 
 
 def env_exports(config: str, stage: str, section: str | None = None) -> str:
@@ -144,6 +144,24 @@ def build_parser():
     p7.add_argument("--section", default="ts",
                     help="Config section for results; its inputs override ts.inputs")
     p7.add_argument("--actatoms", help="File of active-atom indices (e.g. the reactant's active_atoms)")
+
+    # =========================================================
+    # UMBRELLA SAMPLING
+    # =========================================================
+    p8 = subparsers.add_parser("umbrella", help="Umbrella sampling of an ion along z, and its PMF")
+    p8.add_argument("config", help="Input yaml file")
+    p8.add_argument("action", choices=["pull", "window", "energies", "wham", "stitch"])
+    p8.add_argument("--window", type=int, help="Window index (window, energies)")
+    p8.add_argument("--section", default="umbrella",
+                    help="Config section; its inputs override umbrella.inputs (e.g. umbrella_qmmm)")
+    p8.add_argument("--level", default="mm", choices=["mm", "xtb", "dft"],
+                    help="energies: the model to score saved frames with")
+    p8.add_argument("--stride", type=int, default=1, help="energies: every Nth saved frame")
+    p8.add_argument("--qm-section", default="umbrella_qmmm",
+                    help="Section whose QM-region rule energies (xtb/dft) and stitch use")
+    p8.add_argument("--reweight", choices=["dft"],
+                    help="wham: reweight each frame from xTB/MM to this level")
+    p8.add_argument("--bootstrap", type=int, default=50, help="wham: block-bootstrap resamples")
 
     # =========================================================
     # POSTPROCESS

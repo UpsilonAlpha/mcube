@@ -62,47 +62,19 @@ def md_membrane(inputs: Dict[str, Any], preprocess: Dict[str, Any]) -> bool:
 
 
 
-def apply_metal_parameters(mm, pdb_file: str, metals, which: str) -> list:
+def apply_metal_parameters(mm, pdb_file: str, metals, which: str, forcefields=None,
+                           qm_atoms=(), polarizabilities=None) -> list:
     """Override the metals' Lennard-Jones terms with a published ion set.
 
     Amber's stock parameters put the metal-oxygen pair minimum too close - about
     1.69 A for Zn(II) against a real bond of 2.0-2.1 A - so the metal pulls
-    donors in harder than it should. See ions.py for the set and its sources.
-
-    The ion is identified from the structure's element and the charge the force
-    field itself assigned, so nothing has to be specified: a metal in the PDB is
-    looked up and replaced. An element with no entry is left alone and said so.
+    donors in harder than it should. `1264` also adds the ion-induced-dipole
+    C4 term. See ions.py for the sets and their sources; the work is done there
+    so that md and the QM/MM stages share one implementation.
     """
-    nonbonded = next((f for f in mm.system.getForces()
-                      if isinstance(f, openmm.NonbondedForce)), None)
-    if nonbonded is None:
-        print("[WARNING] no NonbondedForce: metal parameters unchanged")
-        return []
-
-    wanted = {m.upper() for m in (metals or [])}
-    atoms = list(PDBFile(pdb_file).topology.atoms())
-    changed = []
-    for atom in atoms:
-        element = (atom.element.symbol if atom.element else "").upper()
-        if element not in wanted:
-            continue
-        charge, sigma, epsilon = nonbonded.getParticleParameters(atom.index)
-        entry = ions.lookup(which, element, charge.value_in_unit(unit.elementary_charge))
-        if entry is None:
-            print(f"[WARNING] no {which} parameters for {element} with charge "
-                  f"{charge}: left at the force field's own values")
-            continue
-        new_sigma, new_epsilon = entry
-        nonbonded.setParticleParameters(atom.index, charge,
-                                        new_sigma * unit.nanometer,
-                                        new_epsilon * unit.kilojoule_per_mole)
-        changed.append(atom.index)
-        print(f"[INFO] {which.upper()} parameters for {element} "
-              f"{atom.residue.chain.id}:{atom.residue.id}: sigma "
-              f"{sigma.value_in_unit(unit.nanometer):.4f} -> {new_sigma:.4f} nm, "
-              f"epsilon {epsilon.value_in_unit(unit.kilojoule_per_mole):.4f} -> "
-              f"{new_epsilon:.4f} kJ/mol")
-    return changed
+    return ions.apply_metal_parameters(mm.system, PDBFile(pdb_file).topology, metals, which,
+                                       forcefields=forcefields, qm_atoms=qm_atoms,
+                                       polarizabilities=polarizabilities)
 
 
 def build_md_theory(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file: str,
@@ -289,7 +261,9 @@ def run(args) -> Dict[str, Any]:
     # the force field supplies. Recorded in the results, so a run says which it used.
     metal_set = inputs.get("metal_parameters", "iod")
     if metal_set and str(metal_set).lower() != "none":
-        apply_metal_parameters(mm, pdb_file, preprocess_inputs.get("metals"), metal_set)
+        apply_metal_parameters(mm, pdb_file, preprocess_inputs.get("metals"), metal_set,
+                               forcefields=default_forcefields,
+                               polarizabilities=inputs.get("polarizabilities"))
         result["metal_parameters"] = str(metal_set).lower()
 
     fragment = Fragment(pdbfile=pdb_file)

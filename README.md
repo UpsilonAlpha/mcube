@@ -10,6 +10,7 @@ A pipeline for protein–ligand systems, often metalloproteins, built on [ASH](h
 6. **ts**: TS optimisation with a partial Hessian, frequency check and IRC (quasi-IRC along the TS mode, or Sella)
 7. **sp**: PySCF QM/MM single point on a finished geometry, with density, MEP and HOMO/LUMO cubes
 8. **postprocess**: MD data plots, RMSD, RMSF (as B-factors) and a residue interaction network
+9. **umbrella**: umbrella sampling of an ion along the membrane normal, on the MM or the QM/MM model, with WHAM, BAR stitching of the two and reweighting to DFT
 
 The path through them is linear, with `sp` as the scoring step applied to each
 geometry you want an energy for:
@@ -17,6 +18,7 @@ geometry you want an energy for:
 ```
 preprocess -> md -> qmmm -> sp                    the complex, and its energy
                       \-> scan | neb -> ts -> sp   the path, its TS, and the barrier
+preprocess -> md -> umbrella                      a free-energy profile along z
 ```
 
 `sp` is not a step the next stage consumes: it reads a finished geometry and
@@ -53,6 +55,7 @@ mcube neb config.yaml --reactant reactant.pdb --product product.pdb [--section n
 mcube ts config.yaml --pdb saddlepoint.pdb [--section ts_step1] [--actatoms active_atoms]
 mcube sp config.yaml --pdb QM_MM_optimized.pdb [--section sp_product]
 mcube postprocess config.yaml [--qmmm] [--redraw] [--cutoff 2.6] [--metals ZN MG] [--occupancy 0.1]
+mcube umbrella config.yaml {pull|window|energies|wham|stitch} [--window N] [--section S] [--level mm|xtb|dft]
 ```
 
 `python -m mcube ...` also works. Every stage writes its files to the current directory, so run each stage from its own working directory. Paths saved in `results` are absolute, so later stages can be run from anywhere.
@@ -149,7 +152,8 @@ A stale chain ID fails loudly in some places and silently in others: a `chain:re
 | `pressure` | 1.0 | Barostat pressure in bar (membrane only) |
 | `barostat_frequency` | 25 | Steps between barostat moves (membrane only) |
 | `nonbonded_cutoff` | 12.0 | Periodic nonbonded cutoff in Å (membrane only; ASH's own default elsewhere) |
-| `metal_parameters` | `iod` | Lennard-Jones parameters for the metals. `iod` is the Li/Merz 12-6 IOD set (TIP3P), fitted to reproduce experimental ion–oxygen distances: Amber's stock Zn(II) puts the Zn–O pair minimum at ~1.69 Å against a real bond of 2.0–2.1 Å, and IOD moves it to ~1.89 Å. Covers 40 ions (+2/+3/+4, including every lanthanide) and needs nothing specified — the element and the charge the force field assigned pick the entry, and an untabulated metal is left alone with a warning. `none` keeps the force field's own values. Which set was used is recorded in `md.results.metal_parameters`. It does **not** fix over-coordination: a 12-6 potential cannot tell a ligand from a non-ligand, the coordination restraints do that |
+| `metal_parameters` | `iod` | Lennard-Jones parameters for the metals. `iod` is the Li/Merz 12-6 IOD set (TIP3P), fitted to reproduce experimental ion–oxygen distances: Amber's stock Zn(II) puts the Zn–O pair minimum at ~1.69 Å against a real bond of 2.0–2.1 Å, and IOD moves it to ~1.89 Å. Covers 40 ions (+2/+3/+4, including every lanthanide) and needs nothing specified — the element and the charge the force field assigned pick the entry, and an untabulated metal is left alone with a warning. `none` keeps the force field's own values. `1264` is the Li/Song/Merz 12-6-4 model: its own 12-6 terms plus an ion-induced-dipole −C4/r⁴ term to every atom, scaled by that atom's polarisability exactly as Amber's ParmEd does it (see `ions.py`). Only +3/+4 ions are tabulated for it (La³⁺–Lu³⁺, Y³⁺ …); a +2 ion such as Ca²⁺ raises rather than run half a model. Which set was used is recorded in `md.results.metal_parameters`, and every QM/MM stage uses the same one. It does **not** fix over-coordination: a 12-6 potential cannot tell a ligand from a non-ligand, the coordination restraints do that |
+| `polarizabilities` | from `lj_1264_pol.dat` | `1264` only: `{atom class: Å³}` for atom types the Amber table lacks (e.g. a ligand's OpenFF types). Lipid17 types are mapped to their GAFF analogues |
 | `gentle` | `false` | Warm-up after minimisation, for a system that will not start otherwise. Despite the name it is 10 steps at 1 K and 50 at 10 K (0.055 ps in total) followed by **40 ps of ordinary 300 K MD**, so after a successful minimisation it buys nothing NPT does not, and the 300 K leg is long enough to let a force-field artefact develop before any equilibration you are watching |
 | `skip_npt` | `false` | Skip NPT box equilibration (timestep `npt_timestep`) |
 | `skip_nvt` | `false` | Skip production MD |
@@ -172,6 +176,8 @@ Minimisation always runs, with the metal-site restraints already active. `mcube 
 | `implicit` | `md.inputs.implicit` | Non-periodic MM when true |
 | `charge`, `mult` | required | QM-region charge and multiplicity |
 | `cores` | | xTB / PySCF cores |
+| `platform`, `properties` | `CPU` | OpenMM platform for the MM side of the QM/MM MD (e.g. `CUDA`). It must be set here: ASH ignores `OpenMM_MD(platform=)` for QM/MM. Each QM/MM step copies positions off the device and updates the QM forces in Python, so measure before assuming a GPU helps |
+| `metal_parameters` | `md.results.metal_parameters` | The metals' nonbonded set (`iod`, `1264`, `none`), applied to the MM system before the QMMMTheory is built, in qmmm, scan, neb, ts and sp alike. Until this, QM/MM ignored md's set and used Amber's stock metal radii. Under `1264` the C4 term is off for QM atoms, which the embedding already polarises |
 | `xtb_method` | `GFN2` | |
 | `xtb_runmode` | `inputfile` | `library` avoids file I/O at every step (needs xtb-python) |
 | `temp`, `timestep`, `time` | | QM/MM MD settings (K, ps, ps) |
@@ -290,6 +296,55 @@ sbatch --cpus-per-task=8  --mem=24G  ... mcube qmmm config.yaml --section qmmm_r
 sbatch --cpus-per-task=64 --mem=192G ... mcube sp   config.yaml --section sp_reactant        --pdb protdft/qmmm_reactant/QM_MM_optimized.pdb
 ```
 
+### `umbrella.inputs` (optional section)
+
+Umbrella sampling of one atom — an ion — along z, the membrane normal. The CV is
+`z = z_ion − z_COM(reference)`, with the reference centre weighted by element
+masses; a flat-bottomed cylinder on the xy distance keeps the ion over the pore
+in bulk. Both are one OpenMM `CustomCVForce` in force group 31, added after
+everything else. Every window is its own job, and `--section` layers a second
+leg (typically `umbrella_qmmm`) over `umbrella.inputs` as scan/neb/ts do.
+[`config_examples/umbrella_config.yaml`](config_examples/umbrella_config.yaml)
+is a complete example, and [`docs/umbrella.md`](docs/umbrella.md) is a step-by-step guide
+for a first run: what each step does, what to check, and common mistakes.
+
+| Key | Default | Description |
+| --- | --- | --- |
+| `ion` | required | The atom pulled, `chain:resid:atom` |
+| `reference` | required | Channel atoms whose centre is z = 0: an mdtraj selection (PDB numbers are `resSeq`) or a list of atoms |
+| `z_start`, `z_end`, `spacing` | required | Window centres in Å, both ends included |
+| `k` | 10.0 | Umbrella force constant, kcal/mol/Å² |
+| `cylinder` | none | `{radius: Å, k: kcal/mol/Å²}` |
+| `engine` | `mm` | `mm`: OpenMM directly, with the md stage's system (membrane barostat, HBond constraints, 1.5 amu H). `qmmm`: ASH xTB/MM (`qmmm.inputs` supplies mult, xTB settings, cores) |
+| `pull_speed`, `pull_k` | 10 Å/ns, `k` | The steered run that seeds the windows: z0 moves from the ion's position to the nearer end of the range, then across it |
+| `equilibrate`, `time` | 100, 5000 ps | Per window. MM: equilibration holds the ion's shell, as `preprocess` would detect it in that window's starting frame, then releases it. QM/MM: never restrained; equilibration is the discarded start of one run |
+| `timestep` | 0.004 ps | 0.001 for QM/MM (no constraints there) |
+| `cv_frequency` | 25 | Steps between CV samples (`cv.csv`) |
+| `traj_frequency` | 25000 | Steps between saved frames (`window.dcd`), which `energies` scores |
+| `platform`, `properties` | `CPU` | OpenMM platform |
+| `qm_waters` | the detected shell | QM/MM: number of nearest waters in the QM region |
+| `qm_residues` | none | QM/MM: `{chain: [resid, …]}` always in the QM region. Keep the QM composition fixed across the QM/MM leg, so its energy offset cancels in `stitch` |
+| `charge` | sum of MM charges | QM/MM: QM-region charge, otherwise the rounded sum of the MM charges it replaces |
+| `metal_parameters`, `polarizabilities` | as md | As in md |
+| `temp` | `md.inputs.temp` | K |
+| `bin_width` | `spacing`/5 | WHAM bins, Å |
+
+Actions:
+
+```bash
+mcube umbrella config.yaml pull                                  # seeds -> umbrella.results.windows.NNN.seed
+mcube umbrella config.yaml window --window 37                    # one MM window (GPU)
+mcube umbrella config.yaml window --window 7 --section umbrella_qmmm      # one QM/MM window, seeded from the MM one at that z0
+mcube umbrella config.yaml energies --window 7 --level xtb --section umbrella_qmmm   # level mm | xtb | dft
+mcube umbrella config.yaml wham [--section S] [--reweight dft]  # PMF; dft: weighted perturbation from xTB/MM
+mcube umbrella config.yaml stitch                                # BAR MM <-> xTB/MM at both ends of the QM/MM range
+```
+
+- **Results** go to `<section>.results.windows.<NNN>` (z0, seed, cv, dcd, lastframe, done…), `pull`, `pmf` and `stitch`, each written with a locked read-modify-write, so concurrent window jobs do not overwrite each other. Each window runs in `./<section>_<NNN>/`.
+- **energies** scores every `--stride`-th saved frame without the bias. For `xtb`/`dft` each frame's QM region follows `--qm-section`'s rule, so MM and QM/MM frames meet the same Hamiltonian. Frames are re-imaged about the reference chains first.
+- **wham** is a self-contained numpy WHAM with a block bootstrap. It warns where neighbouring windows overlap by less than 0.05. With `--reweight dft` it uses the frames that have both `energies_dft` and `energies_xtb`, weighting each by exp(−βΔE) (Li et al., *JCTC* 2018, 14, 5583).
+- **stitch** follows Heimdal & Ryde (*PCCP* 2012): the constriction is sampled directly at xTB/MM, and the two ends are joined to the MM profile by BAR free energies there. The cycle closure — QM/MM rise across the range minus (MM rise + ΔA_hi − ΔA_lo) — is reported, and shows as the step at the far end.
+
 ## Outputs by stage
 
 | Stage | Main files |
@@ -302,6 +357,7 @@ sbatch --cpus-per-task=64 --mem=192G ... mcube sp   config.yaml --section sp_rea
 | neb | ASH NEB files, `saddlepoint.xyz`, `saddlepoint.pdb` |
 | ts | `Hessian_partial_TS`, `ts_optimized.pdb`, `irc_forward.pdb`, `irc_reverse.pdb`, `irc_*_opttraj.xyz` (or Sella's `sella_*.xyz`) |
 | postprocess | `Temperature.png`, `Density.png`, `BoxVolume.png`, `RMSD.png`, `interaction_network.csv/.png`, `rmsf_bfactor.pdb` |
+| umbrella | `pull/seed_NNN.pdb`, `pull/pull_cv.csv`; per window `<section>_NNN/{start.pdb, cv.csv, window.dcd, window.csv, lastframe.pdb, energies_<level>.csv}`; `<section>_pmf.csv`, `stitched_<section>.csv` |
 
 ## postprocess
 

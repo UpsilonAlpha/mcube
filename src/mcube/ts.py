@@ -52,6 +52,7 @@ import numpy as np
 
 from .preprocess import resolve_cores, save_result, load_section
 from .qmmm import (
+    apply_stage_metal_parameters,
     resolve_qm_region,
     stage_inputs,
     mm_settings,
@@ -106,6 +107,8 @@ def run(args) -> Dict[str, Any]:
 
     print("[STEP] Building QM region...")
     qm_atoms, boundary_excluded = resolve_qm_region({**qmmm_inputs, **{k: inputs[k] for k in ('qm_residues', 'extra_qm_residues') if k in inputs}}, preprocess, pdb_file)
+    # The same metal parameters as md, before the QMMMTheory is built
+    apply_stage_metal_parameters(qmmm_inputs, preprocess, md, mm, forcefields, qm_atoms)
     # Parallel NumFreq runs `workers` gradients at once, so give each fewer xTB threads
     qmmm_theory = make_qmmm(qmmm_inputs, mm, fragment, qm_atoms, boundary_excluded,
                             cores // workers if workers > 1 else cores,

@@ -1,0 +1,66 @@
+# Umbrella sampling of La3+ through a membrane channel: MM over the whole path,
+# xTB/MM over the constriction, joined by BAR and reweighted to DFT.
+#
+#   mcube preprocess config.yaml          # skip_solvate: the ion is already in the equilibrated box
+#   mcube md config.yaml                  # equilibration, hydration shell restrained throughout
+#   mcube umbrella config.yaml pull
+#   mcube umbrella config.yaml window --window N                          # every N, one job each
+#   mcube umbrella config.yaml window --window N --section umbrella_qmmm  # the constriction
+#   mcube umbrella config.yaml energies --window N --level mm|xtb [--section umbrella_qmmm]
+#   mcube umbrella config.yaml wham ; mcube umbrella config.yaml wham --section umbrella_qmmm
+#   mcube umbrella config.yaml stitch
+#
+# Chain letters are the ones in processed_pdb (OpenMM relabels on solvation).
+preprocess:
+  inputs:
+    protein_pdb: channel_bilayer_La.pdb    # equilibrated bilayer + channel, one bulk water swapped for LA
+    skip_solvate: true
+    membrane: true
+    membrane_lipidtype: POPE
+    metals: [LA]
+    cutoff: 3.0
+    default_forcefields: [amber14/protein.ff14SB.xml, amber14/tip3p.xml]
+md:
+  inputs:
+    membrane: true
+    platform: CUDA
+    properties: {Precision: mixed}
+    temp: 310                              # POPE is near its transition at 300 K
+    npt_timestep: 0.002
+    npt_time: 1000
+    nvt_timestep: 0.004
+    nvt_time: 1000                         # its lastframe is where `pull` starts
+    metal_parameters: "1264"               # +3 ions only; Ca2+ needs "iod"
+qmmm:
+  inputs:
+    mult: 1                                # La3+ and Lu3+ are closed shell (4f0, 4f14)
+    xtb_method: GFN2
+    cores: 4
+umbrella:
+  inputs:
+    ion: "C:1:LA"
+    reference: "chain A and name CA"       # the barrel; its centre is z = 0
+    z_start: -35.0
+    z_end: 35.0
+    spacing: 0.5
+    k: 10.0
+    cylinder: {radius: 10.0, k: 10.0}
+    pull_speed: 10.0                       # A/ns
+    equilibrate: 100                       # ps, shell restrained
+    time: 5000                             # ps
+    timestep: 0.004
+    platform: CUDA
+    properties: {Precision: mixed}
+umbrella_qmmm:
+  inputs:
+    engine: qmmm
+    z_start: -8.0
+    z_end: 8.0
+    equilibrate: 2
+    time: 20
+    timestep: 0.001
+    cv_frequency: 10
+    traj_frequency: 500
+    platform: CPU
+    qm_waters: 9                           # La3+ aqua ion is nine-coordinate
+    qm_residues: {A: [118, 120]}           # constriction residues, the same in every window

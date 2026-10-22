@@ -27,6 +27,7 @@ import numpy as np
 from openmm import unit
 from openmm.app import PDBFile
 
+from . import ions
 from .preprocess import (
     resolve_cores,
     save_result,
@@ -108,7 +109,9 @@ def mm_settings(qmmm_inputs: Dict[str, Any], md: Dict[str, Any]):
     return forcefields, implicit
 
 
-def make_mm(forcefields, pdb_file: str, implicit: bool, cores: int):
+def make_mm(forcefields, pdb_file: str, implicit: bool, cores: int, platform: str = "CPU",
+            properties=None):
+    # `platform` is honoured only here: ASH ignores OpenMM_MD(platform=) for QM/MM
     return OpenMMTheory(
         xmlfiles=forcefields,
         pdbfile=pdb_file,
@@ -116,7 +119,30 @@ def make_mm(forcefields, pdb_file: str, implicit: bool, cores: int):
         periodic=not implicit,
         rigidwater=False,
         numcores=cores,  # OpenMM CPU threads; ASH defaults to 1
+        platform=platform or "CPU",
+        properties=properties,
     )
+
+
+def apply_stage_metal_parameters(inputs: Dict[str, Any], preprocess: Dict[str, Any],
+                                 md: Dict[str, Any], mm, forcefields, qm_atoms) -> str:
+    """
+    Give the metals the same nonbonded parameters in QM/MM as in md.
+
+    Before this, md swapped in IOD (or 12-6-4) radii but every QM/MM stage built
+    its MM system from the force-field XMLs alone, so a QM metal met the MM
+    atoms through Amber's stock Lennard-Jones terms. Called after the QM region
+    is known and before the QMMMTheory is built: 12-6-4's C4 term is switched
+    off for QM atoms, whose polarisation the embedding already supplies.
+    """
+    which = ions.metal_parameter_set(inputs, md)
+    metals = (preprocess.get("inputs") or {}).get("metals")
+    if not metals or which == "none":
+        return which
+    polarizabilities = inputs.get("polarizabilities", (md.get("inputs") or {}).get("polarizabilities"))
+    ions.apply_metal_parameters(mm.system, mm.topology, metals, which, forcefields=forcefields,
+                                qm_atoms=qm_atoms, polarizabilities=polarizabilities)
+    return which
 
 
 def level_option(inputs: Dict[str, Any], prefix: str, name: str, default=None):
@@ -384,7 +410,8 @@ def run(args) -> Dict[str, Any]:
 
     print("[STEP] Building MM system...")
     cores = resolve_cores(inputs.get("cores"))
-    mm = make_mm(forcefields, pdb_file, implicit, cores)
+    platform, properties = inputs.get("platform", "CPU"), inputs.get("properties")
+    mm = make_mm(forcefields, pdb_file, implicit, cores, platform, properties)
     inputs = resolve_stage_atoms(inputs, mm)
 
     fragment = Fragment(pdbfile=pdb_file)
@@ -395,6 +422,8 @@ def run(args) -> Dict[str, Any]:
         "qm_atoms": qm_atoms,
         "boundary_excluded": boundary_excluded,
     }
+    result["metal_parameters"] = apply_stage_metal_parameters(inputs, preprocess, md, mm,
+                                                              forcefields, qm_atoms)
     save_result(result, filename=args.config, section=section)
 
     qmmm_theory = make_qmmm(inputs, mm, fragment, qm_atoms, boundary_excluded, cores)
@@ -428,7 +457,8 @@ def run(args) -> Dict[str, Any]:
             # attributes the optimiser logs (AttributeError: 'QMMMTheory' object has no attribute
             # 'MMenergy'), which killed job 29937641 at the first optimisation step
             print("[STEP] Rebuilding the QM/MM system from the QM/MM MD end point for the optimisation...")
-            mm = make_mm(forcefields, "QM_MM_lastframe.pdb", implicit, cores)
+            mm = make_mm(forcefields, "QM_MM_lastframe.pdb", implicit, cores, platform, properties)
+            apply_stage_metal_parameters(inputs, preprocess, md, mm, forcefields, qm_atoms)
             qmmm_theory = make_qmmm(inputs, mm, fragment, qm_atoms, boundary_excluded, cores)
 
         # An active_atoms file reuses another run's active region (e.g. the reactant's for the product)

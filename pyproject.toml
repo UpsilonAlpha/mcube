@@ -31,3 +31,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+# Amber's 12-6-4 polarisability table (ions.py)
+mcube = ["data/*.dat"]
