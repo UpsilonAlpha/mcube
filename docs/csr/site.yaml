@@ -117,6 +117,23 @@ sections:
       opt_maxiter: 300
       resume: true
 
+  # D93: the attack distance is the one coordinate that degraded unrestrained
+  # (3.47 -> 5.41 A over 500 ps), while the trajectory improved on its own
+  # (79 -> 96 degrees). A harmonic distance restraint holds the radial
+  # coordinate and leaves both angular ones free, so MD can keep rotating into
+  # the Burgi-Dunitz window while the approach is held. Held at the distance the
+  # input already has, not pulled to a chosen one. The Zn-carbonyl distance is
+  # deliberately NOT restrained: for a mono-Zn B3 site it is not established
+  # that the carbonyl coordinates the same zinc that carries the nucleophile,
+  # and `constraint_exclude_residues: {C: [1]}` keeps the ligand out of the
+  # automatic coordination set for the same reason.
+  md_nac:
+    stage: md
+    inputs:
+      restraints:
+        - [C:2:O01, C:1:C4x, 3.47, 20.0]   # hydroxide O -> beta-lactam carbonyl C
+      nvt_time: 1000                       # 1 ns, per the ASH 2b protocol
+
   sp_dft:                      # score a geometry someone else produced
     stage: sp
     inputs: &sp_only

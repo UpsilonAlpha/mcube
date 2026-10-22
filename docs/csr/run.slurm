@@ -18,14 +18,15 @@
 #   sbatch -J <name> [resources] run.slurm <stage> <section> [start.pdb]
 #
 #   stage    preprocess | md | qmmm | sp | scan | neb | ts
-#   section  the config.yaml section, e.g. scan_znco; for preprocess and md,
-#            which have no sections, it just names the output directory
+#   section  the config.yaml section, e.g. scan_znco or md_nac. preprocess has
+#            none, so there it just names the output directory
 #   start    optional --pdb; omit to let mcube take it from the previous stage
 #
 # Examples:
 #
 #   sbatch -J prep   --cpus-per-task=2  --mem=4G                 run.slurm preprocess preprocess
 #   sbatch -J md     --cpus-per-task=16 --mem=16G                run.slurm md md
+#   sbatch -J mdnac  --cpus-per-task=16 --mem=16G                run.slurm md md_nac
 #   sbatch -J react  --cpus-per-task=8  --mem=16G                run.slurm qmmm qmmm_reactant
 #   sbatch -J spR    --cpus-per-task=32 --mem=96G --time=12:00:00 run.slurm sp sp_reactant \
 #          protdft/qmmm_reactant/QM_MM_optimized.pdb
@@ -46,11 +47,13 @@ STAGE=${1:?stage: preprocess, md, qmmm, sp, scan, neb or ts}
 SECTION=${2:?config.yaml section, or the stage name for preprocess/md}
 START=${3:-}
 
-# preprocess and md have no --section: they write to the one place in the
-# config. For them the second argument only names the output directory.
+# preprocess has no --section: it writes to the one place in the config, and the
+# second argument only names its output directory. md takes one, and keeps its
+# own `<section>_results` convention so `md md` still writes md_results.
 case "$STAGE" in
-  preprocess|md) SECTION_ARGS=();            OUT=${STAGE}_results ;;
-  *)             SECTION_ARGS=(--section "$SECTION"); OUT=protdft/$SECTION ;;
+  preprocess) SECTION_ARGS=();                     OUT=preprocess_results ;;
+  md)         SECTION_ARGS=(--section "$SECTION"); OUT=${SECTION}_results ;;
+  *)          SECTION_ARGS=(--section "$SECTION"); OUT=protdft/$SECTION ;;
 esac
 
 module load miniforge/26.1.0-0
