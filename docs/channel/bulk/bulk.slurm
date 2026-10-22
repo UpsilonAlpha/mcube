@@ -41,6 +41,12 @@ module load miniforge/26.1.0-0
 source $ROOTMINIFORGE/etc/profile.d/conda.sh
 conda activate ASH
 export PYTHONPATH=$S/mcube/src PYTHONUNBUFFERED=1
+# ASH's own interpreter by path: a job submitted from a shell where ASH is already active
+# inherits that state with --export=ALL, `conda activate` then does nothing, and the bare
+# `python` after `module load` is miniforge's base (no OpenMM). Seen 2026-10-23.
+PY=$CONDA_PREFIX/bin/python
+$PY -c "import openmm, ash" || { echo "ASH env not usable: $PY"; exit 1; }
+python() { $PY "$@"; }
 
 if [ "${SKIP_MM:-0}" = 1 ]; then
     echo "== MM skipped: reusing $RUN"

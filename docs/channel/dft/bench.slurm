@@ -17,6 +17,8 @@ module load miniforge/26.1.0-0
 source $ROOTMINIFORGE/etc/profile.d/conda.sh
 conda activate ASH
 export PYTHONPATH=$S/mcube/src PYTHONUNBUFFERED=1
+PY=$CONDA_PREFIX/bin/python            # ASH's interpreter by path (see bulk.slurm)
+python() { $PY "$@"; }
 # PySCF sets its own thread count from --cores; xTB is bound like the qmmm stage
 export OMP_NUM_THREADS=1
 python $S/mcube/docs/channel/dft/bench_dft.py --pdb $S/channel/bulk/${ION}_${SET}/system.pdb \
