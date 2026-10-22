@@ -244,6 +244,37 @@ def check_inherited_restraints(constraints, restraints, pdb_file: str, inputs) -
         '    acknowledge_restrained: [["%s", "%s"]]\n' % (clashes[0][0], clashes[0][1]))
 
 
+def separation(a, b, cell=None) -> float:
+    """Distance between two points, minimum image applied when `cell` is given."""
+    v = [q - p for p, q in zip(a, b)]
+    if cell:
+        v = [x - c * round(x / c) if c else x for x, c in zip(v, cell)]
+    return math.sqrt(sum(x * x for x in v))
+
+
+def _coords_and_cell(pdb_file: str):
+    """Atom coordinates in file order, and the orthorhombic cell if there is one."""
+    coords, cell = [], None
+    for line in open(pdb_file):
+        if line.startswith(("ATOM", "HETATM")):
+            coords.append((float(line[30:38]), float(line[38:46]), float(line[46:54])))
+        elif line.startswith("CRYST1"):
+            if all(abs(float(line[c:c + 7]) - 90.0) < 1e-3 for c in (33, 40, 47)):
+                cell = [float(line[6:15]), float(line[15:24]), float(line[24:33])]
+    return coords, cell
+
+
+def pair_distances(pdb_file: str, pairs) -> list:
+    """The distance each [i, j] pair currently has, in order, in Angstrom.
+
+    What a detected metal-donor contact gets restrained to: the distance the
+    structure came in with, so the restraint preserves the input geometry
+    instead of imposing a chosen one.
+    """
+    coords, cell = _coords_and_cell(pdb_file)
+    return [round(separation(coords[int(p[0])], coords[int(p[1])], cell), 3) for p in pairs]
+
+
 def coordination_shell(pdb_file: str, inputs, radius=None, per_residue: bool = True) -> list:
     """The metal coordination sphere: the closest donor of each residue within `cutoff`.
 
@@ -268,12 +299,6 @@ def coordination_shell(pdb_file: str, inputs, radius=None, per_residue: bool = T
             if all(abs(float(line[c:c + 7]) - 90.0) < 1e-3 for c in (33, 40, 47)):
                 cell = [float(line[6:15]), float(line[15:24]), float(line[24:33])]
 
-    def separation(a, b):
-        v = [q - p for p, q in zip(a, b)]
-        if cell:
-            v = [x - c * round(x / c) if c else x for x, c in zip(v, cell)]
-        return math.sqrt(sum(x * x for x in v))
-
     found = []
     for mi, metal in enumerate(rows):
         if metal[4] not in metals:
@@ -282,7 +307,7 @@ def coordination_shell(pdb_file: str, inputs, radius=None, per_residue: bool = T
         for di, donor in enumerate(rows):
             if di == mi or donor[4] not in donors:
                 continue
-            r = separation(metal[5], donor[5])
+            r = separation(metal[5], donor[5], cell)
             if r > cutoff:
                 continue
             # Per residue for the QM region, which takes whole residues anyway.

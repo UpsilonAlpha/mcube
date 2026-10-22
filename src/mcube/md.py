@@ -14,9 +14,9 @@ from openmm.app import PDBFile, ForceField, CutoffNonPeriodic, HBonds
 from ash import *
 
 from .preprocess import (
-    atom_names,
     compare_coordination,
     coordination_shell,
+    pair_distances,
     report_coordination,
     resolve_cores,
     to_selectors,
@@ -60,11 +60,14 @@ def md_membrane(inputs: Dict[str, Any], preprocess: Dict[str, Any]) -> bool:
     return bool(value)
 
 
-# Firm enough that a donor cannot migrate onto the metal, loose enough that the
-# site still vibrates: 1 A of displacement costs about 8 kT at 300 K. Not a
-# config option because no result should depend on tuning it; widen or narrow
-# `hold_coordination` instead.
-COORDINATION_FORCE = 10.0  # kcal/mol/A^2
+# The force constant a detected metal-donor contact is restrained with. 50
+# kcal/mol/A^2 leaves the contact 0.11 A RMS of room at 300 K, so the site still
+# vibrates but a donor cannot migrate onto the metal. Gervasoni et al., Proteins
+# 2022, 90, 372 hold a dizinc metallo-beta-lactamase site at 30 through 100 ns of
+# NVT; Hanzevacki et al., JCIM 2025, 65, 6261 use 50. The difference is 0.03 A,
+# so nothing here depends on the choice. Per-pair constants can still be given
+# in `md.inputs.restraints`.
+COORDINATION_FORCE = 50.0  # kcal/mol/A^2
 
 
 def apply_metal_parameters(mm, pdb_file: str, metals, which: str) -> list:
@@ -108,49 +111,6 @@ def apply_metal_parameters(mm, pdb_file: str, metals, which: str) -> list:
               f"epsilon {epsilon.value_in_unit(unit.kilojoule_per_mole):.4f} -> "
               f"{new_epsilon:.4f} kJ/mol")
     return changed
-
-
-def restrain_positions(mm, atom_indices, pdb_file: str, force_constant: float):
-    """Harmonic positional restraints, referenced to `pdb_file`'s coordinates.
-
-    Holds the metal site in place while the solvent relaxes around it, which is
-    what a non-bonded metal cannot do for itself: over tens of ps at 300 K a
-    second-shell donor migrates into the first shell and stays at a distance no
-    real metal-ligand bond reaches. Guven et al., J. Phys. Chem. B 2024, 128,
-    12416 report the same for VIM-2 with two zinc parameter sets and hold the
-    site for the whole classical stage instead of equilibrating it.
-
-    A restraint rather than a constraint, deliberately. Constraints on a metal
-    site fail two ways: many of them sharing one centre over-determine the
-    constraint network, and OpenMM refuses any constraint touching a frozen
-    (massless) atom, which rules out freezing a donor that carries a hydrogen.
-    A force has neither problem. It also carries no element-specific
-    parameters, so this works for any metal without parameterisation - unlike a
-    bonded, dummy-cation or 12-6-4 model.
-
-    The reference positions are fixed, so the restraint is in mild tension with
-    a barostat rescaling the box around it - more so with the anisotropic
-    membrane barostat than an isotropic one. That is the usual trade in a
-    restrained equilibration and the reason restraints are stepped down or
-    released; nothing here holds the site during the QM/MM stage.
-    """
-    positions = PDBFile(pdb_file).positions
-    # periodicdistance, not (x-x0)^2: coordinates are wrapped into the box
-    # between stages, so an atom near a face jumps a box length relative to its
-    # reference and a plain Cartesian restraint then applies ~800 kcal/mol/A.
-    # That killed job 30349571 on the first production step, after NPT had run
-    # clean for 100 ps.
-    force = openmm.CustomExternalForce(
-        "0.5*k*periodicdistance(x, y, z, x0, y0, z0)^2")
-    force.addGlobalParameter(
-        "k", force_constant * unit.kilocalorie_per_mole / unit.angstrom ** 2)
-    for name in ("x0", "y0", "z0"):
-        force.addPerParticleParameter(name)
-    for i in atom_indices:
-        xyz = positions[int(i)].value_in_unit(unit.nanometer)
-        force.addParticle(int(i), [xyz[0], xyz[1], xyz[2]])
-    mm.add_force(force)
-    return force
 
 
 def build_md_theory(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file: str,
@@ -248,12 +208,44 @@ def build_md_theory(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file
 
 
 def md_constraints(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file: str):
-    """Metal-site bond constraints: md.inputs.constraints, else those found by preprocess."""
-    constraints = inputs.get("constraints")
-    if constraints is None:
-        constraints = (preprocess.get("results") or {}).get("constraints")
-    # Atoms may be named as "chain:resid:atom" instead of indices; none (e.g. no metals) -> None
-    return resolve_atoms(constraints, pdb_file) or None
+    """Rigid metal-site bond constraints, only if `md.inputs.constraints` asks for them.
+
+    Detected coordination is restrained, not constrained (see `md_restraints`).
+    This stays for a system that genuinely wants a rigid bond.
+    """
+    # Atoms may be named as "chain:resid:atom" instead of indices; none -> None
+    return resolve_atoms(inputs.get("constraints") or None, pdb_file) or None
+
+
+def md_restraints(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file: str):
+    """Harmonic distance restraints: the detected metal coordination, plus any asked for.
+
+    The coordination a force field has no bonded parameters for is held by
+    restraint rather than rigid constraint. ASH, whose workflow this pipeline
+    follows, sanctions the substitution directly - "we could also have added
+    harmonic bond restraints instead of rigid constraints" - and it avoids both
+    ways a constrained metal site fails: many constraints sharing one centre
+    over-determine the constraint network, and OpenMM refuses a constraint that
+    touches a massless atom. A restraint also carries no element-specific
+    parameters, so it works for any metal without parameterisation.
+
+    Each detected pair is restrained at the distance it already has, so this
+    preserves the input geometry instead of imposing one. The pairs come from
+    `preprocess.results.constraints` - the list printed into the config - so
+    editing that list is what changes the run.
+
+    Returns (restraints, detected) with `detected` the auto-generated subset, so
+    the results can record which restraints were a measurement and which were a
+    choice. Only the chosen ones can launder an assumption into a later run.
+    """
+    asked = [list(r) for r in (resolve_atoms(inputs.get("restraints") or None, pdb_file) or [])]
+    pairs = resolve_atoms((preprocess.get("results") or {}).get("constraints"), pdb_file) or []
+    # An explicit restraint on a pair wins: the user named a distance for it.
+    named = {frozenset(r[:2]) for r in asked}
+    pairs = [p for p in pairs if frozenset(p[:2]) not in named]
+    detected = [[p[0], p[1], d, COORDINATION_FORCE]
+                for p, d in zip(pairs, pair_distances(pdb_file, pairs))]
+    return (asked + detected) or None, detected
 
 
 def run(args) -> Dict[str, Any]:
@@ -275,33 +267,19 @@ def run(args) -> Dict[str, Any]:
                          "needs an explicit, periodic box.")
 
     constraints = md_constraints(inputs, preprocess, pdb_file)
-    # Harmonic distance restraints [[i, j, distance_A, k_kcal_per_mol_A2], ...], e.g. to pull a
-    # substrate into place during equilibration. Constraints stay as [i, j] pairs (current distance).
-    restraints = resolve_atoms(inputs.get("restraints") or None, pdb_file)
+    restraints, detected = md_restraints(inputs, preprocess, pdb_file)
     if restraints:
-        print(f"[INFO] {len(restraints)} distance restraints: {restraints}")
+        print(f"[INFO] {len(restraints)} distance restraints "
+              f"({len(detected)} detected coordination at {COORDINATION_FORCE} "
+              f"kcal/mol/A^2): {restraints}")
 
     # The coordination sphere this run starts from. Reported again at the end,
-    # because a contact that was not there at setup was never constrained, and a
+    # because a contact that was not there at setup was never restrained, and a
     # non-bonded metal will happily pull one in.
     preprocess_inputs = preprocess.get("inputs") or {}
     shell_before = coordination_shell(pdb_file, preprocess_inputs)
     report_coordination(shell_before, "before MD")
     result["coordination_start"] = shell_before
-
-    # One radius: hold everything that could reach the metal (see
-    # restrain_positions). The metal bond constraints inside `cutoff` are
-    # unaffected - those are real bonds and they already worked.
-    hold = inputs.get("hold_coordination")
-    restrained_atoms = []
-    if hold:
-        exclude = preprocess_inputs.get("constraint_exclude_residues") or {}
-        rows = coordination_shell(pdb_file, preprocess_inputs,
-                                  radius=float(hold), per_residue=False)
-        restrained_atoms = sorted({r["metal_index"] for r in rows} | {
-            r["donor_index"] for r in rows
-            if int(r["donor"].split(":")[1]) not in
-            (exclude.get(r["donor"].split(":")[0]) or [])})
 
     mm, default_forcefields = build_md_theory(inputs, preprocess, pdb_file, constraints, restraints,
                                               cores=resolve_cores(inputs.get("cores")))
@@ -314,18 +292,16 @@ def run(args) -> Dict[str, Any]:
         apply_metal_parameters(mm, pdb_file, preprocess_inputs.get("metals"), metal_set)
         result["metal_parameters"] = str(metal_set).lower()
 
-    if restrained_atoms:
-        restrain_positions(mm, restrained_atoms, pdb_file, COORDINATION_FORCE)
-        print(f"[INFO] hold_coordination {hold} A: {len(restrained_atoms)} atoms held "
-              f"by harmonic positional restraint at {COORDINATION_FORCE} kcal/mol/A^2")
-        names = atom_names(pdb_file)
-        result["restrained_atoms"] = [names[i] for i in restrained_atoms]
-
     fragment = Fragment(pdbfile=pdb_file)
     result["forcefields"] = default_forcefields
     # Recorded as selectors, not the indices OpenMM was given: indices only mean
-    # something against the structure they were resolved on.
-    result["restraints"] = to_selectors(restraints, pdb_file)
+    # something against the structure they were resolved on. The two lists are
+    # kept apart because only a distance this run chose can turn into apparent
+    # structure in a later one - a detected pair restrained at the distance it
+    # already had asserts nothing new (D68).
+    chosen = [r for r in (restraints or []) if r not in detected]
+    result["restraints"] = to_selectors(chosen, pdb_file)
+    result["coordination_restraints"] = to_selectors(detected, pdb_file)
 
     print("[STEP] Minimization...")
     OpenMM_Opt(fragment=fragment, theory=mm, maxiter=500, tolerance=1)

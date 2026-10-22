@@ -9,7 +9,8 @@ and moves that minimum to about 1.89 A.
 It does not solve over-coordination. A 12-6 potential knows only distance and
 atom type, so it cannot tell a ligand from a non-ligand and every oxygen in
 reach is still rewarded for approaching; only something that knows which atoms
-are ligands can stop that (`md.inputs.hold_coordination`). These parameters are
+are ligands can stop that, which is what the coordination restraints do. These
+are
 simply better metal radii than the defaults.
 
 Values are Amber Rmin/2 (A) and epsilon (kcal/mol), transcribed from
