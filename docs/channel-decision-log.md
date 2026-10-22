@@ -251,6 +251,15 @@ constriction, MM→QM/MM reweighting, then xTB→DFT single-point reweighting.**
      this compares to Li/Song/Merz's own Lu³⁺ 12-6-4 value (C15 quoted only their Ln³⁺ average,
      CN ≈ 9–10). Until that number is in hand, no model is preferred for Lu³⁺. La³⁺ 12-6-4 gives
      9.65 (~9.1 expected). The choice per ion also waits for La IOD and both Ca runs.
+     **Published values found (2026-10-23)**, Li, Song & Merz 2015 SI Table SI.4 (TIP3P, 12-6-4):
+     La³⁺ 2.53 Å / CN 9.7 and Lu³⁺ 2.34 Å / CN 9.0 (read from PMC4306492's SI by an agent; rows
+     assigned by order and checked against the HFE column). So our La³⁺ 12-6-4 (2.51 / 9.65)
+     reproduces the paper and our Lu³⁺ IOD (2.33 / 8.88) agrees with its 12-6 scan (~2.34 / ~9),
+     but **our Lu³⁺ 12-6-4 CN (7.62) does not match the published 9.0**, at the same distance.
+     Parameters (C4 249, Rmin/2 1.625, ε 0.09235154) are the paper's, and the energies are Amber's
+     (F5), so the difference must be in protocol: theirs was 722 waters, 1 fs, Langevin γ = 5 ps⁻¹,
+     500 ps NVT + 500 ps NPT, then 2 ns NPT, 10 Å cutoff, Amber 12. Replication with that protocol
+     (MM only), La³⁺ as the control: **30416377** Lu³⁺, **30416378** La³⁺ (`<ION>_1264_lsm/`).
   2. **The MM first shells exchange water about 10–100× faster than experiment** (known; it is why
      the hydration shell is restrained while the MM system is prepared for QM/MM, user): residence
      70–160 ps against ~2–25 ns for heavy Ln³⁺ (Cossy, Helm & Merbach 1988; Helm & Merbach 2005).
