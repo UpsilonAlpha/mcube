@@ -1474,6 +1474,28 @@ That gap passes a real false positive: a saddle whose imaginary mode is a water 
 
 `check_ts_mode` now compares the mode against the atoms in `monitor`, which already names the bonds each step makes or breaks, and records `ts_mode_is_reaction_coordinate` plus `ts_mode_reacting_share` in the results. Below 30% of the largest displacement it warns that the structure is a saddle point but likely not this step's transition state. **`null` when there is nothing to check against** - no monitor pairs, or none of their atoms in the Hessian - because "not checked" is not a pass, and the staged `ts_saddle1` / `ts_saddle2` sections both carry the monitor pairs for this reason.
 
+**Critical review of this session's work against the literature.** (2026-10-22, at the user's request)
+
+**Discarded, with the reason each failed.** `hold_coordination` (harmonic *positional* restraints) was built, run and deleted: it rested on a misreading of Guven, whose failure mode was coordination *lost* where ours was coordination *gained*, and it used the wrong restraint type - pinning atoms to lab-frame coordinates would have frozen the 79-degree attack trajectory that MD then rotated to 100. Four claims about the binding pose also went: the carboxylate-Arg criterion (circular - whether Arg90/Arg229 are involved is question 2), dissociation-implies-bad-pose (an artefact of my own restraint set), "the nucleophile was destroyed" (Zn-OH2 beside a base is an ordinary resting complex), and "4.94 A disqualifies the geometry" (a near-attack *test* mistaken for a precondition for computing chemistry).
+
+**Sound and reusable.** Distance restraints on detected metal-donor pairs at the starting distance - Gervasoni's atom-pair form, the substitution ASH sanctions outright, released for QM/MM. Coordination reporting before and after MD. The laundering guard and the chosen/detected split. The NEB atom-order guard, which needs no literature because it is a correctness bug. `md --section`, `fill_restraints`, ASH's own surface plotting in place of home-grown analysis.
+
+**Reusable but more weakly grounded than presented.**
+
+| thing | the problem with its justification |
+| --- | --- |
+| **50 kcal/mol/A^2** | Hanzevacki's figure is for *positional* restraints; Gervasoni's for *distance* restraints is **30**. The difference is 0.11 vs 0.14 A RMS and so immaterial, but the README cites both in a way that implies either supports 50-for-distance. Neither does. |
+| **IOD as the default** | pitched as stopping over-attraction, which Gervasoni contradicts - 12-6 *with* 30 kcal restraints still reached CN 6. The surviving case is different and stronger: Amber's Zn-O minimum is 1.69 A against 2.0-2.1 measured, and OpenMM's stock lanthanide radii are 12-6-4's 12-6 terms without C4, i.e. invalid. |
+| **`check_ts_mode` floor of 0.3** | invented. No literature basis. Configurable, but it was shipped as though principled. |
+| **`check_path_shape`** | flags a symptom with two causes it cannot distinguish, over a design problem (the water-constraint surface mismatch) that was diagnosed rather than fixed. |
+
+**Dropped, and most consequential - in order.**
+
+1. **Equilibration is 1 ns against a published 10-100 ns.** Gervasoni 100 ns NVT, Guven 50, Lisa 10, Bahena-Mendez 10. The justification on file is ASH protocol 2b, which is a **tutorial**, not a production protocol. D92 recorded the gap and then it stopped being pressed. A 10-100x shortfall is the weakest point in the current setup.
+2. **GFN2-xTB is a path-finding method, not a barrier method.** Gervasoni refine with B3LYP/MM; Guven sample with DFTB3 and refine with DFT. `qm_engine: dft` and `sp_dft` exist, but nothing in the staged path *forces* refinement, so an xTB number could be quoted as a barrier by accident.
+3. **`sp_basis: def2-svp` is a geometry basis, not an energetics one.** wB97X-V is a good functional choice; def2-SVP undercuts it for a barrier. A config change, not a code change.
+4. **QM region size never tested.** Mehmood & Kulik report that too-small QM regions *over*-bind zinc, and D92 flagged region size as its own variable. We sit at ~130 QM atoms and an 8 A active region with no convergence check.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
