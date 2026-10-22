@@ -226,6 +226,13 @@ constriction, MM→QM/MM reweighting, then xTB→DFT single-point reweighting.**
   each QM/MM window before trusting it.
 - Q6: the QM/MM window path (`engine: qmmm`), `energies --level xtb|dft` and `stitch` on real
   data have not run: they need ASH. Only the MM path and the analysis are tested locally.
+  Partly answered 2026-10-22: the full suite in the ASH env on bun147 (2b90dfc) gave **168 passed,
+  0 skipped** in 82 s, including the four ASH-only test files and the end-to-end MM test. No test
+  yet drives a QM/MM window; that still needs one real window.
+- F3 (fixed, 2b90dfc): the umbrella stage left OpenMM's CPU thread count at its default, one per
+  core of the whole node. On a 2-core allocation the end-to-end test ran ~2050 threads and made
+  no visible progress for minutes. The CPU platform now gets the stage's `cores` (else
+  `$OMP_NUM_THREADS`, else `$SLURM_CPUS_PER_TASK`), as every other mcube stage does.
 
 **C12 – Implement 12-6-4 as `metal_parameters: 1264`.** (user, 2026-10-22; implemented on branch `umbrella`)
 - No reason not to: the IOD 12-6 set under-binds 3+ ions, and the user asked.
