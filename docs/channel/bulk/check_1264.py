@@ -130,11 +130,11 @@ def main():
     rows = []
     # Frame as is, then the ion displaced along x: the energy *change* isolates the ion's terms
     for shift in (0.0, 0.2, 0.4, -0.2):
-        p2 = pos.copy()
-        p2[ion] = p2[ion] + openmm.Vec3(shift / 10.0, 0, 0) * unit.nanometer
-        p_ref = [p2[i] for i in order]
+        p2 = my_xyz.copy()
+        p2[ion, 0] += shift
+        p_ref = p2[order] / 10.0 * unit.nanometer
         e_ref, f_ref = energy_and_ion_force(ref, p_ref, box_nm, ion_ref)
-        e_mine, f_mine = energy_and_ion_force(mine, p2, box_nm, ion)
+        e_mine, f_mine = energy_and_ion_force(mine, p2 / 10.0 * unit.nanometer, box_nm, ion)
         rows.append({"shift_A": shift, "E_amber": e_ref, "E_mcube": e_mine,
                      "F_ion_amber": [round(float(x), 4) for x in f_ref],
                      "F_ion_mcube": [round(float(x), 4) for x in f_mine]})
