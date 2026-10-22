@@ -216,7 +216,7 @@ scan_attack:            # mcube scan config.yaml --pdb R.pdb --section scan_atta
 | `monitor` | none | Distances `[[i, j], …]` reported at every point (CSV and results) |
 | `pdb_file` | `qmmm.results.optimized_pdb` | Starting structure (or `--pdb`) |
 
-Each point is optimised from the previous one with the scanned distance fixed. Writes `scan_XX.pdb` (full system) and `scan_energies.csv`; `results` (`points` with target/actual distance, energy, kcal/mol relative to point 0, PDB; `max_point`) are saved after every point, so a stopped scan can be continued from its last PDB with a new `start`.
+Each point is optimised from the previous one with the scanned distance fixed. Writes `scan_XX.pdb` (full system) and `scan_energies.csv`; `results` (`points` with target/actual distance, energy, kcal/mol relative to point 0, PDB; `max_point`) are saved after every point, so a stopped scan can be continued from its last PDB with a new `start`. It also writes `surface_results.txt` in ASH's own surface format and plots the profile with ASH's `reactionprofile_plot` (1D) or `contourplot` (2D), so the result can be fed to `read_surfacedict_from_file` and `analyze_surface` instead of mcube carrying its own plotting and stationary-point detection. A plotting failure is a warning, never fatal.
 
 ### `neb.inputs` (optional section)
 

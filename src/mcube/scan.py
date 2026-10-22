@@ -90,6 +90,61 @@ def targets_for(inputs: Dict[str, Any], suffix: str, current: float) -> List[flo
     return [float(x) for x in np.linspace(start, end, npoints)]
 
 
+def point_value(point: Dict[str, Any], *names: str) -> float:
+    """A point's value under any of `names`.
+
+    Points made in this run carry the dict keys used below; points read back
+    from scan_energies.csv on resume carry that file's column headers instead,
+    so anything reading `results.points` has to accept both spellings.
+    """
+    for name in names:
+        if name in point:
+            return float(point[name])
+    raise KeyError(f"none of {names} in scan point {point}")
+
+
+def write_ash_surface(points: List[Dict[str, Any]], two_d: bool,
+                      path: str = "surface_results.txt") -> str:
+    """The profile in ASH's own `surface_results.txt` format: coordinates, then energy.
+
+    Written beside scan_energies.csv so the result is readable by ASH's surface
+    tools - `read_surfacedict_from_file`, `reactionprofile_plot`, `contourplot`,
+    and `analyze_surface` for stationary points - rather than mcube growing its
+    own plotting and curve analysis. The CSV stays, because it carries what
+    ASH's format has no column for: the distance actually reached, the
+    convergence flag, the monitored distances and the per-point PDB.
+    """
+    with open(path, "w") as fh:
+        for point in points:
+            cols = [point_value(point, "target", "target_A")]
+            if two_d:
+                cols.append(point_value(point, "target2", "target2_A"))
+            cols.append(point_value(point, "energy", "energy_Eh"))
+            fh.write(" ".join(f"{c:.8f}" for c in cols) + chr(10))
+    return Path(path).resolve().as_posix()
+
+
+def plot_surface(resultfile: str, two_d: bool, label: str) -> None:
+    """Plot with ASH's plotters, reading the file back through ASH's own reader.
+
+    Going through `read_surfacedict_from_file` means the dictionary is exactly
+    the shape the plotters expect, whatever that is, instead of mcube assuming
+    it. Never fatal: a scan that took hours is not lost because matplotlib is
+    missing or a grid is too sparse to contour.
+    """
+    try:
+        surface = read_surfacedict_from_file(resultfile, dimension=2 if two_d else 1)
+        if two_d:
+            contourplot(surface, label=label, finalunit="kcal/mol",
+                        x_axislabel="RC1 (A)", y_axislabel="RC2 (A)")
+        else:
+            reactionprofile_plot(surface, finalunit="kcal/mol", label=label,
+                                 x_axislabel="Distance (A)", y_axislabel="Energy",
+                                 filename=label)
+    except Exception as exc:
+        print(f"[WARNING] ASH surface plot skipped: {exc}")
+
+
 def read_done(csvfile: Path) -> List[Dict[str, str]]:
     if not csvfile.exists():
         return []
@@ -230,5 +285,7 @@ def run(args) -> Dict[str, Any]:
     print(f"\n[INFO] Highest point {top}: {rel[top]:.2f} kcal/mol relative to the first point; "
           f"last point {rel[-1]:+.2f} kcal/mol")
     result["max_point"] = top
+    result["surface_results"] = write_ash_surface(result["points"], two_d)
+    plot_surface(result["surface_results"], two_d, section)
     save_result(result, filename=args.config, section=section)
     return result
