@@ -42,6 +42,8 @@ def amber_pdb(src: str, dst: str):
     for line in open(src):
         if line.startswith(("ATOM", "HETATM")):
             line = line.replace(" HOH ", " WAT ")
+            if line[17:20].strip() == "CL":
+                line = line[:12] + " CL " + line[16:]     # OpenMM writes "Cl", leap wants "CL"
             out.append(line)
             if line[12:16].strip() in ("H2", "LU", "LA", "CA", "CL", "NA") or \
                     line[17:20].strip() in ("LU", "LA", "CA", "CL", "NA"):
