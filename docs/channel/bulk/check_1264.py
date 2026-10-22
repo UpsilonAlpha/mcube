@@ -111,25 +111,32 @@ def main():
     changed = ions.apply_metal_parameters(mine, pdb.topology, [args.ion], "1264",
                                           forcefields=["amber14/tip3p.xml"])
     ion = changed[0]
-    # Same atom order? tleap keeps the PDB order for this all-ion/water box
-    names_ref = [at.element.symbol for at in prmtop.topology.atoms()]
-    names_mine = [at.element.symbol for at in pdb.topology.atoms()]
-    if names_ref != names_mine:
-        raise SystemExit("atom order differs between the prmtop and the PDB")
-
+    # tleap regroups residues, so match atoms by the coordinates it wrote (inpcrd, 1e-7 A)
+    from openmm.app import AmberInpcrdFile
+    ref_xyz = np.asarray(AmberInpcrdFile("sys.inpcrd").getPositions(asNumpy=True)
+                         .value_in_unit(unit.angstrom))
     pos = pdb.getPositions(asNumpy=True)
+    my_xyz = np.asarray(pos.value_in_unit(unit.angstrom))
+    key = lambda x: tuple(np.round(x, 2))
+    where = {key(x): i for i, x in enumerate(my_xyz)}
+    order = [where[key(x)] for x in ref_xyz]       # ref atom k is mcube atom order[k]
+    if sorted(order) != list(range(len(my_xyz))):
+        raise SystemExit("could not match every prmtop atom to a PDB atom by position")
+    ion_ref = order.index(ion)
+
     rows = []
     # Frame as is, then the ion displaced along x: the energy *change* isolates the ion's terms
     for shift in (0.0, 0.2, 0.4, -0.2):
         p2 = pos.copy()
         p2[ion] = p2[ion] + openmm.Vec3(shift / 10.0, 0, 0) * unit.nanometer
-        e_ref, f_ref = energy_and_ion_force(ref, p2, box_nm, ion)
+        p_ref = [p2[i] for i in order]
+        e_ref, f_ref = energy_and_ion_force(ref, p_ref, box_nm, ion_ref)
         e_mine, f_mine = energy_and_ion_force(mine, p2, box_nm, ion)
         rows.append({"shift_A": shift, "E_amber": e_ref, "E_mcube": e_mine,
                      "F_ion_amber": [round(float(x), 4) for x in f_ref],
                      "F_ion_mcube": [round(float(x), 4) for x in f_mine]})
     e0a, e0m = rows[0]["E_amber"], rows[0]["E_mcube"]
-    report = {"ion": args.ion, "atoms": len(names_ref),
+    report = {"ion": args.ion, "atoms": len(order),
               "dE_total_kcal": round(e0m - e0a, 4),
               "dE_ion_moves": [{"shift_A": r["shift_A"],
                                 "amber": round(r["E_amber"] - e0a, 4),
