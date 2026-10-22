@@ -263,6 +263,11 @@ constriction, MM→QM/MM reweighting, then xTB→DFT single-point reweighting.**
      the same failure. Remedies in order: raise xTB's electronic temperature, soften the MM point
      charges (ASH `hardness_PC`), and put the second shell in the QM region (Rode-style QMCF
      practice). The xTB/MM distances above come from short runs and are provisional.
+- Resubmitted 2026-10-23 (12 h MM limit, 8c9536d): MM **30416201** Ca IOD, **30416202** Ca 1264,
+  **30416203** La IOD. QM/MM-only reruns on the finished boxes, to separate the two SCC remedies:
+  xTB electronic temperature 1000 K, first shell QM, `qm_t1000/`: **30416204** La 1264,
+  **30416205** Lu IOD, **30416206** Lu 1264; second shell in QM (cutoff 5.2 Å La, 5.0 Å Lu),
+  default 300 K, `qm_s2/`: **30416207** La 1264, **30416208** Lu IOD, **30416209** Lu 1264.
 
 ## Findings
 
