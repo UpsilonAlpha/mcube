@@ -134,6 +134,23 @@ sections:
         - [C:2:O01, C:1:C4x, 3.47, 20.0]   # hydroxide O -> beta-lactam carbonyl C
       nvt_time: 1000                       # 1 ns, per the ASH 2b protocol
 
+  # D94: is the 1.79 A Zn-Gln93 contact that MM produced a real minimum on the
+  # QM/MM surface, or an artefact held there by a barrier? Same test D53 ran on
+  # Asp92 and D58 on the carbonyl. An optimisation alone cannot answer it - it
+  # only reports the basin it started in - so pull the contact out and read the
+  # profile. Needs a preprocess that put Gln93 in the QM region, which happens
+  # automatically once it is inside `cutoff` of the metal.
+  scan_zngln:
+    stage: scan
+    start: protdft/qmmm/QM_MM_optimized.pdb
+    inputs:
+      atoms: [B:1:ZN, A:93:OE1]
+      start: 1.80
+      end: 4.20
+      points: 9
+      opt_maxiter: 300
+      resume: true
+
   sp_dft:                      # score a geometry someone else produced
     stage: sp
     inputs: &sp_only
