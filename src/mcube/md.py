@@ -184,19 +184,20 @@ def md_inputs(config: str, section: Optional[str] = None) -> Dict[str, Any]:
     return inputs
 
 
-def fill_restraints(rows, pdb_file: str) -> list:
+def fill_restraints(rows, pdb_file: str, force: float = COORDINATION_FORCE) -> list:
     """`[i, j]` -> `[i, j, current_distance, COORDINATION_FORCE]`, filling what is absent.
 
     One rule for every pair, whatever it belongs to: a row with no distance is
     held where the structure already has it, and a row with no force constant
-    gets the one default. Give either explicitly to override it.
+    gets `force` - `preprocess.inputs.coordination_force`, else the default.
+    Give either explicitly in the row to override it.
     """
     rows = [list(r) for r in rows]
     bare = [r for r in rows if len(r) < 3]
     measured = dict(zip((frozenset(r[:2]) for r in bare), pair_distances(pdb_file, bare)))
     return [[r[0], r[1],
              r[2] if len(r) > 2 else measured[frozenset(r[:2])],
-             r[3] if len(r) > 3 else COORDINATION_FORCE] for r in rows]
+             r[3] if len(r) > 3 else force] for r in rows]
 
 
 def md_restraints(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file: str):
@@ -221,12 +222,13 @@ def md_restraints(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file: 
     choice. Only a distance someone chose can launder an assumption into a later
     run: holding a contact where it already was asserts nothing new.
     """
+    force = float((preprocess.get("inputs") or {}).get("coordination_force", COORDINATION_FORCE))
     asked = fill_restraints(resolve_atoms(inputs.get("restraints") or None, pdb_file) or [],
-                            pdb_file)
+                            pdb_file, force)
     rows = resolve_atoms((preprocess.get("results") or {}).get("coordination"), pdb_file) or []
     # An explicit restraint on a pair wins: the user named a distance for it.
     named = {frozenset(r[:2]) for r in asked}
-    detected = fill_restraints([r for r in rows if frozenset(r[:2]) not in named], pdb_file)
+    detected = fill_restraints([r for r in rows if frozenset(r[:2]) not in named], pdb_file, force)
     return (asked + detected) or None, detected
 
 

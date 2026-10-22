@@ -125,6 +125,7 @@ A stale chain ID fails loudly in some places and silently in others: a `chain:re
 | `ionic_strength` | 0.1 | NaCl concentration in M (explicit only) |
 | `metals` | none | Element symbols treated as metals. Empty or absent (e.g. protein–protein complexes): no coordination restraints and no QM region. |
 | `cutoff` | required with `metals` | Metal–donor distance cutoff (Å) |
+| `coordination_force` | `50.0` | Force constant (kcal/mol/Å²) each detected metal–donor contact is restrained with, and the default for any `md.inputs.restraints` row that omits one. 50 leaves a contact 0.11 Å RMS of room at 300 K: firm enough that a donor cannot migrate onto the metal, loose enough that the site still vibrates. Gervasoni et al. ([Proteins 2022, 90, 372](https://doi.org/10.1002/prot.26227)) hold a dizinc metallo-β-lactamase site at 30 through 100 ns of NVT and Hanževački et al. ([JCIM 2025, 65, 6261](https://doi.org/10.1021/acs.jcim.5c00869)) use 50; the difference is 0.03 Å, so no result should turn on the choice. The value used is written into every `preprocess.results.coordination` row |
 | `donor_elements` | `[N, O, S]` | Elements that count as metal donors (matched on element, not atom name) |
 | `require_his_variants` | `false` | Fail if any histidine has no tautomer in `residue_variants`. A warning is printed either way. |
 | `extra_qm_residues` | none | `{chain: [resid, ...]}`: residues added to the QM region on top of the metal's coordination sphere (e.g. catalytic Lys/Arg) |

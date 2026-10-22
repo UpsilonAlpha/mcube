@@ -246,8 +246,10 @@ def check_inherited_restraints(coordination, restraints, pdb_file: str, inputs) 
         '    acknowledge_restrained: [["%s", "%s"]]\n' % (clashes[0][0], clashes[0][1]))
 
 
-# The force constant a detected metal-donor contact is restrained with, written
-# into `preprocess.results.coordination` so it is visible and editable per pair.
+# Default force constant for a restrained metal-donor contact. Overridable as
+# `preprocess.inputs.coordination_force`, and written into every
+# `preprocess.results.coordination` row, so the value a run used is in the
+# config twice over rather than buried here.
 # 50 kcal/mol/A^2 leaves the contact 0.11 A RMS of room at 300 K, so the site
 # still vibrates but a donor cannot migrate onto the metal. Gervasoni et al.,
 # Proteins 2022, 90, 372 hold a dizinc metallo-beta-lactamase site at 30 through
@@ -579,6 +581,7 @@ def find_coordinators(
     # Residues whose metal-donor distance is left free (no bond constraint) during MD
     constraint_exclude = inputs.get("constraint_exclude_residues") or {}
     cutoff = inputs.get("cutoff")
+    force = float(inputs.get("coordination_force", COORDINATION_FORCE))
 
     elems = [a.element.symbol if a.element else "" for a in atoms]
 
@@ -615,7 +618,7 @@ def find_coordinators(
             else:
                 # The distance it already has, so the restraint preserves the
                 # input geometry rather than imposing one. Editable per pair.
-                coordination.append([m, idx, round(dist, 3), COORDINATION_FORCE])
+                coordination.append([m, idx, round(dist, 3), force])
 
             # Excluded residues keep their restraint but are left out of the QM region
             if exclude_residues and chain in exclude_residues:

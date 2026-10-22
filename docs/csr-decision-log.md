@@ -1353,129 +1353,36 @@ Net: `md.results` gains `coordination_restraints` (the detected subset, kept apa
 
 **Still open, and now clearly separate from the restraint question.** The D89 substrate dissociation is a **pose** problem, not a restraint problem. A coordination-radius restraint of either kind holds bond lengths near the metal; it cannot hold a ligand whose carboxylate sits 10.67 A out, and restraining a wrong pose harder would only buy a clean QM/MM barrier for a Michaelis complex that does not exist. The docked pose never made the canonical carboxylate-Arg interaction every MBL substrate complex has. That is the next scientific question.
 
-**D93 - The D89 attack geometry, measured; and which runs actually restrained the substrate.** (2026-10-22)
+**D93-D96 - Measuring the attack geometry, and testing the sixth zinc contact.** (2026-10-22, condensed from four entries)
 
-`site.py nucleophiles` on `CSR_unrestrained2/protdft/qmmm/QM_MM_optimized.pdb` (jobs p6md-30354772 / p6qm-30354773, the D89 run):
+All distances from `site.py`; `nucleophiles` reports O-C, the Nu-C-O angle and Zn-O, `sphere` the whole first shell.
 
-| nucleophile | O-C | Nu-C-O angle | Zn-O | verdict |
+| structure | O01-C4x | Nu-C-O | Zn-Gln93 OE1 | Zn coordination |
 | --- | --- | --- | --- | --- |
-| **C:2:OH (the Zn-bound hydroxide)** | **5.41** | **96** | 1.93 | metal-bound, **far** |
-| E:3174:HOH | 6.00 | 128 | 3.03 | angle off, far |
-| E:3097:HOH | 5.34 | 109 | 10.07 | far |
-| E:3687 / E:8623 HOH | 4.08 / 4.09 | 65 / 60 | 8.91 / 6.59 | angle off |
+| docked pose 2, solvated (md input) | 3.47 | 79 | 5.54 | 5, sound |
+| `CSR_unrestrained` end, 1 ns MM (run 1) | 4.45 | **100** | **1.79** | **6** |
+| `CSR_unrestrained2` end, 500 ps + QM/MM (D89) | 5.41 | 96 | - | 5, sound |
+| `CSR_gln93` QM/MM optimisation (job 30394832) | 4.94 | 100 | **2.65** | **6** (5 proper + 1 long) |
 
-**The orientation is right and the distance is wrong.** 96 degrees sits inside the 95-120 Burgi-Dunitz window; the only failing criterion is distance, 5.41 A against the 4.5 A tolerance and the ~3 A a near-attack conformation wants. The substrate has not tumbled or flipped - it is correctly presented and too far away. That is a far more salvageable failure than a bad trajectory, and it means a restraint pulling O01-C4x in to 3.0 A would be shortening an already-correct approach rather than forcing a wrong orientation into a right one. (The triangle-inequality bound of >=4.38 A I quoted before the measurement was correct and conservative.)
+**The angle fixes itself; the distance does not.** Docking gave a good distance with a bad trajectory (79 degrees); MM rotated the substrate into the Burgi-Dunitz window (79 -> 100) while letting the approach drift out. Neither unrestrained run has both. This is the argument for a harmonic *distance* restraint on O01-C4x: it fixes the one coordinate that degrades and leaves the two angular ones free, where a positional restraint would have frozen the 79-degree trajectory. Two unrestrained runs is enough; a third is not needed.
 
-Incidental, and relevant to question 1: the hydroxide's proton H03 points at mer O1x (2.95) and **Lys226 NZ (3.39)**, and the intruding water E:3174 has a proton 3.87 from Lys226 NZ and 3.77 from Asp92 OD2. Lys226 is in H-bonding reach of the nucleophile without anything having been imposed.
+**Where the substrate restraints actually came from.** `CSR_crystal`, not `CSR_hydrolysed` or `CSR_ligand`: `grep -c restraints` is **0** for both of those, for all four of their `.bak` copies and for all four `.slurm` files. They used detected coordination only, with the ligand free via `constraint_exclude_residues: {C: [1]}`. CSR_crystal's two rows are `[4203, 4209, 2.2, 20.0]` (Zn -> carbonyl O) and `[4255, 4208, 3.0, 20.0]` (hydroxide -> carbonyl C). Indices differ between systems - C4x is 4211 in CSR_unrestrained2 against 4208 in CSR_crystal - so selectors are mandatory, not a nicety.
 
-**Correction to the project's own record.** The two-row restraint set is **`CSR_crystal`'s**, not `CSR_hydrolysed`'s or `CSR_ligand`'s:
+**Job 30394832 (`CSR_gln93`): does QM/MM reject the 1.79 A contact?** Gln93's side chain (indices 1421-1431, eleven non-backbone atoms, neutral so `charge: 2` unchanged) was put in the QM region **by editing `preprocess.results.qm_atoms` from 119 to 130 entries** - no preprocess re-run, because those are indices into `processed_pdb` and MD preserves atom order. Note run 1's `processed_pdb` points at *CSR_crystal's* `finalsystem.pdb`; it reused that prepared system. `skip_equilibrate: true`, so this was a **pure optimisation with no thermal sampling at all** - 95 geomeTRIC steps, 8m58s, converged, -447.37695 Eh.
 
-```
-md.inputs.restraints:
-- [4203, 4209, 2.2, 20.0]   # Zn -> beta-lactam carbonyl O
-- [4255, 4208, 3.0, 20.0]   # hydroxide -> carbonyl carbon
-```
+Answer: **xTB does not create the contact - 1.79 A is not a minimum on this surface - but an optimisation only loosens it to 2.65 A rather than clearing it.** The other five ligands are proper bonds (His88 1.96, O01 2.07, HOH485 2.10, His164 2.16, Asp92 2.17). Bahena-Mendez's clean reversion to CN 4 was nanoseconds of QM/MM *dynamics*, so this neither confirms nor contradicts it; a short QM/MM MD remains untried.
 
-`grep -c restraints` returns **0** for `CSR_hydrolysed/config.yaml` and `CSR_ligand/config.yaml`, for every one of their `.bak` copies, and for every `.slurm` in both directories. Those two runs used no restraints at all - only detected coordination constraints, with the ligand left free via `constraint_exclude_residues: {C: [1]}`. The restrained run is CSR_crystal (2 hits) and its v2/v3 descendants (1 each). Worth stating because the choice of which prior run to copy depends on it.
+Also observed: **Lys226 transferred a proton to O01** (Lys226 NZ 3 H -> 2, O01 1 H -> 2; HZ2 now 0.99 A from O01, 1.74 from NZ), with the original H03 turning to hydrogen-bond Gln93 OE1 at 1.85 A. Total QM charge unchanged. This is D42's `cleanR_lysH` / `cleanR_ohH` question answering itself: given a free choice the proton goes to O01.
 
-**The starting geometry, for comparison - and the thing that decides the restraint.** `site.py nucleophiles` on `CSR_unrestrained2/preprocess_results/finalsystem.pdb`:
+**Two over-calls of mine, corrected after the user pushed back.** I first called this "the nucleophile destroyed" and the frame unusable. Both wrong:
+- **Zn-OH2 with a nearby base is an ordinary resting Michaelis complex.** The hydroxide forms at or near the transition state with a base taking the proton; a neutral Lys226 is exactly that base. The transfer is evidence about Lys226's role, not a pathology.
+- **4.94 A does not disqualify the geometry.** The 4.5 A figure in `site.yaml` tests whether a structure *already is* a near-attack conformation; it does not gate the chemistry. `scan_attack` drives the coordinate in from 3.0 to 1.45 A, and the barrier is taken between a characterised reactant and transition state, not from the starting frame's distance. It costs scan points, not viability.
 
-| | O01-C4x | Nu-C-O | Zn-O01 | verdict |
-| --- | --- | --- | --- | --- |
-| start (docked pose 2) | **3.47** | **79** | 2.14 | angle off |
-| D89 end (QM/MM) | **5.41** | **96** | 1.93 | far |
+Earlier in the same thread I had also argued the docked pose was wrong because it lacked a carboxylate-Arg contact - circular, since whether Arg90/Arg229 are involved is question 2 - and because the substrate dissociated, which was an artefact of my own restraint set rather than evidence about the pose.
 
-**The angle improved over the run while the distance degraded.** 79 -> 96 degrees rotated the substrate into the Burgi-Dunitz window; 3.47 -> 5.41 A let it drift out of reach. Neither endpoint satisfies both criteria: docking supplied the distance with the wrong trajectory, MD corrected the trajectory and lost the distance. So MD *did* improve on the docked pose, which is what the user expected of it - it simply had nothing holding the approach while it worked.
+**So the sixth contact is the one open objection**, matching the standing question of whether xTB over-coordinates the zinc, and `scan_zngln` (relaxed scan along Zn-Gln93 OE1, 1.80-4.20 A, nine points) is the decisive test: the depth of the well at 2.65 A distinguishes a genuine six-coordinate zinc from a residual artefact.
 
-**This is the argument for the single distance restraint**, and it is the distance/positional distinction doing real work: a harmonic distance restraint on O01-C4x fixes only the radial coordinate and leaves the two angular ones free, so MD can keep rotating into the window while the approach is held. A positional restraint would have frozen the 79-degree trajectory in place. Restraining the Zn-carbonyl distance as well is declined: for a mono-Zn B3 site, whether the carbonyl coordinates the same zinc that carries the nucleophile is not established, and `constraint_exclude_residues: {C: [1]}` already keeps the ligand out of the automatic coordination set for the same reason.
-
-Also visible in the starting structure, unprompted and relevant to questions 2 and 3: the hydroxide's proton H03 sits **1.87 A from Asp92 OD2**, and the second Zn-bound water's H2 is **2.47 A from Arg90 NH1**.
-
-**Can we skip a new MD and take QM/MM straight off an existing frame?** Measured on `CSR_unrestrained/md_results/NVTtrajectory_lastframe.pdb` (run 1, 1 ns, unrestrained):
-
-| | O01-C4x | Nu-C-O | Zn coordination |
-| --- | --- | --- | --- |
-| run 1 @ 1 ns | **4.45** | **100** | **6-coordinate, Gln93 OE1 at 1.79** |
-| D89 @ 500 ps + QM/MM | 5.41 | 96 | 5-coordinate, sound |
-
-**The two existing runs are complementary failures.** Run 1's *substrate* geometry passes both Burgi-Dunitz criteria (4.45 < 4.5 A, 100 degrees in the 95-120 window) - the `metal-bound` tag site.py prints is a screening flag for candidate waters, not a defect, since a Zn-bound hydroxide is the intended nucleophile. But its *zinc* carries Gln93 OE1 at **1.79 A**, shorter than every genuine ligand, and the site is six-coordinate. D89 is the reverse: sound five-coordinate sphere, substrate out of reach. Neither frame has both.
-
-Starting QM/MM from run 1's frame therefore costs either laundering (re-run preprocess and Gln93, now inside `cutoff: 3.0`, enters the QM region as asserted structure - the D68 pattern, and `acknowledge_restrained` does not guard artefact-to-detection) or contamination (leave it out and MM holds an oxygen 1.8 A from the QM zinc).
-
-**And 4.45 A is not an equilibrium value.** 3.47 (start) -> 4.45 (1 ns) -> 5.41 (500 ps + QM/MM) is monotonic: it is a point part-way out of the site, so a longer run goes further. That is the argument for holding the radial coordinate rather than picking a frame off the drift.
-
-**Migration note.** `CSR_unrestrained2/config.yaml` carries `preprocess.results.constraints` and `md.inputs.hold_coordination`, both of which the current code no longer reads. A re-run starts from `preprocess` so that `preprocess.results.coordination` is generated by the present code, rather than hand-editing the old key.
-
-**What this settles about D89.** The dissociation was the absence of CSR_crystal's two restraints, not evidence against the docked pose - D89 ran with the carbonyl outside `cutoff: 3.0` and therefore unrestrained. Both of my earlier arguments that the pose is wrong are withdrawn: the carboxylate-Arg criterion (circular against questions 1-3) and the dissociation inference (an artefact of my own restraint set).
-
-**D94 - Is the 1.79 A Zn-Gln93 contact a real QM/MM minimum? (`CSR_gln93`, job 30394832)** (2026-10-22)
-
-Run 1's 1 ns frame has a usable substrate geometry and a six-coordinate zinc (D93). Before paying for new MD, test the cheaper question: does QM/MM reject the Gln93 contact, or is it a genuine minimum?
-
-**No preprocess re-run was needed** - the user's point, and correct. `preprocess.results.qm_atoms` are indices into `processed_pdb`, MD preserves atom order, so run 1's last frame is already indexed consistently. Gln93's side chain was added to the QM region by editing the config:
-
-| | before | after |
-| --- | --- | --- |
-| `qm_atoms` | 119 | **130** (added 1421-1431) |
-| `qm_residues.A` | 164, 88, 92, 90, 226 | + **93: GLN** |
-
-1421-1431 are Gln93's eleven non-backbone atoms (CB, HB2, HB3, CG, HG2, HG3, CD, NE2, HE21, HE22, OE1), read from `CSR_crystal/preprocess_results/finalsystem.pdb` - which is what run 1's `processed_pdb` points at, since run 1 reused CSR_crystal's prepared system rather than making its own. The side chain is neutral, so `charge: 2` is unchanged, and the CA-CB cut is ASH's standard amino-acid treatment, so `boundary_excluded` needs nothing.
-
-Run in a copied directory so run 1's config stays as the record of what produced the frame.
-
-**An optimisation alone cannot answer the local-minimum question** - it reports only the basin it started in. So the probe is two-stage: `qmmm` with `skip_equilibrate: true` for a relaxed QM/MM geometry (fast), then **`scan_zngln`** - a relaxed scan along Zn-Gln93 OE1 from 1.80 to 4.20 A, nine points - which gives the depth of the well and whether a barrier traps it. This is the test D53 ran on Asp92 and D58 on the carbonyl, so site.yaml already had the machinery. 25 ps of QM/MM MD was considered and dropped: it is slower than the scan and still two orders of magnitude short of the nanosecond timescale on which Bahena-Mendez report GFN2-xTB correcting over-coordination, so a negative result would mean nothing.
-
-**What each outcome means.** Gln93 moving out to >3 A under optimisation, or the scan showing 1.79 A is not a minimum: the contact is an MM artefact, QM/MM clears it, and run 1's frame is usable as a QM/MM starting point - no new MD needed. The scan showing a real well at ~1.9-2.1 A: a six-coordinate zinc is genuine on this surface, and the restrained MD run becomes the way to avoid biasing the site. Either way the answer is cheap.
-
-**Also landed for this**: `md` now accepts `--section` like qmmm/sp/scan/neb/ts (it was the only stage without one), so a second MD run inherits the first's inputs and both read one `preprocess.results.coordination` instead of a duplicated directory whose copy can drift - the D68 hazard. `run.slurm` passes it and keeps md's `<section>_results` convention, so `run.slurm md md` is unchanged.
-
-**D95 - QM/MM metal radii: a comparability boundary coming from the `umbrella` branch.** (2026-10-22, reported by the ion-channel session)
-
-**The inconsistency is real and it is ours.** `apply_metal_parameters` is called only from `md.run()`. The qmmm, scan, neb, ts and sp stages build their MM system through `qmmm.make_mm`, which never applied it - so **every CSR QM/MM number to date was produced with Amber's stock Zn radii while the MD that generated its geometry used IOD**. Not wrong, but not consistent either, and nobody noticed because the two stages were read separately.
-
-On branch `umbrella` (uncommitted, not merged) the implementation moves to `ions.apply_metal_parameters` as the single copy, and the QM/MM stages call it through `qmmm.apply_stage_metal_parameters` after the QM region is known and before the QMMMTheory is built, resolving the set as stage `metal_parameters` -> `md.results.metal_parameters` -> md's input -> `iod`. `lookup()` is unchanged, so the 12-6 path is untouched.
-
-**So QM/MM energies across the merge are not directly comparable**, and `metal_parameters: none` in `qmmm.inputs` restores the old behaviour for a like-for-like rerun. Job 30394832 (D94) ran pre-merge.
-
-**How much it should matter here, which is less than it sounds.** In CSR the zinc is *in the QM region*, so its LJ terms only govern Zn-to-MM van der Waals, and the whole first and second shell - His88, His164, Asp92, the hydroxide, HOH485, the substrate - is QM. The nearest MM atoms are outside that, where a 1.69 vs 1.89 A pair minimum does little. The over-attraction that motivated IOD in the first place (D87, ASH's "water molecule attempting to bind to the +3 pointcharge") is a *classical* failure; a QM zinc does not have it. So the expected shift is small - but "expected" is not "measured", and it is cheap to bound: one geometry, two `sp` runs, `metal_parameters: none` against `iod`. Worth doing before any barrier is quoted across the boundary.
-
-**An independent argument for IOD as the default, from the same session.** OpenMM 8.4's `amber14/tip3p.xml` gives La3+ and Lu3+ Rmin/2 of **1.758** and **1.625** - the 12-6-4 model's 12-6 terms, carried **without** the accompanying C4. Against the IOD rows vendored in `ions.py` (1.718 and 1.588) that is +0.040 and +0.037 A. This is the same mislabelling family as the AmberTools 2016-2019 defect recorded in `ions.py`, now found in a force field rather than a parameter file: a 12-6-4 radius without its r^-4 term is not a valid 12-6 parameter, so for the lanthanides the stock values are the wrong ones and IOD is the correction, not merely an alternative. Template existence is not a blocker either - `tip3p_standard-Ca2+/La3+/Lu3+` all exist, so `apply_metal_parameters` reads back a +3 charge and hits the right row with nothing specified.
-
-Also on that branch: `qmmm.inputs.platform` and `properties` now reach `make_mm`.
-
-**D96 - QM/MM does not rescue run 1's frame: Gln93 relaxes but does not leave, and Lys226 protonates the nucleophile.** (2026-10-22, job 30394832, `CSR_gln93`)
-
-COMPLETED in 8m58s, exit 0:0, geomeTRIC converged in 95 steps (`converged: True`), final energy **-447.37695 Eh**. The `.err` holds only optimiser progress. Gln93's side chain was in the QM region by config edit (D94), so this is a genuine QM/MM answer and not an MM artefact held in place by the force field.
-
-**(1) Gln93 moved out, but not away.**
-
-| Zn-ligand | run 1 MM frame | after QM/MM |
-| --- | --- | --- |
-| His88 NE2 | 2.22 | 1.96 |
-| O01 (nucleophile) | 2.14 | 2.07 |
-| HOH485 | 1.90 | 2.10 |
-| His164 NE2 | 2.09 | 2.16 |
-| Asp92 OD2 | 2.80 | 2.17 |
-| **Gln93 OE1** | **1.79** | **2.65** |
-
-So QM/MM rejected the 1.79 A contact - it is not a minimum on this surface - but relaxed it only to 2.65 A, not past the ~3 A that would have meant the artefact was cleared. **(2) The site is therefore still formally six-coordinate**: five proper bonds at 1.96-2.17 A plus one long weak contact. The honest reading is neither of the two outcomes D94 anticipated: the contact is an artefact *and* QM/MM at this level does not remove it, it merely loosens it.
-
-**(3) The attack geometry lengthened, and the proton moved to the Zn-bound oxygen.** O01-C4x went **4.45 -> 4.94 A** with the angle holding at 100 degrees, so it is now outside the 4.5 A tolerance as well as far from the ~3 A a near-attack conformation wants. Zn-mer O2x went 6.89 -> 7.28.
-
-**Lys226 transferred a proton to the Zn-bound oxygen.** In run 1's MM frame, `site.py sphere` reported Lys226 NZ with three hydrogens and O01 with one. After the optimisation Lys226 NZ has **two** and O01 has **two** - HZ2, still carrying its Lys atom name, now sits 0.99 A from O01 and 1.74 A from Lys226 NZ. The original hydroxide proton H03 has turned to hydrogen-bond Gln93 OE1 at 1.85 A. Total QM charge is unchanged, so `charge: 2` was still right.
-
-This is the `cleanR_lysH` / `cleanR_ohH` question from D42 answering itself unprompted: given a free choice the proton went to O01.
-
-**Correction, after the user pushed back (2026-10-22).** The first version of this entry called that "the nucleophile destroyed" and concluded the frame was unusable. Both were wrong, and the reasoning behind them was not stated because it does not survive being stated:
-
-- **Zn-OH2 with a nearby base is an ordinary resting Michaelis complex**, not a quenched one. The hydroxide forms at or near the transition state, with a base taking the proton - Asp120 in B1 MBLs, Asp92 or a neutral Lys226 here. A neutral Lys226 is exactly the general base such a mechanism needs, so the transfer is the system finding its resting protonation rather than a pathology. It bears on question 1 as *evidence about Lys226's role*, not as a failure.
-- **4.94 A does not disqualify the geometry.** The 4.5 A figure in `site.yaml` is a test for whether a structure *already is* a near-attack conformation; it is not a precondition for computing the chemistry. A relaxed scan drives the coordinate in - `scan_attack` exists for exactly this, 3.0 -> 1.45 A - and the barrier is taken between a characterised reactant and transition state, not from whatever distance the starting frame happened to have. 4.94 A costs scan points, not viability.
-
-**So the one real objection is the sixth contact**, which is what this job was run to test and matches the standing question of whether xTB over-coordinates the zinc. The answer is that it does not *create* the contact - 1.79 A is not a minimum here - but an optimisation only loosens it to 2.65 A rather than clearing it.
-
-That makes **`scan_zngln` the decisive next test rather than a redundant one**, which reverses the reason given above for not submitting it: if the frame is otherwise usable, the depth of the well at 2.65 A is what distinguishes a genuine six-coordinate zinc on this surface from a residual artefact, and that is the only thing still standing between this frame and a reaction path.
-
-**Energy caveat (D95).** This job ran pre-merge, so its MM used Amber's stock Zn radii while the geometry it started from came from IOD-parameterised MD. Do not compare -447.37695 Eh against any post-merge run.
+**Energy caveat (D95).** Pre-merge, so stock Zn radii in the MM while the input geometry came from IOD-parameterised MD. Do not compare -447.37695 Eh against a post-merge run.
 
 ## Resources (see `running-on-bunya.md`)
 

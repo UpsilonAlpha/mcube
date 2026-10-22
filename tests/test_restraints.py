@@ -118,6 +118,13 @@ class TestMdRestraints:
             {"restraints": [[0, 1]]}, {"results": {}}, pdb)
         assert restraints == [[0, 1, 2.1, mc.preprocess.COORDINATION_FORCE]]
 
+    def test_coordination_force_is_read_from_the_config(self, mc, pdb):
+        """The literature-based default is a config input, not a buried constant."""
+        restraints, _ = mc.md.md_restraints(
+            {"restraints": [[0, 1]]},
+            {"inputs": {"coordination_force": 30.0}, "results": {}}, pdb)
+        assert restraints == [[0, 1, 2.1, 30.0]]
+
     def test_selectors_resolve(self, mc, pdb):
         restraints, _ = mc.md.md_restraints(
             {}, {"results": {"coordination": [["B:1:ZN", "A:88:NE2"]]}}, pdb)
