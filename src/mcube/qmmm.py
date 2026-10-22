@@ -170,6 +170,34 @@ def pyscf_memory(inputs: Dict[str, Any], prefix: str = "sp") -> int:
     return int(memory)
 
 
+def ecp_from_file(path: str) -> Dict[str, Any]:
+    """{element: ECP} for every element with an ECP block in an NWChem-format file
+    (e.g. written by basis_set_exchange), parsed for PySCF."""
+    import re
+    from pyscf import gto
+    symbols = sorted(set(re.findall(r"^\s*([A-Z][a-z]?)\s+nelec\s+\d+", Path(path).read_text(), re.M)))
+    return {s: gto.basis.load_ecp(path, s) for s in symbols}
+
+
+def dft_ecp(inputs: Dict[str, Any], prefix: str, basis):
+    """
+    The effective core potentials for a DFT theory.
+
+    `<prefix>_ecp_file` (NWChem format, from basis_set_exchange) wins, then `<prefix>_ecp`
+    (a name PySCF knows). Otherwise a def2 basis gets the def2 ECPs of the same name: def2
+    basis sets for Rb onwards are built for those ECPs, and PySCF applies them only to the
+    elements that have one, so lighter elements are unaffected. Without this, a La or Lu
+    QM region would be computed all-electron in a basis meant for a 46- or 28-electron core.
+    """
+    ecp_file = level_option(inputs, prefix, "ecp_file")
+    if ecp_file:
+        return ecp_from_file(ecp_file)
+    ecp = level_option(inputs, prefix, "ecp")
+    if ecp is None and isinstance(basis, str) and basis.lower().startswith("def2"):
+        ecp = basis
+    return ecp
+
+
 def make_dft(inputs: Dict[str, Any], cores: int, mult: Optional[int], prefix: str = "sp"):
     """
     PySCF theory for QM/MM energies or gradients.
@@ -179,10 +207,13 @@ def make_dft(inputs: Dict[str, Any], cores: int, mult: Optional[int], prefix: st
     applied after a single point (`d3_energy`) is separate and stays post-SCF.
     """
     functional = level_option(inputs, prefix, "functional", "wb97x-v")
-    basis = level_option(inputs, prefix, "basis", "def2-svp")
+    basis_file = level_option(inputs, prefix, "basis_file")
+    basis = None if basis_file else level_option(inputs, prefix, "basis", "def2-svp")
     return PySCFTheory(scf_type="RKS" if mult == 1 else "UKS",
                        functional=functional,
                        basis=basis,
+                       basis_file=basis_file,
+                       ecp=dft_ecp(inputs, prefix, basis),
                        gridlevel=level_option(inputs, prefix, "gridlevel", 3),
                        densityfit=level_option(inputs, prefix, "densityfit", True),
                        auxbasis=level_option(inputs, prefix, "auxbasis"),
