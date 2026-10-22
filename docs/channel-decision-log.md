@@ -48,8 +48,8 @@ channel, built with mcube's existing stages as closely as possible.
   lanthanide, so La³⁺ vs Lu³⁺ spans the whole lanthanide contraction with two singlets.
 - Recommendation: **La³⁺ vs Lu³⁺**, with Y³⁺ (Shannon CN6 0.900 Å, beside Dy³⁺ 0.912) as an
   optional f-free control. The user chose La³⁺ vs Lu³⁺.
-- Ca²⁺ cannot use `metal_parameters: 1264` yet (C12: the +2 12-6-4 rows were not available to
-  check), so the Ca²⁺ PMF runs on IOD unless that table is added.
+- All three ions can use `metal_parameters: 1264` (C12): the +2 rows were added on 2026-10-22
+  from the AmberTools in the ASH env, so Ca²⁺ is no longer limited to IOD.
 - Checked (2026-10-22): Gd³⁺ ⁸S₇/₂, Dy³⁺ ⁶H₁₅/₂; La³⁺/Lu³⁺ ¹S₀ by configuration. Aqua ions:
   nine-coordinate through the early series, ~8.2 at Lu (Persson et al., *Chem. Eur. J.* 2008,
   10.1002/chem.200701281; Sessa et al., *J. Chem. Phys.* 2016, 10.1063/1.4951714). Those
@@ -201,16 +201,29 @@ constriction, MM→QM/MM reweighting, then xTB→DFT single-point reweighting.**
 
 ## Planned checks, not yet done
 
-- Q1: GPU. OpenMM platforms in the ASH env on Bunya (CUDA on `gpu_cuda`, HIP on MI355X); OpenMM
-  MM part of QM/MM on GPU vs CPU; whether openmm-plumed is installed.
-- Q2: resolved locally for OpenMM 8.4: `amber14/tip3p.xml` has CA, LA and LU templates
-  (`tip3p_standard-Ca2+/La3+/Lu3+`). Confirm the Bunya ASH env has the same OpenMM.
+- Q1: answered 2026-10-22 (`docs/channel/probe_env.py` on bun147): the ASH env has Python 3.11.14,
+  **OpenMM 8.4 with Reference, CPU and CUDA** (no HIP, no OpenCL), pyscf 2.13.0, mdtraj 1.11.1;
+  pymbar, openmm-plumed and basis_set_exchange are absent. Jobs import mcube from the scratch
+  checkout (`PYTHONPATH=$S/mcube/src`), and `mcube.umbrella` and `mcube.ions` import there.
+  Still open: GPU vs CPU speed for the MM side of QM/MM (needs a real window).
+- Q2: answered: the ASH env's OpenMM 8.4 `amber14/tip3p.xml` has the CA, LA and LU templates, with
+  the same stock radii as the local copy (F2 holds on Bunya: La³⁺ Rmin/2 1.758, Lu³⁺ 1.625 Å).
 - Q3: one QM/MM window in the membrane system: timing, energy drift, box stability (QM/MM in a
   membrane has never been run in mcube).
 - Q4: pore radius profile of the AF2 model before planning windows.
-- Q5: check the vendored 12-6-4 data against AmberTools on Bunya: `frcmod.ions34lsm_1264_tip3p`
-  (+3/+4 rows), `lj_1264_pol.dat` (sha256 765e516f... for ParmEd's copy), and read the +2 rows of
-  `frcmod.ions234lm_1264_tip3p` so Ca²⁺ can use 1264.
+- Q5: answered (`docs/channel/probe_amber.sh`). AmberTools lives inside the ASH conda env
+  (`$CONDA_PREFIX/dat/leap/parm`; there is no amber module). Its `frcmod.ions234lm_1264_tip3p`
+  holds all +2/+3/+4 rows; every +3/+4 row equals what was vendored, and the +2 rows (Ca²⁺ 1.642 Å,
+  0.10185975 kcal/mol) were added. Its `lj_1264_pol.dat` (sha256 9a64b54f...) is **newer than the
+  ParmEd test copy** first vendored (765e516f...): it lists the Lipid17 types itself, with exactly
+  the values the GAFF-analogue mapping had given, so that mapping was removed; it adds ion
+  polarisabilities (La³⁺ 1.141, Lu³⁺ 0.629 Å³) and sets GAFF `ho` to 0.000 (ParmEd's copy: 0.387).
+  The AmberTools file is now the vendored one (5ef051c).
+- Q7: a QM region holding a titratable residue next to a metal-bound water can move a proton by
+  itself (the CSR log's D96: Lys226 protonated a Zn-bound hydroxide during a QM/MM optimisation).
+  For Ln³⁺ near Asp/Glu, hydrolysis of a bound water in a QM/MM window would change the model
+  between windows and look like noise. Check the H count per QM oxygen at the start and end of
+  each QM/MM window before trusting it.
 - Q6: the QM/MM window path (`engine: qmmm`), `energies --level xtb|dft` and `stitch` on real
   data have not run: they need ASH. Only the MM path and the analysis are tested locally.
 
@@ -228,11 +241,11 @@ constriction, MM→QM/MM reweighting, then xTB→DFT single-point reweighting.**
 - Caveat: α-ratio C4 is not fitted to protein ligands and tends to over-bind carboxylates;
   check against the Ln–acetate data in Jafari et al., *JPCB* 2024 (10.1021/acs.jpcb.3c06567).
   Jafari et al., *JCTC* 2025 (10.1021/acs.jctc.4c01535) used 12-6-4 for metal transporters.
-- As built (`ions.py`): +3/+4 12-6 terms from ParmEd's copy of `frcmod.ions34lsm_1264_tip3p`, C4
-  from ParmEd's `DEFAULT_C4_PARAMS['TIP3P']`, polarisabilities from ParmEd's `lj_1264_pol.dat`
-  vendored unmodified in `src/mcube/data/`. Atom classes come from OpenMM's own template matching.
-  Lipid17 types, absent from the table, take their GAFF analogue's value (cA->c3, oP->o, pA->p5 ...);
-  that mapping is mcube's. Unknown types raise, unless given in `polarizabilities`.
+- As built (`ions.py`): +2/+3/+4 12-6 terms from AmberTools' `frcmod.ions234lm_1264_tip3p` (the +3/+4
+  rows first came from ParmEd's copy and were checked identical), C4 from ParmEd's
+  `DEFAULT_C4_PARAMS['TIP3P']`, polarisabilities from AmberTools' `lj_1264_pol.dat` vendored
+  unmodified in `src/mcube/data/` (Q5). Atom classes come from OpenMM's own template matching.
+  Unknown types raise, unless given in `polarizabilities`.
 - The C4 force copies **all** NonbondedForce exceptions as exclusions: the CPU and GPU platforms
   refuse nonbonded forces whose exclusions differ (the Reference platform does not check, which
   hid this until a CPU run).

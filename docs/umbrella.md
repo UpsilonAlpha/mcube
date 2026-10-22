@@ -142,7 +142,7 @@ how closely oxygens pack around it. `metal_parameters` chooses those parameters:
 | value | what it is | use it for |
 |---|---|---|
 | `iod` (default) | Li/Merz 12-6 parameters fitted to ion–oxygen distances | any metal; the safe choice |
-| `1264` | Li/Song/Merz 12-6-4: adds an attraction to every atom that depends on that atom's polarisability; better for highly charged ions | +3/+4 ions such as La³⁺ and Lu³⁺ (not yet +2 ions such as Ca²⁺) |
+| `1264` | Li/Song/Merz 12-6-4: adds an attraction to every atom that depends on that atom's polarisability; better for highly charged ions | +2 to +4 ions: Ca²⁺, La³⁺, Lu³⁺ and the rest of Amber's 12-6-4 set |
 | `none` | whatever the force-field file contains | a control for Zn²⁺ only. **Never for lanthanides:** OpenMM's stock La³⁺/Lu³⁺ parameters are half of the 12-6-4 model |
 
 Set it once in `md.inputs`. Since this change, `qmmm`, `scan`, `neb`, `ts`, `sp` and `umbrella`

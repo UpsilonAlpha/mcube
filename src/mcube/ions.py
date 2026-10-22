@@ -42,20 +42,17 @@ ParmEd `add12_6_4` builds it (read: parmed/tools/add1264.py):
   C4(ion, j) = C4(ion) * alpha_j / alpha_OW,     alpha_OW = 1.444 A^3
 
 with C4(ion) the ion-water value and alpha_j the polarisability of j's Amber
-atom type, from `data/lj_1264_pol.dat` (ParmEd's copy of AmberTools'
-lj_1264_pol.dat, unmodified). Between two such ions the two terms add.
+atom type, from `data/lj_1264_pol.dat`. Between two such ions the two terms add.
 
-  12-6 terms   frcmod.ions34lsm_1264_tip3p (Li, Song & Merz, J. Phys. Chem. B
-               2015, 119, 883), ParmEd test/files/parm copy
-  C4 values    ParmEd DEFAULT_C4_PARAMS['TIP3P']
+  12-6 terms     frcmod.ions234lm_1264_tip3p: +2 rows from Li & Merz, J. Chem.
+                 Theory Comput. 2014, 10, 289; +3/+4 rows from Li, Song & Merz,
+                 J. Phys. Chem. B 2015, 119, 883
+  C4 values      ParmEd DEFAULT_C4_PARAMS['TIP3P'] (the same paper tables)
+  polarisability lj_1264_pol.dat, copied unmodified from the AmberTools in the
+                 ASH environment (sha256 9a64b54f...); it covers the protein,
+                 GAFF, Lipid17, water and ion types
 
-Only +3/+4 ions are tabulated: the +2 12-6-4 file (frcmod.ions234lm_1264_tip3p,
-Li & Merz, J. Chem. Theory Comput. 2014, 10, 289) was not available to check
-against, so a +2 ion such as Ca2+ raises rather than run on guessed values.
-
-Lipid17 atom types are not in lj_1264_pol.dat. They are GAFF-derived (Lipid14,
-Dickson et al. 2014), so each is given the polarisability of its GAFF analogue
-(`LIPID17_ANALOGUE`). That mapping is mcube's, not Amber's.
+Every row was checked against that AmberTools install (dat/leap/parm).
 
 C4 is not fitted to protein ligands, and the alpha-ratio rule tends to
 over-bind carboxylates (Jafari et al., J. Phys. Chem. B 2024, 128, 684).
@@ -108,9 +105,23 @@ IOD_TIP3P = {
 
 # element -> charge -> (Rmin/2 in Angstrom, epsilon in kcal/mol, C4 in kcal/mol/A^4)
 LM_1264_TIP3P = {
+    "BE": {2: (1.203, 0.00116124, 186.5)},
+    "CU": {2: (1.476, 0.03198620, 290.9)},
+    "NI": {2: (1.431, 0.02133669, 212.8)},
+    "ZN": {2: (1.455, 0.02662782, 231.6)},
+    "CO": {2: (1.458, 0.02735051, 209.7)},
+    "CR": {2: (1.431, 0.02133669, 136.8), 3: (1.415, 0.01827024, 258.0)},
+    "FE": {2: (1.457, 0.02710805, 163.0), 3: (1.443, 0.02387506, 428.0)},
+    "MG": {2: (1.437, 0.02257962, 132.9)},
+    "V":  {2: (1.494, 0.03715368, 195.7)},
+    "MN": {2: (1.485, 0.03450196, 146.1)},
+    "HG": {2: (1.641, 0.10128575, 288.8)},
+    "CD": {2: (1.535, 0.05102457, 185.6)},
+    "CA": {2: (1.642, 0.10185975, 87.3)},
+    "SN": {2: (1.777, 0.19470705, 187.9)},
+    "SR": {2: (1.777, 0.19470705, 82.7)},
+    "BA": {2: (1.936, 0.33132862, 71.9)},
     "AL": {3: (1.369, 0.01128487, 399.0)},
-    "FE": {3: (1.443, 0.02387506, 428.0)},
-    "CR": {3: (1.415, 0.01827024, 258.0)},
     "IN": {3: (1.491, 0.03625449, 347.0)},
     "TL": {3: (1.571, 0.06573030, 456.0)},
     "Y":  {3: (1.630, 0.09509276, 216.0)},
@@ -136,15 +147,6 @@ LM_1264_TIP3P = {
 SETS = {"iod": IOD_TIP3P, "1264": LM_1264_TIP3P}
 
 WATER_POL = 1.444  # A^3, water oxygen (OW) in lj_1264_pol.dat
-
-# Lipid17 type -> the GAFF type it was derived from, for its polarisability
-LIPID17_ANALOGUE = {
-    "cA": "c3", "cB": "c2", "cC": "c", "cD": "c3",
-    "hA": "hc", "hB": "ha", "hE": "h1", "hL": "hc", "hN": "hn", "hO": "ho", "hX": "hx",
-    "nA": "n4",
-    "oC": "o", "oH": "oh", "oO": "o", "oP": "o", "oS": "os", "oT": "os",
-    "pA": "p5",
-}
 
 POL_FILE = Path(__file__).with_name("data") / "lj_1264_pol.dat"
 
@@ -192,16 +194,15 @@ def type_polarizability(atom_class: str, table: dict, overrides=None):
     """
     Polarisability of an OpenMM atom class, or None if unknown.
 
-    OpenMM's Amber XMLs keep the Amber type as the class for proteins, but prefix
-    water and ions (`tip3p-O`, `tip3p_standard-Na+`), and Lipid17 has its own
-    types, so those are translated first. `overrides` (by class) wins over all.
+    OpenMM's Amber XMLs keep the Amber type as the class for proteins and
+    lipids, but prefix water and ions (`tip3p-O`, `tip3p_standard-Na+`), so those
+    are translated first. `overrides` (by class) wins over all.
     """
     if overrides and atom_class in overrides:
         return float(overrides[atom_class])
     name = {"tip3p-O": "OW", "tip3p-H": "HW"}.get(atom_class, atom_class)
     if name.startswith("tip3p_standard-"):
         name = name[len("tip3p_standard-"):]
-    name = LIPID17_ANALOGUE.get(name, name)
     return table.get(name)
 
 
@@ -332,7 +333,7 @@ def apply_metal_parameters(system, topology, metals, which: str, forcefields=Non
         if entry is None:
             if which == "1264":
                 raise ValueError(f"no 1264 parameters for {element} with charge {q:+.0f} "
-                                 "(only +3/+4 ions are tabulated; see ions.py)")
+                                 "(+2 to +4 ions are tabulated; see ions.py)")
             print(f"[WARNING] no {which} parameters for {element} with charge "
                   f"{charge}: left at the force field's own values")
             continue

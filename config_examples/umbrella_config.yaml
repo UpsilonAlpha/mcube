@@ -30,7 +30,7 @@ md:
     npt_time: 1000
     nvt_timestep: 0.004
     nvt_time: 1000                         # its lastframe is where `pull` starts
-    metal_parameters: "1264"               # +3 ions only; Ca2+ needs "iod"
+    metal_parameters: "1264"               # 12-6-4: Ca2+, La3+ and Lu3+ are all covered
 qmmm:
   inputs:
     mult: 1                                # La3+ and Lu3+ are closed shell (4f0, 4f14)

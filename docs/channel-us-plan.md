@@ -80,5 +80,5 @@ Order of operations for one ion:
 | ASH biasing / PLUMED / GPU check | done from source (C10, C11); no HIP in the ASH env, MD on gpu_cuda |
 | literature, lanthanide partner, 12-6-4 | done (C4, C5, C12); La³⁺ vs Lu³⁺ chosen |
 | `umbrella.py`, 12-6-4, F1 fix | implemented on branch `umbrella` (worktree `Structures/mcube-umbrella`); 104 tests pass locally, QM/MM paths untested without ASH (Q6); not merged, not on Bunya |
-| Bunya probes Q1, Q2, Q5 | waiting for the browser pane (the ASH session holds it) |
+| Bunya probes Q1, Q2, Q5 | done 2026-10-22; +2 12-6-4 rows and the AmberTools polarisability table added |
 | fold | not started |

@@ -74,7 +74,14 @@ class TestTables:
     def test_c4_values(self):
         assert ions.c4_value("LA", 3) == 152.0
         assert ions.c4_value("LU", 3) == 249.0
-        assert ions.c4_value("CA", 2) is None   # +2 rows not transcribed
+        assert ions.c4_value("CA", 2) == 87.3
+        assert ions.c4_value("K", 1) is None    # +1 ions are not in the set
+
+    def test_ca_is_the_amber_row(self):
+        """frcmod.ions234lm_1264_tip3p: Ca2+ 1.642 0.10185975 (Li & Merz 2014)."""
+        sigma, eps = ions.lookup("1264", "CA", 2)
+        assert sigma == pytest.approx(2 * 1.642 / 2 ** (1 / 6) / 10)
+        assert eps == pytest.approx(0.10185975 * 4.184)
 
     def test_numeric_set_name_from_yaml(self):
         """`metal_parameters: 1264` arrives from YAML as an int."""
@@ -84,6 +91,8 @@ class TestTables:
         table = ions.read_polarizabilities()
         assert table["OW"] == ions.WATER_POL == 1.444
         assert table["CT"] == 1.061 and table["Na+"] == 0.2495
+        # The AmberTools table lists Lipid17 types itself
+        assert table["cA"] == 1.061 and table["oP"] == 0.569 and table["pA"] == 1.538
 
     @pytest.mark.parametrize("atom_class, expected", [
         ("tip3p-O", 1.444), ("tip3p-H", 0.0), ("tip3p_standard-Cl-", 3.235),
@@ -148,10 +157,16 @@ class TestApply:
         assert force.getCutoffDistance().value_in_unit(unit.nanometer) == pytest.approx(1.0)
 
     def test_untabulated_ion_raises_under_1264(self):
-        top, _ = ion_and_water(metal="Ca", resname="CA")
-        with pytest.raises(ValueError, match="no 1264 parameters for CA"):
-            ions.apply_metal_parameters(system_for(top), top, ["CA"], "1264",
+        top, _ = ion_and_water(metal="K", resname="K")
+        with pytest.raises(ValueError, match="no 1264 parameters for K"):
+            ions.apply_metal_parameters(system_for(top), top, ["K"], "1264",
                                         forcefields=WATER_XML)
+
+    def test_calcium_runs_under_1264(self):
+        top, pos = ion_and_water(metal="Ca", resname="CA", r=2.4)
+        system = system_for(top)
+        ions.apply_metal_parameters(system, top, ["CA"], "1264", forcefields=WATER_XML)
+        assert c4_energy(system, pos) == pytest.approx(-87.3 / 2.4 ** 4, rel=1e-5)
 
     def test_iod_adds_no_c4(self):
         top, _ = ion_and_water(metal="Ca", resname="CA")
