@@ -160,3 +160,33 @@ class TestWriteAshSurface:
     def test_a_point_missing_both_spellings_raises(self, scan, tmp_path):
         with pytest.raises(KeyError):
             scan.write_ash_surface([{"nope": 1}], False, str(tmp_path / "s.txt"))
+
+class TestCoordinationPresent:
+    """A metal system with no detected coordination must not run unrestrained."""
+
+    def test_metals_with_coordination_passes(self, mc):
+        mc.md.check_coordination_present({"metals": ["ZN"]}, {"coordination": [[0, 1, 2.1, 50.0]]})
+
+    def test_no_metals_is_fine(self, mc):
+        """Protein-protein: nothing to hold, so nothing to complain about."""
+        mc.md.check_coordination_present({"metals": []}, {})
+        mc.md.check_coordination_present({}, {})
+
+    def test_metals_without_coordination_is_refused(self, mc):
+        with pytest.raises(KeyError, match="would run unrestrained"):
+            mc.md.check_coordination_present({"metals": ["ZN"]}, {})
+
+    def test_the_old_key_is_named_so_the_cause_is_obvious(self, mc):
+        """A config predating the rename is the likely cause; say so."""
+        with pytest.raises(KeyError) as exc:
+            mc.md.check_coordination_present({"metals": ["ZN"]}, {"constraints": [[0, 1]]})
+        assert "predates the rename" in str(exc.value)
+        assert "Re-run `mcube preprocess`" in str(exc.value)
+
+    def test_md_restraints_refuses_rather_than_silently_dropping_the_site(self, mc, pdb):
+        """The whole point: this is reached through the normal path, not only directly."""
+        with pytest.raises(KeyError, match="would run unrestrained"):
+            mc.md.md_restraints({"restraints": [[0, 1, 2.2]]},
+                                {"inputs": {"metals": ["ZN"]},
+                                 "results": {"constraints": [[0, 1]]}}, pdb)
+

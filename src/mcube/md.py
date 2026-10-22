@@ -200,6 +200,32 @@ def fill_restraints(rows, pdb_file: str, force: float = COORDINATION_FORCE) -> l
              r[3] if len(r) > 3 else force] for r in rows]
 
 
+def check_coordination_present(preprocess_inputs: Dict[str, Any], results: Dict[str, Any]) -> None:
+    """Refuse to run a metal system with no detected coordination to restrain.
+
+    Without this the metal site is simply unrestrained and nothing says so: the
+    run proceeds, `md.results.coordination_restraints` comes back empty, and the
+    first sign of trouble is a donor sitting on the metal at a distance no real
+    bond reaches - which is the failure this whole mechanism exists to prevent.
+
+    The likely cause is a config written before `preprocess.results.constraints`
+    was renamed to `coordination`, which is named explicitly because the fix is
+    to re-run preprocess rather than to rename the key by hand: the rows now
+    carry a measured distance and a force constant that the old ones did not.
+    """
+    if not (preprocess_inputs.get("metals") or []):
+        return                                  # e.g. protein-protein: nothing to hold
+    if results.get("coordination"):
+        return
+    stale = " `preprocess.results.constraints` is present, so this config predates the rename."         if results.get("constraints") else ""
+    raise KeyError(
+        "preprocess.inputs.metals is set but preprocess.results.coordination is "
+        "empty, so the metal site would run unrestrained." + stale +
+        " Re-run `mcube preprocess` on this config: its rows carry the distance "
+        "each contact is held at and the force constant, which the old key did not. "
+        "If the site is genuinely meant to be free, set metals to [] and say so.")
+
+
 def md_restraints(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file: str):
     """Harmonic distance restraints: the detected metal coordination, plus any asked for.
 
@@ -225,7 +251,9 @@ def md_restraints(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file: 
     force = float((preprocess.get("inputs") or {}).get("coordination_force", COORDINATION_FORCE))
     asked = fill_restraints(resolve_atoms(inputs.get("restraints") or None, pdb_file) or [],
                             pdb_file, force)
-    rows = resolve_atoms((preprocess.get("results") or {}).get("coordination"), pdb_file) or []
+    results = preprocess.get("results") or {}
+    check_coordination_present(preprocess.get("inputs") or {}, results)
+    rows = resolve_atoms(results.get("coordination"), pdb_file) or []
     # An explicit restraint on a pair wins: the user named a distance for it.
     named = {frozenset(r[:2]) for r in asked}
     detected = fill_restraints([r for r in rows if frozenset(r[:2]) not in named], pdb_file, force)

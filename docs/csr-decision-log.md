@@ -1540,6 +1540,18 @@ What survived, all converged, relative to point 0:
 
 Not resubmitted. `resume: true` means a rerun continues from point 3 - the point that failed - so it needs `opt_coordsystem: cart` or a smaller active region first, not just more memory.
 
+**Gln93 abandoned; equilibration restarted properly.** (2026-10-23, user's decision)
+
+The well-depth question from D97 is dropped. The frame it was being asked about is a broken model - run 1's MM end state, carrying the 1.79 A artefact - and scanning a broken model to decide whether its artefact is real is effort in the wrong place. The target is a **10-50 ns equilibration with the restraints now in place**, which is also where D92's survey said published practice sits (Gervasoni 100 ns, Guven 50, Lisa 10, Bahena-Mendez 10). **A 1 ns NVT runs first, to establish the restraints behave**, then the long run. This supersedes the earlier "1 ns now, longer later" framing: the long run is the goal rather than a someday, and the short one is a check on the restraint set, not a substitute.
+
+What survives from D97 and is worth keeping: the 1.79 A contact sits ~5.6 kcal/mol up a repulsive wall, measured.
+
+**A silent failure caught before it bit this run.** `md_restraints` reads `preprocess.results.coordination`; every existing CSR config carries the pre-rename `constraints`. So `md --section md_nac` on any of them would have found no coordination, applied **only** the one substrate restraint, left the metal site entirely free, and said nothing - reproducing exactly the Gln93 collapse this mechanism exists to prevent, in a run set up to validate it. `check_coordination_present` now refuses when `preprocess.inputs.metals` is set and `coordination` is empty, names the old key when it is the cause, and says to re-run preprocess rather than rename by hand - the new rows carry a measured distance and a force constant the old ones did not. A genuinely metal-free system (protein-protein) passes on `metals: []`.
+
+**So the 1 ns run needs a fresh `preprocess`**, not just `md` on an existing directory.
+
+**Feasibility of the long run, which is not free.** D89's md stage took 2h35m for 500 ps of NVT on 16 CPU cores, so roughly 4 ps/min: **10 ns is about 42 h and 50 ns about 9 days** of CPU. `run.slurm` defaults to `--time=1-00:00:00`, so neither fits in one job as configured. The options are a GPU (`md.inputs.platform: CUDA`, which md already supports on all three of its MD calls) or chained restarts from `OpenMM_MD_final_checkpoint.chk`. Whether OpenMM in the ASH env can use Bunya's mi355x cards is **unknown** - it is one of the things the ion-channel session set out to probe, and the answer decides between those two routes.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
