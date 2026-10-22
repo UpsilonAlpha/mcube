@@ -151,6 +151,21 @@ sections:
       opt_maxiter: 300
       resume: true
 
+  # The same run on a GPU. Measured on an H100 (D99): 845 ns/day against
+  # 2.3 ns/day on 4 CPU cores for this 49k-atom system, so minimisation, NPT
+  # and 1 ns of NVT together are minutes rather than most of a day - and a
+  # 10-50 ns equilibration becomes one job instead of nine. Kept separate from
+  # `nac` so that section still runs on a CPU node; submit this one with
+  # `-p gpu_cuda --qos=gpu --gres=gpu:1`.
+  nacgpu:
+    stage: md
+    inputs:
+      restraints:
+        - [C:2:O01, C:1:C4x, 3.47]   # Zn-bound O -> beta-lactam carbonyl C
+      nvt_time: 1000
+      platform: CUDA
+      properties: {Precision: mixed}
+
   # ---- Which protonation state is the reactant? Blocks every barrier. ----
   #
   # D96: starting from Lys226-H+ with a Zn-bound hydroxide, a QM/MM optimisation
