@@ -1491,10 +1491,26 @@ That gap passes a real false positive: a saddle whose imaginary mode is a water 
 
 **Dropped, and most consequential - in order.**
 
-1. **Equilibration is 1 ns against a published 10-100 ns.** Gervasoni 100 ns NVT, Guven 50, Lisa 10, Bahena-Mendez 10. The justification on file is ASH protocol 2b, which is a **tutorial**, not a production protocol. D92 recorded the gap and then it stopped being pressed. A 10-100x shortfall is the weakest point in the current setup.
+1. **Equilibration is 1 ns against a published 10-100 ns.** *(settled below: staged, short run first with a defined success test.)* Gervasoni 100 ns NVT, Guven 50, Lisa 10, Bahena-Mendez 10. The justification on file is ASH protocol 2b, which is a **tutorial**, not a production protocol. D92 recorded the gap and then it stopped being pressed. A 10-100x shortfall is the weakest point in the current setup.
 2. **GFN2-xTB is a path-finding method, not a barrier method.** Gervasoni refine with B3LYP/MM; Guven sample with DFTB3 and refine with DFT. `qm_engine: dft` and `sp_dft` exist, but nothing in the staged path *forces* refinement, so an xTB number could be quoted as a barrier by accident. **Partly addressed the same day**: every stage reporting an energy now records `qm_level` in its results (`GFN2-xTB` or `functional/basis`), so a number's provenance travels with it and an xTB energy cannot be mistaken for a refined one. That makes the omission visible; it still does not force the refinement.
-3. **`sp_basis: def2-svp` is a geometry basis, not an energetics one.** wB97X-V is a good functional choice; def2-SVP undercuts it for a barrier. A config change, not a code change.
-4. **QM region size never tested.** Mehmood & Kulik report that too-small QM regions *over*-bind zinc, and D92 flagged region size as its own variable. We sit at ~130 QM atoms and an 8 A active region with no convergence check.
+3. **`sp_basis: def2-svp` is a geometry basis, not an energetics one.** *(settled below: def2-SVP for geometry, wB97X-V single points; the live risk is the `dft_*`-to-`sp_*` fallback collapsing both to one level.)* wB97X-V is a good functional choice; def2-SVP undercuts it for a barrier. A config change, not a code change.
+4. **QM region size never tested.** *(settled below: accepted limitation, not a backlog item.)* Mehmood & Kulik report that too-small QM regions *over*-bind zinc, and D92 flagged region size as its own variable. We sit at ~130 QM atoms and an 8 A active region with no convergence check.
+
+**Level-of-theory policy, and the staged approach to equilibration.** (2026-10-22, user's decision, resolving three of the four gaps in the review above)
+
+| job | level |
+| --- | --- |
+| equilibration and path finding | **GFN2-xTB** |
+| geometry optimisation, where DFT is used at all | **def2-SVP** |
+| single points | **wB97X-V** |
+
+That is what the defaults already do, and it makes `sp` a real refinement: an xTB geometry and path, scored at DFT. The `qm_level` key added above makes which is which legible in the results.
+
+**The trap in it.** `dft_functional` and `dft_basis` **fall back to the `sp_*` values**. So setting `qm_engine: dft` makes the gradient stage run wB97X-V/def2-SVP *and* the single point run wB97X-V/def2-SVP - the same level twice, where the second adds nothing but still reads as a refinement. This is the default behaviour of switching engine, not an exotic misuse, so a DFT-gradient run wants `sp_basis` raised above `dft_basis` or the single point is decoration.
+
+**Equilibration: 1 ns now, longer later, deliberately.** The 10-100 ns published practice stands as the eventual target; the short run comes first to establish that the protocol works at all. That makes the gap a staged decision rather than the oversight the review called it - but it only resolves if "works" is defined in advance, so: the short run succeeds if, after the substrate restraint is released, O01-C4x and the Nu-C-O angle stay inside the Burgi-Dunitz window and the zinc keeps a sound first shell. Those holding means the long run is confirmation. Either failing means the long run is required rather than optional, and the barrier waits for it.
+
+**QM region.** Known to over-bind somewhat (Mehmood & Kulik), accepted because it contains every relevant coordinator. Recorded as a stated limitation rather than an open question, so it belongs in the methods rather than in the backlog.
 
 ## Resources (see `running-on-bunya.md`)
 
