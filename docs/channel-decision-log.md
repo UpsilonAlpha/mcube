@@ -217,6 +217,13 @@ constriction, MM→QM/MM reweighting, then xTB→DFT single-point reweighting.**
   treatment or replica exchange. QM/MM windows (ps) cannot exchange water at all, so they are
   seeded from MM windows and stitched per CN state; they correct the chemistry of a given
   hydration state and do not sample desolvation.
+- Bulk runs queued 2026-10-22 from `/scratch/user/uquadhik/channel/bulk` (general partition, 8 CPUs,
+  4 ns MM + 10 ps xTB/MM each): smoke test **30410350** (La³⁺ IOD, 10 ps + 0.2 ps); then, each
+  `--dependency=afterok:30410350`, **30410363** Ca IOD, **30410364** Ca 1264, **30410365** La IOD,
+  **30410366** La 1264, **30410367** Lu IOD, **30410368** Lu 1264. All were waiting on the
+  account's CPU cap (QOSGrpCpuLimit), filled by other projects' jobs. If the smoke test fails,
+  the six stay pending with DependencyNeverSatisfied and must be cancelled and resubmitted.
+  A 4 ns MM run measures structure (peak, CN); it is too short for La/Lu exchange kinetics.
 
 ## Findings
 

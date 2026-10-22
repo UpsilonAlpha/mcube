@@ -82,3 +82,4 @@ Order of operations for one ion:
 | `umbrella.py`, 12-6-4, F1 fix | on `fix/pipeline-review` and on Bunya; 168 tests pass in the ASH env; no QM/MM window run yet (Q6) |
 | Bunya probes Q1, Q2, Q5 | done 2026-10-22; +2 12-6-4 rows and the AmberTools polarisability table added |
 | fold | queued on A100: 30410203 (monomer), 30410204 (trimer); MI355X cannot run AF2 |
+| bulk ion check (C15) | queued: smoke 30410350, then 30410363–68 (Ca/La/Lu × IOD/1264), CPU |
