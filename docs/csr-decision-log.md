@@ -1430,6 +1430,24 @@ Every one of those directories keeps its own `QM_MM_optimized.pdb`, so the geome
 
 Verified by `find`/`ls` returning empty and by `rquota`, not by an echo after `rm` - a `;`-chained echo prints success unconditionally and has produced a false "deleted" report before.
 
+**NEB readiness: what a defensible barrier needs, and what is still missing.** (2026-10-22)
+
+**One NEB per elementary step.** Hydrolysis is at least two: attack of the Zn-bound oxygen on C4x giving the tetrahedral intermediate, then C4x-N1x cleavage with protonation of the leaving nitrogen. A single NEB spanning both puts two barriers on one path and NEB-CI returns **one** saddle, so the other is simply never found. Staged in `site.yaml` as `scan_attack` / `neb_step1` / `ts_saddle1` and `scan_ringopen` / `neb_step2` / `ts_saddle2`, with the starting structure passed at run time rather than fixed, since which Michaelis complex we start from is unsettled.
+
+Scan coordinates, both measured rather than assumed: attack drives O01-C4x to 1.45 A (a C-O single bond) from wherever the complex sits; ring opening drives C4x-N1x from its measured **1.39 A** to 2.80. Each scan monitors the contacts that would answer questions 1-3 if they move - Lys226 NZ to O01 and to N1x, Asp92 OD2 to N1x, and Zn to N1x, since a mono-Zn site has no second zinc to stabilise the nitrogen anion that B1 enzymes rely on.
+
+**Code gap closed.** `neb` checked that the endpoints had the same atom *count*, which passes a product whose atom *order* differs - and NEB interpolates atom i of the reactant toward atom i of the product, so a mismatched order gives a path between atoms that are not counterparts and **converges anyway**. It now compares `atom_names` index by index and names the first disagreements. `scan` is what makes a product pass by construction, because it writes every point through the reactant's own MM topology; a product solvated through its own `preprocess` run will not match however carefully it was prepared.
+
+**Still missing, in the order it blocks on.**
+
+1. **A reactant whose protonation state is decided.** D96 showed Lys226 handing its proton to O01 spontaneously during an optimisation, so "the Michaelis complex" is currently two different chemical species. A barrier is meaningless until one is chosen and shown to be a minimum. D42's `qmmm_cleanR_lysH` / `qmmm_cleanR_ohH` plus `sp_dft` already set up exactly this comparison.
+2. **The sixth zinc contact resolved** - job 30409808 is scanning it.
+3. **An intermediate and a product**, from the two scans above, in the reactant's box.
+4. **Frequency and IRC validation.** `ts` does this already: one imaginary mode, that mode being the reaction coordinate, and an IRC in each direction to show the saddle connects the two minima the NEB was built from rather than another pair. A saddle without this is a stationary point, not a transition state.
+5. **A consistent energy reference.** Barriers between characterised stationary points at one level, and not across the metal-parameter boundary of D95.
+
+**A naming limitation found while staging this.** `sections.py` writes each entry as `<stage>_<name>`, and the key namespace is flat, so **two stages cannot share a key**: `step1` is the NEB's and the matching TS section had to be `saddle1`. The same rule means several existing keys double - `scan_znasp` becomes `scan_scan_znasp`, `sp_dft` becomes `sp_sp_dft` - which is harmless but means `run.slurm`'s documented examples (`run.slurm scan scan_znco`) disagree with what those keys actually produce. Left alone, since results may already exist under the doubled names.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

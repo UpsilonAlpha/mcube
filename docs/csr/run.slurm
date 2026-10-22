@@ -32,7 +32,7 @@
 #          protdft/qmmm_reactant/QM_MM_optimized.pdb
 #   sbatch -J coscan --cpus-per-task=8  --mem=16G                run.slurm scan scan_znco start.pdb
 #   sbatch -J neb1   --cpus-per-task=16 --mem=32G                run.slurm neb neb_step1
-#   sbatch -J ts1    --cpus-per-task=8  --mem=16G                run.slurm ts ts_step1 saddlepoint.pdb
+#   sbatch -J ts1    --cpus-per-task=8  --mem=16G                run.slurm ts ts_saddle1 saddlepoint.pdb
 #
 # Thread placement is not an argument: `mcube env` derives it from the stage and
 # the config (see thread_policy in cli.py) and this script applies it, so a stage

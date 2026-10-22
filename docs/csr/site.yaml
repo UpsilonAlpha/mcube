@@ -151,6 +151,93 @@ sections:
       opt_maxiter: 300
       resume: true
 
+  # ---- Reaction path. One NEB per elementary step, never one path for both. ----
+  #
+  # Hydrolysis is at least two elementary steps, and a single NEB spanning both
+  # puts two barriers on one path: NEB-CI returns one saddle, so the other is
+  # simply not found. Each step therefore gets its own scan (to build its
+  # product in the reactant's box), its own NEB, and its own TS.
+  #
+  #   step 1  nucleophilic attack   O01 ... C4x   ->  tetrahedral intermediate
+  #   step 2  ring opening          C4x -- N1x    ->  opened product
+  #
+  # Endpoints must be one system in two geometries - `neb` refuses a product
+  # whose atom order differs, and `scan` is what guarantees it, because it
+  # writes every point through the reactant's own MM topology. Pass the starting
+  # structure at run time (run.slurm's third argument) rather than fixing it
+  # here, since which Michaelis complex we start from is still being settled.
+
+  attack:                      # step 1 product: drive the nucleophile in
+    stage: scan
+    inputs:
+      atoms: [C:2:O01, C:1:C4x]
+      end: 1.45                # C-O single bond; `start` defaults to the current distance
+      points: 16
+      monitor:
+        - [B:1:ZN, C:1:O2x]    # does the carbonyl engage the zinc as the carbon rehybridises?
+        - [C:1:C4x, C:1:N1x]   # the bond that breaks in step 2 should lengthen here
+        - [A:226:NZ, C:2:O01]  # Lys226 as proton donor or acceptor (question 1)
+      opt_maxiter: 300
+      resume: true
+
+  ringopen:                    # step 2 product: break C-N from the intermediate
+    stage: scan
+    inputs:
+      atoms: [C:1:C4x, C:1:N1x]
+      start: 1.39              # as measured in the optimised complex
+      end: 2.80
+      points: 12
+      monitor:
+        - [A:226:NZ, C:1:N1x]  # who protonates the leaving nitrogen
+        - [A:92:OD2, C:1:N1x]
+        - [B:1:ZN, C:1:N1x]    # a mono-Zn site has no Zn2 to stabilise the anion
+      opt_maxiter: 300
+      resume: true
+
+  step1:                       # NEB over the attack; endpoints on the command line
+    stage: neb
+    inputs:
+      images: 12
+      method: nebts            # NEB-CI then a geomeTRIC TS optimisation of the climbing image
+      interpolation: idpp
+
+  step2:
+    stage: neb
+    inputs:
+      images: 12
+      method: nebts
+      interpolation: idpp
+
+  # Keys are bare names: sections.py writes each as <stage>_<name>, so a key
+  # cannot be shared by two stages - `step1` is the NEB's, and the matching TS
+  # section is `saddle1` rather than `step1` for that reason alone.
+  #
+  # A saddle is only a transition state if it has exactly one imaginary mode and
+  # that mode is the reaction coordinate. `ts` checks both and then runs an IRC
+  # in each direction, which is what establishes the saddle connects the two
+  # minima the NEB was built from rather than some other pair.
+  saddle1:
+    stage: ts
+    inputs:
+      hessian_atoms: [C:2:O01, C:1:C4x, C:1:O2x, C:1:N1x, B:1:ZN]
+      monitor:
+        - [C:2:O01, C:1:C4x]
+        - [C:1:C4x, C:1:N1x]
+      tsopt: true
+      freq: true
+      irc_method: mode
+
+  saddle2:
+    stage: ts
+    inputs:
+      hessian_atoms: [C:1:C4x, C:1:N1x, A:226:NZ, B:1:ZN]
+      monitor:
+        - [C:1:C4x, C:1:N1x]
+        - [A:226:NZ, C:1:N1x]
+      tsopt: true
+      freq: true
+      irc_method: mode
+
   sp_dft:                      # score a geometry someone else produced
     stage: sp
     inputs: &sp_only
