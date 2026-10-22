@@ -73,7 +73,7 @@ with the ion's first hydration shell held, then lets go and samples for `time` p
 mcube umbrella config.yaml wham
 ```
 
-This writes `umbrella_pmf.csv` (columns: z, F, error) and records it under `umbrella.results.pmf`.
+This writes `umbrella_pmf.csv` (columns: z, F, error) and records it under `umbrella.results.pmf`, and `umbrella_hydration.csv`: how many waters and protein oxygens surround the ion in each window. Read the two together: the barrier should sit where the water count drops, and a window flagged `water_bimodal` has not sampled its hydration.
 Look at the warning line: if neighbouring windows hardly overlap, add a window between them or
 lower `k` there, and run `wham` again.
 

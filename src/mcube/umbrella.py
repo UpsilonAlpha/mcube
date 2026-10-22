@@ -964,6 +964,67 @@ def window_samples(entry, reweight: Optional[str], temperature: float):
     return cv["z_A"][keep], None
 
 
+def bimodal(values, min_fraction: float = 0.15) -> bool:
+    """
+    Whether a coordination-number time series has two separated populations: two peaks of
+    the integer-rounded histogram, each holding at least `min_fraction` of the samples, at
+    least 2 apart, with a dip between them below half the smaller peak. In an umbrella
+    window that means hydration hops between states rarely, or not at all, on the window's
+    time scale, so the window's free energy depends on which state it started in.
+    """
+    v = np.rint(np.asarray(values, dtype=float)).astype(int)
+    if v.size == 0:
+        return False
+    lo = v.min()
+    frac = np.bincount(v - lo) / v.size
+    peaks = [i for i in range(len(frac)) if frac[i] >= min_fraction
+             and frac[i] >= (frac[i - 1] if i else 0) and frac[i] >= (frac[i + 1] if i + 1 < len(frac) else 0)]
+    for a in peaks:
+        for b in peaks:
+            if b - a >= 2 and frac[a + 1:b].min() < 0.5 * min(frac[a], frac[b]):
+                return True
+    return False
+
+
+def hydration_profile(config: str, section: str) -> Optional[Dict[str, Any]]:
+    """Per-window mean and spread of each logged coordination number, against z0, and the
+    windows whose water coordination is bimodal. None if no window logged any."""
+    rows, flagged = [], []
+    names = None
+    for key, entry in sorted(section_windows(config, section).items()):
+        if not entry.get("done") or not entry.get("cv"):
+            continue
+        cv = read_csv(entry["cv"])
+        cols = [c for c in cv if c.startswith("cn_")]
+        if not cols:
+            continue
+        names = names or cols
+        skip = entry.get("equilibrate_ps", 0.0) if entry.get("engine") == "qmmm" else 0.0
+        keep = cv["time_ps"] >= skip
+        row = {"z0": float(entry["z0"])}
+        for c in cols:
+            row[f"{c}_mean"] = round(float(cv[c][keep].mean()), 3)
+            row[f"{c}_std"] = round(float(cv[c][keep].std()), 3)
+        # 0/1 rather than True/False, so the CSV stays all-numeric for read_csv
+        row["water_bimodal"] = int(bimodal(cv["cn_water"][keep])) if "cn_water" in cv else 0
+        if row["water_bimodal"]:
+            flagged.append(row["z0"])
+        rows.append(row)
+    if not rows:
+        return None
+    rows.sort(key=lambda r: r["z0"])
+    name = f"{section}_hydration.csv"
+    with open(name, "w", newline="") as fh:
+        out = csv.DictWriter(fh, fieldnames=list(rows[0]))
+        out.writeheader()
+        out.writerows(rows)
+    if flagged:
+        print(f"[WARNING] water coordination is bimodal in the windows at z0 = {flagged}: hydration "
+              "is not sampled there on this window length (longer windows, seeding from the other "
+              "side, or a 2D (z, CN) treatment)")
+    return {"csv": Path(name).resolve().as_posix(), "bimodal_at": flagged}
+
+
 def run_wham(config, section, inputs, md, reweight: Optional[str], n_boot: int) -> Dict[str, Any]:
     temperature = temperature_of(inputs, md)
     bin_width = float(inputs.get("bin_width", float(inputs["spacing"]) / 5.0))
@@ -991,6 +1052,9 @@ def run_wham(config, section, inputs, md, reweight: Optional[str], n_boot: int) 
               "temperature": temperature, "bin_width": bin_width, "bootstrap": n_boot,
               "reweight": reweight, "min_overlap": round(min(ov), 4) if ov else None,
               "poor_overlap_after": poor}
+    hydration = hydration_profile(config, section)
+    if hydration:
+        result["hydration"] = hydration
     save_nested(config, section, ["pmf" + (f"_{reweight}" if reweight else "")], result)
     return result
 

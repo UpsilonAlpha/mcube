@@ -272,6 +272,41 @@ class TestWham:
         assert ov[0] > 0.2 and ov[1] < 0.01
 
 
+class TestHydration:
+    def test_one_state_is_not_bimodal(self, umbrella):
+        rng = np.random.default_rng(6)
+        assert not umbrella.bimodal(rng.normal(9.0, 0.4, 4000))
+
+    def test_two_separated_states_are(self, umbrella):
+        rng = np.random.default_rng(7)
+        v = np.concatenate([rng.normal(9.0, 0.3, 2000), rng.normal(6.0, 0.3, 2000)])
+        assert umbrella.bimodal(v)
+
+    def test_neighbouring_states_are_one_broad_state(self, umbrella):
+        """8 <-> 9 hopping is ordinary exchange, not a frozen second population."""
+        rng = np.random.default_rng(8)
+        assert not umbrella.bimodal(rng.choice([8.0, 9.0], 4000))
+
+    def test_profile_flags_the_frozen_window(self, umbrella, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        rng = np.random.default_rng(9)
+        config = write(tmp_path, "umbrella:\n  inputs: {}\n")
+        for key, z0, values in (("000", -1.0, rng.normal(9.0, 0.3, 500)),
+                                ("001", 0.0, np.concatenate([rng.normal(9.0, 0.3, 250),
+                                                             rng.normal(5.0, 0.3, 250)]))):
+            path = tmp_path / f"cv_{key}.csv"
+            with open(path, "w") as fh:
+                fh.write("time_ps,z_A,r_A,cn_water,cn_protein\n")
+                for i, v in enumerate(values):
+                    fh.write(f"{i * 0.1},{z0},0.0,{v},0.0\n")
+            umbrella.save_nested(config, "umbrella", ["windows", key],
+                                 {"z0": z0, "cv": str(path), "done": True, "engine": "mm"})
+        result = umbrella.hydration_profile(config, "umbrella")
+        assert result["bimodal_at"] == [0.0]
+        rows = umbrella.read_csv(result["csv"])
+        assert rows["cn_water_mean"][0] == pytest.approx(9.0, abs=0.1)
+
+
 class TestBar:
     def test_gaussian_work(self, umbrella):
         """For Gaussian work dA = mu - beta sigma^2 / 2, whatever the constant offset."""
