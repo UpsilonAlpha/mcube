@@ -1348,6 +1348,35 @@ Worth recording how this was diagnosed, because the first attempt was wrong. Com
 
 **Jobs 30354772 (md), 30354773 (qmmm).** Restarted from the existing preprocess, so no re-solvation.
 
+**D89 - The answer to D69: the carbonyl does not coordinate, because the substrate leaves.** (2026-10-22, jobs 30354772 and 30354773 both COMPLETED)
+
+The first run in which the whole chain completed. md ran 2h35m (100 ps NPT, 500 ps NVT) with the site held by periodic positional restraints and the substrate free; qmmm ran 1h44m (25 ps QM/MM MD at GFN2-xTB, then optimisation of the 8 A active region) with **nothing** held.
+
+**The protocol worked.** md's coordination report lists exactly one change over 500 ps:
+
+    APPEARED  B:1:ZN - E:3174:O at 2.22 A
+
+a water taking a coordination site at a normal aqua-ligand distance. **Gln93 did not collapse** (D74), no carboxylate rotated a second oxygen in (D77), and the run did not fall over (D79, D80, D83, D88). The QM/MM then relaxed the sphere to a sensible five-coordinate set on its own - O01 1.93, His88 1.97, HOH485 2.00, His164 2.20, Asp92 2.32 - with the extra water leaving. Asp92 moved in from its constrained 2.80 to 2.32 A once QM decided, which is the kind of correction the whole point of releasing it was to allow.
+
+**And the substrate is not there.**
+
+| | input | MM end (500 ps) | QM/MM optimised |
+| --- | --- | --- | --- |
+| Zn-mer O2x | 5.43 | 7.71 | **7.54** |
+| O01-C4x / angle | - | 5.31 / 107 | 5.41 / 96 |
+| mer O4x - Lys226 NZ | 4.07 | - | **7.19** |
+| mer O4x - Arg90 NH1 | 10.67 | - | 12.57 |
+| mer C4x - Zn | 5.28 | - | 7.17 |
+| mer N1x - Zn | 6.03 | - | 7.63 |
+
+So the answer to the question posed in D69 is **no**: released from the docked pose with the site held and nothing pulling it, the beta-lactam carbonyl does not approach the zinc. But the reason is not that the substrate found a different productive orientation - **every** substrate-protein contact lengthened. It is dissociating, not reorienting, and the attack distance went the wrong way too (O01-C4x 5.41 A, beyond the 4.5 A near-attack cutoff, despite an angle of 96 degrees that is inside the Burgi-Dunitz window).
+
+**The pose was never anchored.** In the input, the substrate carboxylate sits **10.67 A** from Arg90 NH1 and 4.07 A from Lys226 NZ - and it loses even the Lys226 contact. In B1/B2/B3 MBLs the substrate carboxylate engages a conserved basic residue; docked pose 2 does not make that interaction at all. Vina has no metal term (D67) and evidently no grip on this anchoring either.
+
+**What this settles and what it does not.** It settles that the 1.94 A Michaelis complex used from D57 onwards is not something this system reaches on its own, and it removes the MM artefacts as an explanation - the site stayed clean this time. It does not establish the mechanism, because a substrate that dissociates in 500 ps of MM plus 25 ps of QM/MM is not a Michaelis complex at all. **The binding pose is now the blocking question**, which is where D64 pointed before the restraint detour began.
+
+No DFT single point was submitted: scoring a dissociating complex would cost 32 cores for a number about nothing.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
