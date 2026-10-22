@@ -260,6 +260,10 @@ constriction, MM→QM/MM reweighting, then xTB→DFT single-point reweighting.**
      (F5), so the difference must be in protocol: theirs was 722 waters, 1 fs, Langevin γ = 5 ps⁻¹,
      500 ps NVT + 500 ps NPT, then 2 ns NPT, 10 Å cutoff, Amber 12. Replication with that protocol
      (MM only), La³⁺ as the control: **30416377** Lu³⁺, **30416378** La³⁺ (`<ION>_1264_lsm/`).
+     Both died at once ("No module named 'openmm'"): with `--export=ALL` from a shell where ASH
+     was already active, `conda activate ASH` did nothing and bare `python` was miniforge's base.
+     The job scripts now call `$CONDA_PREFIX/bin/python` and check it imports OpenMM and ASH
+     (e6eb2cf). Resubmitted: **30417999** Lu³⁺, **30418000** La³⁺.
   2. **The MM first shells exchange water about 10–100× faster than experiment** (known; it is why
      the hydration shell is restrained while the MM system is prepared for QM/MM, user): residence
      70–160 ps against ~2–25 ns for heavy Ln³⁺ (Cossy, Helm & Merbach 1988; Helm & Merbach 2005).
@@ -298,6 +302,19 @@ level and details proposed, not yet decided)
   QM/MM MD at DFT/MM; the stitch and reweighting are unchanged.
 - First: time one DFT/MM gradient on the bulk La box (ion + first shell) at 16 and 32 cores, then
   a few ps of bulk DFT/MM MD for La³⁺ and Lu³⁺ against EXAFS, which also gives xTB a reference.
+- Measured 2026-10-23 (`docs/channel/dft/bench_dft.py`, bulk La³⁺ 12-6-4 box, ion + 9 waters = 28
+  QM atoms, r2SCAN/def2-SVP, density fitting, def2 ECP, electrostatic embedding, no dispersion):
+  16 cores 38.7 / 14.2 / 12.7 s per gradient (first from scratch), 32 cores 14.1 / 9.5 / 10.2 s.
+  That is ~7–9 ps/day per window at 1 fs, against 0.2–0.3 s for one xTB/MM gradient (~40×).
+  So a DFT/MM window gets a few ps, enough to reweight or check the shell, not to sample exchange.
+- `basis_set_exchange` 0.12 installed into the ASH env (dry run: adds it, regex and Unidecode,
+  upgrades nothing; numpy 1.26.4, OpenMM 8.4, PySCF 2.13 unchanged). PySCF still does not fall
+  back to BSE for Lu, so the basis comes from a file (`docs/channel/dft/bse_basis.py` writes
+  def2-SVP for H,C,N,O,S,Ca,La,Lu; pass it as `dft_basis_file` and `dft_ecp_file`).
+- **Open: the def2 ECPs are not the same kind for the two ions.** La has a 46-electron core
+  (4f outside, empty), Lu a 28-electron core (4f¹⁴ in the valence). A La/Lu comparison at DFT
+  compares two different pseudopotential treatments; options are to accept it (it is the def2
+  standard), or put Lu on a 4f-in-core ECP (MWB-type, 4f in core for both) for the comparison.
 
 ## Findings
 
@@ -329,6 +346,12 @@ level and details proposed, not yet decided)
   rows the ASH session found in AmberTools 2016–2019.
 - Consequence: `metal_parameters: none` runs half a 12-6-4 model for lanthanides. Use `iod` or
   `1264`, never `none`, for La/Lu.
+
+**F6 – `make_dft` gave PySCF no ECP.** (2026-10-23, fixed in f4fd915)
+- `qmmm.make_dft` passed `dft_basis` but never an ECP, so a def2 basis on La or Lu would have run
+  all-electron with a valence-only basis. It now defaults the ECP to the basis name for def2
+  bases (`dft_ecp` overrides it), and reads `dft_basis_file` / `dft_ecp_file` (NWChem format)
+  for elements PySCF lacks. Only DFT runs with heavy elements are affected; CSR runs are xTB.
 
 ## Planned checks, not yet done
 
