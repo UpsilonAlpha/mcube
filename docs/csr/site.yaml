@@ -127,7 +127,7 @@ sections:
   # that the carbonyl coordinates the same zinc that carries the nucleophile,
   # and `constraint_exclude_residues: {C: [1]}` keeps the ligand out of the
   # automatic coordination set for the same reason.
-  md_nac:
+  nac:
     stage: md
     inputs:
       restraints:
@@ -140,7 +140,7 @@ sections:
   # only reports the basin it started in - so pull the contact out and read the
   # profile. Needs a preprocess that put Gln93 in the QM region, which happens
   # automatically once it is inside `cutoff` of the metal.
-  scan_zngln:
+  zngln:
     stage: scan
     start: protdft/qmmm/QM_MM_optimized.pdb
     inputs:
