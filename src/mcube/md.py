@@ -5,7 +5,7 @@ import argparse
 import os
 import json
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import openmm
 from openmm import XmlSerializer, unit
@@ -196,6 +196,21 @@ def build_md_theory(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file
     return mm, default_forcefields
 
 
+def md_inputs(config: str, section: Optional[str] = None) -> Dict[str, Any]:
+    """`md.inputs`, overridden by `section`'s inputs.
+
+    Layered so a second MD run - releasing a restraint, extending the time,
+    starting from the first's last frame - inherits the first's whole setup and
+    states only what differs. Both runs then read one
+    `preprocess.results.coordination`, instead of a duplicated config directory
+    whose copy can drift from the original (which is how D68 happened).
+    """
+    inputs: Dict[str, Any] = dict(load_section(config, "md").get("inputs") or {})
+    if section and section != "md":
+        inputs.update(load_section(config, section).get("inputs") or {})
+    return inputs
+
+
 def md_restraints(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file: str):
     """Harmonic distance restraints: the detected metal coordination, plus any asked for.
 
@@ -237,10 +252,12 @@ def run(args) -> Dict[str, Any]:
     result: Dict[str, Any] = {}
 
     preprocess = load_section(args.config, "preprocess")
-    md = load_section(args.config, "md")
-    inputs = md.get("inputs")
-    if inputs is None:
+    section = getattr(args, "section", None) or "md"
+    inputs = md_inputs(args.config, section)
+    if not inputs:
         raise KeyError(f"No md.inputs section in {args.config}")
+    if section != "md":
+        print(f"[INFO] md.inputs overridden by {section}.inputs; results -> {section}")
 
     pdb_file = inputs.get("pdb_file")
     if pdb_file is None:
@@ -289,14 +306,14 @@ def run(args) -> Dict[str, Any]:
     print("[STEP] Minimization...")
     OpenMM_Opt(fragment=fragment, theory=mm, maxiter=500, tolerance=1)
     result["minimized"] = Path("frag-minimized.pdb").resolve().as_posix()
-    save_result(result, filename=args.config, section="md")
+    save_result(result, filename=args.config, section=section)
 
     if inputs.get("gentle"):
         Gentle_warm_up_MD(theory=mm, fragment=fragment, time_steps=[0.0005,0.001,0.004],
                     steps=[10,50,10000], temperatures=[1,10,300])
         result["gentle"] = Path("warmup_MD_cycle2_lastframe.pdb").resolve().as_posix()
         fragment = Fragment(pdbfile=result["gentle"])
-        save_result(result, filename=args.config, section="md")
+        save_result(result, filename=args.config, section=section)
 
     if inputs.get("implicit") and not inputs.get("skip_npt"):
         print("[INFO] Implicit solvent has no periodic box: skipping NPT equilibration")
@@ -333,7 +350,7 @@ def run(args) -> Dict[str, Any]:
                 Path("relaxbox_NPT_lastframe.pdb").resolve().as_posix(), "relaxbox_NPT.dcd")
         except Exception as exc:
             print(f"[WARNING] Could not report the membrane box size: {exc}")
-        save_result(result, filename=args.config, section="md")
+        save_result(result, filename=args.config, section=section)
 
     if not inputs.get("skip_npt") and not inputs.get("implicit") and not membrane:
         print("[STEP] NPT Equilibration...")
@@ -419,5 +436,5 @@ def run(args) -> Dict[str, Any]:
             print("The coordination sphere is unchanged.")
 
     print("[DONE] Workflow complete")
-    save_result(result,  filename=args.config, section="md")
+    save_result(result,  filename=args.config, section=section)
     return result

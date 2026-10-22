@@ -93,6 +93,7 @@ def build_parser():
 
     p2 = subparsers.add_parser("md", help="Run molecular dynamics")
     p2.add_argument("config", help="Input yaml file")
+    p2.add_argument("--section", help="Config section for results; its inputs override md.inputs")
 
     p3 = subparsers.add_parser("qmmm", help="Run QM/MM")
     p3.add_argument("config", help="Input yaml file")
