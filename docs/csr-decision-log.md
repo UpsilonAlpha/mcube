@@ -1429,6 +1429,20 @@ Run in a copied directory so run 1's config stays as the record of what produced
 
 **Also landed for this**: `md` now accepts `--section` like qmmm/sp/scan/neb/ts (it was the only stage without one), so a second MD run inherits the first's inputs and both read one `preprocess.results.coordination` instead of a duplicated directory whose copy can drift - the D68 hazard. `run.slurm` passes it and keeps md's `<section>_results` convention, so `run.slurm md md` is unchanged.
 
+**D95 - QM/MM metal radii: a comparability boundary coming from the `umbrella` branch.** (2026-10-22, reported by the ion-channel session)
+
+**The inconsistency is real and it is ours.** `apply_metal_parameters` is called only from `md.run()`. The qmmm, scan, neb, ts and sp stages build their MM system through `qmmm.make_mm`, which never applied it - so **every CSR QM/MM number to date was produced with Amber's stock Zn radii while the MD that generated its geometry used IOD**. Not wrong, but not consistent either, and nobody noticed because the two stages were read separately.
+
+On branch `umbrella` (uncommitted, not merged) the implementation moves to `ions.apply_metal_parameters` as the single copy, and the QM/MM stages call it through `qmmm.apply_stage_metal_parameters` after the QM region is known and before the QMMMTheory is built, resolving the set as stage `metal_parameters` -> `md.results.metal_parameters` -> md's input -> `iod`. `lookup()` is unchanged, so the 12-6 path is untouched.
+
+**So QM/MM energies across the merge are not directly comparable**, and `metal_parameters: none` in `qmmm.inputs` restores the old behaviour for a like-for-like rerun. Job 30394832 (D94) ran pre-merge.
+
+**How much it should matter here, which is less than it sounds.** In CSR the zinc is *in the QM region*, so its LJ terms only govern Zn-to-MM van der Waals, and the whole first and second shell - His88, His164, Asp92, the hydroxide, HOH485, the substrate - is QM. The nearest MM atoms are outside that, where a 1.69 vs 1.89 A pair minimum does little. The over-attraction that motivated IOD in the first place (D87, ASH's "water molecule attempting to bind to the +3 pointcharge") is a *classical* failure; a QM zinc does not have it. So the expected shift is small - but "expected" is not "measured", and it is cheap to bound: one geometry, two `sp` runs, `metal_parameters: none` against `iod`. Worth doing before any barrier is quoted across the boundary.
+
+**An independent argument for IOD as the default, from the same session.** OpenMM 8.4's `amber14/tip3p.xml` gives La3+ and Lu3+ Rmin/2 of **1.758** and **1.625** - the 12-6-4 model's 12-6 terms, carried **without** the accompanying C4. Against the IOD rows vendored in `ions.py` (1.718 and 1.588) that is +0.040 and +0.037 A. This is the same mislabelling family as the AmberTools 2016-2019 defect recorded in `ions.py`, now found in a force field rather than a parameter file: a 12-6-4 radius without its r^-4 term is not a valid 12-6 parameter, so for the lanthanides the stock values are the wrong ones and IOD is the correction, not merely an alternative. Template existence is not a blocker either - `tip3p_standard-Ca2+/La3+/Lu3+` all exist, so `apply_metal_parameters` reads back a +3 charge and hits the right row with nothing specified.
+
+Also on that branch: `qmmm.inputs.platform` and `properties` now reach `make_mm`.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
