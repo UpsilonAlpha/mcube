@@ -1395,6 +1395,24 @@ So D85's comparison table overstated the paper on three rows, and D81/D84 descri
 
 **Why two restrained atoms is not enough.** Pinning only the substrate atoms that fall inside the radius (O1x at 3.13 A, O2x at 5.43 A) fixes position and one rotational axis, leaving rotation about the O1x-O2x vector free. Meropenem is large enough that its tail can swing a long way on that axis, and the carboxylate - the group that should be anchoring to Lys226 or Arg90 - is on the far end of it. Restraining every heavy atom at a modest force constant holds the orientation without preventing relaxation.
 
+**D91 - What the ASH workflow mcube is built on actually does.** (2026-10-22, user pointed me at it)
+
+Read https://ash.readthedocs.io/en/latest/Metalloprotein-I.html, the rubredoxin tutorial mcube's pipeline derives from. Five things, two of which correct assumptions I had been carrying.
+
+1. **ASH hand-picks the constrained atoms.** `bondconstraints=[[755,96],[755,136],[755,567],[755,607]]` - Fe to four cysteine sulfurs, chosen by index from the structure. There is no cutoff, no donor-element rule, no automatic detection. **mcube's `find_coordinators` - donors by element within `cutoff` - is mcube's own generalisation of that hand-picked list, not something inherited.** So "the original method restrains all coordinating atoms within the coordination radius" is mcube's design decision, and a good one: it is what makes the pipeline work on a system nobody has hand-indexed. The user's point that backbone N and backbone carbonyl O are sometimes the coordinating atoms is exactly why element-based atom detection is the right abstraction and why expanding to whole residues would have been a step backwards.
+
+2. **ASH sanctions harmonic restraints as the alternative**: *"we could also have added harmonic bond restraints instead of rigid constraints."* Distance restraints, not positional - but it establishes that either is acceptable for this job.
+
+3. **Constraints are released for QM/MM**, explicitly: QM/MM *"allows us to remove artificial constraints associated with the Fe-S bonds"*, and the optimisation runs set `autoconstraints=None`, `rigidwater=False`. Matches what we do.
+
+4. **The stated reason for constraining is the missing bonded term, not over-coordination.** The force field *"does not define bonded parameters associated with the Fe-Cysteine interaction"*, and the bonds were constrained *"because we did not have bonded MM parameters available"*. The tutorial does **not** claim a non-bonded metal loses its sphere without constraints. That is worth noting against D81/D84, where I framed constraints as a defence against over-coordination; their original purpose is to supply a bond the force field lacks.
+
+5. **And ASH assigns spurious binding to the metal's Lennard-Jones parameters** - it describes the LJ terms on Fe as preventing an artificial case of *"a water molecule attempting to bind to the +3 pointcharge"*. That is the same mechanism as our Gln93 collapse, and it puts the fix where D87 put it and where the IOD set acts. So the two levers are distinct and both have precedent in the pipeline's own source material: constraints or restraints supply the missing bond, LJ parameters control what else the metal attracts.
+
+6. Incidental: the tutorial's QM/MM MD script passes `constraints=bondconstraints` without defining it in that script, so it would fail as written. A documentation bug in ASH, not ours.
+
+**Where this leaves the design.** Per-atom detection within a radius stays, restrained rather than constrained beyond the first shell, released for QM/MM, with IOD handling what the metal attracts. No whole-residue holding. A broader literature survey is running before this is settled.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
