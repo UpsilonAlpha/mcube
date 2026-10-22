@@ -13,6 +13,7 @@ from __future__ import annotations
 from typing import Dict, Any
 
 from .preprocess import (
+    atom_names,
     save_result,
     load_section,
 )
@@ -43,6 +44,39 @@ NEBTS_ONLY_KEYS = (
     "hessian_for_TS", "modelhessian", "tsmode_tangent_threshold", "partial_hessian_atoms",
     "partial_npoint_choice",
 )
+
+
+def check_same_system(reactant_pdb: str, product_pdb: str, react, prod) -> None:
+    """Refuse endpoints that are not the same atoms in the same order.
+
+    NEB interpolates atom i of the reactant toward atom i of the product, so a
+    product whose atom order differs gives a path between atoms that are not
+    counterparts - a nonsense reaction coordinate that still converges. Equal
+    atom counts do not establish the correspondence: two waters exchanged, or a
+    product rebuilt through its own `preprocess` run, leaves the count intact
+    and the pairing broken.
+
+    A product built with `scan` passes by construction, because scan writes
+    every point through the reactant's own MM topology. One solvated or
+    parameterised separately will not, however carefully it was prepared.
+    """
+    if react.numatoms != prod.numatoms:
+        raise ValueError(f"Reactant ({react.numatoms} atoms) and product "
+                         f"({prod.numatoms} atoms) differ: NEB needs one system in "
+                         "two geometries. Build the product with `scan` from the "
+                         "reactant rather than preparing it separately.")
+    left, right = atom_names(reactant_pdb), atom_names(product_pdb)
+    bad = [i for i, (a, b) in enumerate(zip(left, right)) if a != b]
+    if bad:
+        detail = "".join("    atom %d: reactant %s, product %s%s" % (i, left[i], right[i], chr(10))
+                         for i in bad[:5])
+        raise ValueError(
+            f"Reactant and product are the same {react.numatoms} atoms in a "
+            f"different order ({len(bad)} positions differ):" + chr(10) + detail +
+            chr(10) + "NEB would interpolate between atoms that are not "
+            "counterparts. Build the product with `scan` from this reactant so "
+            "the atom order is identical by construction.")
+    print(f"[INFO] Endpoints are the same {react.numatoms} atoms in the same order")
 
 
 def run(args) -> Dict[str, Any]:
@@ -94,8 +128,7 @@ def run(args) -> Dict[str, Any]:
     react=Fragment(pdbfile=args.reactant, charge=charge, mult=mult)
     prod=Fragment(pdbfile=args.product, charge=charge, mult=mult)
 
-    if react.numatoms != prod.numatoms:
-        raise ValueError(f"Reactant ({react.numatoms} atoms) and product ({prod.numatoms} atoms) differ")
+    check_same_system(args.reactant, args.product, react, prod)
 
     # xTB as a library: no input files per image
     qmmm_theory = make_qmmm(qmmm_inputs, mm, react, qm_atoms, boundary_excluded, theory_cores, runmode='library')
