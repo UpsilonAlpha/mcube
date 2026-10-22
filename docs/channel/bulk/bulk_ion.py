@@ -197,12 +197,19 @@ def run(args):
 
     integrator = openmm.LangevinMiddleIntegrator(args.temp * unit.kelvin, 1.0 / unit.picosecond,
                                                  0.002 * unit.picoseconds)
-    platform = openmm.Platform.getPlatformByName("CPU")
-    sim = Simulation(top, system, integrator, platform, {"Threads": str(threads())})
+    import time
+    platform = openmm.Platform.getPlatformByName(args.platform)
+    props = {"Threads": str(threads())} if args.platform == "CPU" else {"Precision": "mixed"}
+    sim = Simulation(top, system, integrator, platform, props)
     sim.context.setPositions(modeller.positions)
     sim.minimizeEnergy(maxIterations=1000)
     sim.context.setVelocitiesToTemperature(args.temp * unit.kelvin)
-    sim.step(int(args.equil / 0.002))
+    t0 = time.time()
+    n_eq = int(args.equil / 0.002)
+    sim.step(n_eq)
+    # Printed so a run's speed (and whether it will fit its time limit) shows in the log
+    print(f"[INFO] {args.platform}: equilibration {args.equil} ps in {time.time() - t0:.0f} s, "
+          f"{n_eq * 0.002e-3 / max(time.time() - t0, 1e-9) * 86400:.1f} ns/day", flush=True)
 
     oxygens = [a.index for a in top.atoms() if a.residue.name == "HOH" and a.name == "O"]
     stride = int(round(args.dt / 0.002))
@@ -210,7 +217,12 @@ def run(args):
     frames = np.empty((n, len(oxygens) + 1, 3), dtype=np.float32)
     boxes = np.empty((n, 3))
     keep = [ion] + oxygens
+    t0 = time.time()
     for i in range(n):
+        if i and i % max(1, n // 10) == 0:
+            done = i * args.dt / 1000.0
+            print(f"[INFO] {done:.2f}/{args.ns} ns, "
+                  f"{done / max(time.time() - t0, 1e-9) * 86400:.1f} ns/day", flush=True)
         sim.step(stride)
         state = sim.context.getState(getPositions=True)
         pos = state.getPositions(asNumpy=True).value_in_unit(unit.angstrom)
@@ -306,6 +318,7 @@ def main():
     r.add_argument("--box", type=float, default=3.5, help="nm, cubic")
     r.add_argument("--temp", type=float, default=300.0)
     r.add_argument("--tstar", type=float, default=2.0)
+    r.add_argument("--platform", default="CPU", help="OpenMM platform (CPU, or CUDA on gpu_cuda)")
     r.add_argument("--out", required=True)
     a = sub.add_parser("analyse")
     a.add_argument("--top", required=True)
