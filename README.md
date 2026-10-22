@@ -374,7 +374,7 @@ By default, postprocess analyses the MD trajectory (`md.results`). With `--qmmm`
 
 ## Choosing the QM level
 
-Every gradient-driven stage (`qmmm` optimisation, `scan`, `neb`, `ts` and its frequencies) runs at GFN2-xTB by default, or at DFT/MM with `qm_engine: dft`. See [docs/qm-levels.md](docs/qm-levels.md) for which to use where, how the `dft_*` keys relate to the `sp_*` ones, why frequencies need a partial Hessian at DFT, and how to install and use GPU PySCF without breaking numpy.
+Every gradient-driven stage (`qmmm` optimisation, `scan`, `neb`, `ts` and its frequencies) runs at GFN2-xTB by default, or at DFT/MM with `qm_engine: dft`. Each of those stages records **`qm_level`** in its results — `GFN2-xTB` or `functional/basis` — so a number's provenance travels with it. That matters because the two are not interchangeable: GFN2-xTB locates paths, it does not give barriers, and the published pattern is to find the path semiempirically and refine the stationary points at DFT (run `sp` on each, or set `qm_engine: dft` for the stage). A barrier quoted from results whose `qm_level` reads `GFN2-xTB` has not been refined. See [docs/qm-levels.md](docs/qm-levels.md) for which to use where, how the `dft_*` keys relate to the `sp_*` ones, why frequencies need a partial Hessian at DFT, and how to install and use GPU PySCF without breaking numpy.
 
 `qm_engine` and the `dft_*` / `sp_*` keys may be set on `qmmm.inputs` or on an individual `scan` / `neb` / `ts` section, which overrides it; everything else about the QM/MM setup (charge, multiplicity, force fields) always comes from `qmmm.inputs`.
 
