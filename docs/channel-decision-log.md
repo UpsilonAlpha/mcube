@@ -32,6 +32,12 @@ channel, built with mcube's existing stages as closely as possible.
 - Decision: `alphafold_custom` with the corrected `pdb_seqres` path, monomer and 3-mer; choose by
   pLDDT/ipTM and whether a continuous lumen forms. Chai-1 (MSA-free, weights staged) as a second
   opinion.
+- Submitted 2026-10-22 from `/scratch/user/uquadhik/channel/af2` with `docs/channel/af2/af2.slurm`:
+  **30410106 `af2_mono`** (`monomer_ptm`) and **30410107 `af2_trimer`** (`multimer`, one prediction
+  per model, 5 models). Both on `gpu_cuda` with `--gres=gpu:a100:1`, because RCC's container
+  wrapper notes it is incompatible with H100 (CUDA < 11.8); 8 CPUs, 96 GB, 12 h. Database paths are
+  the module's own except `pdb_seqres`, which points at the real
+  `.../databases/pdb_seqres/pdb_seqres.txt` (226 MB). Scratch was 241/300 GB at submission.
 
 **C3 – Bilayer: POPE, single lipid type, at 310 K.** (2026-10-22; open)
 - mcube already accepts `membrane_lipidtype: POPE` (`membrane.py:LIPID_TYPES`), but only POPC

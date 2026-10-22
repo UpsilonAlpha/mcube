@@ -81,4 +81,4 @@ Order of operations for one ion:
 | literature, lanthanide partner, 12-6-4 | done (C4, C5, C12); La³⁺ vs Lu³⁺ chosen |
 | `umbrella.py`, 12-6-4, F1 fix | on `fix/pipeline-review` and on Bunya; 168 tests pass in the ASH env; no QM/MM window run yet (Q6) |
 | Bunya probes Q1, Q2, Q5 | done 2026-10-22; +2 12-6-4 rows and the AmberTools polarisability table added |
-| fold | not started |
+| fold | submitted 2026-10-22: 30410106 (monomer), 30410107 (trimer), A100 |
