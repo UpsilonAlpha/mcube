@@ -340,7 +340,9 @@ def make_simulation(pdb, system, positions_A, inputs, md):
                                                  float(inputs["timestep"]) * unit.picoseconds)
     platform = openmm.Platform.getPlatformByName(inputs.get("platform", "CPU"))
     props = dict(inputs.get("properties") or {})
-    if inputs.get("platform", "CPU") == "CPU" and inputs.get("cores"):
+    if inputs.get("platform", "CPU") == "CPU":
+        # OpenMM's CPU platform otherwise starts one thread per core of the whole
+        # node: on a 2-core allocation of a 128-core node a window ran ~2000 threads
         props.setdefault("Threads", str(resolve_cores(inputs.get("cores"))))
     simulation = Simulation(pdb.topology, system, integrator, platform, props)
     simulation.context.setPeriodicBoxVectors(*pdb.topology.getPeriodicBoxVectors())
