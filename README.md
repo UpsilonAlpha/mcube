@@ -263,7 +263,7 @@ Each point is optimised from the previous one with the scanned distance fixed. W
 | `opt_maxiter` | 300 | Steps per IRC minimisation |
 | `rigid_water` | `true` | Keep MM active-region waters rigid, as in the `qmmm` minimisations. Waters in the QM region are never constrained, so they stay free to transfer protons. |
 
-`results`: `ts_pdb` (`ts_optimized.pdb`), `ts_energy`, `guess_imaginary`, `imaginary_frequencies`, `small_imaginary`, `lowest_frequencies`, `ts_mode_atoms`, monitored distances, and `irc.forward/reverse` (`irc_*.pdb`, energy, barrier = E(TS) − E(end) in kcal/mol, distances).
+`results`: `ts_pdb` (`ts_optimized.pdb`), `ts_energy`, `guess_imaginary`, `imaginary_frequencies`, `small_imaginary`, `lowest_frequencies`, `ts_mode_atoms`, monitored distances, and `irc.forward/reverse` (`irc_*.pdb`, energy, barrier = E(TS) − E(end) in kcal/mol, distances). Plus `ts_mode_is_reaction_coordinate` and `ts_mode_reacting_share`: one imaginary frequency makes a first-order saddle, not necessarily this step's transition state, so the atoms named in `monitor` — the bonds the step makes or breaks — are checked against the mode's displacement. `null` means there was nothing to check it against, which is not a pass.
 
 ### `sp.inputs`
 

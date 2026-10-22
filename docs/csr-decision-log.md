@@ -1466,6 +1466,14 @@ Two consequences. The endpoint geometries are not minima of the surface the NEB 
 
 Worth noting the same applies to anyone else's NEB through mcube, not just CSR.
 
+**`ts` enforced the frequency count but not the mode's identity.** (2026-10-22)
+
+`ts` already counted imaginary frequencies, warned when there was not exactly one, and printed `ts_mode_atoms` - the eight atoms displaced most in the lowest mode, normalised. But the printed list was only ever read by a human, and the module's own claim is "a TS has exactly one imaginary frequency, **and its mode should be the reaction coordinate**". Only the first half was checked.
+
+That gap passes a real false positive: a saddle whose imaginary mode is a water libration or a methyl rotation has exactly one imaginary frequency and is not the transition state of anything being studied. With `hessian_atoms` restricted to the reacting atoms it is less likely, but the Zn or a bridging water can still dominate.
+
+`check_ts_mode` now compares the mode against the atoms in `monitor`, which already names the bonds each step makes or breaks, and records `ts_mode_is_reaction_coordinate` plus `ts_mode_reacting_share` in the results. Below 30% of the largest displacement it warns that the structure is a saddle point but likely not this step's transition state. **`null` when there is nothing to check against** - no monitor pairs, or none of their atoms in the Hessian - because "not checked" is not a pass, and the staged `ts_saddle1` / `ts_saddle2` sections both carry the monitor pairs for this reason.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

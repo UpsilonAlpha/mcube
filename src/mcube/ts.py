@@ -78,6 +78,27 @@ def monitor_distances(coords, pairs) -> Dict[str, float]:
     return {f"{int(i)}-{int(j)}": round(distance(coords, int(i), int(j)), 3) for i, j in (p[:2] for p in pairs)}
 
 
+def check_ts_mode(amplitudes, hessatoms, monitor, floor: float = 0.3):
+    """Whether the imaginary mode is carried by the atoms the step is about.
+
+    One imaginary frequency makes a structure a first-order saddle. It does not
+    make it the transition state of *this* reaction: a saddle whose mode is a
+    water libration or a methyl rotation passes the count and means nothing.
+    `monitor`'s pairs are the bonds the step makes or breaks, so their atoms
+    should carry a substantial share of the displacement.
+
+    Returns (ok, share, names_of_reacting_atoms_found). `ok` is None when there
+    is nothing to check against - no monitor pairs, or none of their atoms in
+    the Hessian - which is not a pass.
+    """
+    index = {int(a): i for i, a in enumerate(hessatoms)}
+    wanted = sorted({int(a) for pair in (monitor or []) for a in pair[:2] if int(a) in index})
+    if not wanted or amplitudes.max() <= 0:
+        return None, None, wanted
+    share = float(max(amplitudes[index[a]] for a in wanted) / amplitudes.max())
+    return share >= floor, share, wanted
+
+
 def run(args) -> Dict[str, Any]:
     section = getattr(args, "section", None) or "ts"
     preprocess = load_section(args.config, "preprocess")
@@ -194,6 +215,22 @@ def run(args) -> Dict[str, Any]:
             print(f"[WARNING] {len(imag)} imaginary frequencies below -{threshold:g} cm-1: {imag} "
                   "(a TS has exactly one)")
         print(f"[INFO] Atoms moving most in the lowest mode ({freqs[k]:.1f} cm-1): {result['ts_mode_atoms']}")
+        ok, share, wanted = check_ts_mode(amp, hessatoms, inputs.get("monitor"))
+        result["ts_mode_is_reaction_coordinate"] = ok
+        if share is not None:
+            result["ts_mode_reacting_share"] = round(share, 3)
+        if ok is None:
+            print("[WARNING] no `monitor` pairs among the Hessian atoms, so whether this "
+                  "mode is the reaction coordinate was not checked - only that the "
+                  "structure is a saddle point")
+        elif ok:
+            print(f"[INFO] The mode is carried by the reacting atoms {wanted} "
+                  f"({share:.0%} of the largest displacement)")
+        else:
+            print(f"[WARNING] the reacting atoms {wanted} carry only {share:.0%} of the "
+                  "largest displacement in this mode: it is a saddle point, but likely "
+                  "not the transition state of this step. Compare `ts_mode_atoms` against "
+                  "the bonds the step should be making or breaking")
         save_result(result, filename=args.config, section=section)
 
     # ---------- 3. IRC ----------
