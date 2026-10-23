@@ -713,7 +713,23 @@ level and details proposed, not yet decided)
   encoding (unique up to 34576 residues per chain); `tests/test_pdb_resseq.py` checks it against
   OpenMM's own reading of a 12k-water file (passes in the ASH env). Any metal preprocess with
   `skip_solvate` on a large box hit this; fresh solvation never did. Resubmitted:
-  **30473607** Ca, **30473608** La, **30473609** Lu.
+  **30473607** Ca, **30473608** La, **30473609** Lu (then F10).
+
+**F10 – An ion inserted into md's last frame lost the lipids' bonds.** (2026-10-24, fixed in 70761bf)
+- After F9, preprocess passed, then md failed: "No template found for residue 243 (POP) … no
+  bonds between its atoms". md's imaged last frame (written by mdtraj) has no CONECT records,
+  and POPE is not a standard residue, so its bonds exist only in CONECT. The same frame also
+  writes water residue numbers modulo 10000. `insert_ion.py` now takes the topology and bonds
+  from the builder's `finalsystem.pdb` (60250 CONECT, the same 124189 atoms in the same order,
+  checked) and only positions and box from the last frame.
+- The README route "a new partner in an equilibrated bilayer" (write into a copy of the last
+  frame) would hit the same thing for any lipid; worth a note there.
+- GPU queue (2026-10-24): `gpu_cuda` estimated a 27 h wait (another project's 16 queued GPU jobs
+  share our per-user `gpu` QOS of 4). `sxm` and `mig` were rejected; `gpu_viz` L40s (QOS `viz`,
+  2 per user) started at once and run OpenMM CUDA. Per-ion jobs now there: **30478619** La,
+  **30478620** Lu, **30478621** Ca (waits for a slot). `running-on-bunya.md` corrected.
+- Also: the g-xTB cluster test (30423347) hit its 12 h limit before the Lu frames; not rerun,
+  since g-xTB is set aside (C17).
 
 **C12 – Implement 12-6-4 as `metal_parameters: 1264`.** (user, 2026-10-22; implemented on branch `umbrella`)
 - No reason not to: the IOD 12-6 set under-binds 3+ ions, and the user asked.

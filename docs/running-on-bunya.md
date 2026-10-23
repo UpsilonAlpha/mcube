@@ -205,7 +205,8 @@ seff <id>                                          # after it finishes
 Checked 2026-10-16 with `sinfo` and `sacctmgr`:
 - **NVIDIA:** `gpu_cuda` (A100, H100, L40S; also MIG slices) and `gpu_sxm` (H100 SXM).
 - **AMD:** `gpu_rocm` (MI210, MI300X, MI355X).
-- **Access:** our account has QOS `gpu` (at most 4 GPUs and 256 CPUs per user), `sxm` (4 GPUs), `mig` and `debug` (1 h).
+- **Access** (re-checked 2026-10-24 with `sacctmgr show assoc`): our association has QOS `gpu` (at most 4 GPUs, 256 CPUs and 4 jobs per user, on `gpu_cuda`), `viz` (2 GPUs and 2 jobs per user, 24 h, on `gpu_viz`: L40/L40S/A16), `mig`, `debug` (1 h), `normal` and `short`. `sxm` is **not** in it (`--qos=sxm` is rejected), and `-p gpu_cuda --qos=mig` was rejected too.
+- **When `gpu_cuda` is backed up:** `gpu_viz` with `--qos=viz --gres=gpu:l40:1` often starts at once (two L40 nodes were idle on 2026-10-24 while `gpu_cuda` estimated a 27 h wait). OpenMM's CUDA platform runs there. The per-user `gpu` limit is shared by every session of this user, so another project's queued GPU jobs delay ours. `sbatch --test-only` shows the expected start before committing.
 
 The ASH env has OpenMM 8.4 built against CUDA 13.1. Its platforms are Reference, CPU and **CUDA**. The HIP plugin fails to load (no ROCm libraries), so use the NVIDIA partitions:
 
