@@ -34,6 +34,8 @@ def main():
     p.add_argument("--ecp-file", help="NWChem ECP file")
     p.add_argument("--cores", type=int, default=int(os.environ.get("SLURM_CPUS_PER_TASK", 1)))
     p.add_argument("--repeat", type=int, default=3)
+    p.add_argument("--platform", default="CPU", help="CPU, or GPU for gpu4pyscf (an NVIDIA node)")
+    p.add_argument("--skip-xtb", action="store_true")
     p.add_argument("--out", required=True)
     args = p.parse_args()
 
@@ -61,7 +63,7 @@ def main():
     charge, raw = qm_charge(mm.system, qm_atoms)
     fragment = Fragment(pdbfile=pdb)
     dft_in = {"dft_functional": args.functional, "dft_basis": args.basis,
-              "dft_densityfit": True, "dft_gridlevel": 3}
+              "dft_densityfit": True, "dft_gridlevel": 3, "dft_platform": args.platform}
     if args.basis_file:
         dft_in["dft_basis_file"] = str(Path(args.basis_file).resolve())
     if args.ecp_file:
@@ -71,7 +73,8 @@ def main():
                         excludeboundaryatomlist=boundary, embedding="electrostatic", printlevel=1)
     report = {"ion": args.ion, "qm_atoms": len(qm_atoms), "qm_residues": residues,
               "charge": charge, "charge_from_mm": raw, "functional": args.functional,
-              "basis": args.basis_file or args.basis, "cores": args.cores, "dft_s": []}
+              "basis": args.basis_file or args.basis, "cores": args.cores,
+              "platform": args.platform, "dft_s": []}
     for _ in range(args.repeat):
         t0 = time.time()
         res = Singlepoint(theory=theory, fragment=fragment, charge=charge, mult=1, Grad=True)
@@ -80,6 +83,12 @@ def main():
         print("[BENCH] DFT/MM gradient", report["dft_s"][-1], "s", flush=True)
 
     # xTB/MM on a fresh MM system (QMMMTheory edits the forces it is given)
+    if args.skip_xtb:
+        steady = min(report["dft_s"][1:] or report["dft_s"])
+        report["ps_per_day_at_1fs"] = round(86400.0 / steady / 1000.0, 2)
+        Path("report.json").write_text(json.dumps(report, indent=1))
+        print(json.dumps(report, indent=1))
+        return
     mm, qm_atoms, boundary, _ = system()
     xtb = make_qm({"xtb_method": "GFN2"}, min(args.cores, 4))
     theory = QMMMTheory(qm_theory=xtb, mm_theory=mm, fragment=fragment, qmatoms=qm_atoms,
