@@ -15,8 +15,8 @@ shells (S2), and compares, against r2SCAN/def2-SVP (the DFT level of C16):
     too tightly shows a more negative radial force than r2SCAN on the same geometry.
   - for S1 also in the field of the rest of the box as bare point charges (TIP3P), for
     GFN2 and r2SCAN only: is the gap collapse a feature of the embedded problem itself,
-    or of GFN2? One g-xTB run with point charges shows whether xtb ignores them for
-    g-xTB or refuses.
+    or of GFN2. A g-xTB run with point charges is kept as a check: the g-xTB build of
+    xtb (v2.0.1) accepts the charges and silently ignores them (same energy to every digit).
   - S1 optimised in the gas phase with each method: Ln-O distances.
 
   python cluster_test.py --run LA=/scratch/.../LA_1264 --run LU=/scratch/.../LU_1264 \\
@@ -127,8 +127,9 @@ def run_xtb(binary, flags, cl, charge, work, cores, pc=False, opt=False):
     res["gap_eV"] = round(float(gaps[-1]) * EV, 4) if gaps else None
     energies = re.findall(r"TOTAL ENERGY\s+(-?[\d.]+)\s+Eh", out)
     res["energy_Eh"] = float(energies[-1]) if energies else None
-    nel = re.findall(r"(?:number of electrons|electrons)\s*[:=]?\s*(\d+)", out, flags=re.I)
-    res["electrons"] = int(nel[0]) if nel else None
+    # GFN2 prints ":: number of electrons  72 ::", g-xTB "number of electrons  7.19...E+01 e"
+    nel = re.findall(r"number of electrons\s+([\d.Ee+-]+)", out, flags=re.I)
+    res["electrons"] = int(round(float(nel[0]))) if nel else None
     res["pc_mentioned"] = bool(re.search(r"point charge|pcem|embedding", out, flags=re.I))
     if opt:
         if (work / "xtbopt.xyz").exists():
@@ -240,6 +241,7 @@ def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--run", action="append", required=True, help="ION=run_dir, e.g. LA=.../LA_1264")
     p.add_argument("--qmdir", default="qmmm")
+    p.add_argument("--dt", type=float, default=0.02, help="ps between saved frames (bulk.slurm DT)")
     p.add_argument("--gxtb", required=True, help="the g-xTB build of xtb")
     p.add_argument("--gfn2", default=shutil.which("xtb"), help="xtb for GFN2 (default: on PATH)")
     p.add_argument("--basis-file", required=True)
@@ -285,7 +287,7 @@ def main():
             box = traj.unitcell_lengths[k] * 10.0
             s1, s2 = frame_clusters(xyz, box, ion, waters, args.cut1, args.cut2, args.env)
             w = out / f"{name}_{run_dir.name}_f{k}"
-            row = runs["frames"][int(k)] = {"time_ps": round(float(traj.time[k]), 2),
+            row = runs["frames"][int(k)] = {"time_ps": round(k * args.dt, 2),
                                            "S1_waters": s1["n_water"], "S2_waters": s2["n_water"],
                                            "S1_ln_o": ln_o(s1["elems"], s1["xyz"], args.cut1)}
             ref1 = None if args.skip_dft else run_dft(s1, charge, args.basis_file, args.cores, args.functional)
