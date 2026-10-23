@@ -366,6 +366,11 @@ constriction, MM→QM/MM reweighting, then xTB→DFT single-point reweighting.**
   xTB electronic temperature 1000 K, first shell QM, `qm_t1000/`: **30416204** La 1264,
   **30416205** Lu IOD, **30416206** Lu 1264; second shell in QM (cutoff 5.2 Å La, 5.0 Å Lu),
   default 300 K, `qm_s2/`: **30416207** La 1264, **30416208** Lu IOD, **30416209** Lu 1264.
+- **La³⁺ IOD (30416203), 4 ns MM:** La–O 2.49 Å, CN 9.06 (9: 94 %, 10: 6 %), residence 171 ps,
+  42 exchanges/ns. Against La 1264 (2.51 Å, CN 9.65) and the target ~2.54 Å / CN 9: IOD gets
+  the CN right and Ln–O 0.05 Å short; 1264 is closer on distance and over-coordinates. Its
+  default xTB/MM leg (first shell QM, 300 K, bare charges) lost SCC at step 6362 like the others
+  (2.45 Å, CN 9.0 over 4.4 ps) — no new information for F7.
 
 **C16 – DFT/MM for the desolvation step; xTB/MM for the rest of the QM/MM leg.** (user, 2026-10-23;
 level and details proposed, not yet decided)
