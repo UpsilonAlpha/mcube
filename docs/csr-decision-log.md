@@ -1637,6 +1637,18 @@ I had argued that a distance restraint fixes only the radial coordinate and ther
 
 Incidental, on process: a 111-character command left the shell swallowing subsequent input, exactly the failure `BUNYA_BROWSER_SHELL.md` section 3 describes, and two silent no-ops followed before a fresh terminal fixed it. The ~100 character limit is not approximate.
 
+**The MM release test is the wrong test, and "10-100 ns" conflates two things.** (2026-10-23, user's reframing)
+
+**What the restraint is for.** The enzyme hydrolyses meropenem, so a Michaelis complex forms without help; the substrate restraint exists only to stop the **MM** metal mishandling the substrate outside QM/MM. Two consequences follow, and the second changes the plan.
+
+The substrate dissociating unrestrained (run 1, D89) is evidence of an **MM artefact**, not evidence against the docked pose. That was already the conclusion, reached by elimination; this is the principled reason for it.
+
+And **an MM release run cannot settle anything.** If the complex falls apart once the restraint is dropped *in MM*, that says only that MM misbehaves near the metal - which is the premise, not a finding. It is informative in one direction: holding would be reassuring, failing would mean nothing. The decisive test is whether the complex holds in **QM/MM**, where the zinc is described quantum mechanically and the artefact does not exist: `qmmm` with `skip_equilibrate: false` and no substrate restraint.
+
+**That test has never been run.** D96 used `skip_equilibrate: true` - an optimisation with no dynamics. QM/MM MD is xTB-bound at roughly 1.4 s/step on CPU, so 50 ps is about 19 h and 10 ps about 4 h. GPU does not help: a QM/MM step copies positions off the device and the bottleneck is xTB, so these stages stay on CPU with their cores parallelised.
+
+**Equilibration lengths, corrected.** D92's "10-100 ns published practice" conflated equilibration with production. Gervasoni's **100 ns is their NVT production run**; their equilibration was roughly 260 ps of heating and NPT before it. The comparable equilibration figures are Lisa and Bahena-Mendez at 10 ns and Guven at 50. So 100 ns is generous for the job it is doing here, though not wasteful at 4-5 h of GPU - and because `traj_frequency: 5000` writes a frame every 20 ps, **the 10 ns answer comes free from frame 500 of the same trajectory**, so both lengths are available without choosing between them.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
