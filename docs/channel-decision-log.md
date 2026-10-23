@@ -379,6 +379,12 @@ constriction, MM→QM/MM reweighting, then xTB→DFT single-point reweighting.**
      AmberTools sander with `lj1264 = 1` (confirmed on in its output; serial, 5.3 ns/day,
      100 ps chunks). sander ≈ 9 and OpenMM 7.6 → the fault is in OpenMM's/our C4 evaluation;
      both 7.6 → not our code, and the next step is asking the authors, not alleging an error.
+     **sander result (30430922, first 1 ns of 2): Lu³⁺ 2.33 Å, CN 7.66** (7: 34 %, 8: 66 %),
+     78 exchanges/ns, residence 69 ps. Amber's own engine, on the Amber-built box with
+     `lj1264 = 1`, gives what OpenMM/mcube gives (7.61–7.62). **So the difference from SI.4 is
+     not in our code or in OpenMM.** It lies between today's AmberTools/sander and the authors'
+     2014 AMBER 12 runs. Next step, the user's call: ask the authors how their Lu run was set up,
+     framed as a question about reproducing their value, not as an error.
   2. **The MM first shells exchange water about 10–100× faster than experiment** (known; it is why
      the hydration shell is restrained while the MM system is prepared for QM/MM, user): residence
      70–160 ps against ~2–25 ns for heavy Ln³⁺ (Cossy, Helm & Merbach 1988; Helm & Merbach 2005).
@@ -401,6 +407,9 @@ constriction, MM→QM/MM reweighting, then xTB→DFT single-point reweighting.**
   xTB electronic temperature 1000 K, first shell QM, `qm_t1000/`: **30416204** La 1264,
   **30416205** Lu IOD, **30416206** Lu 1264; second shell in QM (cutoff 5.2 Å La, 5.0 Å Lu),
   default 300 K, `qm_s2/`: **30416207** La 1264, **30416208** Lu IOD, **30416209** Lu 1264.
+- **Ca²⁺ 1264 (30416202), 4 ns MM:** Ca–O 2.45 Å, **CN 8.04** (8: 96 %), against 2.46 / 8: on
+  target. Ca IOD (30416201) timed out at 3.2 of 4 ns (6.7 ns/day on bun147, against 15–20
+  elsewhere) before writing its report; rerun at 2 ns, MM only: **30450561**.
 - **La³⁺ IOD (30416203), 4 ns MM:** La–O 2.49 Å, CN 9.06 (9: 94 %, 10: 6 %), residence 171 ps,
   42 exchanges/ns. Against La 1264 (2.51 Å, CN 9.65) and the target ~2.54 Å / CN 9: IOD gets
   the CN right and Ln–O 0.05 Å short; 1264 is closer on distance and over-coordinates. Its
@@ -534,6 +543,34 @@ level and details proposed, not yet decided)
 - The cluster test (`cluster_test.py`, frames from the failing GFN2 xTB/MM runs LA_1264/qmmm and
   LU_1264/qmmm, last frame included; S1, S1 in the box's TIP3P charges for GFN2 and r2SCAN, S2;
   gas-phase S1 optimisations) against r2SCAN/def2-SVP: **30421227** (`channel/gxtb/gx_test/`).
+  (30421227 crashed on an empty ECP entry for H/O, fixed in 3a4853b; rerun **30423347**.)
+- **La³⁺ result (6 frames from the GFN2 xTB/MM run that failed at step 6328):**
+
+  | Frame (ps) | Gap S1 eV: r2SCAN / GFN2 / g-xTB | Grad RMSE vs r2SCAN, kcal/mol/Å: GFN2 / g-xTB | Outward force on 1st-shell O: r2SCAN / GFN2 / g-xTB |
+  |---|---|---|---|
+  | 0.2 | 7.18 / 3.91 / 10.14 | 20.5 / 12.1 | 36 / 10 / 21 |
+  | 1.4 | 6.94 / 3.99 / 9.92 | 16.7 / 9.5 | 43 / 23 / 34 |
+  | 2.6 | 7.14 / 3.89 / 9.79 | 15.3 / 9.5 | 35 / 16 / 25 |
+  | 3.9 | 6.68 / 3.74 / 9.82 | 28.2 / 14.8 | 58 / 27 / 42 |
+  | 5.1 | 6.86 / 3.61 / 9.77 | 26.3 / 16.2 | 42 / 11 / 21 |
+  | **6.3** | **0.15 (SCF unconverged) / 0.42 / 3.70** | 30.8 / 16.0 | 95 / 51 / 75 |
+
+  - **The SCC failure is a broken O–H bond.** In the last frame, ~20 steps before GFN2 failed,
+    one first-shell water has an O–H of **2.60 Å** (all others 0.93–1.05 Å), with the lost H
+    ≥ 2.3 Å from any other O in the cluster. r2SCAN's gap collapses there too (0.15 eV, as for an
+    O–H radical pair), so the gap closing is real for that geometry. The fault is that GFN2/MM
+    dynamics tore a water apart in the first place.
+  - **Before that, no method's gap is small.** Bare charges (S1_pc) change GFN2's gap by < 0.3 eV.
+  - **Forces:** g-xTB's error against r2SCAN is about half GFN2's (9.5–16 vs 15–31 kcal/mol/Å
+    RMSE), but still large. Both under-push the first shell outward (r2SCAN 35–58, GFN2 10–27,
+    g-xTB 21–42 kcal/mol/Å), and GFN2 most, which fits its short Ln–O.
+  - The Lu frames and the gas-phase optimisations are still running (the job may hit its 12 h
+    limit before the optimisations).
+- **Ca²⁺ fails the same way.** The Ca 1264 xTB/MM leg (30416202) lost SCC at step 9433
+  (gap 0.06 eV), with Ca–O 2.17 Å / CN 7.0 against 2.46 / 8. So GFN2-xTB/MM is unreliable here
+  for every ion, not only Ln³⁺.
+- Reading: g-xTB is better than GFN2 but not good enough to justify writing point-charge
+  embedding for an unfinished method. DFT/MM is available now.
 
 ## Planned checks, not yet done
 
