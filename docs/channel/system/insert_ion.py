@@ -8,6 +8,11 @@ to the pore axis, the protein's Cα centroid in xy.
 The ion goes in as a chain of its own at the end, so mcube's `ion: "<chain>:1:<ION>"` selects
 it; the chain letter OpenMM writes is printed and stored in the report.
 
+Bonds come from --topology (default: finalsystem.pdb next to --pdb, the file the membrane
+builder wrote). md's imaged last frame has no CONECT records, and without them POPE has no
+bonds when the file is read back, so md fails with "No template found for residue (POP)".
+Positions and box come from --pdb; the two files must list the same atoms in the same order.
+
   python insert_ion.py --pdb ../apo/md_lastframe.pdb --ion LA --z -30 --out channel_LA.pdb
 """
 
@@ -30,13 +35,20 @@ def main():
     p.add_argument("--x", type=float)
     p.add_argument("--y", type=float)
     p.add_argument("--protein-chain", default="A")
+    p.add_argument("--topology", help="PDB with the bonds (default: finalsystem.pdb beside --pdb)")
     p.add_argument("--out", required=True)
     args = p.parse_args()
 
     from openmm import unit
     from openmm.app import Element, Modeller, PDBFile, Topology
     pdb = PDBFile(args.pdb)
-    top = pdb.topology
+    topo_file = args.topology or str(Path(args.pdb).resolve().parent / "finalsystem.pdb")
+    bonded = PDBFile(topo_file)
+    top = bonded.topology
+    names = [(a.name, a.residue.name, a.residue.chain.id) for a in pdb.topology.atoms()]
+    if names != [(a.name, a.residue.name, a.residue.chain.id) for a in top.atoms()]:
+        raise SystemExit(f"{topo_file} and {args.pdb} do not list the same atoms in the same order")
+    top.setPeriodicBoxVectors(pdb.topology.getPeriodicBoxVectors())
     xyz = np.array(pdb.getPositions().value_in_unit(unit.angstrom))
     prot = [a.index for a in top.atoms() if a.residue.chain.id == args.protein_chain and a.name == "CA"]
     cx, cy = xyz[prot, 0].mean(), xyz[prot, 1].mean()
@@ -73,6 +85,7 @@ def main():
     report = {"ion": args.ion, "replaced_water_O_A": [round(float(v), 2) for v in site],
               "pore_axis_xy_A": [round(float(cx), 2), round(float(cy), 2)],
               "removed_na": len(far), "chains": len(chains), "ion_chain": letter,
+              "topology": topo_file, "bonds": mod.topology.getNumBonds(),
               "umbrella_ion": f"{letter}:1:{args.ion}",
               "box_A": [round(float(v), 2) for v in pdb.topology.getUnitCellDimensions().value_in_unit(unit.angstrom)]}
     Path(args.out).with_suffix(".json").write_text(json.dumps(report, indent=1))
