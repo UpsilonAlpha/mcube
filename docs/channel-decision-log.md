@@ -486,6 +486,17 @@ level and details proposed, not yet decided)
   axis in periplasmic bulk for the ion (own chain) and removes 2 or 3 Na⁺; `ion_config.yaml`
   (skip_solvate, 12-6-4, short md, umbrella 1 Å spacing, 2 ns windows for the quick test);
   `ion.slurm` (preprocess, md, pull) and `umbrella_windows.slurm` (a block of windows per GPU).
+- **Apo result (30455128, 53 min on one GPU):** 482 POPE, 57 Na⁺ / 54 Cl⁻, box 123.0 × 117.3 ×
+  82.7 Å, area per lipid 60.0 Å² (production mean; NPT 60.4), P–P thickness 41.9 Å. Protein Cα
+  span −22.4 to +32.2 Å from the bilayer midplane (built at −24 to +32): it stayed in place.
+  Last frame `channel/system/apo/NVTtrajectory_lastframe_imaged.pdb` (z 0–82.7 Å, midplane at
+  37.6, barrel Cα centroid at 42.1).
+- **Ions placed (`channel/system/{CA,LA,LU}/`):** the same water, on the pore axis at lab z
+  8.45 Å (CV ≈ −33.6 Å, periplasmic bulk 7 Å below the protein), swapped for the ion (chain E,
+  `ion: "E:1:<ION>"`), 2 or 3 Na⁺ removed. Windows z −35 to +35 Å at 1 Å (71 per ion; +35 is
+  ~7 Å above the extracellular loops, and the two bulks meet across the periodic boundary).
+  Preprocess + md (0.5 ns NPT, 0.5 ns NVT, shell restrained) + pull: **30463653** Ca,
+  **30463655** La, **30463656** Lu.
 
 ## Findings
 
