@@ -60,6 +60,13 @@ channel, built with mcube's existing stages as closely as possible.
     one (ionic radii: Ca²⁺ 1.00–1.12 Å, La³⁺ 1.03–1.22 Å, Lu³⁺ 0.86–0.98 Å). A permeation path
     needs the N-terminal segment to move, or the trimer to differ. Pending: the trimer (30410204),
     and whether to fold without 110–132 or pull it out of the lumen in MD.
+- **Trimer result (30410204, 38 min, `channel/af2/trimer/mature_trimer/`): AF2 does not support
+  a trimer.** 0.8·ipTM + 0.2·pTM is 0.17–0.21 for all five models; ranked_0 (model_3) has ipTM
+  0.16, pTM 0.43. Each chain folds the same barrel as the monomer (per-chain pLDDT 89.6–90.0,
+  identical DSSP, 12 strands, closed, segment 110–132 again in the lumen), but the chains barely
+  touch: 7 Cα pairs within 8 Å for A–B, 1 for B–C, none for A–C. Chain A's narrowest point is
+  0.57 Å at z −5 Å (lining Thr242–Ala244, Asn259, Leu260). **Use the monomer** for the system;
+  the FapF match (a trimer) alone is not enough to override AF2 here.
 
 **C1/C2 follow-up – relatives and conservation of the lumen segment.** (2026-10-23)
 - Sent to NCBI at the user's request: blastp of all 373 aa against ClusteredNR (RID DNGYGYKX016).
