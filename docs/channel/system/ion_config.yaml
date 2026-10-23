@@ -1,0 +1,46 @@
+# One ion through the cropped channel in POPE, MM only (the quick 12-6-4 test). One run
+# directory per ion; insert_ion.py writes channel_<ION>.pdb and the ion's chain letter.
+# Fill in ION and the ion's chain (CHAIN) below, then (docs/channel/system/ion.slurm):
+#
+#   mcube preprocess config.yaml ; mcube md config.yaml ; mcube umbrella config.yaml pull
+#   mcube umbrella config.yaml window --window N      (umbrella_windows.slurm runs a block of N)
+#   mcube umbrella config.yaml wham
+preprocess:
+  inputs:
+    protein_pdb: channel_ION.pdb
+    skip_solvate: true
+    membrane: true
+    membrane_lipidtype: POPE
+    metals: [ION]
+    cutoff: 3.0
+    default_forcefields:
+    - amber14/protein.ff14SB.xml
+    - amber14/tip3p.xml
+md:
+  inputs:
+    membrane: true
+    platform: CUDA
+    properties: {Precision: mixed}
+    cores: 8
+    temp: 310
+    npt_timestep: 0.002
+    npt_time: 500
+    nvt_timestep: 0.004
+    nvt_time: 500                          # its lastframe is where `pull` starts
+    traj_frequency: 2500
+    metal_parameters: "1264"
+umbrella:
+  inputs:
+    ion: "CHAIN:1:ION"
+    reference: "chain A and name CA"       # barrel Cα centroid is z = 0 of the CV
+    z_start: ZSTART
+    z_end: ZEND
+    spacing: 1.0                           # quick test; refine where wham flags poor overlap
+    k: 10.0
+    cylinder: {radius: 10.0, k: 10.0}
+    pull_speed: 10.0
+    equilibrate: 100
+    time: 2000                             # ps per window for the quick test
+    timestep: 0.004
+    platform: CUDA
+    properties: {Precision: mixed}
