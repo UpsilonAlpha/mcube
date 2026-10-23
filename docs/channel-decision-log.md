@@ -739,6 +739,34 @@ level and details proposed, not yet decided)
 - Also: the g-xTB cluster test (30423347) hit its 12 h limit before the Lu frames; not rerun,
   since g-xTB is set aside (C17).
 
+**F11 – Three faults in the umbrella stage on a real membrane system.** (2026-10-24, fixed in
+04335bc, 3d9c3c0, 4f61dda; 41 umbrella tests, 178 local tests pass)
+- After F10, preprocess and md ran (minimisation 2.4 min on an L40, area per lipid 59.7 Å²), and
+  every pull failed (30486649/51/52; then 30523099–101):
+  1. `reference: "chain A and name CA"` (as in mcube's own example config) is not mdtraj syntax,
+     which knows only `chainid N`. `reference_atoms` now translates `chain <letter>` using the
+     topology's chain IDs and raises on an unknown letter.
+  2. The pull read md's imaged `lastframe` with `PDBFile`: no lipid bonds and split molecules
+     (F10 again, now inside mcube). New `load_structure` takes the bonds from preprocess's
+     `processed_pdb` (same atoms, same order, checked) and makes molecules whole; the pull and
+     both window types use it.
+  3. `image_ion` refused a reference group spanning more than half the box, and `displacement`
+     unwrapped the group about its first atom. The barrel's Cα span 55 Å of an 82.7 Å box, so the
+     check fired, and the unwrap would have folded the far half back and put the centre in the
+     wrong place. The group is now made whole by stepping atom to atom (consecutive Cα are
+     3.8 Å apart), and "split" means two consecutive atoms more than half a box apart.
+- Pulls running (2026-10-24): **30523774** La (viz), **30523775** Ca, **30523776** Lu (short).
+  The ions moved during md: CV at start La −23.6 Å, Ca +27.9 Å and Lu +32.4 Å (the last two
+  crossed the periodic boundary into the extracellular bulk; it is one water layer). Each pull
+  covers about 77 Å at 10 Å/ns.
+- **Carboxylate check, Lu:** every Lu species' r2SCAN SCF failed to converge (energies off by
+  10⁵ kcal/mol; the geometries are sane: Lu–O 2.32 Å in Lu(H₂O)₈³⁺). The script now never uses an
+  unconverged energy, keeps the level shift for the final energy, falls back to Newton, and
+  `--redo LU` recomputes only Lu: **30523294**.
+- **GPU benchmark (30469103) failed:** gpu4pyscf could not load `libcusolver.so.11` (no CUDA 12
+  runtime libraries in the job). To fix: load a CUDA 12 module in the job, or add the
+  `nvidia-*-cu12` wheels (dry run first).
+
 **C12 – Implement 12-6-4 as `metal_parameters: 1264`.** (user, 2026-10-22; implemented on branch `umbrella`)
 - No reason not to: the IOD 12-6 set under-binds 3+ ions, and the user asked.
 - How Amber does it (ParmEd `add1264.py`, read): C4(ion, OW) is tabulated; for any other atom j,
