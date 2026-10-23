@@ -21,6 +21,8 @@ from .preprocess import (
     load_section,
     ligand_resname,
 )
+from .md import md_membrane
+from .membrane_analysis import report as membrane_report, options_from_config
 
 # =========================
 # Helper functions
@@ -123,7 +125,16 @@ def run(args):
             eplot = ASH_plot(label, num_subplots=1, x_axislabel="Steps", y_axislabel=label)
             eplot.addseries(0, x_list=steps.to_numpy(), y_list=np_array, label=label, color='blue', line=True, scatter=True)
             eplot.savefig(label_no_unit)
-    
+
+        # A membrane system gets the membrane report (box, bilayer, partner pose) in place of the
+        # ligand-centred analysis below; its options are `postprocess.inputs.membrane` (optional).
+        if md_membrane(md.get("inputs") or {}, preprocess):
+            spec = (load_section(args.config, "postprocess").get("inputs") or {}).get("membrane") or {}
+            out = spec.get("out", "membrane_report")
+            rep = membrane_report(pdbfile, trajectory, out, **options_from_config(spec))
+            result["membrane_report"] = [Path(f).resolve().as_posix() for f in rep["files"]]
+            save_result(result, filename=args.config, section="postprocess")
+            return rep
 
 
     #Loading using mdtraj

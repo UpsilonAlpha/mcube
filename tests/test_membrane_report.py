@@ -48,12 +48,25 @@ def test_membrane_only_report(patch_files):
     assert (patch_files / "r.txt").read_text().startswith("frames=2")
 
 
-def test_script_loads_without_side_effects():
-    spec = importlib.util.spec_from_file_location("membrane_report", SCRIPT)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+def test_helpers_load_without_side_effects():
+    module = importlib.import_module("mcube.membrane_analysis")
     assert module.residue_range("290-330") == (290, 330)
     assert module.residue_range("12") == (12, 12)
     assert module.named_residues("gate=319,322", 2) == ("gate", [319, 322])
     with pytest.raises(Exception):
         module.named_residues("gate=319", 2)
+
+
+def test_report_api_and_config_options(patch_files):
+    from mcube.membrane_analysis import options_from_config, report
+
+    out = report(patch_files / "top.pdb", patch_files / "traj.dcd", patch_files / "api", frame_ps=10)
+    assert out["frames"] == 2 and out["partner"] is None
+    assert {"apl_gross", "thickness_PP"} <= set(out["metrics"])
+    assert [Path(f).name for f in out["files"]] == ["api.tsv", "api.txt"]
+    with pytest.raises(TypeError):
+        report(patch_files / "top.pdb", patch_files / "traj.dcd", patch_files / "x", sites=[1])
+    options = options_from_config({"frame_ps": 50, "site": [203], "core_exclude": [[290, 330]],
+                                "track": {"tm6": 310}, "distance": {"g": [319, 322]}, "angle": {"k": [1, 2, 3]}})
+    assert options == {"frame_ps": 50, "site": [203], "core_exclude": [(290, 330)], "track": [("tm6", [310])],
+                       "distance": [("g", [319, 322])], "angle": [("k", [1, 2, 3])]}

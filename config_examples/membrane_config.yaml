@@ -51,3 +51,17 @@ md:
     #   pdb_file: md_eq/relaxbox_NPT_lastframe.pdb
     #   skip_npt: true
     #   nvt_time: 5000
+postprocess:                               # optional: `mcube postprocess` writes membrane_report.* for a membrane run
+  inputs:
+    membrane:
+      frame_ps: 50                         # ps between frames (0: frame number only)
+      # receptor: A                        # chain letters; default: first and second protein chain
+      # partner: B
+      # core_z: 15                         # receptor CA within this many Å of the midplane superpose the frames
+      # core_exclude: [[290, 330]]         # residues kept out of that core (a mobile helix)
+      # site: [203, 345, 349]              # receptor residues the partner should reach
+      # contact: 4.5                       # heavy-atom contact cutoff in Å
+      # footprint: glp1_footprint.txt      # reference contact set; write_footprint: writes one from this run
+      # track: {tm6ic: 310}                # CA displacement, radial distance and z of a residue
+      # distance: {gate: [319, 322]}       # CA-CA distance
+      # angle: {kink: [315, 319, 323]}     # CA-CA-CA angle
