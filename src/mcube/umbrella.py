@@ -320,6 +320,74 @@ def release(force, context) -> None:
 # The MM model
 # ==============================
 
+class Structure:
+    """What the stage needs from a PDBFile: a topology and positions (nm)."""
+
+    def __init__(self, topology, positions):
+        self.topology = topology
+        self.positions = positions
+
+    def getPositions(self, asNumpy=False):
+        return self.positions
+
+
+def make_whole(coords_A, topology, box_A) -> np.ndarray:
+    """Undo periodic wrapping inside every bonded molecule (orthorhombic box): walking the
+    bonds, each atom goes to the image nearest the atom it is bonded to."""
+    from collections import deque
+    nbrs: Dict[int, List[int]] = {}
+    for a, b in topology.bonds():
+        nbrs.setdefault(a.index, []).append(b.index)
+        nbrs.setdefault(b.index, []).append(a.index)
+    out = np.array(coords_A, dtype=float)
+    box = np.asarray(box_A, dtype=float)
+    seen = np.zeros(len(out), bool)
+    for start in range(len(out)):
+        if seen[start]:
+            continue
+        seen[start] = True
+        queue = deque([start])
+        while queue:
+            i = queue.popleft()
+            for j in nbrs.get(i, ()):
+                if not seen[j]:
+                    d = out[j] - out[i]
+                    out[j] = out[i] + d - box * np.round(d / box)
+                    seen[j] = True
+                    queue.append(j)
+    return out
+
+
+def load_structure(pdb_file: str, preprocess: Dict[str, Any]):
+    """A PDBFile, or, when it lacks bonds that preprocess's processed_pdb has, that
+    file's topology with these positions made whole.
+
+    md's imaged `lastframe` in a membrane run has no CONECT records, so its lipids
+    have no bonds when read back (no force-field template matches) and some are
+    split across the periodic boundary. processed_pdb lists the same atoms in the
+    same order and carries the bonds.
+    """
+    from openmm import unit
+    from openmm.app import PDBFile
+    pdb = PDBFile(pdb_file)
+    ref_file = (preprocess.get("results") or {}).get("processed_pdb")
+    if not ref_file or not Path(ref_file).exists():
+        return pdb
+    ref = PDBFile(ref_file)
+    if ref.topology.getNumBonds() <= pdb.topology.getNumBonds():
+        return pdb
+    names = lambda top: [(a.name, a.residue.name) for a in top.atoms()]
+    if names(ref.topology) != names(pdb.topology):
+        raise ValueError(f"{pdb_file} lacks bonds and does not match {ref_file} atom for atom")
+    top = ref.topology
+    top.setPeriodicBoxVectors(pdb.topology.getPeriodicBoxVectors())
+    box = pdb_box(pdb)
+    coords = make_whole(np.array(pdb.getPositions()._value) * 10.0, top, box)
+    print(f"[INFO] {Path(pdb_file).name}: bonds taken from {Path(ref_file).name} "
+          f"({top.getNumBonds()} vs {pdb.topology.getNumBonds()}), molecules made whole")
+    return Structure(top, unit.Quantity(coords / 10.0, unit.nanometer))
+
+
 def pdb_box(pdb) -> np.ndarray:
     """Orthorhombic box (A) of a PDBFile."""
     cell = pdb.topology.getUnitCellDimensions()
@@ -469,7 +537,7 @@ def run_pull(config: str, section: str, inputs, preprocess, md) -> Dict[str, Any
     work.mkdir(exist_ok=True)
     os.chdir(work)
 
-    pdb = PDBFile(pdb_file)
+    pdb = load_structure(pdb_file, preprocess)
     box = pdb_box(pdb)
     ion = ion_atom(pdb.topology, inputs["ion"])
     reference = reference_atoms(pdb.topology, inputs["reference"])
@@ -555,7 +623,7 @@ def run_mm_window(config, section, inputs, preprocess, md, index: int) -> Dict[s
     work.mkdir(exist_ok=True)
     os.chdir(work)
 
-    pdb = PDBFile(seed)
+    pdb = load_structure(seed, preprocess)
     box = pdb_box(pdb)
     ion = ion_atom(pdb.topology, inputs["ion"])
     reference = reference_atoms(pdb.topology, inputs["reference"])
@@ -706,7 +774,7 @@ def run_qmmm_window(config, section, inputs, preprocess, md, index: int) -> Dict
     work.mkdir(exist_ok=True)
     os.chdir(work)
 
-    pdb = PDBFile(seed)
+    pdb = load_structure(seed, preprocess)
     box = pdb_box(pdb)
     ion = ion_atom(pdb.topology, inputs["ion"])
     reference = reference_atoms(pdb.topology, inputs["reference"])

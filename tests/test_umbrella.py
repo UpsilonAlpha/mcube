@@ -456,3 +456,41 @@ class TestReferenceSelection:
         pytest.importorskip("mdtraj")
         with pytest.raises(ValueError, match="no chain 'Z'"):
             umbrella.reference_atoms(self._top(), "chain Z and name CA")
+
+
+class TestLoadStructure:
+    """md's imaged lastframe has no CONECT (lipids lose their bonds) and splits molecules."""
+
+    def _files(self, tmp_path):
+        from openmm import Vec3, unit
+        from openmm.app import Element, PDBFile, Topology
+        top = Topology()
+        chain = top.addChain("A")
+        res = top.addResidue("LIG", chain)
+        a = top.addAtom("C1", Element.getBySymbol("C"), res)
+        b = top.addAtom("C2", Element.getBySymbol("C"), res)
+        top.addBond(a, b)
+        top.setPeriodicBoxVectors([Vec3(3, 0, 0), Vec3(0, 3, 0), Vec3(0, 0, 3)] * unit.nanometer)
+        processed = tmp_path / "processed.pdb"
+        with open(processed, "w") as fh:
+            PDBFile.writeFile(top, [Vec3(0.1, 1, 1), Vec3(0.25, 1, 1)] * unit.nanometer, fh)
+        assert any(l.startswith("CONECT") for l in open(processed))
+        # the same atoms, C2 wrapped to the far side of the box, no CONECT
+        frame = tmp_path / "lastframe.pdb"
+        with open(frame, "w") as fh:
+            PDBFile.writeFile(top, [Vec3(0.1, 1, 1), Vec3(2.95, 1, 1)] * unit.nanometer, fh)
+        frame.write_text("".join(l for l in open(frame) if not l.startswith("CONECT")))
+        return str(processed), str(frame)
+
+    def test_bonds_and_whole(self, umbrella, tmp_path):
+        processed, frame = self._files(tmp_path)
+        pdb = umbrella.load_structure(frame, {"results": {"processed_pdb": processed}})
+        assert pdb.topology.getNumBonds() == 1
+        xyz = np.array(pdb.getPositions()._value) * 10.0
+        assert abs(np.linalg.norm(xyz[1] - xyz[0]) - 1.5) < 1e-3
+        assert np.allclose(umbrella.pdb_box(pdb), [30, 30, 30])
+
+    def test_without_processed_pdb(self, umbrella, tmp_path):
+        _, frame = self._files(tmp_path)
+        pdb = umbrella.load_structure(frame, {})
+        assert pdb.topology.getNumBonds() == 0
