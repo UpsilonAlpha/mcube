@@ -96,6 +96,30 @@ channel, built with mcube's existing stages as closely as possible.
   trimeric secretion barrel), a gate or plug is plausible, not shown. The acidic residues lining
   the segment are not a conserved cation site.
 
+**C1 follow-up – the gene sits in a lanthanide methylotrophy cluster, next to lanmodulin.** (2026-10-23)
+- User priority (2026-10-23): decide whether this is a lanthanide channel; the gate is a side
+  question, and the N-terminal segment is cropped unless it takes part in ion transport.
+- Genome context (NCBI E-utilities, public records only): BD122_14570 is CP013127.1:3185355..3186476
+  (+) in *B. diazoefficiens* USDA 122. Neighbours, RefSeq names:
+  - BD122_14565 (+, 3184901..3185293, **61 bp upstream on the same strand**, so probably the same
+    transcript): **lanmodulin LanM** (WP_028174364.1). 130 aa, signal peptide, four EF-hand loops
+    `DTDNDG`, `DPDHDG`, `DPDRDG`, `NPDKDG`: three with the Pro at loop position 2 that marks LanM.
+  - BD122_14530: **lanthanide-dependent methanol dehydrogenase XoxF5** (WP_011088953.1), with a
+    cytochrome c (14525), the glutathione formaldehyde pathway (14515–14520) and a further PQQ
+    alcohol dehydrogenase (14560, methanol/ethanol family).
+  - ABC transporter genes (14550 periplasmic binding protein; 14590–14600), a SoxYZ-like carrier
+    and a methanol oxidase (14610–14620).
+- Barrel lumen (side chains facing the axis in the AF2 model, segment excluded): 21 Asp/Glu
+  against 11 Arg/Lys, so the lumen is net negative. **Glu300 is the most conserved lumen residue
+  in the whole barrel** (identity 0.59 against 0.12 for the strands, coverage 0.79), and it
+  lines the constriction with Phe119 and Met122 of the segment and Ala286.
+- Reading: a periplasmic Ln-binding protein encoded next to it, an XoxF Ln-dependent methanol
+  dehydrogenase nearby, and a conserved carboxylate at the constriction all point to a role in
+  lanthanide uptake across the outer membrane. This is genomic and structural inference; how the
+  ion crosses (free Ln³⁺, or bound to a chelator) is not settled by it.
+- For the segment: the constriction is formed by conserved Glu300 *with* the segment's Phe119,
+  so cropping may remove half of the site. Check before cropping (below).
+
 **C3 – Bilayer: POPE, single lipid type, at 310 K.** (2026-10-22; open)
 - mcube already accepts `membrane_lipidtype: POPE` (`membrane.py:LIPID_TYPES`), but only POPC
   has been validated (`docs/membrane-validation.md`). A *mixed* POPE/POPC bilayer is not
