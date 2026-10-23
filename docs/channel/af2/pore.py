@@ -116,6 +116,7 @@ def main():
     report = {"pdb": str(Path(args.pdb).resolve()), "residues": int(len(ca)),
               "mean_plddt": round(float(plddt.mean()), 1),
               "plddt_ge90": int((plddt >= 90).sum()), "plddt_lt70": int((plddt < 70).sum()),
+              "dssp": "".join(dssp),
               "strands": len(runs),
               "strand_ranges": [[a + args.first_residue, b + args.first_residue] for a, b in runs],
               "first_last_strand_min_ca_A": round(closure, 2),
