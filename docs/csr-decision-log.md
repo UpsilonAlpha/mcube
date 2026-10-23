@@ -1663,6 +1663,8 @@ Costing the QM/MM equilibration led to `xtb_runmode`, since `inputfile` launches
 
 **`neb.py` hardcoded `runmode='library'`** (and `ts.py` did so whenever parallel frequency workers were used). As things stand those fail on import, which is luck rather than design: install `xtb-python` to "fix" the error and they would instead run **without electrostatic embedding and converge anyway** - a NEB path and a transition state computed with no QM/MM coupling, reported as if valid. The comment in neb.py read "xTB as a library: no input files per image", so the motive was per-image I/O and whoever wrote it had not seen the TODO.
 
+**No existing result is affected.** `CSR_ligand/neb_results` holds only two force-field XML files from September and no config carries a `neb` section, so no NEB has ever completed; `ts` has never run either. Every QM/MM number on record came through `qmmm`, which used the default `inputfile` and therefore had proper electrostatic embedding. The bug was latent in the two stages that had not yet been used.
+
 Fixed: both stages now use the configured runmode, and `make_qm` **refuses** `library` outright with the reason, rather than warning. Parallel images and frequency displacements each get their own working directory from ASH, so inputfile mode does not collide between them.
 
 **So the 50 ps QM/MM MD has to be costed at inputfile rates**, which is the open question for the NEB prep: 50,000 steps at 2.5-5.7 s is 35-79 h against a 24 h default walltime and nothing to restart from. Measuring the real rate with a short run is cheaper than discovering it at the walltime. The alternatives if it is too slow are a shorter equilibration, a 2 fs timestep, or adding a restart path to qmmm.
