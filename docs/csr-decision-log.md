@@ -1649,6 +1649,24 @@ And **an MM release run cannot settle anything.** If the complex falls apart onc
 
 **Equilibration lengths, corrected.** D92's "10-100 ns published practice" conflated equilibration with production. Gervasoni's **100 ns is their NVT production run**; their equilibration was roughly 260 ps of heating and NPT before it. The comparable equilibration figures are Lisa and Bahena-Mendez at 10 ns and Guven at 50. So 100 ns is generous for the job it is doing here, though not wasteful at 4-5 h of GPU - and because `traj_frequency: 5000` writes a frame every 20 ps, **the 10 ns answer comes free from frame 500 of the same trajectory**, so both lengths are available without choosing between them.
 
+**The NEB stage could not have run, and the reason is worse than a missing package.** (2026-10-23, found while costing the 50 ps QM/MM MD)
+
+Costing the QM/MM equilibration led to `xtb_runmode`, since `inputfile` launches xTB as a separate process with file I/O **every step** - plausibly most of the 2.5-5.7 s/step seen in the optimisations, which would put 50 ps at 50,000 steps somewhere around 35-79 h with **no restart path in qmmm.py**. The obvious lever was `library` mode. Two things rule it out.
+
+`xtb-python` is **not installed** in the ASH env, so `library` raises on import. And ASH's own `interface_xtb.py` carries, at line 110:
+
+```
+# TODO: QM/MM pointcharges for library
+```
+
+**The library path does not implement QM/MM point charges.** So it is not merely unavailable, it is wrong for every use mcube makes of xTB, which is always as the QM region of a `QMMMTheory`.
+
+**`neb.py` hardcoded `runmode='library'`** (and `ts.py` did so whenever parallel frequency workers were used). As things stand those fail on import, which is luck rather than design: install `xtb-python` to "fix" the error and they would instead run **without electrostatic embedding and converge anyway** - a NEB path and a transition state computed with no QM/MM coupling, reported as if valid. The comment in neb.py read "xTB as a library: no input files per image", so the motive was per-image I/O and whoever wrote it had not seen the TODO.
+
+Fixed: both stages now use the configured runmode, and `make_qm` **refuses** `library` outright with the reason, rather than warning. Parallel images and frequency displacements each get their own working directory from ASH, so inputfile mode does not collide between them.
+
+**So the 50 ps QM/MM MD has to be costed at inputfile rates**, which is the open question for the NEB prep: 50,000 steps at 2.5-5.7 s is 35-79 h against a 24 h default walltime and nothing to restart from. Measuring the real rate with a short run is cheaper than discovering it at the walltime. The alternatives if it is too slow are a shorter equilibration, a 2 fs timestep, or adding a restart path to qmmm.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

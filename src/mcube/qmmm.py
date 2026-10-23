@@ -265,6 +265,13 @@ def make_qm(inputs: Dict[str, Any], cores: int, runmode: Optional[str] = None):
     if engine != "xtb":
         raise ValueError(f"qm_engine must be 'xtb' or 'dft', not {engine!r}")
     runmode = runmode or inputs.get("xtb_runmode", "inputfile")
+    if str(runmode).lower() == "library":
+        raise ValueError(
+            "xtb_runmode 'library' cannot be used here: mcube only ever runs xTB as the "
+            "QM region of a QMMMTheory, and ASH's library path does not implement QM/MM "
+            "point charges (see the 'TODO: QM/MM pointcharges for library' in its "
+            "interface_xtb.py). It would drop the electrostatic embedding rather than "
+            "fail, so it is refused instead of warned about. Use 'inputfile'.")
     # xTB's thread placement comes from the job script's environment, which it
     # inherits as a separate process.
     # SCC controls, ASH's defaults unless set. A highly charged metal next to bare MM point

@@ -162,8 +162,10 @@ def run(args) -> Dict[str, Any]:
 
     check_same_system(args.reactant, args.product, react, prod)
 
-    # xTB as a library: no input files per image
-    qmmm_theory = make_qmmm(qmmm_inputs, mm, react, qm_atoms, boundary_excluded, theory_cores, runmode='library')
+    # Not the xTB library: ASH's library path has no QM/MM point charges, so it would
+    # run every image without electrostatic embedding. Parallel images each get their
+    # own working directory from ASH, so inputfile mode does not collide.
+    qmmm_theory = make_qmmm(qmmm_inputs, mm, react, qm_atoms, boundary_excluded, theory_cores)
 
     # Active region: --actatoms file, else actradius around actregion_origin, else the QM atoms
     act_inputs = {**qmmm_inputs, **{k: neb_inputs[k] for k in ("actradius", "actregion_origin") if k in neb_inputs}}
