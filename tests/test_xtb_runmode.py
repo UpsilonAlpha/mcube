@@ -1,8 +1,9 @@
 """xTB's library runmode is refused: pytest tests/test_xtb_runmode.py
 
 mcube only ever runs xTB as the QM region of a QMMMTheory, and ASH's library
-path does not implement QM/MM point charges. Choosing it would drop the
-electrostatic embedding rather than fail, so it must be refused outright.
+path cannot return a point-charge gradient, because xtb-python does not wrap
+xtb_getPCGradient. ASH calls ashexit() there, which kills the process rather
+than raising, so mcube refuses at config time instead.
 Runs without ASH via the stub used in tests/test_umbrella.py.
 """
 
@@ -30,18 +31,18 @@ def qmmm(monkeypatch):
 
 
 def test_library_from_the_config_is_refused(qmmm):
-    with pytest.raises(ValueError, match="point charges"):
+    with pytest.raises(ValueError, match="point-charge gradient"):
         qmmm.make_qm({"xtb_runmode": "library"}, 4)
 
 
 def test_library_passed_by_a_stage_is_refused(qmmm):
     """neb and ts used to force this; the guard catches it wherever it comes from."""
-    with pytest.raises(ValueError, match="point charges"):
+    with pytest.raises(ValueError, match="point-charge gradient"):
         qmmm.make_qm({}, 4, runmode="library")
 
 
 def test_case_does_not_evade_the_guard(qmmm):
-    with pytest.raises(ValueError, match="point charges"):
+    with pytest.raises(ValueError, match="point-charge gradient"):
         qmmm.make_qm({"xtb_runmode": "Library"}, 4)
 
 
