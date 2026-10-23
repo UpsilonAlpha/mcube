@@ -384,6 +384,21 @@ level and details proposed, not yet decided)
   **30420815** Lu IOD, **30420816** Lu 1264; with 1000 K etemp too, `qm_ht/`: **30420817** La
   1264, **30420818** Lu IOD, **30420819** Lu 1264.
 
+**F8 – The g-xTB build of xtb silently ignores point charges.** (2026-10-23, `docs/channel/gxtb/`)
+- g-xTB v2.0.1 (grimme-lab release, `xtb-6.7.1-gxtb-140526-linux-x86_64.tar.xz`, sha256 checked)
+  is in `/scratch/user/uquadhik/opt/gxtb/xtb-6.7.1/bin/xtb`. Its README lists `$pcem` as
+  unsupported, and no ASH branch adds anything (`NEW` and `master` are the same; `dev` is from 2021).
+- Given the same ORCA-style `pcharge` + `$embedding` input ASH writes, `xtb --gxtb` runs, prints
+  no warning, and returns the gas-phase energy to every digit (La³⁺ S1 −718.735593 Eh both ways).
+  **So ASH's `xTBTheory(xtbmethod="gxtb")` in QM/MM would quietly be mechanical embedding.**
+  Never use it with electrostatic embedding until g-xTB supports `$pcem`.
+- g-xTB counts no valence electrons on the Ln³⁺ (72 for La³⁺·9H₂O, i.e. 8 per water), like GFN2;
+  in the smoke frames its gaps are ~9–11 eV against GFN2's 3.8–5.2 eV (a range-separated-hybrid
+  target, so gaps are not comparable in absolute terms; what matters is whether they collapse).
+- The cluster test (`cluster_test.py`, frames from the failing GFN2 xTB/MM runs LA_1264/qmmm and
+  LU_1264/qmmm, last frame included; S1, S1 in the box's TIP3P charges for GFN2 and r2SCAN, S2;
+  gas-phase S1 optimisations) against r2SCAN/def2-SVP: **30421227** (`channel/gxtb/gx_test/`).
+
 ## Planned checks, not yet done
 
 - Q1: answered 2026-10-22 (`docs/channel/probe_env.py` on bun147): the ASH env has Python 3.11.14,
