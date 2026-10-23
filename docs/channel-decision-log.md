@@ -487,6 +487,23 @@ level and details proposed, not yet decided)
   field — the thing being compared — would be missing, and the missing polarisation grows with
   the ion's charge (roughly q²), so the bias differs between 2+ and 3+. A full r2SCAN PMF is
   out of reach (7–9 ps/day per window on CPU).
+- **Carboxylate check, Ca and La done (30454349; it stopped at the first Lu species on an
+  unconverged SCF; rerun **30473610** reuses finished species, with damping, level shift and a
+  Newton fallback).** Gas phase, kcal/mol, each species optimised by each method:
+
+  | Reaction | 12-6-4 | r2SCAN | acetate O bound: MM / DFT |
+  |---|---|---|---|
+  | Ca, 1 water out | −186.8 | −204.0 | 2 / **1** (2nd O 3.52 Å) |
+  | Ca, 2 waters out | −171.8 | −178.7 | 2 / 2 |
+  | La, 1 water out | −280.9 | −287.9 | 2 / 2 |
+  | La, 2 waters out | −257.4 | −262.9 | 2 / 2 |
+
+  La − Ca: 2 waters out, MM −85.6 vs DFT −84.2 (agree to 1.4); 1 water out, MM −94.1 vs DFT −83.9
+  (MM 10 kcal/mol too favourable to La). The difference is a binding mode: r2SCAN binds Ca²⁺ by
+  one carboxylate O when a water is left in its place, 12-6-4 always by two. r2SCAN aqua
+  geometries: Ca–O 2.44 Å (8 waters), La–O 2.60 Å (9). No proton moved. Interim reading: the
+  ion ranking agrees where both methods have the same coordination, and MM can be wrong about
+  Ca²⁺'s coordination mode; Lu pending.
 - Plan (user, 2026-10-23): (1) MM 12-6-4 umbrella over the whole path as a quick first ranking,
   on the cropped barrel (110–130 removed) in POPE; (2) 12-6-4 vs r2SCAN on water → carboxylate
   exchange around each ion (`docs/channel/coord/`), to see whether MM ranks the ions the way
@@ -686,6 +703,17 @@ level and details proposed, not yet decided)
   core of the whole node. On a 2-core allocation the end-to-end test ran ~2050 threads and made
   no visible progress for minutes. The CPU platform now gets the stage's `cores` (else
   `$OMP_NUM_THREADS`, else `$SLURM_CPUS_PER_TASK`), as every other mcube stage does.
+
+**F9 – preprocess could not read residue numbers past 9999.** (2026-10-23, fixed in 05bdd7c)
+- All three per-ion jobs (30463653/55/56) died in 15 s in `find_coordinators`: "invalid literal
+  for int(): 'B66D'". The membrane box has ~20k waters, and OpenMM (so ASH and mcube) writes
+  residue numbers past 9999 in *shifted hexadecimal* (`pdbfile._formatIndex`: 10000 → `A000`,
+  10501 → `A1F5`), not hybrid-36, and decodes them on reading. `coordination_shell` and
+  `atom_names` read columns 23–26 as plain text. New `preprocess.pdb_resseq` inverts OpenMM's
+  encoding (unique up to 34576 residues per chain); `tests/test_pdb_resseq.py` checks it against
+  OpenMM's own reading of a 12k-water file (passes in the ASH env). Any metal preprocess with
+  `skip_solvate` on a large box hit this; fresh solvation never did. Resubmitted:
+  **30473607** Ca, **30473608** La, **30473609** Lu.
 
 **C12 – Implement 12-6-4 as `metal_parameters: 1264`.** (user, 2026-10-22; implemented on branch `umbrella`)
 - No reason not to: the IOD 12-6 set under-binds 3+ ions, and the user asked.
