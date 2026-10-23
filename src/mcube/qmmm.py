@@ -31,6 +31,7 @@ from . import ions
 from .preprocess import (
     resolve_cores,
     save_result,
+    save_input,
     load_section,
     build_qm_region,
     qm_region_settings,
@@ -89,6 +90,43 @@ ATOM_KEYS = ("actregion_origin", "opt_constraints", "atoms", "atoms2", "constrai
 def resolve_stage_atoms(inputs: Dict[str, Any], mm) -> Dict[str, Any]:
     """Atom selectors in a stage's inputs -> indices, using the MM topology."""
     return resolve_atom_inputs(inputs, mm.topology, ATOM_KEYS)
+
+
+def resolve_start_structure(config: str, section: str, inputs: Dict[str, Any],
+                            md_results: Dict[str, Any], pdb_arg: Optional[str]):
+    """The structure this stage runs on, and where it came from.
+
+    Precedence: `--pdb`, then this section's `pdb_file`, then the md stage's
+    `lastframe`. That last one is a convenience for the usual
+    preprocess -> md -> qmmm chain, and it is refused when it reaches outside
+    the config's own directory, because it is then almost certainly a frame
+    from a different run - and QM/MM started on the wrong structure converges
+    and looks entirely normal, so nothing downstream would catch it.
+    """
+    for value, source in ((pdb_arg, "--pdb"),
+                          (inputs.get("pdb_file"), f"{section}.inputs.pdb_file"),
+                          (md_results.get("lastframe"), "md.results.lastframe")):
+        if value:
+            break
+    else:
+        raise KeyError(
+            "No starting structure for the qmmm stage. Set `pdb_file` in "
+            f"`{section}.inputs`, pass `--pdb`, or run the `md` stage first so that "
+            "`md.results.lastframe` exists.")
+    path = Path(value)
+    if not path.is_file():
+        raise FileNotFoundError(
+            f"Starting structure named by {source} does not exist: {value}")
+    if source == "md.results.lastframe":
+        home = Path(config).resolve().parent
+        if home not in path.resolve().parents:
+            raise ValueError(
+                f"The qmmm stage would fall back to {value} (md.results.lastframe), "
+                f"which is outside this config's directory {home}. That is usually a "
+                "frame from another run, and QM/MM started on the wrong structure "
+                "converges and looks fine, so set `pdb_file` in "
+                f"`{section}.inputs` to the frame you mean, or pass --pdb.")
+    return path.resolve().as_posix(), source
 
 
 def stage_inputs(config: str, base: str, section: Optional[str] = None) -> Dict[str, Any]:
@@ -482,7 +520,11 @@ def run(args) -> Dict[str, Any]:
     inputs = stage_inputs(args.config, "qmmm", section)
     md_results = md.get("results") or {}
 
-    pdb_file = getattr(args, "pdb", None) or inputs.get("pdb_file") or md_results.get("lastframe")
+    pdb_file, pdb_source = resolve_start_structure(
+        args.config, section, inputs, md_results, getattr(args, "pdb", None))
+    print(f"[INFO] Starting structure: {pdb_file} (from {pdb_source})")
+    if not inputs.get("pdb_file"):
+        save_input(args.config, section, "pdb_file", pdb_file)
 
     forcefields, implicit = mm_settings(inputs, md)
 
@@ -499,6 +541,8 @@ def run(args) -> Dict[str, Any]:
     result: Dict[str, Any] = {
         "qm_atoms": qm_atoms,
         "boundary_excluded": boundary_excluded,
+        "pdb_file": pdb_file,
+        "pdb_file_source": pdb_source,
     }
     result["qm_level"] = qm_level_label(inputs)
     result["metal_parameters"] = apply_stage_metal_parameters(inputs, preprocess, md, mm,

@@ -137,6 +137,30 @@ def save_result(
     return str(path)
 
 
+def save_input(config: str, section: str, key: str, value) -> None:
+    """Write one resolved input back into the config, pinning a rerun to it.
+
+    Stages resolve some inputs from elsewhere - a structure from the previous
+    stage, say. Recording the resolved value makes that choice visible in the
+    config instead of implicit in the code, and stops the next run quietly
+    resolving it to something else. Inherited like any other input: a section
+    meaning a different value sets its own.
+    """
+    path = Path(config)
+    with _locked(path):
+        with open(path) as fh:
+            data = yaml.safe_load(fh) or {}
+        node = data.setdefault(section, {})
+        if not isinstance(node.get("inputs"), dict):
+            node["inputs"] = {}
+        node["inputs"][key] = value
+        tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+        with open(tmp, "w") as fh:
+            yaml.safe_dump(data, fh, sort_keys=False, default_flow_style=False)
+        tmp.replace(path)
+    print(f"[INFO] Pinned {section}.inputs.{key} → {value}")
+
+
 @contextmanager
 def _locked(path: Path):
     """Exclusive lock on `<config>.lock` (POSIX; no-op where fcntl is missing)."""
