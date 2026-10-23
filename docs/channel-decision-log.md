@@ -20,8 +20,8 @@ channel, built with mcube's existing stages as closely as possible.
 - *QM level:* xTB/MM is out for every ion here (F7: GFN2 dynamics tears a first-shell water
   apart; Ca²⁺ fails too). g-xTB has no point-charge embedding (F8) and is set aside for Ca²⁺ vs
   Ln³⁺ (C17). The QM level at the constriction is r2SCAN/def2-SVP DFT/MM (C16 as revised by
-  C17); GPU DFT (gpu4pyscf, already installed) is to be benchmarked to make sampling there
-  affordable.
+  C17), with La and Lu on 4f-in-core lcecp-1-SVP pseudopotentials (C19); GPU DFT (gpu4pyscf,
+  installed, CUDA 12 libraries missing: F11) is to be benchmarked.
 - *Model checks:* 12-6-4 reproduces Amber exactly (F5); Ca²⁺ and La³⁺ bulk shells are on target;
   Lu³⁺ 12-6-4 gives CN 7.6 in OpenMM and in Amber's own sander (F4) against 9.0 in the paper's
   SI, so the gap is not our code. Whether 12-6-4 ranks the ions' carboxylate binding like r2SCAN
@@ -539,6 +539,24 @@ level and details proposed, not yet decided)
   ~7 Å above the extracellular loops, and the two bulks meet across the periodic boundary).
   Preprocess + md (0.5 ns NPT, 0.5 ns NVT, shell restrained) + pull: **30463653** Ca,
   **30463655** La, **30463656** Lu.
+
+**C19 – La and Lu both on 4f-in-core pseudopotentials (lcecp-1-SVP).** (user, 2026-10-24)
+- def2-SVP pairs La with a 46-electron core (4f⁰, nothing in the 4f shell) and Lu with a
+  28-electron core (4f¹⁴ explicit), so a La/Lu comparison mixed two treatments, and every Lu
+  r2SCAN SCF in the carboxylate check failed to converge (F11), the seven filled near-degenerate
+  4f orbitals being the likely cause. Lu³⁺'s 4f¹⁴ is chemically inert; 4f-in-core
+  pseudopotentials (Dolg–Stoll type, the lanthanide contraction built into the core) are standard
+  for closed-shell Ln³⁺ coordination and hydration. Cost: 4f core polarisation and any small 4f
+  share in bonding are dropped.
+- BSE carries the **lcecp-1** family (`docs/channel/dft/find_ecp.py`): La core 46, Lu core 60,
+  def2-style valence bases. With `lcecp-1-SVP` both Ln³⁺ have 8 explicit electrons and 33 AOs.
+  H, C, N, O, S and Ca stay def2-SVP.
+- File: `/scratch/user/uquadhik/channel/dft/def2-svp_lcecp1.nw` (`bse_basis.py --override
+  La,Lu=lcecp-1-SVP`). Every lanthanide DFT/MM from now on passes it as `dft_basis_file` and
+  `dft_ecp_file`; the def2-SVP numbers for La (C16 benchmark, the C17 Ca/La table) are on the
+  old basis.
+- Carboxylate check rerun with it, La and Lu recomputed (Ca, water, acetate reused):
+  **30526116** (the def2 Lu redo 30523294 was cancelled).
 
 ## Findings
 
