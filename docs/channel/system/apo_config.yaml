@@ -1,0 +1,27 @@
+# The cropped channel (residues 131-373; mcube residue i = channel residue i + 130, so Glu300
+# is A:170) in a POPE bilayer, without an ion: built once, equilibrated, and then each ion is
+# placed into its bulk water (system build step 2 in channel-us-plan.md).
+#
+#   mcube preprocess config.yaml ; mcube md config.yaml          (docs/channel/system/apo.slurm)
+preprocess:
+  inputs:
+    protein_pdb: channel_cropped_oriented.pdb   # orient.py --number-from 1: barrel on z, belt at 0
+    membrane: true
+    membrane_lipidtype: POPE                    # outer-membrane stand-in (C3)
+    ionic_strength: 0.15
+    pH: 7.4
+    default_forcefields:
+    - amber14/protein.ff14SB.xml
+    - amber14/tip3p.xml
+md:
+  inputs:
+    membrane: true
+    platform: CUDA
+    properties: {Precision: mixed}
+    cores: 8
+    temp: 310                                   # POPE melts near 25 C (C3)
+    npt_timestep: 0.002
+    npt_time: 2000
+    nvt_timestep: 0.004
+    nvt_time: 3000
+    traj_frequency: 2500

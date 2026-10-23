@@ -61,6 +61,9 @@ def main():
     p.add_argument("--crop", default="110-130", help="channel residues to remove, e.g. 110-130 ('' for none)")
     p.add_argument("--slab-thick", type=float, default=24.0, help="hydrophobic slab for --centre kd (Å)")
     p.add_argument("--centre", choices=["charge-gap", "kd"], default="charge-gap")
+    p.add_argument("--number-from", type=int,
+                   help="renumber the written residues from this (mcube wants 1..N per chain); "
+                        "the report keeps the channel numbering and gives the offset")
     p.add_argument("--out", required=True)
     args = p.parse_args()
 
@@ -123,10 +126,15 @@ def main():
     arom = sorted((round(z - best, 1), f"{n}{s}") for z, n, s in facing if n in ("TYR", "TRP", "PHE"))
     traj.xyz[0] = new / 10.0
     traj.unitcell_vectors = None
+    first = min(r.resSeq for r in top.residues)
+    if args.number_from is not None:
+        for k, r in enumerate(top.residues):
+            r.resSeq = args.number_from + k
     traj.save_pdb(args.out)
     report = {"pdb": str(Path(args.pdb).resolve()), "out": str(Path(args.out).resolve()),
               "cropped": args.crop, "residues": top.n_residues,
-              "first_residue": min(r.resSeq for r in top.residues),
+              "first_residue": first,
+              "written_numbering_offset": (first - args.number_from) if args.number_from is not None else 0,
               "strands": len(runs), "centre_method": args.centre, "belt_shift_A": round(best, 1),
               "charge_free_span_A": [round(gap_lo - best, 1), round(gap_hi - best, 1)],
               "charge_free_length_A": round(gap_len, 1),
