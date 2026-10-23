@@ -9,6 +9,26 @@ the decision, why, the evidence, and whether to revisit it. Same format as
 **Aim.** Potentials of mean force for a light and a heavy lanthanide and for Ca²⁺ crossing the
 channel, built with mcube's existing stages as closely as possible.
 
+**Current state (2026-10-23; read this first, then the entries it points to).**
+- *Question (C17):* is the channel better suited to Ca²⁺ or to Ln³⁺, and if Ln³⁺, La³⁺ or Lu³⁺?
+  Relative free energies across the constriction (dehydration plus coordination) answer it.
+- *Protein (C1, C2, protein.md):* BD122_14570, a DUF6662 12-strand outer-membrane barrel of
+  *B. diazoefficiens*, next to lanmodulin and a lanthanide ABC importer; AF2 monomer (pLDDT
+  96.7), no trimer. Glu300, the most conserved lumen residue, lines the constriction.
+- *System (C18):* residues 110–130 cropped, oriented, in POPE (equilibrated); Ca²⁺, La³⁺, Lu³⁺
+  placed in periplasmic bulk; MM 12-6-4 umbrella runs (−35 to +35 Å, 1 Å, 2 ns) in progress.
+- *QM level:* xTB/MM is out for every ion here (F7: GFN2 dynamics tears a first-shell water
+  apart; Ca²⁺ fails too). g-xTB has no point-charge embedding (F8) and is set aside for Ca²⁺ vs
+  Ln³⁺ (C17). The QM level at the constriction is r2SCAN/def2-SVP DFT/MM (C16 as revised by
+  C17); GPU DFT (gpu4pyscf, already installed) is to be benchmarked to make sampling there
+  affordable.
+- *Model checks:* 12-6-4 reproduces Amber exactly (F5); Ca²⁺ and La³⁺ bulk shells are on target;
+  Lu³⁺ 12-6-4 gives CN 7.6 in OpenMM and in Amber's own sander (F4) against 9.0 in the paper's
+  SI, so the gap is not our code. Whether 12-6-4 ranks the ions' carboxylate binding like r2SCAN
+  is the open check (C17, `docs/channel/coord/`; C12 already warned that the α-scaled C4 may
+  over-bind carboxylates).
+- *Superseded:* C5's xTB/MM QM leg and xTB→DFT reweighting, and C16's "xTB/MM for the rest".
+
 **The protein, in one page:** [channel/protein.md](channel/protein.md). It is BD122_14570, a
 DUF6662 outer-membrane β-barrel of *B. diazoefficiens*, encoded next to lanmodulin in a
 lanthanide methylotrophy cluster.
@@ -164,6 +184,8 @@ lanthanide methylotrophy cluster.
 
 **C5 – Hybrid: MM umbrella sampling over the full path, QM/MM umbrella sampling over the
 constriction, MM→QM/MM reweighting, then xTB→DFT single-point reweighting.** (user, 2026-10-22)
+- *Superseded in part (2026-10-23):* the MM leg and the stitching stand; the xTB/MM leg does not
+  (F7), and the QM level at the constriction is r2SCAN DFT/MM (C17).
 - Why: QM/MM windows can afford ~10–20 ps at ~1.4–2 s per step (`running-on-bunya.md`), while
   first-shell water exchange for these ions is on the ns scale, so QM/MM alone cannot sample
   dehydration. MM supplies the sampling; QM/MM corrects the chemistry where it matters.
@@ -418,6 +440,8 @@ constriction, MM→QM/MM reweighting, then xTB→DFT single-point reweighting.**
 
 **C16 – DFT/MM for the desolvation step; xTB/MM for the rest of the QM/MM leg.** (user, 2026-10-23;
 level and details proposed, not yet decided)
+- *Revised (C17, 2026-10-23):* xTB/MM is out everywhere (F7), so the QM/MM leg is the
+  constriction only, at r2SCAN DFT/MM; the rest of the path is MM 12-6-4.
 - Why: xTB is an approximation that, for Ln³⁺ aqua ions, shortens Ln–O by up to 0.1 Å and loses
   SCC convergence after a few ps (F4). Desolvation is the step the PMF turns on, so it gets a
   proper DFT; the parts of the path where the hydration shell is intact stay at xTB/MM.
@@ -627,7 +651,8 @@ level and details proposed, not yet decided)
 
 ## Planned checks, not yet done
 
-- Q1: answered 2026-10-22 (`docs/channel/probe_env.py` on bun147): the ASH env has Python 3.11.14,
+- Q1: answered 2026-10-22 (`docs/channel/probe_env.py` on bun147; the one-off probe was retired
+  2026-10-23 and is in git history up to 7ab4f1d): the ASH env has Python 3.11.14,
   **OpenMM 8.4 with Reference, CPU and CUDA** (no HIP, no OpenCL), pyscf 2.13.0, mdtraj 1.11.1;
   pymbar, openmm-plumed and basis_set_exchange are absent. Jobs import mcube from the scratch
   checkout (`PYTHONPATH=$S/mcube/src`), and `mcube.umbrella` and `mcube.ions` import there.
@@ -636,8 +661,10 @@ level and details proposed, not yet decided)
   the same stock radii as the local copy (F2 holds on Bunya: La³⁺ Rmin/2 1.758, Lu³⁺ 1.625 Å).
 - Q3: one QM/MM window in the membrane system: timing, energy drift, box stability (QM/MM in a
   membrane has never been run in mcube).
-- Q4: pore radius profile of the AF2 model before planning windows.
-- Q5: answered (`docs/channel/probe_amber.sh`). AmberTools lives inside the ASH conda env
+- Q4: answered 2026-10-23 (`docs/channel/af2/pore.py`, C2): radius 0.8–1.1 Å over z −14…−5 Å
+  with the N-terminal segment in the lumen; 2.3–3.9 Å elsewhere. With 110–130 cropped (C18) the
+  constriction is Glu300's ring; its radius in the cropped, equilibrated model is still to measure.
+- Q5: answered (`docs/channel/probe_amber.sh`, retired 2026-10-23, in git history up to 7ab4f1d). AmberTools lives inside the ASH conda env
   (`$CONDA_PREFIX/dat/leap/parm`; there is no amber module). Its `frcmod.ions234lm_1264_tip3p`
   holds all +2/+3/+4 rows; every +3/+4 row equals what was vendored, and the +2 rows (Ca²⁺ 1.642 Å,
   0.10185975 kcal/mol) were added. Its `lj_1264_pol.dat` (sha256 9a64b54f...) is **newer than the

@@ -11,7 +11,10 @@ What the protein is (identity, gene neighbourhood, AF2 model, conservation): [ch
   `binder-physics/docs/BUNYA_BROWSER_SHELL.md` (authoritative for the browser bridge).
 - **Paths.** Local repo `Library/University/Year1/Structures/mcube`; on Bunya
   `/scratch/user/uquadhik/mcube` (pull, never type long payloads). Run directory on Bunya:
-  `/scratch/user/uquadhik/channel/` (not yet created).
+  `/scratch/user/uquadhik/channel/` (`af2/`, `bulk/`, `dft/`, `gxtb/`, `coord/`, `system/{apo,CA,LA,LU}/`).
+- **Each Claude session has its own browser pane.** After the pane is reopened the old
+  code-server terminal may silently run nothing: probe with `date > $S/.cc/s.log` and, if the
+  file does not change, open a new one (F1 → "Terminal: Create New Terminal").
 - **One agent drives the Bunya pane at a time.** Agents that only research or write code run in
   parallel and never touch the pane.
 - **Delegate wide reads.** ASH source, literature and long logs go to subagents that return a
@@ -21,15 +24,15 @@ What the protein is (identity, gene neighbourhood, AF2 model, conservation): [ch
 ## Pipeline
 
 ```
-0 fold      AF2 (alphafold_custom), monomer + trimer, mature chain        C1, C2
-1 orient    barrel axis on z, aromatic girdles at ±~12 Å                   
-2 preprocess membrane: true, POPE, metals: [<ion>], ion in protein_pdb    C3, C8
-3 md        membrane NPT equilibration (GPU), coordination restrained     C8
-4 umbrella  pull → windows → per-window MM sampling (GPU)                 C5–C7
-5 umbrella  QM/MM windows over the constriction (CPU xTB)                 C5, C9
-6 sp        DFT single points on sampled QM/MM frames                     C5
-7 analysis  WHAM/MBAR, MM→QM/MM and xTB→DFT reweighting                   C5
+0 fold      AF2 monomer, mature chain (done)                              C1, C2
+1 orient    crop 110-130, barrel on z, charge-free belt at 0 (done)       C18
+2 preprocess apo in POPE (done); per ion, ion in bulk + skip_solvate      C3, C8, C18
+3 md        membrane NPT, then short md per ion with the shell restrained  C8
+4 umbrella  pull → MM 12-6-4 windows over the whole path (GPU)            C5–C7, C17
+5 umbrella  r2SCAN DFT/MM windows over the constriction only              C16, C17
+6 analysis  WHAM; MM↔DFT/MM stitching (BAR) at the constriction ends      C5
 ```
+xTB/MM (and the xTB→DFT reweighting) is no longer part of the plan: F7, F8, C17.
 
 ## System build per ion
 
@@ -68,19 +71,18 @@ Order of operations for one ion:
 2. `wham` on the MM leg; read the overlap warnings and add windows where they are flagged.
 3. Choose `qm_residues` from the MM windows around the constriction (the residues that ever
    coordinate), then every `umbrella_qmmm` window.
-4. `energies --level mm` and `--level xtb` on the MM and QM/MM windows at both ends of the QM/MM
+4. `energies --level mm` and `--level dft` on the MM and DFT/MM windows at both ends of the QM/MM
    range; `wham --section umbrella_qmmm`; `stitch`. Read the cycle closure.
-5. `energies --level dft --stride K` on the QM/MM windows, then `wham --section umbrella_qmmm
-   --reweight dft`.
+5. (Superseded) `energies --level xtb` and `--reweight dft` belonged to the xTB/MM leg, which
+   is out (F7); with `umbrella_qmmm` run at DFT/MM (`qm_engine: dft`) there is nothing to reweight.
 
 ## Status
 
 | step | state |
 |---|---|
-| decisions C1–C14, F1–F2 recorded | done 2026-10-22 |
-| ASH biasing / PLUMED / GPU check | done from source (C10, C11); no HIP in the ASH env, MD on gpu_cuda |
-| literature, lanthanide partner, 12-6-4 | done (C4, C5, C12); La³⁺ vs Lu³⁺ chosen |
-| `umbrella.py`, 12-6-4, F1 fix | on `fix/pipeline-review` and on Bunya; 168 tests pass in the ASH env; no QM/MM window run yet (Q6) |
-| Bunya probes Q1, Q2, Q5 | done 2026-10-22; +2 12-6-4 rows and the AmberTools polarisability table added |
-| fold | queued on A100: 30410203 (monomer), 30410204 (trimer); MI355X cannot run AF2 |
-| bulk ion check (C15) | La 1264, Lu IOD, Lu 1264 done (decision log); Ca IOD/1264, La IOD rerunning (30416201–03); xTB/MM SCC fixes on trial (30416204–09) |
+| `umbrella.py`, 12-6-4, F1 fix | done, on `fix/pipeline-review` and Bunya; 168 tests pass in the ASH env; no QM/MM window run yet (Q6) |
+| fold, protein identity | done: AF2 monomer (trimer not supported); BLAST, neighbourhood, conservation in `channel/protein.md` |
+| bulk ion check (C15, F4) | Ca 1264, La 1264, La IOD, Lu IOD, Lu 1264 done; Ca IOD rerunning (30450561); Lu CN 7.6 vs paper 9.0 confirmed in sander (30430922), OpenMM-on-prmtop (30430921) running |
+| QM level (F7, F8, C17) | xTB/MM out; g-xTB set aside; r2SCAN DFT/MM at the constriction; 12-6-4 vs r2SCAN carboxylate check running (30454349); GPU DFT benchmark to do |
+| system (C18) | apo POPE done (30455128); Ca/La/Lu placed; preprocess+md+pull queued (30463653/55/56) |
+| MM umbrella test | windows −35…+35 Å, 1 Å, 2 ns: after the pulls (`umbrella_windows.slurm`) |

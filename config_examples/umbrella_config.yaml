@@ -52,6 +52,9 @@ umbrella:
     platform: CUDA
     properties: {Precision: mixed}
 umbrella_qmmm:
+  # GFN2-xTB is shown here; for highly charged ions in water it can tear a first-shell water
+  # apart within ~10 ps (docs/channel-decision-log.md F7). The channel study runs this section at
+  # DFT/MM instead (qm_engine: dft with the dft_* keys, README).
   inputs:
     engine: qmmm
     z_start: -8.0
