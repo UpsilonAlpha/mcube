@@ -352,7 +352,9 @@ def main():
     q.add_argument("--every", type=int, default=20, help="steps between saved frames")
     q.add_argument("--cores", type=int, default=4)
     q.add_argument("--etemp", type=float, help="xTB electronic temperature (K)")
-    q.add_argument("--pc-hardness", type=float, help="xTB hardness of the MM point charges")
+    q.add_argument("--pc-hardness", type=lambda v: v if v == "elements" else float(v),
+                   help="xTB hardness of the MM point charges: a number (ASH default 1000, bare "
+                        "charges) or 'elements' (xTB's per-element hardness, smeared charges)")
     q.add_argument("--shell2", type=float, help="QM cutoff (A) taking in the second shell")
     q.add_argument("--dir", default="qmmm", help="subdirectory of --run for this QM/MM run")
     args = p.parse_args()
