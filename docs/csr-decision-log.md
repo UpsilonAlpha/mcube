@@ -1623,6 +1623,20 @@ I had argued that a distance restraint fixes only the radial coordinate and ther
 
 **Status against the D98 test: metal site passes, attack angle fails.** And the substrate restraint was ON throughout, so even the distance is not yet shown to be stable - the release run remains the real test. The angle is now the open question, and the options are a longer run, restraining the angle too, or accepting it on the argument that a relaxed scan driving O01-C4x to 1.45 A must pass through a near-tetrahedral arrangement anyway, so the angle would be set by the chemistry rather than needing to pre-exist.
 
+**D101 - 100 ns equilibration submitted (job 30421166), and two corrections.** (2026-10-23)
+
+**The hydroxide surviving D100 meant nothing, and I reported it as if it did.** That run was pure MM, where protonation is fixed by the force field and no bond can break, so Lys226 keeping three protons was a property of the method rather than an observation about the chemistry. D96's transfer happened because **QM/MM** can break bonds. The comparison between the two was not a comparison at all.
+
+**GPU is for `md` only.** A QM/MM step is bottlenecked on xTB and copies positions off the device every step, so `qmmm`, `scan`, `neb` and `ts` stay on CPU with their cores parallelised - which is what the README already said and what the `md`-only `platform` settings in `nacgpu` and `naclong` reflect.
+
+**`md_naclong`: 100 ns NVT on an H100**, restraints as before, roughly 4-5 h at D100's measured rate. This matches the published equilibrations D92 found (Gervasoni 100 ns NVT, Guven 50, Lisa 10, Bahena-Mendez 10), with the restraints held throughout as Gervasoni also do.
+
+**`traj_frequency` is raised from 500 to 5000, and that was necessary rather than tidy.** At 500 with a 4 fs step a frame lands every 2 ps: over 100 ns that is 50,000 frames at 0.59 MB, and md writes a raw and a reimaged copy, so **~60 GB**. Scratch stood at 191/300 GB with three other projects writing into it, and an over-quota write fails *silently* - it leaves the existing file untouched rather than truncating, so a run looks finished and is not. At 5000 a frame lands every 20 ps: 5,000 frames, **~6 GB**, still ample for equilibration analysis, and the last frame is what feeds QM/MM either way.
+
+**This run also tests the prediction D100 disproved.** The attack angle sat at 80 degrees after 1 ns, essentially the docked value, where I had argued a distance restraint would leave it free to rotate into the Burgi-Dunitz window. 100 ns gives a hundred times the opportunity. If it still has not rotated, the angle is a property of the restrained pose rather than a matter of sampling, and `scan_attack` driving O01-C4x to 1.45 A becomes the way to reach a near-attack geometry rather than waiting for one.
+
+Incidental, on process: a 111-character command left the shell swallowing subsequent input, exactly the failure `BUNYA_BROWSER_SHELL.md` section 3 describes, and two silent no-ops followed before a fresh terminal fixed it. The ~100 character limit is not approximate.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
