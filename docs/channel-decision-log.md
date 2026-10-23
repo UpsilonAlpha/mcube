@@ -364,6 +364,21 @@ constriction, MM→QM/MM reweighting, then xTB→DFT single-point reweighting.**
      download (PMC interstitial), so the SI.4 row is still unchecked by hand. One untested
      explanation: Lu³⁺ sits near the CN 8/9 switch, so short runs started from a 9-coordinate
      shell can stay there; ours exchange 90 times per ns and are equilibrated.
+     **SI read by hand (Europe PMC supplementary archive, jp505875v_si_003.pdf):** Table SI.4,
+     TIP3P, Lu³⁺ HFE −839.3, IOD 2.34 Å, **CN 9.0**; La³⁺ 2.53 Å / 9.7. Every heavier Ln³⁺
+     (Nd–Lu) is 9.0. Their protocol (main text): ~722 waters, 1 fs, Langevin 5 ps⁻¹, 500 ps NPT,
+     2 ns sampling, 10 Å cutoff, PME, SHAKE, AMBER 12, CN by integrating g(r) to its first
+     minimum, i.e. what we replicated. Their own grid (Table SI.2a, TIP3P) puts Rmin/2 = 1.6 Å
+     with C4 = 500 at CN 8.4 and without C4 at 9.0, so Lu (1.625 Å, C4 249) should fall
+     between 8.4 and 9; **our 7.6 is below that bracket, as if our C4 acted larger than 249.**
+     The working assumption (user, 2026-10-23) is a fault on our side, not in the paper.
+     F5 cannot rule that out: it evaluated mcube *and* the Amber-built prmtop in OpenMM, so a
+     fault in how OpenMM evaluates the C4 term would pass it.
+     Decisive test, `docs/channel/bulk/amber_crosscheck.py` (no mcube code; tleap + ParmEd
+     prmtop of the Lu box; paper protocol): **30430921** OpenMM on the prmtop, **30430922**
+     AmberTools sander with `lj1264 = 1` (confirmed on in its output; serial, 5.3 ns/day,
+     100 ps chunks). sander ≈ 9 and OpenMM 7.6 → the fault is in OpenMM's/our C4 evaluation;
+     both 7.6 → not our code, and the next step is asking the authors, not alleging an error.
   2. **The MM first shells exchange water about 10–100× faster than experiment** (known; it is why
      the hydration shell is restrained while the MM system is prepared for QM/MM, user): residence
      70–160 ps against ~2–25 ns for heavy Ln³⁺ (Cossy, Helm & Merbach 1988; Helm & Merbach 2005).
