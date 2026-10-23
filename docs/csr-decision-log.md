@@ -1671,6 +1671,24 @@ Fixed: both stages now use the configured runmode, and `make_qm` **refuses** `li
 
 **So the 50 ps QM/MM MD has to be costed at inputfile rates**, which is the open question for the NEB prep: 50,000 steps at 2.5-5.7 s is 35-79 h against a 24 h default walltime and nothing to restart from. Measuring the real rate with a short run is cheaper than discovering it at the walltime. The alternatives if it is too slow are a shorter equilibration, a 2 fs timestep, or adding a restart path to qmmm.
 
+**D102 - The 100 ns run at the 77% mark: site held, disk on budget, the angle question still open.** (2026-10-23 15:42 AEST, job 30421166, `CSR_nac`, section `md_naclong`)
+
+Checked mid-run, not after. `sacct` says **RUNNING** at 4 h 51 min elapsed, step 19,240,000 = **76.96 of 100 ns**. The "done or close" expectation was half right: close, not done. ETA ~17:06 at the rate below.
+
+**Disk is on budget, so nothing here is a silent-truncation artefact.** `md_naclong_results` is **3.4 GB at 77%**, projecting ~4.4 GB against the ~6 GB expected and the ~60 GB that `traj_frequency: 500` would have written - the raise to 5000 (D101) does what it was for. Scratch **206/300 GB**, 385k/1M files, ~94 GB of headroom.
+
+**The site was held: six restraints, five of them metal.** From the .out, all at 50 kcal/mol/Å², `Using platform: CUDA`. `[4255, 4208, 3.47]` is the one chosen restraint; the other five are Zn (atom 4203) to 4257, 2451, 4255, 1349 and 1414 at 1.90, 2.09, 2.14, 2.22 and 2.80 Å. `coordination_start`:
+
+    B:1:ZN  D:1:O      HOH  1.90        B:1:ZN  A:88:NE2  HIS  2.22
+    B:1:ZN  A:164:NE2  HIS  2.09        B:1:ZN  A:92:OD2  ASP  2.80
+    B:1:ZN  C:2:O01    OH   2.14
+
+That also pins the numbering: **4255 is O01**, the Zn-bound hydroxide. So the chosen restraint is O01-C4x as intended, and 4255 carries both its Zn bond (2.14 Å) and the 3.47 Å restraint.
+
+**Throughput is about half D100's benchmark, and undiagnosed.** 76.96 ns in 291 min is **~16.5 ns/h, ~395 ns/day**, against the **845 ns/day** measured in D100 on the same H100. Candidates, none tested: trajectory and state reporting, which the 1 ns benchmark's per-ns cost never carried; the restraint force itself; and D100 being too short to amortise setup. It does not threaten the 12 h limit, so this is an efficiency question, not a risk to the run.
+
+**The question the run was submitted to answer is still unanswered, and is not guessed at here.** `coordination_end`, the "coordination sphere changed during MD" block and `NVTtrajectory_lastframe.pdb` are all written at the end - the lastframe path returns 404 now - so `site.py sphere` and `nucleophiles` cannot run and the attack angle is unmeasured. Whether 100x the sampling rotates it from 80° into the 95-120° Burgi-Dunitz window, or confirms it as a property of the restrained pose (making `scan_attack` the way to reach a near-attack geometry rather than waiting for one), needs the finished run. The restraint was on throughout either way, so the release run remains the real test of whether the complex holds. Nothing was submitted.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
