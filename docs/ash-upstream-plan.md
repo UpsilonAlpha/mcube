@@ -41,9 +41,9 @@ Checked against the sources, not assumed:
 
 | call | status |
 | --- | --- |
-| `xtb_setExternalCharges(env, calc, n, numbers[n], charges[n], positions[n][3])` | in upstream `xtb.h` since 2.0.0 |
-| `xtb_releaseExternalCharges(env, calc)` | in upstream `xtb.h` since 2.0.0 |
-| `xtb_getPCGradient(env, res, gradient[n][3])` | in upstream `xtb.h` since 2.0.0 |
+| `xtb_setExternalCharges(env, calc, n, numbers[n], charges[n], positions[n][3])` | in upstream `xtb.h` since 6.3.3 or earlier |
+| `xtb_releaseExternalCharges(env, calc)` | in upstream `xtb.h` since 6.3.3 or earlier |
+| `xtb_getPCGradient(env, res, gradient[n][3])` | in upstream `xtb.h` since **6.5.0**, API 1.0.0 |
 | `Calculator.set_external_charges(...)` | **wrapped** in xtb-python |
 | `Calculator.release_external_charges()` | **wrapped** in xtb-python |
 | `Results.get_pc_gradient(...)` | **absent** |
@@ -64,12 +64,19 @@ to the maintainer and the patch is worthless if they go the other way:
 
 1. **Header.** Add one declaration, or refresh the vendored header wholesale?
    `meson.build:36` already carries `# TODO: replace with include/_xtb.h`. Adding
-   one declaration has no correct version suffix macro available — the vendored
-   header defines only `XTB_API_SUFFIX__VERSION_6_3_0` and pins
-   `XTB_API_VERSION 10000`.
-2. **Minimum xtb.** `xtb_getPCGradient` arrived in API 2.0.0 (xtb 6.6.0), but
-   `meson.build:32` falls back to `xtb-6.5.1`, which predates it, so a
-   declaration would likely fail at link time without bumping the wrap.
+   one declaration has no correct suffix macro available: upstream renamed
+   `XTB_API_SUFFIX__VERSION_6_3_0` to `..._VERSION_1_0_0` by 6.4.1, and the
+   vendored copy still defines only the old spelling. Its
+   `XTB_API_VERSION 10000` is *not* evidence of staleness - upstream v6.5.1
+   says 10000 too; what is stale is the suffix spelling and the symbol list.
+2. **Minimum xtb - settled, and we had it wrong.** `xtb_getPCGradient` arrived
+   in **xtb 6.5.0** under API 1.0.0, not 6.6.0/2.0.0: declared at
+   `include/xtb.h:264` in v6.5.0 alongside `XTB_API_VERSION 10000`, and absent
+   in v6.4.1. The `VERSION_2_0_0` suffix on xtb `main` is a blanket re-stamp of
+   every function in the header, not an introduction version, and we read the
+   introduction version off it. So `meson.build:32`'s `xtb-6.5.1` fallback
+   already exports the symbol and **no wrap bump is needed**. The version claim
+   in xtb-python#130 is wrong and needs retracting there.
 3. **Signature.** `Results` cannot know the point-charge count and the C API has
    no `xtb_getNumPC`, so the count is either an explicit argument or cached at
    `set_external_charges` time. Caching is a trap: `singlepoint()`'s `copy=False`
