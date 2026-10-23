@@ -726,8 +726,9 @@ level and details proposed, not yet decided)
   frame) would hit the same thing for any lipid; worth a note there.
 - GPU queue (2026-10-24): `gpu_cuda` estimated a 27 h wait (another project's 16 queued GPU jobs
   share our per-user `gpu` QOS of 4). `sxm` and `mig` were rejected; `gpu_viz` L40s (QOS `viz`,
-  2 per user) started at once and run OpenMM CUDA. Per-ion jobs now there: **30478619** La,
-  **30478620** Lu, **30478621** Ca (waits for a slot). `running-on-bunya.md` corrected.
+  2 per user, but the VS Code session holds one) started at once and run OpenMM CUDA. Per-ion
+  jobs: **30478619** La (running), **30478620** Lu (next `viz` slot), Ca moved to QOS `short` on
+  gpu_viz: **30481824** (estimated 03:07). `running-on-bunya.md` corrected.
 - Also: the g-xTB cluster test (30423347) hit its 12 h limit before the Lu frames; not rerun,
   since g-xTB is set aside (C17).
 
