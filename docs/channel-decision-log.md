@@ -445,6 +445,48 @@ level and details proposed, not yet decided)
   compares two different pseudopotential treatments; options are to accept it (it is the def2
   standard), or put Lu on a 4f-in-core ECP (MWB-type, 4f in core for both) for the comparison.
 
+**C17 – The question is relative selectivity, and the quantity is the free energy across the constriction.** (user, 2026-10-23)
+- Goal (user): not a publication-grade PMF, but which the channel suits better, Ca²⁺ or Ln³⁺,
+  and if Ln³⁺, light (La) or heavy (Lu). Relative numbers are enough.
+- What decides it: the free energy of taking the ion from the hydrated vestibule into the
+  constriction, i.e. dehydration *and* compensation by the site (Eisenman field strength; the
+  K⁺/Na⁺ and Ca²⁺ channel and metal-site literature say the same, from memory). Dehydration
+  alone would rank Ca²⁺ ≫ La³⁺ > Lu³⁺ for every channel (hydration free energies about −1500,
+  −3240, −3500 kJ/mol, Marcus). Both the barrier and any well matter; with Ca²⁺ in mM excess
+  over Ln, a selective well can matter as much as the barrier.
+- Why QM is still needed: 12-6-4 is fitted to water only. Its C4 toward carboxylate O is the
+  water value scaled by polarisability (O2 0.569 vs OW 1.444), unchecked for Glu-type
+  coordination, and MM has no charge transfer, which differs between Ca²⁺ and Ln³⁺. MM may
+  also sample the wrong binding mode, and then reweighting MM frames with DFT is invalid
+  without saying so. So at the constriction, QM has to drive the sampling, not only correct it.
+- g-xTB is not usable for Ca²⁺ vs Ln³⁺: it has no electrostatic embedding (F8), so the protein's
+  field — the thing being compared — would be missing, and the missing polarisation grows with
+  the ion's charge (roughly q²), so the bias differs between 2+ and 3+. A full r2SCAN PMF is
+  out of reach (7–9 ps/day per window on CPU).
+- Plan (user, 2026-10-23): (1) MM 12-6-4 umbrella over the whole path as a quick first ranking,
+  on the cropped barrel (110–130 removed) in POPE; (2) 12-6-4 vs r2SCAN on water → carboxylate
+  exchange around each ion (`docs/channel/coord/`), to see whether MM ranks the ions the way
+  DFT does: **30454349**; (3) GPU DFT for r2SCAN sampling at the constriction: gpu4pyscf 1.8.1
+  is already in the ASH env (cupy-cuda12x 13.6, numpy 1.26.4; the dry run installs nothing),
+  to be benchmarked. Fallback: alchemical Ca→La→Lu at the site and in water, r2SCAN-corrected
+  at the end states.
+
+**C18 – The system: cropped, oriented, POPE.** (2026-10-23)
+- `docs/channel/af2/orient.py` on the AF2 monomer: residues 110–130 removed, the rest renumbered
+  1..243 (mcube residue i = channel residue i + 130; Glu300 = A:170), barrel axis on z with the
+  periplasmic end down. The belt centre is the middle of the longest charge-free stretch of the
+  lipid-facing wall: −12 to +12 Å (23.9 Å, the usual outer-membrane hydrophobic thickness).
+  The lower aromatic girdle (Phe328, Phe167, Tyr203) sits at −11 to −9 Å and the upper one
+  (Trp345, Tyr237, Trp266, Tyr307) at +12 to +17 Å. A Kyte–Doolittle slab score had put the
+  centre 6 Å lower, pulled down by polar residues near the periplasmic turns, so it was not used.
+  Glu300's backbone is at z −1.8 Å, mid-membrane. The protein spans z −24 to +32 Å.
+- Apo build and equilibration (`docs/channel/system/apo_config.yaml`: POPE, 0.15 M NaCl,
+  310 K, 2 ns NPT + 3 ns production, GPU): **30455128**, run dir `channel/system/apo/`.
+- Per ion (`docs/channel/system/`): `insert_ion.py` swaps the water nearest a point on the pore
+  axis in periplasmic bulk for the ion (own chain) and removes 2 or 3 Na⁺; `ion_config.yaml`
+  (skip_solvate, 12-6-4, short md, umbrella 1 Å spacing, 2 ns windows for the quick test);
+  `ion.slurm` (preprocess, md, pull) and `umbrella_windows.slurm` (a block of windows per GPU).
+
 ## Findings
 
 **F1 – `qmmm` did not apply `metal_parameters`.** (2026-10-22; fixed on branch `umbrella`)
