@@ -47,6 +47,20 @@ channel, built with mcube's existing stages as closely as possible.
   **30410203 `af2_mono` (4 h)** and **30410204 `af2_trimer` (8 h)**. The script defaults to
   `gpu_cuda` A100 again; AMD is chosen on the sbatch line (MI300X or MI210, not MI355X).
 
+- **Monomer result (30410203, 22 min on A100, `channel/af2/monomer/mature/`).** All five models
+  agree (pLDDT 95.6–96.7); ranked_0 = model_3, mean pLDDT 96.7 (255/264 residues ≥ 90), pTM 0.91.
+  `docs/channel/af2/pore.py` on ranked_0:
+  - a **closed 12-stranded β-barrel** (strands 133–143, 149–164, 167–181, 189–206, 214–226,
+    233–250, 254–269, 275–292, 295–308, 315–329, 334–348, 363–372; first and last strand Cα
+    4.35 Å apart), Cα radius 12.2 Å. This supports C1 (an OMP β-barrel).
+  - residues 110–132 (the N-terminal 23, coil, pLDDT ~87) **thread into the lumen** and narrow it.
+    Pore radius (heavy atoms, vdW radii) is 0.8–1.1 Å over 9 Å of the axis (z −14 to −5 Å), lined
+    by Phe119, Met122, Ala286 and Glu300, and 2.3–3.9 Å over the rest of the membrane span.
+  - So in this model the channel is **not open to a hydrated ion**, and only marginally to a bare
+    one (ionic radii: Ca²⁺ 1.00–1.12 Å, La³⁺ 1.03–1.22 Å, Lu³⁺ 0.86–0.98 Å). A permeation path
+    needs the N-terminal segment to move, or the trimer to differ. Pending: the trimer (30410204),
+    and whether to fold without 110–132 or pull it out of the lumen in MD.
+
 **C3 – Bilayer: POPE, single lipid type, at 310 K.** (2026-10-22; open)
 - mcube already accepts `membrane_lipidtype: POPE` (`membrane.py:LIPID_TYPES`), but only POPC
   has been validated (`docs/membrane-validation.md`). A *mixed* POPE/POPC bilayer is not
