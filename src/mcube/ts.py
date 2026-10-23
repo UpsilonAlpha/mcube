@@ -135,7 +135,7 @@ def run(args) -> Dict[str, Any]:
     # Parallel NumFreq runs `workers` gradients at once, so give each fewer xTB threads
     qmmm_theory = make_qmmm(qmmm_inputs, mm, fragment, qm_atoms, boundary_excluded,
                             cores // workers if workers > 1 else cores,
-                            )   # not 'library': no QM/MM point charges there
+                            )   # not 'library': no QM/MM point-charge gradient there
 
     act_inputs = {**qmmm_inputs, **{k: inputs[k] for k in ("actradius", "actregion_origin") if k in inputs}}
     actatoms = resolve_actatoms(getattr(args, "actatoms", None), act_inputs, mm, fragment,

@@ -162,8 +162,8 @@ def run(args) -> Dict[str, Any]:
 
     check_same_system(args.reactant, args.product, react, prod)
 
-    # Not the xTB library: ASH's library path has no QM/MM point charges, so it would
-    # run every image without electrostatic embedding. Parallel images each get their
+    # Not the xTB library: ASH's library path cannot return a QM/MM point-charge
+    # gradient and calls ashexit() when asked for one. Parallel images each get their
     # own working directory from ASH, so inputfile mode does not collide.
     qmmm_theory = make_qmmm(qmmm_inputs, mm, react, qm_atoms, boundary_excluded, theory_cores)
 
