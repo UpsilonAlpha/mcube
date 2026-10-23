@@ -197,9 +197,24 @@ def load_section(filename: str, section: str) -> Dict[str, Any]:
     return data.get(section, {})
 
 
+def pdb_resseq(field: str) -> int:
+    """A PDB residue number (columns 23-26) as OpenMM writes and reads it.
+
+    OpenMM (and so ASH and mcube) writes residue numbers above 9999 in shifted
+    hexadecimal (`openmm.app.pdbfile._formatIndex`: 10000 -> "A000", 10501 -> "A1F5"),
+    so a membrane box with ~20k waters has residue fields like "B66D". Reading the
+    columns as plain integers then fails. This inverts that encoding; it is unique up to
+    10000 + 6 * 16**3 = 34576 residues per chain, past which OpenMM's own field wraps.
+    """
+    text = field.strip()
+    if text.isdigit():
+        return int(text)
+    return int(text, 16) - 10 * 16 ** 3 + 10 ** 4
+
+
 def atom_names(pdb_file: str) -> list:
     """["chain:resid:atom", ...] in file order: the inverse of a selector lookup."""
-    return ["%s:%s:%s" % (line[21], line[22:26].strip(), line[12:16].strip())
+    return ["%s:%d:%s" % (line[21], pdb_resseq(line[22:26]), line[12:16].strip())
             for line in open(pdb_file) if line.startswith(("ATOM", "HETATM"))]
 
 
@@ -330,7 +345,7 @@ def coordination_shell(pdb_file: str, inputs, radius=None, per_residue: bool = T
     for line in open(pdb_file):
         if line.startswith(("ATOM", "HETATM")):
             element = (line[76:78].strip() or line[12:16].strip()[:1]).upper()
-            rows.append((line[21], line[22:26].strip(), line[12:16].strip(),
+            rows.append((line[21], str(pdb_resseq(line[22:26])), line[12:16].strip(),
                          line[17:20].strip(), element,
                          (float(line[30:38]), float(line[38:46]), float(line[46:54]))))
         elif line.startswith("CRYST1"):

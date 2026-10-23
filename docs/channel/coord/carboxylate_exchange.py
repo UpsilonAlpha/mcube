@@ -218,19 +218,30 @@ def dft_optimise(atoms, charge, basis_file, cores, functional, maxsteps):
     mol = gto.M(atom=[(a[0], tuple(a[1])) for a in atoms], charge=charge, spin=0, basis=basis,
                 ecp=ecp, unit="Angstrom", verbose=0,
                 max_memory=int(os.environ.get("PYSCF_MAX_MEMORY", 60000)))
-    mf = dft.RKS(mol)
-    mf.xc = functional
-    mf.grids.level = 3
-    mf.conv_tol = 1e-9
-    mf = mf.density_fit()
+    def scf(m):
+        mf = dft.RKS(m)
+        mf.xc = functional
+        mf.grids.level = 3
+        mf.conv_tol = 1e-9
+        # a 3+ ion with the anion pulled close is hard to converge from the core guess:
+        # more cycles, damping, a small level shift, and Newton as the last resort
+        mf.max_cycle = 300
+        mf.damp = 0.3
+        mf.level_shift = 0.2
+        return mf.density_fit()
+
+    mf = scf(mol)
     if len(atoms) > 1:
-        conv, mol = geomopt(mf, maxsteps=maxsteps)
+        try:
+            conv, mol = geomopt(mf, maxsteps=maxsteps)
+        except RuntimeError as err:        # SCF failed inside an optimisation step
+            print(f"[WARN] optimisation stopped: {err}; trying second-order SCF", flush=True)
+            mf = scf(mol).newton()
+            conv, mol = geomopt(mf, maxsteps=maxsteps)
     else:
         conv = True
-    mf = dft.RKS(mol)
-    mf.xc = functional
-    mf.grids.level = 3
-    mf = mf.density_fit()
+    mf = scf(mol)
+    mf.level_shift = 0.0
     e = mf.kernel()
     xyz = mol.atom_coords(unit="Angstrom")
     return float(e) * HARTREE_KCAL, bool(conv and mf.converged), [(a[0], np.array(p)) for a, p in zip(atoms, xyz)]
@@ -280,15 +291,26 @@ def main():
     def save():
         Path("report.json").write_text(json.dumps(report, indent=1, default=str))
 
+    old = {}
+    if Path("report.json").exists():                 # resume: reuse finished species
+        old = json.loads(Path("report.json").read_text()).get("species", {})
+
     def run(name, atoms, ion, charge):
+        if name in old and ("E_dft" in old[name] or args.skip_dft):
+            report["species"][name] = old[name]
+            print(f"[{name}] reused", flush=True)
+            return old[name]
         t0 = time.time()
         e_mm, mm_atoms = mm_minimise(atoms, ion, args.set)
         row = {"E_mm": round(e_mm, 3), "mm_geometry": geometry_report(mm_atoms) if ion else None}
         if not args.skip_dft:
-            e_dft, conv, dft_atoms = dft_optimise(mm_atoms, charge, basis_file, args.cores,
-                                                  args.functional, args.maxsteps)
-            row.update({"E_dft": round(e_dft, 3), "dft_converged": conv,
-                        "dft_geometry": geometry_report(dft_atoms) if ion else None})
+            try:
+                e_dft, conv, dft_atoms = dft_optimise(mm_atoms, charge, basis_file, args.cores,
+                                                      args.functional, args.maxsteps)
+                row.update({"E_dft": round(e_dft, 3), "dft_converged": conv,
+                            "dft_geometry": geometry_report(dft_atoms) if ion else None})
+            except Exception as err:               # record it and carry on with the others
+                row["dft_error"] = repr(err)[:300]
         row["seconds"] = round(time.time() - t0, 1)
         report["species"][name] = row
         print(f"[{name}]", json.dumps(row), flush=True)
@@ -304,7 +326,7 @@ def main():
         for k, nw in (("w-1", 1), ("w-2", 2)):
             rx = {}
             for m in ("E_mm", "E_dft"):
-                if m in sp[k]:
+                if all(m in x for x in (sp[k], sp["aqua"], water, acetate)):
                     rx[m.replace("E_", "dE_")] = round(sp[k][m] + nw * water[m] - sp["aqua"][m] - acetate[m], 2)
             report["reactions"][f"{ion}_{k}"] = rx
         save()
