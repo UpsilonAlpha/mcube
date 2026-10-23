@@ -42,6 +42,7 @@ def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--pdb", required=True)
     p.add_argument("--result", help="AF2 result_*.pkl, for pTM / ipTM")
+    p.add_argument("--chain", type=int, help="analyse this chain only (0-based), e.g. one barrel of a multimer")
     p.add_argument("--first-residue", type=int, default=110, help="sequence number of residue 1")
     p.add_argument("--half-length", type=float, default=30.0, help="profile from -L to +L (Å)")
     p.add_argument("--out", required=True)
@@ -49,11 +50,17 @@ def main():
 
     import mdtraj
     traj = mdtraj.load(args.pdb)
+    chain_atoms = None
+    if args.chain is not None:
+        chain_atoms = traj.topology.select(f"chainid {args.chain}")
+        traj = traj.atom_slice(chain_atoms)
     top = traj.topology
     xyz = traj.xyz[0] * 10.0
     ca = np.array([a.index for a in top.atoms if a.name == "CA"])
     plddt = np.array([float(l[60:66]) for l in Path(args.pdb).read_text().splitlines()
                       if l.startswith("ATOM") and l[12:16].strip() == "CA"])
+    if args.chain is not None:
+        plddt = plddt[args.chain * len(ca):(args.chain + 1) * len(ca)]
 
     dssp = mdtraj.compute_dssp(traj, simplified=True)[0]
     runs = strands(dssp)
