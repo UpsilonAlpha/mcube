@@ -1689,6 +1689,41 @@ That also pins the numbering: **4255 is O01**, the Zn-bound hydroxide. So the ch
 
 **The question the run was submitted to answer is still unanswered, and is not guessed at here.** `coordination_end`, the "coordination sphere changed during MD" block and `NVTtrajectory_lastframe.pdb` are all written at the end - the lastframe path returns 404 now - so `site.py sphere` and `nucleophiles` cannot run and the attack angle is unmeasured. Whether 100x the sampling rotates it from 80° into the 95-120° Burgi-Dunitz window, or confirms it as a property of the restrained pose (making `scan_attack` the way to reach a near-attack geometry rather than waiting for one), needs the finished run. The restraint was on throughout either way, so the release run remains the real test of whether the complex holds. Nothing was submitted.
 
+**D102 completed (2026-10-23 21:09 AEST).** `sacct`: **COMPLETED**, exit 0:0, elapsed **06:19:45** (10:50:54 to 17:10:39), final step 25,000,000 = **100.000 ns**. Throughput confirmed at **~379 ns/day** against D100's 845 ns/day on the same H100, so that gap is real and still undiagnosed.
+
+**The mid-run disk projection was wrong, and the original ~6 GB estimate was right.** Final `md_naclong_results` is **6.8 GB**, not the ~4.4 GB projected from 3.4 GB at 77%. Growth is not linear: the reimaged trajectory copy is written at the end, so the directory roughly doubles in the last moments. Scratch 213/300 GB, so nothing was truncated. Project from the frame count, not from bytes-so-far.
+
+**`coordination_restraints` holds the five rows** (as selectors, in `config.yaml [md_naclong]`), plus the one chosen `[['C:2:O01', 'C:1:C4x', 3.47, 50.0]]`. The run is valid.
+
+**`coordination_end`, and it changed more than expected:**
+
+    B:1:ZN  C:2:O01    OH   1.86   (was 2.14, MOVED)
+    B:1:ZN  A:92:OD1   ASP  1.99   (APPEARED)
+    B:1:ZN  D:1:O      HOH  2.04   (was 1.90)
+    B:1:ZN  A:88:NE2   HIS  2.22   (unchanged)
+    B:1:ZN  E:557:O    HOH  2.27   (APPEARED)
+    B:1:ZN  A:164:NE2  HIS  2.32   (was 2.09, MOVED)
+
+The **Asp92 OD2-to-OD1 swap happened as predicted**, and went further than a relabelling: OD1 came in to 1.99 A while OD2 left to 2.98 A, so over 100 ns Asp92 became a genuinely short Zn ligand rather than the 2.80 A contact it started as.
+
+**Beyond that, and this is the finding: a second water collapsed onto the zinc.** `E:557:O` appeared at 2.27 A, leaving Zn **six-coordinate** - O01, Asp92 OD1, HOH D:1, His88, HOH E:557, His164 - where the start had five. Both newcomers (Asp92 OD1, E:557) were unconstrained, which is exactly what the .out warns about: "a contact that appeared was not constrained, and a non-bonded metal has no Pauli repulsion to stop a donor collapsing onto it". At 1 ns (D100) this did not happen. So the classical model does drift to an over-coordinated zinc, it just needs more than 1 ns to do it, and the 1 ns test was too short to rule it out. The hydroxide also tightened to 1.86 A, which is short.
+
+**Gln93 stayed out.** It is absent from the sphere list, so > 2.8 A, against the 1.79 A collapse seen unrestrained. Holding it out for 100 ns rather than 1 ns was the demonstration asked for, and it held.
+
+**The question the run was submitted to answer: the angle rotated into the window. It was a sampling question.** `site.py sphere` on the last frame gives `O01 ... O-C 3.33 angle 101`, i.e. **101 degrees, inside the 95-120 Burgi-Dunitz window**, with O01-C4x tightened from 3.55 to **3.33 A**. `site.py nucleophiles` makes it unambiguous - of six candidate waters, the restrained hydroxide is the only one with a clean verdict:
+
+    water          O-C   angle   M-O   verdict
+    C:2:OH        3.33    101    1.86  metal-bound
+    E:9347:HOH    3.47     79    3.79  angle off
+    D:1:HOH       5.13     96    2.04  metal-bound, far
+    E:557:HOH     5.59     83    2.27  metal-bound, angle off, far
+
+So **80 degrees at 1 ns was a sampling artefact, not a property of the restrained pose**, and D100's conclusion that 1 ns had disproved the free-angular-coordinates argument was itself premature - the argument was right and 1 ns simply did not sample it. `scan_attack` is therefore **not** needed to manufacture a near-attack geometry: the equilibration reached one on its own. It may still be wanted as a reaction coordinate, but not to rescue the pose.
+
+**One thing for the mechanism, not settled here.** The hydroxide's single proton H03 points at the substrate's own O1x (2.58 A) and at Asp92 OD1 (2.98 A) - not at Lys226, whose NZ is no closer than 3.6 A to any candidate's protons. That bears on the general-base question and on whether Asp92 is involved, but one frame is not evidence.
+
+**Caveat on the handoff.** The frame QM/MM would start from has a six-coordinate zinc carrying a water that was not there at the start and was never restrained. The restraint was on throughout, so the release run remains the real test of whether the complex holds, and the extra water is a second reason to run it. Nothing was submitted.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
