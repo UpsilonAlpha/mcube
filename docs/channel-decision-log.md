@@ -349,6 +349,14 @@ constriction, MM→QM/MM reweighting, then xTB→DFT single-point reweighting.**
      was already active, `conda activate ASH` did nothing and bare `python` was miniforge's base.
      The job scripts now call `$CONDA_PREFIX/bin/python` and check it imports OpenMM and ASH
      (e6eb2cf). Resubmitted: **30417999** Lu³⁺, **30418000** La³⁺.
+     **Result (2 ns each, 1 fs, friction 5 ps⁻¹, 719 waters):** Lu³⁺ 2.33 Å, **CN 7.61** (7: 39 %,
+     8: 61 %), residence 80 ps; La³⁺ 2.51 Å, CN 9.61, residence 167 ps. The protocol changes
+     nothing: Lu stays at 7.6 (7.62 before), and La reproduces the published 9.7. With the
+     implementation also identical to Amber's (F5), the Lu gap to the published CN 9.0 is not
+     ours to close by protocol. Either the SI value was misread (an agent read it; check the SI
+     table by hand), or the SI used a different Lu C4/parameter set from AmberTools'
+     `frcmod.ions34lsm_1264_tip3p` (C4 249). Against experiment (2.33 Å, CN 8) Lu 1264 is
+     0.4 under on CN and Lu IOD (CN 8.9) 0.9 over; neither is exact.
   2. **The MM first shells exchange water about 10–100× faster than experiment** (known; it is why
      the hydration shell is restrained while the MM system is prepared for QM/MM, user): residence
      70–160 ps against ~2–25 ns for heavy Ln³⁺ (Cossy, Helm & Merbach 1988; Helm & Merbach 2005).
