@@ -376,6 +376,13 @@ level and details proposed, not yet decided)
   too *short* and CN is right for La and Lu IOD. Neither is a usable reference structure.
 - Consequence: xTB/MM is not reliable for any window where an Ln³⁺ is in the QM region, not only
   the desolvation step (C16). Untested remedy: softer MM point charges (`hardness_PC`).
+- g-xTB considered and set aside (user, 2026-10-23): ASH's `gxTBTheory` runs the standalone gxtb
+  binary and drops the MM point charges, so it cannot do electrostatic embedding, and the ASH
+  env's xtb 6.7.1 has no `--gxtb` flag for the xTBTheory route.
+- Submitted 2026-10-23, first shell QM, `xtb_pc_hardness: elements` (xTB's per-element hardness,
+  i.e. smeared MM charges; 0d4826d), 10 ps: at 300 K, `qm_hel/`: **30420814** La 1264,
+  **30420815** Lu IOD, **30420816** Lu 1264; with 1000 K etemp too, `qm_ht/`: **30420817** La
+  1264, **30420818** Lu IOD, **30420819** Lu 1264.
 
 ## Planned checks, not yet done
 
