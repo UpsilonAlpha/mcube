@@ -166,6 +166,35 @@ sections:
       platform: CUDA
       properties: {Precision: mixed}
 
+  # 100 ns NVT, the literature equilibration length (D92: Gervasoni 100 ns,
+  # Guven 50, Lisa 10, Bahena-Mendez 10). About 4-5 h on an H100 at the rate
+  # D100 measured, so one job.
+  #
+  # `traj_frequency` is raised from md's 500 deliberately. At 500 and a 4 fs
+  # step a frame lands every 2 ps, which over 100 ns is 50,000 frames - and md
+  # writes a raw and a reimaged copy, so about 60 GB. Scratch had 109 GB free
+  # with three other projects writing into it, and an over-quota write fails
+  # silently, leaving a file that looks finished. 5000 gives a frame every
+  # 20 ps, 5,000 frames and roughly 7 GB, which is ample for equilibration
+  # analysis; the last frame is what feeds QM/MM either way.
+  #
+  # The substrate restraint stays on throughout, as Gervasoni keep theirs
+  # through 100 ns of NVT production. It also makes this the test of whether
+  # the 80-degree attack angle rotates given 100x the time of D100's 1 ns -
+  # which is the prediction of mine that run disproved.
+  #
+  # GPU is for `md` only. A QM/MM step is bottlenecked on xTB and copies
+  # positions off the device each step, so qmmm/scan/neb/ts stay on CPU.
+  naclong:
+    stage: md
+    inputs:
+      restraints:
+        - [C:2:O01, C:1:C4x, 3.47]
+      nvt_time: 100000          # ps
+      traj_frequency: 5000      # a frame every 20 ps
+      platform: CUDA
+      properties: {Precision: mixed}
+
   # ---- Which protonation state is the reactant? Blocks every barrier. ----
   #
   # D96: starting from Lys226-H+ with a Zn-bound hydroxide, a QM/MM optimisation
