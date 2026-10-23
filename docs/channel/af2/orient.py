@@ -8,10 +8,13 @@ moves the protein: the barrel axis on z and the hydrophobic belt centred on z = 
   - axis: the β-strand directions, sign-aligned and averaged (as in pore.py)
   - sign: both termini of an outer-membrane β-barrel are periplasmic, so the first strand's
     start goes to z < 0 (periplasm below, extracellular side above)
-  - centre: the lipid-facing residues (Cβ further from the axis than Cα) in strands are
-    scored on the Kyte-Doolittle scale; z = 0 is the middle of the --slab-thick slab with the
-    highest mean score. The aromatic girdles (Tyr/Trp/Phe facing lipid) are reported so the
-    choice can be checked: they should sit near ±slab/2.
+  - centre (--centre charge-gap, the default): z = 0 is the middle of the longest stretch of
+    the barrel wall with no charged lipid-facing residue (Lys/Arg/Asp/Glu with Cβ further from
+    the axis than Cα and Cα at least 9 Å out). Charged side chains snorkel to the interfaces,
+    so that stretch is the hydrophobic belt. (--centre kd: the --slab-thick slab with the
+    highest mean Kyte-Doolittle score of lipid-facing strand residues. On the channel model it
+    put the belt 6 Å too low, pulled down by polar residues near the periplasmic turns.)
+    The lipid-facing Tyr/Trp/Phe are reported: the Tyr/Trp girdles should sit near the edges.
 
   python orient.py --pdb ranked_0.pdb --crop 110-130 --out channel_cropped_oriented.pdb
 """
@@ -56,7 +59,8 @@ def main():
     p.add_argument("--pdb", required=True)
     p.add_argument("--first-residue", type=int, default=110, help="channel number of residue 1")
     p.add_argument("--crop", default="110-130", help="channel residues to remove, e.g. 110-130 ('' for none)")
-    p.add_argument("--slab-thick", type=float, default=24.0, help="hydrophobic slab (Å)")
+    p.add_argument("--slab-thick", type=float, default=24.0, help="hydrophobic slab for --centre kd (Å)")
+    p.add_argument("--centre", choices=["charge-gap", "kd"], default="charge-gap")
     p.add_argument("--out", required=True)
     args = p.parse_args()
 
@@ -97,14 +101,23 @@ def main():
             facing.append((float(new[ca[r.index]][2]), r.name, r.resSeq))
     zs = np.array([f[0] for f in facing])
     kd = np.array([KD.get(f[1], 0.0) for f in facing])
-    best, best_score = 0.0, -1e9
+    best_kd, best_score = 0.0, -1e9
     for zc in np.arange(zs.min() + args.slab_thick / 2, zs.max() - args.slab_thick / 2 + 0.01, 0.5):
         inside = np.abs(zs - zc) <= args.slab_thick / 2
         if inside.sum() < 10:
             continue
         score = kd[inside].mean()
         if score > best_score:
-            best, best_score = float(zc), float(score)
+            best_kd, best_score = float(zc), float(score)
+    # charged lipid-facing residues anywhere on the wall (not only in strands)
+    charged = sorted(float(new[ca[r.index]][2]) for r in top.residues
+                     if r.name in ("LYS", "ARG", "ASP", "GLU") and r.index in cb
+                     and radial(new[ca[r.index]]) >= 9.0
+                     and radial(new[cb[r.index]]) > radial(new[ca[r.index]]))
+    gaps = [(b - a, a, b) for a, b in zip(charged, charged[1:])]
+    gap_len, gap_lo, gap_hi = max(gaps)
+    best_gap = (gap_lo + gap_hi) / 2
+    best = best_gap if args.centre == "charge-gap" else best_kd
     new[:, 2] -= best
 
     arom = sorted((round(z - best, 1), f"{n}{s}") for z, n, s in facing if n in ("TYR", "TRP", "PHE"))
@@ -114,8 +127,10 @@ def main():
     report = {"pdb": str(Path(args.pdb).resolve()), "out": str(Path(args.out).resolve()),
               "cropped": args.crop, "residues": top.n_residues,
               "first_residue": min(r.resSeq for r in top.residues),
-              "strands": len(runs), "belt_shift_A": round(best, 1),
-              "belt_mean_KD": round(best_score, 2), "slab_thick_A": args.slab_thick,
+              "strands": len(runs), "centre_method": args.centre, "belt_shift_A": round(best, 1),
+              "charge_free_span_A": [round(gap_lo - best, 1), round(gap_hi - best, 1)],
+              "charge_free_length_A": round(gap_len, 1),
+              "kd_slab_centre_A": round(best_kd - best, 1), "belt_mean_KD": round(best_score, 2),
               "lipid_facing_aromatics_z": arom,
               "z_extent_A": [round(float(new[:, 2].min()), 1), round(float(new[:, 2].max()), 1)]}
     Path(args.out).with_suffix(".json").write_text(json.dumps(report, indent=1))
