@@ -162,11 +162,28 @@ def save_nested(config: str, section: str, keys: List[str], value) -> None:
 # Geometry and the bias
 # ==============================
 
+def chain_letters_to_ids(selection: str, topology) -> str:
+    """mdtraj's selection language has no chain letters, only `chainid N` (0-based);
+    `chain A` is translated using the OpenMM topology's chain IDs, as written in mcube
+    configs and docs. Raises if the letter is not a chain of this topology."""
+    import re
+    ids = [c.id for c in topology.chains()]
+
+    def swap(match):
+        letter = match.group(1)
+        if letter not in ids:
+            raise ValueError(f"umbrella reference: no chain {letter!r} (chains: {ids})")
+        return f"chainid {ids.index(letter)}"
+    return re.sub(r"\bchain\s+([A-Za-z0-9])\b", swap, selection)
+
+
 def reference_atoms(topology, selection) -> List[int]:
-    """Reference group: an mdtraj selection string (PDB numbers are `resSeq`), or a
-    list of indices / `chain:resid:atom` selectors."""
+    """Reference group: an mdtraj selection string (PDB numbers are `resSeq`; `chain A`
+    is accepted and translated to mdtraj's `chainid`), or a list of indices /
+    `chain:resid:atom` selectors."""
     if isinstance(selection, str):
         import mdtraj
+        selection = chain_letters_to_ids(selection, topology)
         atoms = [int(a) for a in mdtraj.Topology.from_openmm(topology).select(selection)]
     else:
         atoms = [int(a) for a in resolve_atoms(list(selection), topology)]

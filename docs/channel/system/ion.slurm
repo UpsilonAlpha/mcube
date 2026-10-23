@@ -7,6 +7,7 @@
 # the umbrella pull. Run from the ion's run directory (config.yaml, channel_<ION>.pdb):
 #
 #   sbatch -J ion_LA $S/mcube/docs/channel/system/ion.slurm
+#   sbatch -J pull_LA --export=ALL,STAGES=pull $S/mcube/docs/channel/system/ion.slurm
 #
 # Then the windows: umbrella_windows.slurm.
 
@@ -16,12 +17,16 @@ source $ROOTMINIFORGE/etc/profile.d/conda.sh
 conda activate ASH
 export PYTHONPATH=$S/mcube/src PYTHONUNBUFFERED=1
 PY=$CONDA_PREFIX/bin/python            # ASH's interpreter by path (see bulk/bulk.slurm)
-eval "$($PY -m mcube env config.yaml preprocess)"
-$PY -m mcube preprocess config.yaml || exit $?
-eval "$($PY -m mcube env config.yaml md)"
-$PY -m mcube md config.yaml || exit $?
-eval "$($PY -m mcube env config.yaml umbrella)"
-$PY -m mcube umbrella config.yaml pull
-RC=$?
+# STAGES picks what runs (default all three), e.g. STAGES=pull after md has finished
+STAGES=${STAGES:-"preprocess md pull"}
+for STAGE in $STAGES; do
+    case $STAGE in
+        preprocess|md) eval "$($PY -m mcube env config.yaml $STAGE)"
+                       $PY -m mcube $STAGE config.yaml || exit $? ;;
+        pull)          eval "$($PY -m mcube env config.yaml umbrella)"
+                       $PY -m mcube umbrella config.yaml pull || exit $? ;;
+    esac
+done
+RC=0
 echo "RC=$RC"
 exit $RC

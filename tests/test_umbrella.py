@@ -429,3 +429,30 @@ class TestEndToEnd:
         data = yaml.safe_load(open(config))
         assert data["umbrella"]["results"]["pull"]["seeds"] == 3
         assert "energies_mm" in data["umbrella"]["results"]["windows"]["000"]
+
+
+class TestReferenceSelection:
+    """`chain A` in a reference selection (mdtraj itself only knows `chainid N`)."""
+
+    def _top(self):
+        from openmm.app import Element, Topology
+        top = Topology()
+        for letter, n in (("A", 3), ("B", 2)):
+            chain = top.addChain(letter)
+            for i in range(n):
+                res = top.addResidue("ALA", chain)
+                top.addAtom("CA", Element.getBySymbol("C"), res)
+                top.addAtom("CB", Element.getBySymbol("C"), res)
+        return top
+
+    def test_chain_letter(self, umbrella):
+        pytest.importorskip("mdtraj")
+        top = self._top()
+        assert umbrella.reference_atoms(top, "chain A and name CA") == [0, 2, 4]
+        assert umbrella.reference_atoms(top, "chain B and name CA") == [6, 8]
+        assert umbrella.reference_atoms(top, "chainid 1 and name CA") == [6, 8]
+
+    def test_unknown_chain(self, umbrella):
+        pytest.importorskip("mdtraj")
+        with pytest.raises(ValueError, match="no chain 'Z'"):
+            umbrella.reference_atoms(self._top(), "chain Z and name CA")
