@@ -2,6 +2,7 @@
 
 How we go from a sequence to PMFs for Ca²⁺, La³⁺ and Lu³⁺ crossing the channel.
 Decisions are in [channel-decision-log.md](channel-decision-log.md) (C*, F*, Q*).
+What the protein is (identity, gene neighbourhood, AF2 model, conservation): [channel/protein.md](channel/protein.md).
 
 ## Working notes (read first in a new session)
 

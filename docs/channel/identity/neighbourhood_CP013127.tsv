@@ -1,0 +1,46 @@
+start	end	strand	locus_tag	genbank_product	protein_id	refseq	refseq_name
+3164345	3165823	+	BD122_14480	hydroxyacid dehydrogenase	APO51481.1	WP_028174353.1	FAD-binding oxidoreductase
+3166088	3166939	+	BD122_14485	3-hydroxybutyryl-CoA dehydrogenase	APO51482.1	WP_011088963.1	3-hydroxybutyryl-CoA dehydrogenase
+3167079	3167543	+	BD122_14490	preprotein translocase subunit TatC	APO51483.1	WP_011088962.1	group III truncated hemoglobin
+3167789	3168442	+	BD122_14495	2Fe-2S ferredoxin	APO51484.1	WP_011088961.1	QcrA and Rieske domain-containing protein
+3168561	3170288	+	BD122_14500	alcohol dehydrogenase	APO51485.1	WP_028174355.1	methanol/ethanol family PQQ-dependent dehydrogenase
+3170564	3172876	-	BD122_14505	twin-arginine translocation pathway signal protein	APO51486.1	WP_028174356.1	xanthine dehydrogenase family protein molybdopterin-binding subunit
+3172878	3173330	-	BD122_14510	(2Fe-2S)-binding protein	APO51487.1	WP_011088958.1	(2Fe-2S)-binding protein
+3173969	3174532	-	BD122_14515	glutathione-dependent formaldehyde-activating protein	APO51488.1	WP_011088956.1	S-(hydroxymethyl)glutathione synthase
+3174565	3175674	-	BD122_14520	S-(hydroxymethyl)glutathione dehydrogenase	APO51489.1	WP_028174357.1	S-(hydroxymethyl)glutathione dehydrogenase/class III alcohol dehydrogenase
+3175732	3176253	-	BD122_14525	cytochrome C	APO51490.1	WP_249162777.1	c-type cytochrome, methanol metabolism-related
+3176335	3178143	-	BD122_14530	methanol dehydrogenase	APO51491.1	WP_011088953.1	lanthanide-dependent methanol dehydrogenase XoxF5
+3178188	3178367	-	BD122_14531	PilA-like protein	APO51492.1		
+3178659	3179627	+	BD122_14535	transcriptional regulator	APO51493.1	WP_028174358.1	helix-turn-helix domain-containing protein
+3179666	3180091	-	BD122_14540	hypothetical protein	APO51494.1	WP_028174359.1	hypothetical protein
+3180233	3181234	-	BD122_14545	hypothetical protein	APO51495.1	WP_028174360.1	Bug family tripartite tricarboxylate transporter substrate binding protein
+3181608	3182531	-	BD122_14550	ABC transporter substrate-binding protein	APO51496.1	WP_028174361.1	substrate-binding periplasmic protein
+3182528	3182884	-	BD122_14555	cytochrome C oxidase Cbb3	APO51497.1	WP_028174362.1	c-type cytochrome
+3182895	3184559	-	BD122_14560	quinonprotein alcohol dehydrogenase	APO51498.1	WP_028174363.1	methanol/ethanol family PQQ-dependent dehydrogenase
+3184901	3185293	+	BD122_14565	calcium-binding protein	APO51499.1	WP_028174364.1	lanmodulin LanM
+3185355	3186476	+	BD122_14570	hypothetical protein	APO51500.1		
+3186736	3186945	+	BD122_14575	hypothetical protein	APO51501.1	WP_011088944.1	hypothetical protein
+3186956	3187303	-	BD122_14580	hypothetical protein	APO51502.1	WP_074076720.1	hypothetical protein
+3187330	3188124	-	BD122_14585	hypothetical protein	APO51503.1		
+3188174	3188914	-	BD122_14590	ABC transporter ATP-binding protein	APO51504.1	WP_028174368.1	ABC transporter ATP-binding protein
+3188904	3189641	-	BD122_14595	ABC transporter permease	APO51505.1	WP_028174369.1	ABC transporter permease
+3189643	3190623	-	BD122_14600	ABC transporter substrate-binding protein	APO51506.1	WP_039186037.1	ABC transporter substrate-binding protein
+3190711	3191070	+	BD122_14605	hypothetical protein	APO51507.1	WP_028174371.1	hypothetical protein
+3191191	3192015	-	BD122_14610	quinoprotein dehydrogenase-associated SoxYZ-like carrier	APO51508.1		
+3192080	3193006	-	BD122_14615	MBL fold metallo-hydrolase	APO51509.1	WP_028174373.1	quinoprotein relay system zinc metallohydrolase 2
+3193136	3194017	+	BD122_14620	methanol oxidase	APO51510.1	WP_028174374.1	substrate-binding domain-containing protein
+3194014	3194571	+	BD122_14625	rhodanese	APO51511.1	WP_028174375.1	PQQ-dependent catabolism-associated CXXCW motif protein
+3194707	3195006	-	BD122_14630	hypothetical protein	APO51512.1	WP_011088933.1	copper-binding protein
+3195143	3195757	-	BD122_14635	hypothetical protein	APO51513.1	WP_028174376.1	hypothetical protein
+3195754	3196602	-	BD122_14640	multidrug ABC transporter permease	APO51514.1	WP_028174377.1	lanthanide ABC transporter permease protein PedC
+3196599	3197408	-	BD122_14645	ABC transporter ATP-binding protein	APO51515.1	WP_028174378.1	lanthanide ABC transporter ATP-binding protein PedB/LutE
+3197405	3198373	-	BD122_14650	hypothetical protein	APO51516.1	WP_028174379.1	YVTN family beta-propeller repeat protein
+3198382	3199563	-	BD122_14655	branched-chain amino acid ABC transporter substrate-binding protein	APO51517.1	WP_028174380.1	lanthanide ABC transporter ABC transporter substrate-binding protein PedA1
+3199623	3200192	+	BD122_14660	hypothetical protein	APO51518.1	WP_028174381.1	DUF3280 domain-containing protein
+3200356	3201201	-	BD122_14665	S-formylglutathione hydrolase	APO51519.1	WP_028174382.1	S-formylglutathione hydrolase
+3201279	3201899	-	BD122_14670	LuxR family transcriptional regulator	APO51520.1	WP_027546488.1	response regulator
+3202109	3203467	+	BD122_14675	histidine kinase	APO51521.1	WP_028174383.1	histidine kinase
+3203592	3206090	+	BD122_14680	hypothetical protein	APO51522.1		
+3206217	3206516	+	BD122_14685	hypothetical protein	APO51523.1	WP_028174385.1	hypothetical protein
+3206513	3206746	+	BD122_14690	hypothetical protein	APO51524.1	WP_027546492.1	hypothetical protein
+3206831	3207706	-	BD122_14695	LysR family transcriptional regulator	APO51525.1	WP_011088921.1	LysR family transcriptional regulator

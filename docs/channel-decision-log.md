@@ -9,6 +9,10 @@ the decision, why, the evidence, and whether to revisit it. Same format as
 **Aim.** Potentials of mean force for a light and a heavy lanthanide and for Ca²⁺ crossing the
 channel, built with mcube's existing stages as closely as possible.
 
+**The protein, in one page:** [channel/protein.md](channel/protein.md). It is BD122_14570, a
+DUF6662 outer-membrane β-barrel of *B. diazoefficiens*, encoded next to lanmodulin in a
+lanthanide methylotrophy cluster.
+
 ---
 
 ## System
@@ -114,8 +118,9 @@ channel, built with mcube's existing stages as closely as possible.
   - BD122_14530: **lanthanide-dependent methanol dehydrogenase XoxF5** (WP_011088953.1), with a
     cytochrome c (14525), the glutathione formaldehyde pathway (14515–14520) and a further PQQ
     alcohol dehydrogenase (14560, methanol/ethanol family).
-  - ABC transporter genes (14550 periplasmic binding protein; 14590–14600), a SoxYZ-like carrier
-    and a methanol oxidase (14610–14620).
+  - **lanthanide ABC transporter PedA1 / PedB (LutE) / PedC** (BD122_14640–14655, 10 kb
+    downstream: the inner-membrane Ln importer), other ABC transporter genes (14550, 14590–14600)
+    and PQQ-catabolism genes (14610–14625). Full table: `docs/channel/identity/`.
 - Barrel lumen (side chains facing the axis in the AF2 model, segment excluded): 21 Asp/Glu
   against 11 Arg/Lys, so the lumen is net negative. **Glu300 is the most conserved lumen residue
   in the whole barrel** (identity 0.59 against 0.12 for the strands, coverage 0.79), and it
