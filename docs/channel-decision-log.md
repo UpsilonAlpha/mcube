@@ -383,6 +383,22 @@ level and details proposed, not yet decided)
   i.e. smeared MM charges; 0d4826d), 10 ps: at 300 K, `qm_hel/`: **30420814** La 1264,
   **30420815** Lu IOD, **30420816** Lu 1264; with 1000 K etemp too, `qm_ht/`: **30420817** La
   1264, **30420818** Lu IOD, **30420819** Lu 1264.
+- **Result: `hardness_PC: elements` fails too.** All six stopped with "SCC iterator did not
+  converge" ("xTB subprocess gave error", RC=1):
+
+  | Box | Remedy | Failed at step | Last gap (Eh) | Ln–O (Å) | CN |
+  |---|---|---|---|---|---|
+  | La 1264 | soft PC | 6486 | 0.0139 | 2.49 | 9.02 |
+  | Lu IOD | soft PC | 8738 | 0.0017 | 2.33 | 7.87 |
+  | Lu 1264 | soft PC | 5921 | 0.0235 | 2.31 | 7.07 |
+  | La 1264 | soft PC + 1000 K | 9063 | 0.0018 | 2.41 | 9.04 |
+  | Lu IOD | soft PC + 1000 K | 9067 | 0.0041 | 2.33 | 8.00 |
+  | Lu 1264 | soft PC + 1000 K | 6902 | 0.0074 | 2.27 | 7.00 |
+
+  Softened MM charges give the best shells xTB has produced (La 2.49 Å / CN 9, Lu IOD 2.33 Å /
+  CN 7.9, against 2.54/9 and 2.33/8), so the bare charges were what shortened Ln–O. But every
+  remedy and combination still loses SCC within 6–9 ps. **GFN2-xTB/MM is out for any window with
+  Ln³⁺ in the QM region**; the fallback is DFT/MM there (~7–9 ps/day per window, C16). Ca²⁺ is untested.
 
 **F8 – The g-xTB build of xtb silently ignores point charges.** (2026-10-23, `docs/channel/gxtb/`)
 - g-xTB v2.0.1 (grimme-lab release, `xtb-6.7.1-gxtb-140526-linux-x86_64.tar.xz`, sha256 checked)
