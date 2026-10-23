@@ -494,3 +494,30 @@ class TestLoadStructure:
         _, frame = self._files(tmp_path)
         pdb = umbrella.load_structure(frame, {})
         assert pdb.topology.getNumBonds() == 0
+
+
+class TestTallReference:
+    """A channel taller than half the box (here 55 A of Cα in an 83 A box) is whole."""
+
+    def test_tall_whole_reference(self, umbrella):
+        z = np.arange(0.0, 56.0, 3.8)                      # a chain of Cα up the z axis
+        ref = np.stack([np.zeros_like(z), np.zeros_like(z), z + 15.0], axis=1)
+        ion = np.array([[0.0, 0.0, 10.0]])
+        coords = np.vstack([ref, ion])
+        masses = [12.0] * len(ref) + [139.0]
+        box = np.array([120.0, 120.0, 83.0])
+        out = umbrella.image_ion(coords, len(ref), list(range(len(ref))), masses, box)
+        com = ref[:, 2].mean()
+        zcv, _ = umbrella.cv_values(out, len(ref), list(range(len(ref))), masses, box)
+        assert zcv[0] == pytest.approx(10.0 - com)
+
+    def test_tall_reference_split_by_a_writer(self, umbrella):
+        z = np.arange(0.0, 56.0, 3.8)
+        ref = np.stack([np.zeros_like(z), np.zeros_like(z), z + 40.0], axis=1)
+        wrapped = ref.copy()
+        wrapped[:, 2] = wrapped[:, 2] % 83.0               # the top of the chain wraps to the bottom
+        coords = np.vstack([wrapped, [[0.0, 0.0, 30.0]]])
+        masses = [12.0] * len(ref) + [139.0]
+        box = np.array([120.0, 120.0, 83.0])
+        zcv, _ = umbrella.cv_values(coords, len(ref), list(range(len(ref))), masses, box)
+        assert zcv[0] == pytest.approx(30.0 - ref[:, 2].mean())

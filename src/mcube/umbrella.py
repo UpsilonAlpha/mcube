@@ -200,20 +200,30 @@ def atom_masses(topology) -> np.ndarray:
     return np.array([a.element.mass._value if a.element else 0.0 for a in topology.atoms()])
 
 
+def unwrap_sequential(ref, box):
+    """Reference atoms (frames, n, 3) made whole by stepping from each atom to the next by
+    minimum image. Consecutive atoms of a chain (e.g. Cα, ~3.8 A apart) are always
+    within half a box, so this holds for a group taller than half the box, where
+    unwrapping every atom about the first one would fold the far half back."""
+    steps = ref[:, 1:, :] - ref[:, :-1, :]
+    steps = steps - box * np.round(steps / box)
+    return np.concatenate([ref[:, :1, :], ref[:, :1, :] + np.cumsum(steps, axis=1)], axis=1)
+
+
 def displacement(coords, ion: int, reference, masses, box) -> np.ndarray:
     """Ion minus reference COM (A), per frame, minimum image on an orthorhombic box.
 
     `coords` is (frames, atoms, 3) or (atoms, 3), `box` (3,) or (frames, 3), in A.
-    The reference group is unwrapped about its first atom first, so a group that
-    a trajectory writer split across the cell still has the right centre.
+    The reference group is made whole first (`unwrap_sequential`), so a group that a
+    trajectory writer split across the cell, or one taller than half the box, still
+    has the right centre.
     """
     coords = np.asarray(coords, dtype=float)
     single = coords.ndim == 2
     if single:
         coords = coords[None]
     box = np.broadcast_to(np.asarray(box, dtype=float), (coords.shape[0], 3))[:, None, :]
-    ref = coords[:, reference, :]
-    ref = ref - box * np.round((ref - ref[:, :1, :]) / box)
+    ref = unwrap_sequential(coords[:, reference, :], box)
     m = np.asarray(masses, dtype=float)[reference][None, :, None]
     com = (ref * m).sum(axis=1) / m.sum(axis=1)
     d = coords[:, ion, :] - com
@@ -237,9 +247,13 @@ def image_ion(coords, ion: int, reference, masses, box) -> np.ndarray:
     coords = np.array(coords, dtype=float)
     box = np.asarray(box, dtype=float)
     ref = coords[reference]
-    if np.any(np.ptp(ref, axis=0) > box / 2):
-        raise ValueError("the umbrella reference group spans more than half the box: it is "
-                         "split across the cell; give a structure with the channel whole")
+    # The bias force sees raw positions, so the group must be whole as given. A group
+    # may span more than half the box (a tall channel in a thin box) and still be whole;
+    # it is split when two consecutive reference atoms are more than half a box apart.
+    if np.any(np.abs(np.diff(ref, axis=0)) > box / 2):
+        raise ValueError("the umbrella reference group is split across the cell (two consecutive "
+                         "reference atoms are more than half a box apart); give a structure "
+                         "with the channel whole")
     m = np.asarray(masses)[reference]
     com = (ref * m[:, None]).sum(axis=0) / m.sum()
     d = coords[ion] - com
