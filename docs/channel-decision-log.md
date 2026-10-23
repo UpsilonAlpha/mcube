@@ -357,6 +357,13 @@ constriction, MM→QM/MM reweighting, then xTB→DFT single-point reweighting.**
      table by hand), or the SI used a different Lu C4/parameter set from AmberTools'
      `frcmod.ions34lsm_1264_tip3p` (C4 249). Against experiment (2.33 Å, CN 8) Lu 1264 is
      0.4 under on CN and Lu IOD (CN 8.9) 0.9 over; neither is exact.
+     Checked against the paper itself (Li, Song & Merz, J. Phys. Chem. B 2015, 119, 883; PMC4306492):
+     its Table 6 gives exactly our Lu³⁺ parameters (Rmin/2 1.625 Å, ε 0.09235154, C4 249), and the
+     text says the Ln³⁺ CNs came out "in the range of 9 to 10" across the series. So CN ≈ 9 for Lu
+     is what they report, with the same parameters, and we get 7.6. The SI PDF itself would not
+     download (PMC interstitial), so the SI.4 row is still unchecked by hand. One untested
+     explanation: Lu³⁺ sits near the CN 8/9 switch, so short runs started from a 9-coordinate
+     shell can stay there; ours exchange 90 times per ns and are equilibrated.
   2. **The MM first shells exchange water about 10–100× faster than experiment** (known; it is why
      the hydration shell is restrained while the MM system is prepared for QM/MM, user): residence
      70–160 ps against ~2–25 ns for heavy Ln³⁺ (Cossy, Helm & Merbach 1988; Helm & Merbach 2005).
