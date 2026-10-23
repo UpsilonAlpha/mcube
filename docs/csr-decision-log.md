@@ -1590,6 +1590,39 @@ Not that it changes the recommendation: CUDA is the faster platform on hardware 
 
 **The 1 ns restrained run (30416230) is still early** - minimisation done, warm-up in progress - and `md_nac.results.coordination_start` records the five detected contacts, so the restraints were read. On CPU it has 4-10 h left. At the benchmark rate the same run is minutes on the H100, which makes the CPU job a poor use of the time now that this is known.
 
+**D100 - The 1 ns restrained run: the mechanism works, the angle does not.** (2026-10-23, job 30418017, `CSR_nac`, section `md_nacgpu`)
+
+**The GPU route is confirmed end to end.** `Using platform: CUDA`, `Precision: mixed`, and the whole md stage - minimisation, NPT and 1 ns of NVT - in **254 seconds**. The CPU attempt was cancelled after 65 minutes at 93 ps of NPT. So ASH does pass `platform` through, and D99's benchmark holds in the real pipeline rather than only in a bespoke script. A 10-50 ns run is now minutes to an hour.
+
+**The restraint mechanism did what it was built to do.** `coordination_restraints` records all five contacts as selectors with their measured distances at 50.0; `restraints` records `[C:2:O01, C:1:C4x, 3.47, 50.0]` with the default force constant filled in; `metal_parameters: iod`.
+
+| | start | end (1 ns) |
+| --- | --- | --- |
+| Zn-O01 (hydroxide) | 2.14 | **1.95** |
+| Zn-Asp92 **OD1** | - | **1.98** |
+| Zn-HOH485 | 1.90 | 2.04 |
+| Zn-His88 NE2 | 2.22 | 2.20 |
+| Zn-His164 NE2 | 2.09 | 2.23 |
+| Zn-Asp92 OD2 *(restrained at 2.80)* | 2.80 | 2.76 |
+
+**Gln93 is absent from the first shell.** In the unrestrained run it collapsed to 1.79 A; here it stays beyond 2.8 A, and no water intruded beyond the one genuine HOH485. That is the failure this whole mechanism exists to prevent, and it did not happen.
+
+**The carboxylate blind spot recurred, benignly.** Six contacts are listed, but two of them are Asp92's own oxygens - OD2 held at 2.76 where it was restrained, and **OD1 arriving at 1.98**. Restraining one carboxylate oxygen does not stop the other, exactly as recorded in the D74-D92 table when a per-residue constraint let OD1 reach 1.75 A. This time the outcome is chemically ordinary - bidentate carboxylate coordination at 1.98/2.76 - rather than unphysical, so it is a limitation to note rather than a failure.
+
+**The attack geometry half-passes, and it corrects an argument of mine.**
+
+```
+O01-C4x  3.55 A   Nu-C-O  80 deg   ->  "metal-bound, angle off"
+```
+
+The distance is good: 3.55 against a 3.47 target, inside the 4.5 A tolerance, and the substrate did not dissociate - Zn-mer O2x held at 5.47. The **angle is 80 degrees, outside the 95-120 window**, and essentially unchanged from the docked pose's 79.
+
+I had argued that a distance restraint fixes only the radial coordinate and therefore lets MD keep rotating into the Burgi-Dunitz window, as it did in the unrestrained run (79 -> 100 degrees). **It did not.** Holding the approach at 3.47 A appears to leave the substrate less room to reorient, not more - or 1 ns is simply not enough rotation. Either way the two coordinates have now each been achieved separately and never together: D89 had 96 degrees at 5.41 A, this run has 80 degrees at 3.55 A.
+
+**Also worth noting:** Lys226 still carries three protons and O01 one, so no proton transfer this time - the nucleophile remained a hydroxide, unlike D96. The hydroxide's proton sits 2.77 A from Lys226 NZ and 2.64 from mer O1x. And `C4x-N1x` is 1.36 A.
+
+**Status against the D98 test: metal site passes, attack angle fails.** And the substrate restraint was ON throughout, so even the distance is not yet shown to be stable - the release run remains the real test. The angle is now the open question, and the options are a longer run, restraining the angle too, or accepting it on the argument that a relaxed scan driving O01-C4x to 1.45 A must pass through a near-tetrahedral arrangement anyway, so the angle would be set by the chemistry rather than needing to pre-exist.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
