@@ -12,6 +12,10 @@ Bonds come from --topology (default: finalsystem.pdb next to --pdb, the file the
 builder wrote). md's imaged last frame has no CONECT records, and without them POPE has no
 bonds when the file is read back, so md fails with "No template found for residue (POP)".
 Positions and box come from --pdb; the two files must list the same atoms in the same order.
+The imaged last frame also splits molecules across the periodic boundary (1300 lipid bonds
+were 3-169 Å long), so every molecule is made whole first: walking its bonds, each atom is put
+at the periodic image nearest the atom it is bonded to. The report gives the longest bond
+before and after.
 
   python insert_ion.py --pdb ../apo/md_lastframe.pdb --ion LA --z -30 --out channel_LA.pdb
 """
@@ -25,6 +29,35 @@ from pathlib import Path
 import numpy as np
 
 ION = {"CA": ("Ca", 2), "LA": ("La", 3), "LU": ("Lu", 3)}
+
+
+def make_whole(xyz, top, box):
+    """Undo periodic wrapping inside every molecule (orthorhombic box), by bond-graph walk."""
+    from collections import defaultdict, deque
+    nbrs = defaultdict(list)
+    for a, b in top.bonds():
+        nbrs[a.index].append(b.index)
+        nbrs[b.index].append(a.index)
+    seen = np.zeros(len(xyz), bool)
+    out = xyz.copy()
+    for start in range(len(xyz)):
+        if seen[start]:
+            continue
+        seen[start] = True
+        queue = deque([start])
+        while queue:
+            i = queue.popleft()
+            for j in nbrs[i]:
+                if not seen[j]:
+                    d = out[j] - out[i]
+                    out[j] = out[i] + d - box * np.round(d / box)
+                    seen[j] = True
+                    queue.append(j)
+    return out
+
+
+def longest_bond(xyz, top):
+    return max(float(np.linalg.norm(xyz[a.index] - xyz[b.index])) for a, b in top.bonds())
 
 
 def main():
@@ -49,7 +82,13 @@ def main():
     if names != [(a.name, a.residue.name, a.residue.chain.id) for a in top.atoms()]:
         raise SystemExit(f"{topo_file} and {args.pdb} do not list the same atoms in the same order")
     top.setPeriodicBoxVectors(pdb.topology.getPeriodicBoxVectors())
+    box = np.array(pdb.topology.getUnitCellDimensions().value_in_unit(unit.angstrom))
     xyz = np.array(pdb.getPositions().value_in_unit(unit.angstrom))
+    bond_before = longest_bond(xyz, top)
+    xyz = make_whole(xyz, top, box)
+    bond_after = longest_bond(xyz, top)
+    if bond_after > 3.0:
+        raise SystemExit(f"a bond is still {bond_after:.1f} A after making molecules whole")
     prot = [a.index for a in top.atoms() if a.residue.chain.id == args.protein_chain and a.name == "CA"]
     cx, cy = xyz[prot, 0].mean(), xyz[prot, 1].mean()
     target = np.array([args.x if args.x is not None else cx, args.y if args.y is not None else cy, args.z])
@@ -67,7 +106,7 @@ def main():
     far = sorted(sodium, key=lambda r: -np.min(np.linalg.norm(
         xyz[heavy] - xyz[next(iter(r.atoms())).index], axis=1)))[:charge]
 
-    mod = Modeller(top, pdb.positions)
+    mod = Modeller(top, (xyz / 10.0) * unit.nanometer)
     mod.delete([water] + far)
     ion_top = Topology()
     chain = ion_top.addChain()
@@ -86,6 +125,7 @@ def main():
               "pore_axis_xy_A": [round(float(cx), 2), round(float(cy), 2)],
               "removed_na": len(far), "chains": len(chains), "ion_chain": letter,
               "topology": topo_file, "bonds": mod.topology.getNumBonds(),
+              "longest_bond_A": {"input": round(bond_before, 2), "written": round(bond_after, 2)},
               "umbrella_ion": f"{letter}:1:{args.ion}",
               "box_A": [round(float(v), 2) for v in pdb.topology.getUnitCellDimensions().value_in_unit(unit.angstrom)]}
     Path(args.out).with_suffix(".json").write_text(json.dumps(report, indent=1))
