@@ -153,9 +153,11 @@ def pyscf_mol(cl, charge, basis_file):
     ecp = {}
     for e in elems:
         try:
-            ecp[e] = gto.basis.load_ecp(basis_file, e)
+            entry = gto.basis.load_ecp(basis_file, e)
         except Exception:
-            pass
+            entry = None
+        if entry:                         # H, O come back as an empty list, which PySCF rejects
+            ecp[e] = entry
     atom = [(e, tuple(x)) for e, x in zip(cl["elems"], cl["xyz"])]
     return gto.M(atom=atom, charge=charge, spin=0, basis=basis, ecp=ecp, unit="Angstrom",
                  verbose=0, max_memory=int(os.environ.get("PYSCF_MAX_MEMORY", 60000)))
