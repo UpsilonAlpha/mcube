@@ -82,7 +82,7 @@ Order of operations for one ion:
 |---|---|
 | `umbrella.py`, 12-6-4, F1 fix | done, on `fix/pipeline-review` and Bunya; 168 tests pass in the ASH env; no QM/MM window run yet (Q6) |
 | fold, protein identity | done: AF2 monomer (trimer not supported); BLAST, neighbourhood, conservation in `channel/protein.md` |
-| bulk ion check (C15, F4) | Ca 1264, La 1264, La IOD, Lu IOD, Lu 1264 done; Ca IOD rerunning (30450561); Lu CN 7.6 vs paper 9.0 confirmed in sander (30430922), OpenMM-on-prmtop (30430921) running |
+| bulk ion check (C15, F4) | Ca 1264, La 1264, La IOD, Lu IOD, Lu 1264 done; all done; Lu CN 7.6 vs paper 9.0 confirmed in sander (2 ns, CN 7.64); OpenMM-on-prmtop (30430921) running |
 | QM level (F7, F8, C17) | xTB/MM out; g-xTB set aside; r2SCAN DFT/MM at the constriction; 12-6-4 vs r2SCAN carboxylate check running (30454349); GPU r2SCAN benchmark (`bench_dft.py --platform GPU`) running (30469103) |
-| system (C18) | apo POPE done (30455128); Ca/La/Lu placed; after F9/F10 preprocess+md+pull on gpu_viz L40s (30478619 La, 30478620 Lu on viz; 30481824 Ca on short) |
+| system (C18) | apo POPE done (30455128); Ca/La/Lu placed; after F9/F10 preprocess+md+pull on gpu_viz L40s (F10: molecules made whole; 30486649 La on viz, 30486651 Ca and 30486652 Lu on short) |
 | MM umbrella test | windows −35…+35 Å, 1 Å, 2 ns: after the pulls (`umbrella_windows.slurm`) |

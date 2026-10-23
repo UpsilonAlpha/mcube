@@ -401,7 +401,7 @@ constriction, MM→QM/MM reweighting, then xTB→DFT single-point reweighting.**
      AmberTools sander with `lj1264 = 1` (confirmed on in its output; serial, 5.3 ns/day,
      100 ps chunks). sander ≈ 9 and OpenMM 7.6 → the fault is in OpenMM's/our C4 evaluation;
      both 7.6 → not our code, and the next step is asking the authors, not alleging an error.
-     **sander result (30430922, first 1 ns of 2): Lu³⁺ 2.33 Å, CN 7.66** (7: 34 %, 8: 66 %),
+     **sander final (30430922, 2 ns): Lu³⁺ 2.33 Å, CN 7.64.** First 1 ns: **2.33 Å, CN 7.66** (7: 34 %, 8: 66 %),
      78 exchanges/ns, residence 69 ps. Amber's own engine, on the Amber-built box with
      `lj1264 = 1`, gives what OpenMM/mcube gives (7.61–7.62). **So the difference from SI.4 is
      not in our code or in OpenMM.** It lies between today's AmberTools/sander and the authors'
@@ -431,7 +431,8 @@ constriction, MM→QM/MM reweighting, then xTB→DFT single-point reweighting.**
   default 300 K, `qm_s2/`: **30416207** La 1264, **30416208** Lu IOD, **30416209** Lu 1264.
 - **Ca²⁺ 1264 (30416202), 4 ns MM:** Ca–O 2.45 Å, **CN 8.04** (8: 96 %), against 2.46 / 8: on
   target. Ca IOD (30416201) timed out at 3.2 of 4 ns (6.7 ns/day on bun147, against 15–20
-  elsewhere) before writing its report; rerun at 2 ns, MM only: **30450561**.
+  elsewhere) before writing its report; rerun at 2 ns, MM only (30450561): **Ca–O 2.43 Å,
+  CN 8.00**, also on target. Both Ca²⁺ sets reproduce the bulk shell.
 - **La³⁺ IOD (30416203), 4 ns MM:** La–O 2.49 Å, CN 9.06 (9: 94 %, 10: 6 %), residence 171 ps,
   42 exchanges/ns. Against La 1264 (2.51 Å, CN 9.65) and the target ~2.54 Å / CN 9: IOD gets
   the CN right and Ln–O 0.05 Å short; 1264 is closer on distance and over-coordinates. Its
@@ -729,6 +730,12 @@ level and details proposed, not yet decided)
   2 per user, but the VS Code session holds one) started at once and run OpenMM CUDA. Per-ion
   jobs: **30478619** La (running), **30478620** Lu (next `viz` slot), Ca moved to QOS `short` on
   gpu_viz: **30481824** (estimated 03:07). `running-on-bunya.md` corrected.
+- **Second half of F10:** the imaged last frame also has molecules split across the periodic
+  boundary. With finalsystem's bonds, 1300 lipid bonds were 3–169 Å long, and La's md minimisation
+  ran for 56 min dragging atoms across the box before it was cancelled (30478619, 30478620,
+  30481824 cancelled). `insert_ion.py` now makes every molecule whole by walking its bonds to the
+  nearest periodic image (longest bond 169.3 → 1.85 Å, and it refuses to write anything > 3 Å).
+  Resubmitted: **30486649** La (viz), **30486651** Ca and **30486652** Lu (QOS short on gpu_viz).
 - Also: the g-xTB cluster test (30423347) hit its 12 h limit before the Lu frames; not rerun,
   since g-xTB is set aside (C17).
 
