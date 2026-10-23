@@ -80,9 +80,14 @@ def main():
     u = np.cross(axis, [1.0, 0, 0] if abs(axis[0]) < 0.9 else [0, 1.0, 0])
     u /= np.linalg.norm(u)
     v = np.cross(axis, u)
-    grid = np.arange(-15.0, 15.01, 0.5)
+    # barrel radius: strand Cα distance from the axis; the probe stays inside 80 % of it,
+    # or in a protein with no membrane around it the widest "pore" is the open space outside
+    sc = xyz[strand_ca] - centre
+    barrel_r = float(np.linalg.norm(sc - np.outer(sc @ axis, axis), axis=1).mean())
+    grid = np.arange(-barrel_r, barrel_r + 0.01, 0.5)
     gu, gv = np.meshgrid(grid, grid)
     plane = np.stack([gu.ravel(), gv.ravel()], axis=1)
+    plane = plane[np.linalg.norm(plane, axis=1) < 0.8 * barrel_r]
 
     profile, prev = [], np.zeros(2)
     for z in np.arange(-args.half_length, args.half_length + 0.01, 1.0):
@@ -104,7 +109,7 @@ def main():
     narrow = min(inside, key=lambda s: s["radius"])
     d = np.linalg.norm(pos - narrow["_pt"], axis=1) - radii
     lining = sorted({(top.atom(heavy[i]).residue.resSeq + args.first_residue - 1,
-                      top.atom(heavy[i]).residue.name) for i in np.where(d < narrow["radius"] + 1.0)[0]})
+                      top.atom(heavy[i]).residue.name) for i in np.where(d < 2.0)[0]})
     for s in profile:
         s.pop("_pt")
 
@@ -115,6 +120,7 @@ def main():
               "strand_ranges": [[a + args.first_residue, b + args.first_residue] for a, b in runs],
               "first_last_strand_min_ca_A": round(closure, 2),
               "barrel_closed": closure < 5.5,
+              "barrel_radius_ca_A": round(barrel_r, 1),
               "constriction": {"z": narrow["z"], "radius_A": narrow["radius"],
                                "lining": [f"{n}{r}" for r, n in lining]},
               "min_radius_membrane_A": narrow["radius"],
