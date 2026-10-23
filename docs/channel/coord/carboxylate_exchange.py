@@ -240,9 +240,13 @@ def dft_optimise(atoms, charge, basis_file, cores, functional, maxsteps):
             conv, mol = geomopt(mf, maxsteps=maxsteps)
     else:
         conv = True
+    # final energy: a level shift does not change a converged energy, so keep it; if the
+    # SCF still fails, go second-order. An unconverged energy is flagged, never used.
     mf = scf(mol)
-    mf.level_shift = 0.0
     e = mf.kernel()
+    if not mf.converged:
+        mf = scf(mol).newton()
+        e = mf.kernel()
     xyz = mol.atom_coords(unit="Angstrom")
     return float(e) * HARTREE_KCAL, bool(conv and mf.converged), [(a[0], np.array(p)) for a, p in zip(atoms, xyz)]
 
@@ -279,6 +283,7 @@ def main():
     p.add_argument("--functional", default="r2scan")
     p.add_argument("--maxsteps", type=int, default=200)
     p.add_argument("--skip-dft", action="store_true")
+    p.add_argument("--redo", default="", help="species prefixes to recompute on resume, e.g. LU")
     p.add_argument("--cores", type=int, default=int(os.environ.get("SLURM_CPUS_PER_TASK", 1)))
     p.add_argument("--out", required=True)
     args = p.parse_args()
@@ -296,7 +301,8 @@ def main():
         old = json.loads(Path("report.json").read_text()).get("species", {})
 
     def run(name, atoms, ion, charge):
-        if name in old and ("E_dft" in old[name] or args.skip_dft):
+        redo = any(name.startswith(x) for x in args.redo.split(",") if x)
+        if name in old and not redo and (old[name].get("dft_converged") or args.skip_dft):
             report["species"][name] = old[name]
             print(f"[{name}] reused", flush=True)
             return old[name]
@@ -326,7 +332,10 @@ def main():
         for k, nw in (("w-1", 1), ("w-2", 2)):
             rx = {}
             for m in ("E_mm", "E_dft"):
-                if all(m in x for x in (sp[k], sp["aqua"], water, acetate)):
+                ok = all(m in x for x in (sp[k], sp["aqua"], water, acetate))
+                if m == "E_dft":
+                    ok = ok and all(x.get("dft_converged") for x in (sp[k], sp["aqua"], water, acetate))
+                if ok:
                     rx[m.replace("E_", "dE_")] = round(sp[k][m] + nw * water[m] - sp["aqua"][m] - acetate[m], 2)
             report["reactions"][f"{ion}_{k}"] = rx
         save()
