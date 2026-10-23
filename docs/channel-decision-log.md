@@ -61,6 +61,41 @@ channel, built with mcube's existing stages as closely as possible.
     needs the N-terminal segment to move, or the trimer to differ. Pending: the trimer (30410204),
     and whether to fold without 110–132 or pull it out of the lumen in MD.
 
+**C1/C2 follow-up – relatives and conservation of the lumen segment.** (2026-10-23)
+- Sent to NCBI at the user's request: blastp of all 373 aa against ClusteredNR (RID DNGYGYKX016).
+  Top hit `APO51500.1`, hypothetical protein BD122_14570 of *Bradyrhizobium diazoefficiens*,
+  373 aa, 98.9 % identity over 100 % — this protein. Every other top hit is a 301-aa
+  **DUF6662 family protein** of *Bradyrhizobium* (83–99 %), aligned to query 73–373: the RefSeq
+  proteins start at **Met73**, not Met85 as C1 guessed. 1–72 are not part of the protein;
+  73–109 is still the signal peptide (`MANAVEAVVVFGMRARAQ` n-region, `TFWIMAACTFALA` h-region,
+  `APTCVHA|EE`), so the mature chain 110–373 stands.
+- AF2's own searches (no outside service): UniRef90 hits are 352 mostly "uncharacterized"
+  Alphaproteobacteria proteins (*Bradyrhizobium* 69, *Methylobacterium* 56, *Bosea* 24,
+  *Rhodopseudomonas* 19); a few are annotated "MetA-pathway of phenol degradation". PDB70
+  templates: **5O65 FapF** (*Pseudomonas* functional-amyloid secretion channel, a trimer of
+  β-barrels, header keywords "amyloid, secretion, plug, barrel"; probability 98.2, query 121–350)
+  and **4RL8** ("protein involved in meta-pathway of phenol degradation", *P. putida*, OM β-barrel;
+  96.3); then generic OMPs below 90.
+- `docs/channel/af2/conservation.py` over AF2's MSAs (2173 sequences, 1792 effective; identity to
+  the query is ~10 % on average, so this is a diverse family):
+
+  | Region | Coverage | Identity | Conservation (1 − H/ln 20) |
+  |---|---|---|---|
+  | 110–132 segment | 0.35 | 0.09 | 0.32 |
+  | strands | 0.72 | 0.12 | 0.19 |
+  | loops | 0.48 | 0.10 | 0.21 |
+
+  Coverage of the segment climbs from 1 % at Glu110 to 58 % at Glu132: most distant relatives
+  have no aligned N-terminal segment (a shorter N-terminus, or jackhmmer's local alignment
+  dropping it). Where present, **Phe119** (lumen-facing, at the constriction) is the most
+  conserved residue of the segment (0.63; identity 0.19), then Gly131 (0.52; 0.39). The acidic
+  residues are not: Asp114 0.40 and Glu116 0.42 at ~15–20 % coverage, Asp126 0.16, Glu132 0.17.
+  Entropy over few sequences reads high, so the segment numbers are an upper bound.
+- Reading: the segment's position is family-specific but not universal; its constriction
+  residue Phe119 is conserved where the segment exists. Together with the FapF match (a plugged,
+  trimeric secretion barrel), a gate or plug is plausible, not shown. The acidic residues lining
+  the segment are not a conserved cation site.
+
 **C3 – Bilayer: POPE, single lipid type, at 310 K.** (2026-10-22; open)
 - mcube already accepts `membrane_lipidtype: POPE` (`membrane.py:LIPID_TYPES`), but only POPC
   has been validated (`docs/membrane-validation.md`). A *mixed* POPE/POPC bilayer is not
