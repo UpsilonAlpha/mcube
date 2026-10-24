@@ -179,6 +179,45 @@ Things to try next time (not yet tested):
 - **Try `xtb_runmode: library`.** It avoids writing and reading files every step. It probably saves little here, because xTB isn't the bottleneck.
 - **Set `PYTHONUNBUFFERED=1` in job scripts.** Python buffers output when writing to a file, so the `.out` showed nothing from the QM/MM stage while it was running. Follow progress in `geometric_OPTtraj.log` and `optimization_energies.log` in the run directory, or set this variable.
 
+## Measured: QM/MM MD (jobs 30085418 and 30467248)
+
+Same QM region and method in both - 71 QM atoms, GFN2-xTB, electrostatic
+embedding, `inputfile` runmode, 1 fs timestep - differing only in threads:
+
+| run | xtb threads | s/step | 25 ps |
+| --- | --- | --- | --- |
+| 30085418, `CSR_crystal_v2` | `--parallel 4` | **1.08** | 9.2 h |
+| 30467248, `CSR_nac` (`cores: 8`, `-c 8`) | `--parallel 8` | **2.11** | 18 h |
+
+**Asking xTB for 8 threads on 8 allocated CPUs halves the speed.** That is the
+SMT point at the top of this file, measured rather than argued: 8 CPUs is 4
+physical cores, so `--parallel 8` oversubscribes hyperthreads. Leave `cores:`
+unset or set it to 4. QM is 81.5% of the walltime in the fast run, so this is
+the only knob that matters.
+
+**Cost MD as steps x s/step, and never from optimisation steps.** The same
+system's optimisation shows 2.41 s/step of QM/MM work but 20.8 s/step of wall
+clock, the difference being geomeTRIC. MD has no optimiser, so an estimate taken
+from optimisation steps runs 2-4x too pessimistic. At 1.08 s/step, 50 ps
+(50,000 steps) is about 15 h of QM/MM work and ~18 h of wall clock.
+
+**Walltime is not the constraint it looks like.** `general` allows 14 days
+(`sinfo -o "%P %l"`), not the 24 h in `run.slurm`'s default, so a multi-day
+QM/MM MD fits in one job. ASH also writes `OpenMM_MD.chk`,
+`OpenMM_MD_checkpoint.chk` and `OpenMM_MD_state.xml` every few minutes, so a
+timed-out run is recoverable by hand even though mcube has no resume path.
+
+**Following progress, and what it writes.** `inputfile` runmode logs every xtb
+invocation, so `grep -c "Running xtb with" <job>.out` is an exact step counter.
+That is worth knowing because the `.out` itself reaches ~130 MB by 36,000 steps;
+a 50 ps run's directory was 180 MB at 72%, mostly `OpenMMMD_traj_wrapped.xyz`
+(96 MB) and `QM_MM.dcd` (20 MB). Memory is a non-issue, as elsewhere: request
+4-8 GB, not the 32 GB this run asked for.
+
+**`run.slurm` writes to `protdft/<section>`, which two jobs can share.** A
+cancelled run leaves its `geometric_OPTtraj*` and `optimization_energies.log`
+behind for the next one, so check timestamps before trusting anything in there.
+
 ## Queueing
 
 - When a job is pending with reason `QOSGrpCpuLimit`, the `normal` QOS as a whole is full. The cap is 25,150 CPUs shared by everyone on the `general` partition (and 1,536 CPUs per user). It isn't a lab or personal limit, and the wait was usually minutes.
@@ -217,6 +256,7 @@ The ASH env has OpenMM 8.4 built against CUDA 13.1. Its platforms are Reference,
 ```
 
 - **Classical stages on the GPU:** `md.inputs.platform: CUDA` (with `properties: {Precision: mixed}`) runs the md stage there.
+- **Measured, classical md on an H100** (job 30421166: 100 ns NVT, 41,377 atoms, 4 fs, restrained): **379 ns/day** in production, 100 ns in 6 h 20 m - against **845 ns/day** from a 1 ns benchmark on the same card. A short benchmark's cost per ns excludes what a long run pays for, trajectory and state writing above all, so halve a benchmark figure before costing a production run. CPU for the same system was 2.3 ns/day, so the GPU is still worth ~165x.
 - **QM/MM stays on the CPU:** xTB has no GPU code, so keep QM/MM jobs on `general`.
 - **Checking the context:** OpenMM failing to open a CUDA context means the node's driver is older than the installed CUDA needs; test it before queueing a long run.
 
