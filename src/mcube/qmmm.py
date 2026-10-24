@@ -179,7 +179,8 @@ def apply_stage_metal_parameters(inputs: Dict[str, Any], preprocess: Dict[str, A
         return which
     polarizabilities = inputs.get("polarizabilities", (md.get("inputs") or {}).get("polarizabilities"))
     ions.apply_metal_parameters(mm.system, mm.topology, metals, which, forcefields=forcefields,
-                                qm_atoms=qm_atoms, polarizabilities=polarizabilities)
+                                qm_atoms=qm_atoms, polarizabilities=polarizabilities,
+                                c4_pairs=ions.c4_overrides(inputs, md.get("inputs")))
     return which
 
 

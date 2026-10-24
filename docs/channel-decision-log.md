@@ -27,6 +27,10 @@ channel, built with mcube's existing stages as closely as possible.
   SI, and OpenMM-on-prmtop agrees too, so the gap is not our code. Carboxylate check (C17):
   12-6-4 ranks La vs Lu like r2SCAN (1–2 kcal/mol), but over-favours Ln³⁺ against Ca²⁺ by
   11–13 kcal/mol where r2SCAN binds Ca by one carboxylate O.
+- *Next (C20):* the default 12-6-4 over-binds La³⁺ to carboxylates (experiment-fitted
+  Kantakevičius 2022: C4 59.9 → 9.5; Ca²⁺ barely changes). mcube now takes `c4_set` /
+  `c4_pairs`. Plan: Ca/La sensitivity run with the literature set, then fit La/Lu (and Ca) to
+  acetate stability constants with one protocol, check against r2SCAN, rerun the constriction.
 - *Superseded:* C5's xTB/MM QM leg and xTB→DFT reweighting, and C16's "xTB/MM for the rest".
 
 **The protein, in one page:** [channel/protein.md](channel/protein.md). It is BD122_14570, a
@@ -598,6 +602,45 @@ level and details proposed, not yet decided)
   old basis.
 - Carboxylate check rerun with it, La and Lu recomputed (Ca, water, acetate reused):
   **30526116** (the def2 Lu redo 30523294 was cancelled).
+
+**C20 – Tune the ion–carboxylate C4 the Merz/Hay way; mcube ships literature sets and takes
+explicit overrides.** (user, 2026-10-25)
+- **What the literature gives** (`docs/channel/c4-tuning.md`):
+
+  | Pair (TIP3P, Asp/Glu O2) | Default α-ratio C4 | Kantakevičius 2022 (chelates) | Jafari 2024 (acetate) |
+  |---|---|---|---|
+  | Ca²⁺–O | 34.4 | 29.2 | 36.27 |
+  | La³⁺–O | 59.9 | **9.5** | — |
+  | Lu³⁺–O | 98.1 | — | — |
+
+  The Ca²⁺ side is close to experiment-calibrated already (Jafari's acetate fit lands 5 % above
+  the default; the chelate fit 15 % below). The La³⁺ side is not: the chelate fit cuts La–
+  carboxylate C4 six-fold, and with it Kantakevičius reproduce lanmodulin's La > Y > Ca order
+  (La − Ca −40 vs −46 kJ/mol experiment) while absolute binding stays too strong for every ion.
+  So the C17 finding (12-6-4 favours Ln³⁺ over Ca²⁺ more than r2SCAN) has an independent,
+  experiment-based counterpart: default 12-6-4 over-binds La³⁺ to carboxylates. **No published
+  tuned value exists for Lu³⁺** (or any heavy lanthanide).
+- **mcube (2026-10-25):** `c4_set: <name>` picks a shipped set from `src/mcube/data/c4_pairs.yaml`
+  (`kantakevicius2022_chbe_tip3p`, `jafari2024_acetate_tip3p`, each with source, table, water
+  model and fitting target); `c4_pairs: {Ca2+: {O2: 29.2}}` gives explicit pairs and wins over the
+  set. Both are opt-in: the default stays the plain Li/Song/Merz 12-6-4, because every tuned set
+  is specific to one ligand chemistry and one water model. Implemented as a table added to the
+  existing C4 force (override − default for listed pairs only); QM atoms stay off; carried to
+  every later stage like `metal_parameters`. 11 new tests (`TestPairC4`).
+- **Plan:**
+  1. Sensitivity first: rerun the constriction windows (z −15…+14 Å) for Ca²⁺ and La³⁺ with
+     `c4_set: kantakevicius2022_chbe_tip3p` and compare their PMFs with the default ones. If the
+     Ca/La ranking moves, the C4 choice decides the answer and must be fitted properly.
+  2. Lu³⁺ needs its own value. Fit La³⁺ and Lu³⁺ (and refit Ca²⁺ as a check) to experimental
+     acetate stability constants with Jafari's PMF protocol (M–carboxyl-C distance, 0.05/0.1 Å
+     windows, ≥ 6 ns, 3 replicates, Jacobian and standard-state correction, the 3+/1− Coulomb
+     tail handled), so all three ions come from one protocol and one target type. Experimental
+     log β₁ for La/Lu acetate still to be taken from NIST SRD 46 / Martell–Smith and corrected to
+     I = 0. Interim, clearly labelled as an assumption: scale Lu's default by La's ratio.
+  3. Check every fitted set against the r2SCAN exchange energies (C17, TZVP + counterpoise) and
+     for the binding mode (Ca²⁺ mono- vs bidentate).
+  4. Rerun the constriction windows for all three ions with the chosen set; that pair of PMFs is
+     the MM answer to the selectivity question.
 
 ## Findings
 

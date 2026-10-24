@@ -1,0 +1,54 @@
+# Pair-specific 12-6-4 C4 sets from the literature (ions.py, `c4_set:` in any stage that
+# takes `metal_parameters`). Each set gives, per ion, the C4 (kcal/mol/A^4) between that ion
+# and an Amber atom class, replacing the default C4(ion) * alpha(class) / alpha(OW) for those
+# pairs only. Everything else stays at the default. Ion keys are element + charge.
+#
+# A set is only valid with the water model and 12-6 ion parameters it was fitted with, and it
+# was fitted to one kind of ligand: check `water_model`, `fitted_to` and `note` before using it.
+# Values are copied from the papers' tables; `source_table` says where.
+
+kantakevicius2022_chbe_tip3p:
+  source: >-
+    Kantakevicius, Mathiah, Johannissen & Hay, J. Chem. Theory Comput. 2022, 18, 2367-2374,
+    "Chelator-Based Parameterization of the 12-6-4 Lennard-Jones Molecular Mechanics Potential
+    for More Realistic Metal Ion-Protein Interactions", doi:10.1021/acs.jctc.1c00898
+  source_table: Table 2 (Ch-BE), carboxylate O column
+  water_model: TIP3P
+  ion_parameters: Li/Song/Merz 12-6-4 TIP3P (their "default 12-6-4LJ"); ff14SB, AM1-BCC chelators
+  fitted_to: experimental EDTA (and NTA) stability constants, by thermodynamic integration
+  note: >-
+    Carboxylate oxygen only, which mcube maps to ff14SB's Asp/Glu class O2. The paper also fits
+    the chelators' tertiary amine N (Ca 110.6, Mg 126.1, Y 161.9, La 46.3), which has no protein
+    counterpart, so it is not listed. Tested on lanmodulin and calmodulin EF-hand peptides:
+    absolute binding still too strong for every ion, LanM order La > Y > Ca reproduced.
+    No Lu3+ (or other heavy lanthanide).
+  pairs:
+    Ca2+: {O2: 29.2}
+    Mg2+: {O2: 12.3}
+    Y3+: {O2: 14.9}
+    La3+: {O2: 9.5}
+
+jafari2024_acetate_tip3p:
+  source: >-
+    Jafari, Li, Merz et al., J. Phys. Chem. B 2024, 128, 684, "Thermodynamics of Metal-Acetate
+    Interactions", doi:10.1021/acs.jpcb.3c06567
+  source_table: Table 2 (TIP3P), C4 column (the fitted acetate-O polarisability times the ion's C4 / 1.444)
+  water_model: TIP3P
+  ion_parameters: Li/Song/Merz 12-6-4 TIP3P
+  fitted_to: experimental metal-acetate binding free energies, by umbrella-sampling PMFs
+  note: >-
+    Acetate oxygen, mapped by mcube to ff14SB's Asp/Glu class O2 (the paper's acetate atom type
+    is not stated in the HTML; the transfer to protein carboxylates is an assumption). No
+    lanthanides. Sets for SPC/E and OPC are in the paper's Tables 3 and 4.
+  pairs:
+    Ni2+: {O2: 94.91}
+    Mg2+: {O2: 11.50}
+    Cu2+: {O2: 190.17}
+    Zn2+: {O2: 117.08}
+    Co2+: {O2: 95.41}
+    Cu1+: {O2: 8.24}
+    Fe2+: {O2: 48.76}
+    Mn2+: {O2: 47.45}
+    Cd2+: {O2: 114.91}
+    Ca2+: {O2: 36.27}
+    Ag1+: {O2: 86.22}

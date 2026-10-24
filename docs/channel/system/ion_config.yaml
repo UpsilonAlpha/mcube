@@ -29,6 +29,10 @@ md:
     nvt_time: 500                          # its lastframe is where `pull` starts
     traj_frequency: 2500
     metal_parameters: "1264"
+    # Pair-specific C4 (decision log C20); default = the alpha-ratio rule, which over-binds
+    # carboxylates. Off for the quick test so it stays the plain 12-6-4 model.
+    # c4_set: kantakevicius2022_chbe_tip3p
+    # c4_pairs: {La3+: {O2: 9.5}, Ca2+: {O2: 29.2}}
 umbrella:
   inputs:
     ion: "CHAIN:1:ION"

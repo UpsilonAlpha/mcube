@@ -31,6 +31,11 @@ md:
     nvt_timestep: 0.004
     nvt_time: 1000                         # its lastframe is where `pull` starts
     metal_parameters: "1264"               # 12-6-4: Ca2+, La3+ and Lu3+ are all covered
+    # The default 12-6-4 C4 between an ion and a ligand atom is C4(ion) * alpha(atom) / alpha(water),
+    # fitted to hydration only; it over-binds carboxylates. Override it per pair (kcal/mol/A^4):
+    # c4_set: kantakevicius2022_chbe_tip3p  # a literature set from src/mcube/data/c4_pairs.yaml
+    # c4_pairs:                             # explicit pairs, win over the set
+    #   La3+: {O2: 9.5}                     # O2 = Asp/Glu carboxylate oxygen (ff14SB class)
 qmmm:
   inputs:
     mult: 1                                # La3+ and Lu3+ are closed shell (4f0, 4f14)

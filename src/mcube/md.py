@@ -63,7 +63,7 @@ def md_membrane(inputs: Dict[str, Any], preprocess: Dict[str, Any]) -> bool:
 
 
 def apply_metal_parameters(mm, pdb_file: str, metals, which: str, forcefields=None,
-                           qm_atoms=(), polarizabilities=None) -> list:
+                           qm_atoms=(), polarizabilities=None, c4_pairs=None) -> list:
     """Override the metals' Lennard-Jones terms with a published ion set.
 
     Amber's stock parameters put the metal-oxygen pair minimum too close - about
@@ -74,7 +74,7 @@ def apply_metal_parameters(mm, pdb_file: str, metals, which: str, forcefields=No
     """
     return ions.apply_metal_parameters(mm.system, PDBFile(pdb_file).topology, metals, which,
                                        forcefields=forcefields, qm_atoms=qm_atoms,
-                                       polarizabilities=polarizabilities)
+                                       polarizabilities=polarizabilities, c4_pairs=c4_pairs)
 
 
 def build_md_theory(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file: str,
@@ -303,7 +303,8 @@ def run(args) -> Dict[str, Any]:
     if metal_set and str(metal_set).lower() != "none":
         apply_metal_parameters(mm, pdb_file, preprocess_inputs.get("metals"), metal_set,
                                forcefields=default_forcefields,
-                               polarizabilities=inputs.get("polarizabilities"))
+                               polarizabilities=inputs.get("polarizabilities"),
+                               c4_pairs=ions.c4_overrides(inputs))
         result["metal_parameters"] = str(metal_set).lower()
 
     fragment = Fragment(pdbfile=pdb_file)

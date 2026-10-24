@@ -18,6 +18,23 @@ ion–carboxylate C4 terms are checked.
 Sources: PMC11137831, PMC12203879 (DOI 10.1021/acs.jpcb.3c06567), PMC11549095, PMC12020355,
 PMC4762653, PMC10372143 (ZIP8, m-12-6-4 with TI, Zn over Cd by 3.8 kcal/mol).
 
+Added 2026-10-25 (read from the papers by hand):
+
+- **Kantakevičius, Mathiah, Johannissen & Hay, JCTC 2022, 18, 2367** ("Ch-BE", doi
+  10.1021/acs.jctc.1c00898): pair C4 for carboxylate O and chelator amine N, fitted by TI to
+  EDTA/NTA stability constants (TIP3P, ff14SB). Carboxylate-O C4 (default → Ch-BE): Ca²⁺ 34.4 →
+  29.2, Mg²⁺ 52.4 → 12.3, Y³⁺ 85.1 → 14.9, **La³⁺ 59.9 → 9.5**. Tested on lanmodulin and calmodulin
+  EF-hand peptides: LanM order La > Y > Ca reproduced (La − Ca −40 vs −46 kJ/mol exp.), absolute
+  binding still too strong for every ion. No Lu³⁺.
+- **Jafari et al. TIP3P values (Table 2):** Ca²⁺ acetate-O polarisability 0.600 Å³ → C4 36.27
+  (default 34.4); the full table for 11 ions is in `src/mcube/data/c4_pairs.yaml`.
+- Our default values are exactly theirs (Ca 34.4, La 59.9), so their corrections apply directly.
+
+## In mcube
+
+`c4_set: kantakevicius2022_chbe_tip3p` or `c4_pairs: {La3+: {O2: 9.5}}` in md (and any later
+stage) — see the README rows and `src/mcube/data/c4_pairs.yaml`. Decision log C20 has the plan.
+
 ## Transfer to the channel
 
 1. **What to tune:** only the ion–carboxylate-O C4, separately for Ca²⁺, La³⁺ and Lu³⁺, with the

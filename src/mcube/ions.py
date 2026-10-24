@@ -180,6 +180,48 @@ def c4_value(element: str, charge: float):
     return None if entry is None else entry[2]
 
 
+C4_PAIRS_FILE = Path(__file__).with_name("data") / "c4_pairs.yaml"
+
+
+def c4_sets(path=C4_PAIRS_FILE) -> dict:
+    """The literature pair-C4 sets shipped with mcube (data/c4_pairs.yaml)."""
+    import yaml
+    with open(path) as fh:
+        return yaml.safe_load(fh) or {}
+
+
+def ion_key(element: str, charge: float) -> str:
+    """'Ca2+', 'La3+', ...: how c4_pairs names an ion."""
+    element = element.strip()
+    return f"{element[0].upper()}{element[1:].lower()}{int(round(charge))}+"
+
+
+def c4_overrides(inputs: dict, md_inputs: dict = None) -> dict:
+    """
+    Pair-specific C4 for this stage: {ion key: {atom class: C4 kcal/mol/A^4}}.
+
+    `c4_set` names a set in data/c4_pairs.yaml; `c4_pairs` gives pairs explicitly and wins
+    over the set, pair by pair. A stage's own keys win over md's, as for
+    `polarizabilities`, so QM/MM and umbrella stages see what md used.
+    """
+    md_inputs = md_inputs or {}
+    name = inputs.get("c4_set", md_inputs.get("c4_set"))
+    explicit = inputs.get("c4_pairs", md_inputs.get("c4_pairs")) or {}
+    pairs: dict = {}
+    if name:
+        sets = c4_sets()
+        if name not in sets:
+            raise ValueError(f"unknown c4_set {name!r}; available: {', '.join(sorted(sets))}")
+        chosen = sets[name]
+        print(f"[INFO] 12-6-4 c4_set {name}: {chosen.get('water_model', '?')} water, fitted to "
+              f"{chosen.get('fitted_to', '?')}")
+        for ion, classes in (chosen.get("pairs") or {}).items():
+            pairs.setdefault(str(ion), {}).update({str(k): float(v) for k, v in classes.items()})
+    for ion, classes in explicit.items():
+        pairs.setdefault(str(ion), {}).update({str(k): float(v) for k, v in classes.items()})
+    return pairs
+
+
 def read_polarizabilities(path=POL_FILE) -> dict:
     """{Amber atom type: polarisability in A^3} from a two-column file."""
     pol = {}
@@ -228,7 +270,7 @@ def atom_classes(topology, forcefields) -> list:
 
 
 def add_c4_force(system, topology, forcefields, ion_indices, ion_c4, qm_atoms=(),
-                 polarizabilities=None):
+                 polarizabilities=None, ion_keys=None, c4_pairs=None):
     """
     Add the 12-6-4 ion-induced-dipole term as a CustomNonbondedForce. Returns it.
 
@@ -240,6 +282,10 @@ def add_c4_force(system, topology, forcefields, ion_indices, ion_c4, qm_atoms=()
 
     `qm_atoms` get cfour = alpha = 0: in QM/MM the QM region is polarised by the
     embedding already, so a QM ion's C4 would count that induction twice.
+
+    `c4_pairs` ({ion key: {atom class: C4}}, see `c4_overrides`) replaces the default C4 for
+    those (ion, class) pairs: a table `dc4(islot, cslot)` adds (pair C4 - default C4), where
+    `islot` numbers the overridden ions and `cslot` the overridden classes (0 = none).
     """
     import openmm
 
@@ -267,16 +313,51 @@ def add_c4_force(system, topology, forcefields, ion_indices, ion_c4, qm_atoms=()
             "{class: A^3}` in the stage inputs.")
 
     nonbonded = next(f for f in system.getForces() if isinstance(f, openmm.NonbondedForce))
-    force = openmm.CustomNonbondedForce("-(cfour1*alpha2 + cfour2*alpha1)/r^4")
+
+    # Pair overrides: one row per overridden ion particle, one column per overridden class
+    keys = {int(i): k for i, k in zip(ion_indices, ion_keys or [])}
+    c4_pairs = c4_pairs or {}
+    present = set(classes)
+    over_ions = [i for i in sorted(ions) if keys.get(i) in c4_pairs and i not in qm]
+    over_classes = sorted({c for i in over_ions for c in c4_pairs[keys[i]] if c in present})
+    applied = {f"{keys[i]}:{c}" for i in over_ions for c in c4_pairs[keys[i]] if c in present}
+    unused = {f"{k}:{c}" for k, cl in c4_pairs.items() for c in cl} - applied
+    if unused:
+        print("[WARNING] c4_pairs not applied (no such ion or atom class in this system): "
+              + ", ".join(sorted(unused)))
+    islot = {i: n + 1 for n, i in enumerate(over_ions)}
+    cslot = {c: n + 1 for n, c in enumerate(over_classes)}
+    nx, ny = len(over_ions) + 1, len(over_classes) + 1
+    delta = [0.0] * (nx * ny)
+    for i in over_ions:
+        for c, value in c4_pairs[keys[i]].items():
+            if c not in cslot:
+                continue
+            pol_c = type_polarizability(c, table, polarizabilities) or 0.0
+            default = ions[i] * pol_c / WATER_POL
+            # kcal/mol/A^4 -> kJ/mol/nm^4
+            delta[islot[i] + nx * cslot[c]] = (float(value) - default) * 4.184e-4
+            print(f"[INFO] 12-6-4 pair C4 {keys[i]}-{c}: {default:.2f} -> {float(value):.2f} kcal/mol/A^4")
+
+    energy = "-(cfour1*alpha2 + cfour2*alpha1)/r^4"
+    if over_ions:
+        energy = "-(cfour1*alpha2 + cfour2*alpha1 + dc4(islot1, cslot2) + dc4(islot2, cslot1))/r^4"
+    force = openmm.CustomNonbondedForce(energy)
     force.setName("mcube_1264_C4")
     force.addPerParticleParameter("cfour")
     force.addPerParticleParameter("alpha")
+    if over_ions:
+        force.addPerParticleParameter("islot")
+        force.addPerParticleParameter("cslot")
+        force.addTabulatedFunction("dc4", openmm.Discrete2DFunction(nx, ny, delta))
     for index in range(system.getNumParticles()):
         if index in qm:
-            force.addParticle([0.0, 0.0])
+            params = [0.0, 0.0, 0.0, 0.0]
         else:
             # kcal/mol/A^4 -> kJ/mol/nm^4
-            force.addParticle([ions.get(index, 0.0) * 4.184e-4, pol[index] / WATER_POL])
+            params = [ions.get(index, 0.0) * 4.184e-4, pol[index] / WATER_POL,
+                      float(islot.get(index, 0)), float(cslot.get(classes[index], 0))]
+        force.addParticle(params if over_ions else params[:2])
     # Every exception, not only the ions': OpenMM's CPU and GPU platforms refuse
     # nonbonded forces whose exclusions differ ("All Forces must have identical
     # exclusions"); OpenMM's own Amber 12-6-4 path copies them all the same way
@@ -299,7 +380,7 @@ def add_c4_force(system, topology, forcefields, ion_indices, ion_c4, qm_atoms=()
 
 
 def apply_metal_parameters(system, topology, metals, which: str, forcefields=None,
-                           qm_atoms=(), polarizabilities=None) -> list:
+                           qm_atoms=(), polarizabilities=None, c4_pairs=None) -> list:
     """
     Override the metals' Lennard-Jones terms with a published ion set, and for
     `1264` add the C4 term. Returns the indices changed.
@@ -322,7 +403,7 @@ def apply_metal_parameters(system, topology, metals, which: str, forcefields=Non
         return []
 
     wanted = {m.upper() for m in (metals or [])}
-    changed, c4s = [], []
+    changed, c4s, keys = [], [], []
     for atom in topology.atoms():
         element = (atom.element.symbol if atom.element else "").upper()
         if element not in wanted:
@@ -342,6 +423,7 @@ def apply_metal_parameters(system, topology, metals, which: str, forcefields=Non
                                         new_sigma * unit.nanometer,
                                         new_epsilon * unit.kilojoule_per_mole)
         changed.append(atom.index)
+        keys.append(ion_key(element, q))
         note = ""
         if which == "1264":
             c4s.append(c4_value(element, q))
@@ -352,10 +434,13 @@ def apply_metal_parameters(system, topology, metals, which: str, forcefields=Non
               f"epsilon {epsilon.value_in_unit(unit.kilojoule_per_mole):.4f} -> "
               f"{new_epsilon:.4f} kJ/mol{note}")
 
+    if c4_pairs and which != "1264":
+        raise ValueError("c4_set / c4_pairs only apply to metal_parameters: 1264")
     if which == "1264" and changed:
         if forcefields is None:
             raise ValueError("1264 needs the force-field files, to type every atom")
-        add_c4_force(system, topology, forcefields, changed, c4s, qm_atoms, polarizabilities)
+        add_c4_force(system, topology, forcefields, changed, c4s, qm_atoms, polarizabilities,
+                     ion_keys=keys, c4_pairs=c4_pairs)
         if set(changed) & {int(a) for a in qm_atoms}:
             print("[INFO] 12-6-4: C4 is off for QM atoms (the embedding polarises them)")
     return changed

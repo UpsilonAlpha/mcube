@@ -194,3 +194,71 @@ class TestStageSet:
     def test_then_md_inputs_then_iod(self):
         assert ions.metal_parameter_set({}, {"inputs": {"metal_parameters": "none"}}) == "none"
         assert ions.metal_parameter_set({}, {}) == "iod"
+
+
+class TestPairC4:
+    """`c4_set` / `c4_pairs`: literature pair-specific C4 in place of C4(ion) * alpha / alpha_OW."""
+
+    def test_pair_override_replaces_the_default(self):
+        top, pos = ion_and_water(r=2.5)
+        system = system_for(top)
+        ions.apply_metal_parameters(system, top, ["LA"], "1264", forcefields=WATER_XML,
+                                    c4_pairs={"La3+": {"tip3p-O": 40.0}})
+        assert c4_energy(system, pos) == pytest.approx(-40.0 / 2.5 ** 4, rel=1e-5)
+
+    def test_periodic_override(self):
+        top, pos = ion_and_water(r=2.5, box=3.0)
+        system = system_for(top, periodic=True)
+        ions.apply_metal_parameters(system, top, ["LA"], "1264", forcefields=WATER_XML,
+                                    c4_pairs={"La3+": {"tip3p-O": 40.0}})
+        default = system_for(top, periodic=True)
+        ions.apply_metal_parameters(default, top, ["LA"], "1264", forcefields=WATER_XML)
+        # only the La-O pair changes; the long-range correction is the same form
+        assert c4_energy(system, pos) < 0
+        assert c4_energy(system, pos) != pytest.approx(c4_energy(default, pos))
+
+    def test_other_ion_untouched(self):
+        top, pos = ion_and_water(r=2.5)
+        system = system_for(top)
+        ions.apply_metal_parameters(system, top, ["LA"], "1264", forcefields=WATER_XML,
+                                    c4_pairs={"Ca2+": {"tip3p-O": 1.0}})
+        assert c4_energy(system, pos) == pytest.approx(-152.0 / 2.5 ** 4, rel=1e-5)
+
+    def test_qm_ion_stays_off(self):
+        top, pos = ion_and_water()
+        system = system_for(top)
+        ions.apply_metal_parameters(system, top, ["LA"], "1264", forcefields=WATER_XML,
+                                    qm_atoms=[0], c4_pairs={"La3+": {"tip3p-O": 40.0}})
+        assert c4_energy(system, pos) == 0.0
+
+    def test_only_with_1264(self):
+        top, _ = ion_and_water()
+        with pytest.raises(ValueError, match="only apply to metal_parameters: 1264"):
+            ions.apply_metal_parameters(system_for(top), top, ["LA"], "iod",
+                                        forcefields=WATER_XML, c4_pairs={"La3+": {"O2": 9.5}})
+
+    def test_shipped_sets(self):
+        sets = ions.c4_sets()
+        assert sets["kantakevicius2022_chbe_tip3p"]["pairs"]["La3+"]["O2"] == 9.5
+        assert sets["kantakevicius2022_chbe_tip3p"]["pairs"]["Ca2+"]["O2"] == 29.2
+        assert sets["jafari2024_acetate_tip3p"]["pairs"]["Ca2+"]["O2"] == 36.27
+        for name, entry in sets.items():
+            assert {"source", "water_model", "fitted_to", "pairs"} <= set(entry), name
+
+    def test_set_then_explicit_pairs_win(self):
+        pairs = ions.c4_overrides({"c4_set": "kantakevicius2022_chbe_tip3p",
+                                   "c4_pairs": {"La3+": {"O2": 12.0}, "Lu3+": {"O2": 8.0}}})
+        assert pairs["La3+"]["O2"] == 12.0 and pairs["Lu3+"]["O2"] == 8.0
+        assert pairs["Ca2+"]["O2"] == 29.2
+
+    def test_stage_falls_back_to_md(self):
+        pairs = ions.c4_overrides({}, {"c4_pairs": {"Ca2+": {"O2": 30.0}}})
+        assert pairs == {"Ca2+": {"O2": 30.0}}
+
+    def test_unknown_set(self):
+        with pytest.raises(ValueError, match="unknown c4_set"):
+            ions.c4_overrides({"c4_set": "nope"})
+
+    def test_ion_key(self):
+        assert ions.ion_key("LA", 3.0) == "La3+"
+        assert ions.ion_key("CA", 2) == "Ca2+"

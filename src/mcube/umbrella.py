@@ -441,7 +441,8 @@ def mm_system(pdb, inputs: Dict[str, Any], preprocess: Dict[str, Any], md: Dict[
     if metals and which != "none":
         ions.apply_metal_parameters(system, pdb.topology, metals, which, forcefields=forcefields,
                                     polarizabilities=inputs.get("polarizabilities",
-                                                                md_in.get("polarizabilities")))
+                                                                md_in.get("polarizabilities")),
+                                    c4_pairs=ions.c4_overrides(inputs, md_in))
     return system, forcefields
 
 
@@ -759,7 +760,7 @@ def qmmm_level_inputs(config: str, inputs) -> Dict[str, Any]:
     """qmmm.inputs (charge, mult, xTB, cores ...) with this section's QM keys on top."""
     from .qmmm import qm_level_inputs, stage_inputs
     qin = qm_level_inputs(stage_inputs(config, "qmmm"), inputs)
-    for k in ("charge", "mult", "cores", "metal_parameters", "polarizabilities"):
+    for k in ("charge", "mult", "cores", "metal_parameters", "polarizabilities", "c4_set", "c4_pairs"):
         if k in inputs:
             qin[k] = inputs[k]
     return qin

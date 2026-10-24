@@ -34,4 +34,4 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 # Amber's 12-6-4 polarisability table (ions.py)
-mcube = ["data/*.dat"]
+mcube = ["data/*.dat", "data/*.yaml"]
