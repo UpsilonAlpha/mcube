@@ -45,6 +45,23 @@ stage) — see the README rows and `src/mcube/data/c4_pairs.yaml`. Decision log 
    kcal/mol (Jafari). La³⁺/Lu³⁺: log β₁ is roughly 1.8–2.0 and nearly flat across the series
    (*unverified*; take NIST SRD 46 or Martell–Smith and correct to I = 0, which is large for a
    3+/1− pair). Express the targets as ΔΔG(Ln − Ca) and ΔΔG(La − Lu), since selectivity depends on those.
+   **Found (2026-10-25, agent pass; the Ln numbers were read from a secondary abstract, so check them):**
+
+   | Ion | log β₁, 25 °C | Source | Status |
+   |---|---|---|---|
+   | La³⁺ | 2.20 (I ≈ 0, "thermodynamic") | Deberdt et al., Chem. Geol. 151, 349 (1998), doi 10.1016/S0009-2541(98)00089-8 | quoted in Ragnarsdottir, Goldschmidt 2000 abstract 825; I = 0 not stated |
+   | Gd³⁺ | 2.52 | Deberdt et al., Chem. Geol. 167, 75 (2000), doi 10.1016/S0009-2541(99)00201-6 | same abstract |
+   | Yb³⁺ (stands in for Lu) | 2.32 | Deberdt et al. 2000 | same abstract |
+   | La³⁺ | 1.54 (1.00 M NaClO₄) | Anal. Lett. 27(9), 1994, doi 10.1080/00032719408007433 | snippet only |
+   | Ca²⁺ | 1.18 (I = 0) | Martell & Smith, *Critical Stability Constants* | read (LibreTexts appendix) |
+   | Ca²⁺ | ΔG −1.27 kcal/mol (log K 0.93) | Jafari, Li, Song, Sagresti, Brancato & Merz, JPCB 2024, Table 1 (refs 50–52) | read |
+
+   No Lu³⁺ acetate constant was reachable (Kolat & Powell, Inorg. Chem. 1962; Grenthe, Acta Chem.
+   Scand. 1964; Sonesson Part II has Yb but no Lu). The series is not monotonic: La 2.20 < Gd 2.52
+   > Yb 2.32 (Eu 2.91, Zotov 2002). Targets at 298 K (1.364 kcal/mol per log unit):
+   ΔΔG(La − Ca) ≈ −1.4 to −1.7, ΔΔG(Yb − Ca) ≈ −1.5 to −1.9, **ΔΔG(La − Yb) ≈ +0.2 kcal/mol**,
+   which is within the scatter between datasets. Experimentally, acetate barely tells light from heavy Ln.
+   The fit can pin the Ln − Ca gap; the La − Lu difference has to come from elsewhere (r2SCAN, C17).
 3. **PMF protocol (Jafari's, plus what it leaves out):** M–carboxyl-C distance 1.8–12 Å, 0.05 Å
    windows below 5 Å and 0.1 Å above, ≥ 6 ns each (longer for Lu³⁺), 3 replicates, MBAR or WHAM; add
    the Jacobian 2kT ln r; K° = 4π∫₀^rc r² e^(−W/kT) dr / 1661 Å³ with rc at the first barrier;
