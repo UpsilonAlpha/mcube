@@ -777,6 +777,18 @@ level and details proposed, not yet decided)
   The ions moved during md: CV at start La −23.6 Å, Ca +27.9 Å and Lu +32.4 Å (the last two
   crossed the periodic boundary into the extracellular bulk; it is one water layer). Each pull
   covers about 77 Å at 10 Å/ns.
+- **Pulls done (2026-10-24, ~2.5 h each on an L40, ~70 ns/day):** 71 seeds each, −35…+35 Å.
+  **Windows started** on the three usable GPUs (gpu_cuda's estimate was 30 Oct): **30559113** La
+  (viz, windows 10–64), **30559114** Ca and **30559115** Lu (short, windows 20–49), centre first
+  so the constriction comes in first. Window length cut to **1 ns** (+0.1 ns shell-restrained
+  equilibration; ~20 min each) for the quick test: 213 windows × 2 ns would be ~145 GPU-hours,
+  about two days on three L40s. Windows near the constriction can be extended. (mcube rewrites
+  config.yaml without comments, so edits must match the bare `time: 2000` line.)
+- **Lu OpenMM-on-prmtop (30430921, 2 ns):** 2.33 Å, CN 7.65, with sander 7.64 and mcube 7.6.
+  Three engines agree; F4 is closed on our side.
+- **Pitfall:** `sbatch --export=ALL,OPTS="... --redo LA,LU"` splits at the comma, so only `LA`
+  was redone and `LU_aqua` was reused from the cancelled def2 run. Rerun with
+  `--redo LU_aqua`: **30559102**. Never put commas in an `--export` value.
 - **Carboxylate check, Lu:** every Lu species' r2SCAN SCF failed to converge (energies off by
   10⁵ kcal/mol; the geometries are sane: Lu–O 2.32 Å in Lu(H₂O)₈³⁺). The script now never uses an
   unconverged energy, keeps the level shift for the final energy, falls back to Newton, and

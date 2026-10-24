@@ -84,5 +84,5 @@ Order of operations for one ion:
 | fold, protein identity | done: AF2 monomer (trimer not supported); BLAST, neighbourhood, conservation in `channel/protein.md` |
 | bulk ion check (C15, F4) | Ca 1264, La 1264, La IOD, Lu IOD, Lu 1264 done; all done; Lu CN 7.6 vs paper 9.0 confirmed in sander (2 ns, CN 7.64); OpenMM-on-prmtop (30430921) running |
 | QM level (F7, F8, C17) | xTB/MM out; g-xTB set aside; r2SCAN DFT/MM at the constriction; 12-6-4 vs r2SCAN carboxylate check running (30454349); GPU r2SCAN benchmark failed on missing CUDA 12 libraries (F11), to fix |
-| system (C18) | apo POPE done (30455128); Ca/La/Lu placed; after F9/F10 preprocess+md+pull on gpu_viz L40s (F10, F11 fixed; md done; pulls 30523774 La on viz, 30523775 Ca and 30523776 Lu on short) |
-| MM umbrella test | windows −35…+35 Å, 1 Å, 2 ns: after the pulls (`umbrella_windows.slurm`) |
+| system (C18) | apo POPE done (30455128); Ca/La/Lu placed; after F9/F10 preprocess+md+pull on gpu_viz L40s (F10, F11 fixed; md and pulls done) |
+| MM umbrella test | windows −35…+35 Å, 1 Å, 1 ns, centre first: 30559113 La (10–64), 30559114 Ca and 30559115 Lu (20–49); the rest as slots free |
