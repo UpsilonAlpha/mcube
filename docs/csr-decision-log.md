@@ -1760,6 +1760,29 @@ The MD finished all 50,000 steps; the geometry optimisation that follows it is s
 
 **What this does not establish.** One frame is not an ensemble. That the end point is at 57 degrees does not show the NAC is never visited during the 50 ps, and `site.py` has `acceptors <traj> <topology>` and `joint` modes built for exactly that question. Running them over `QM_MM.dcd` is cheap next to another MD and is the honest way to decide whether the NAC is sampled at all before concluding it has to be driven.
 
+**D105 - trajectories deleted to free scratch, and the optimisation is grinding in geomeTRIC.** (2026-10-25 08:45 AEST, `CSR_nac`)
+
+**Scratch had 4 GB left (296/300 GB), so the trajectories went.** Deleted, with the per-frame time series kept in the CSVs that survive:
+
+| file | size | what it was |
+| --- | --- | --- |
+| `md_naclong_results/NVTtrajectory.dcd` | 2.97 GB | 100 ns NVT production, job 30421166, 4 fs step, `traj_frequency 5000` so a frame every 20 ps (~5000 frames) |
+| `md_naclong_results/NVTtrajectory_imaged.dcd` | 2.97 GB | the same frames, molecules wrapped into the box |
+| `md_naclong_results/relaxbox_NPT.dcd` | 593 MB | the NPT box relaxation that preceded it |
+| `md_naclong_results/relaxbox_NPT_imaged.dcd` | 593 MB | the same, wrapped |
+| `md_naclong_results/OpenMMOpt_traj.xyz` | 64 MB | the pre-MD minimisation path |
+| `protdft/nacqm/OpenMMMD_traj_wrapped.xyz` | 138 MB | the 50 ps QM/MM MD, wrapped, job 30467248 |
+
+Kept deliberately: both `NVTtrajectory_lastframe*.pdb` (the imaged one is `nacqm.inputs.pdb_file`, so deleting it would have broken the running job), the first/last frame PDB and CIF of every stage, `OpenMM_MD*.chk` and `_state.xml`, and `nvtsim.csv` / `nptsim.csv` - which hold the per-frame energies and temperatures, so the time series survives even though the coordinates do not. **`protdft/nacqm/QM_MM.dcd` was also kept** (30 MB): it is the 50 ps QM/MM trajectory, and the `site.py acceptors` / `joint` analysis D104 calls for needs it.
+
+That freed 7.3 GB: `md_naclong_results` 7.09 GB -> 74 MB, `nacqm` 848 -> 716 MB, scratch 296 -> 289 GB. A `DELETED.md` in each directory points here. Nothing the running job writes was touched.
+
+**The optimisation is not hung, it is grinding, and it will not finish.** It has made no gradient call and written no file since 08:18, but `AveCPU` rose 6-06:40:11 -> 6-06:49:55 in 140 s of wall clock, i.e. **4.2 cores fully busy**. So the time is going into geomeTRIC's internal-coordinate linear algebra, not into xTB - which is exactly what `running-on-bunya.md` warned: TRIC over hundreds of active atoms (431 here, `actradius: 8`) does large linear algebra every step. The 15 x 30 MB `HT.v_*.txt` files written between 07:09 and 08:16 are the same signature that OOM-killed job 30409808.
+
+At 111 of 300 steps after 4.9 h, and now >20 min on a single step, the remaining ~190 steps cannot finish before the 48 h walltime expires at 22:10 today. **`QM_MM_optimized.pdb` is only written at the end, so a timeout yields no optimised structure** - though `geometric_OPTtraj_optim.xyz` and `optimization_energies.log` retain the path so far. Nothing scientific is at risk either way: the MD end point is safe in `QM_MM_lastframe.pdb` and is already measured in D104.
+
+The cheap fix, if it is killed: rerun the optimisation alone from `QM_MM_lastframe.pdb` with `skip_equilibrate: true`, `opt_coordsystem: hdlc` (exposed for this in D-entry above), a smaller `actradius`, and the `cores: 4` that is now correct in the config. That is hours, not days.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
