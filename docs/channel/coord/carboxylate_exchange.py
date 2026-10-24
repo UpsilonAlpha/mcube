@@ -251,6 +251,13 @@ def dft_optimise(atoms, charge, basis_file, cores, functional, maxsteps):
     return float(e) * HARTREE_KCAL, bool(conv and mf.converged), [(a[0], np.array(p)) for a, p in zip(atoms, xyz)]
 
 
+def write_xyz(path, elems, xyz, comment=""):
+    with open(path, "w") as fh:
+        fh.write(f"{len(elems)}\n{comment}\n")
+        for e, (x, y, z) in zip(elems, xyz):
+            fh.write(f"{e} {x:.6f} {y:.6f} {z:.6f}\n")
+
+
 def geometry_report(atoms):
     """Ion-O distances by ligand, and a flag if a proton has left its water."""
     xyz = np.array([a[1] for a in atoms])
@@ -283,7 +290,7 @@ def main():
     p.add_argument("--functional", default="r2scan")
     p.add_argument("--maxsteps", type=int, default=200)
     p.add_argument("--skip-dft", action="store_true")
-    p.add_argument("--redo", default="", help="species prefixes to recompute on resume, e.g. LU")
+    p.add_argument("--redo", default="", help="species prefixes to recompute on resume, e.g. LU, or ALL")
     p.add_argument("--cores", type=int, default=int(os.environ.get("SLURM_CPUS_PER_TASK", 1)))
     p.add_argument("--out", required=True)
     args = p.parse_args()
@@ -301,7 +308,7 @@ def main():
         old = json.loads(Path("report.json").read_text()).get("species", {})
 
     def run(name, atoms, ion, charge):
-        redo = any(name.startswith(x) for x in args.redo.split(",") if x)
+        redo = "ALL" in args.redo.split(",") or any(name.startswith(x) for x in args.redo.split(",") if x)
         if name in old and not redo and (old[name].get("dft_converged") or args.skip_dft):
             report["species"][name] = old[name]
             print(f"[{name}] reused", flush=True)
@@ -313,7 +320,13 @@ def main():
             try:
                 e_dft, conv, dft_atoms = dft_optimise(mm_atoms, charge, basis_file, args.cores,
                                                       args.functional, args.maxsteps)
+                # keep the optimised structure (cp_tzvp.py reads it for larger-basis and
+                # counterpoise single points)
+                Path("geom").mkdir(exist_ok=True)
+                write_xyz(f"geom/{name}.xyz", [a[0] for a in dft_atoms],
+                          np.array([a[1] for a in dft_atoms]), comment=f"charge {charge}")
                 row.update({"E_dft": round(e_dft, 3), "dft_converged": conv,
+                            "geometry_file": str(Path(f"geom/{name}.xyz").resolve()),
                             "dft_geometry": geometry_report(dft_atoms) if ion else None})
             except Exception as err:               # record it and carry on with the others
                 row["dft_error"] = repr(err)[:300]

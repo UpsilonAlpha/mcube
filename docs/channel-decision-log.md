@@ -533,6 +533,15 @@ level and details proposed, not yet decided)
   the Ca/Ln gap it gives is suspect in the lanthanides' favour. Gas phase, no BSSE correction,
   Ca and Ln on different basis families: the absolute numbers are rough; the differences are
   what this check is for.
+- **Is the 11–13 kcal/mol Ca bias a small-basis artefact? (user, 2026-10-25; prepared, not run:
+  Bunya needs a sign-in.)** The SVP run kept only distances, so the chain is: (1)
+  `carboxylate_exchange.py --redo ALL` again, now writing `geom/<species>.xyz`; (2)
+  `cp_tzvp.py` (`coord_cp.slurm`, dependent job): r2SCAN single points at def2-TZVP with La and
+  Lu on lcecp-1-TZVP, plus a Boys–Bernardi counterpoise correction over every fragment (ion,
+  each water, acetate), reaction energies uncorrected and corrected next to 12-6-4. Basis file:
+  `bse_basis.py --basis def2-TZVP --override La,Lu=lcecp-1-TZVP --out def2-tzvp_lcecp1.nw`.
+  Mixing def2 with lcecp-1 is by design: Lukanowski & Weigend, PCCP 2026 made the lcecp-k sets
+  error-consistent with def2.
 - Plan (user, 2026-10-23): (1) MM 12-6-4 umbrella over the whole path as a quick first ranking,
   on the cropped barrel (110–130 removed) in POPE; (2) 12-6-4 vs r2SCAN on water → carboxylate
   exchange around each ion (`docs/channel/coord/`), to see whether MM ranks the ions the way
