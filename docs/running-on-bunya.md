@@ -172,6 +172,20 @@ The run: CSR reactant, 41,377 atoms, 71 QM atoms (GFN2-xTB, electrostatic embedd
   - The 200-step cap allows up to about 4 h per endpoint, about 8 h for reactant plus product, inside the 12 h limit.
   - If the optimisation hits the cap without converging, the endpoint is not a true minimum.
 
+**`HT.v_*.txt` files mean geomeTRIC's SVD is failing, and rigid-water constraints
+are why.** `geometric/step.py:470` writes `'HT.v_%.5f.txt' % v`: on an SVD failure it
+dumps the matrix (~30 MB each here), nudges `v` by 0.001 and retries, logging *"SVD
+Error - saving HT.v_... increasing v by 0.001 and trying again"* to
+`geometric_OPTtraj.log`. Job 30467248 produced 15 of them in one hour and its trust
+radius collapsed to 2.8e-04 with the gradient still at 1.9e-01, i.e. it could not
+converge. The cause is the constraint count: mcube holds every active-region **MM**
+water rigid (O-H and H-H pairs; QM waters are left free so they can transfer
+protons), so a 467-atom active region carries a few hundred distance constraints and
+the constraint Jacobian becomes ill-conditioned. The lever is a smaller `actradius`,
+which cuts the number of constrained waters - safe since the QM region is now unioned
+into the active region. The coordinate system is **not** the lever: ASH switches TRIC
+to HDLC by itself whenever an active region is set.
+
 Things to try next time (not yet tested):
 
 - **MM-minimise the solvated box before QM/MM.** The first geomeTRIC step lowered the energy by about 7 Eh, almost all of it MM energy (−84.2 → −91.4 Eh), and the step-0 maximum gradient was 47.8 au. The freshly placed waters are strained, and relaxing them costs expensive QM/MM steps. A quick OpenMM minimisation with the QM atoms frozen would remove that.
