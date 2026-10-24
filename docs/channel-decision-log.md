@@ -31,6 +31,9 @@ channel, built with mcube's existing stages as closely as possible.
   Kantakevičius 2022: C4 59.9 → 9.5; Ca²⁺ barely changes). mcube now takes `c4_set` /
   `c4_pairs`. Plan: Ca/La sensitivity run with the literature set, then fit La/Lu (and Ca) to
   acetate stability constants with one protocol, check against r2SCAN, rerun the constriction.
+- *Windows (F12, 2026-10-25):* the k = 10 quick-test windows do not overlap, and the Lu³⁺ windows
+  keep the pull's carboxylate contacts, so the provisional PMFs are not results. Soft-k (2.5)
+  default and Ch-BE sections are queued for Ca/La (30576902–09).
 - *Superseded:* C5's xTB/MM QM leg and xTB→DFT reweighting, and C16's "xTB/MM for the rest".
 
 **The protein, in one page:** [channel/protein.md](channel/protein.md). It is BD122_14570, a
@@ -880,6 +883,32 @@ explicit overrides.** (user, 2026-10-25)
 - **GPU benchmark (30469103) failed:** gpu4pyscf could not load `libcusolver.so.11` (no CUDA 12
   runtime libraries in the job). To fix: load a CUDA 12 module in the job, or add the
   `nvidia-*-cu12` wheels (dry run first).
+
+**F12 – The quick-test windows do not overlap, and Lu³⁺ windows remember the pull.**
+(2026-10-25, provisional WHAM on windows 20–49 of Ca and Lu)
+- **Overlap:** k = 10 kcal/mol/Å² (E = ½kΔz²) gives σ = √(kT/k) = 0.25 Å at 310 K, measured
+  0.19–0.31 Å, with windows 1 Å = 4σ apart. WHAM flags overlap < 0.05 after 17 (Ca) and 16 (Lu) of
+  30 windows (minimum 0.001 and 0.0). The free energy across each gap rests on tails. Fix:
+  k = 2.5 (σ 0.5 Å, neighbours 2σ apart) on the same 1 Å grid.
+- **Lu³⁺:** the provisional profile climbs 132 kcal/mol from +14 to −16 Å, which is not physical.
+  The ion holds one or two protein O (cn_protein 1.0–2.0) from z −11 to +13, and in every window that
+  count equals the value it started with: the coordination is the pull's (pulled +8 → +35 → −35 Å
+  at 10 Å/ns, dragging a carboxylate along), not sampled. At z0 −11, −10 and −9 the ion sits at
+  −8.9, −7.9 and −7.3 Å: the bound side chain holds it 2–3 Å off its restraint, and the
+  −12/−11 pair is 2.9 Å apart with no overlap. This is the failure Zhang/Merz/Hu reported for Zn²⁺
+  in ZIP (c4-tuning.md). It is made worse by the default C4, which over-binds Ln³⁺ to carboxylates (C20).
+- **Ca²⁺:** windows track z0 (±0.1–0.3 Å) and the ion stays fully hydrated (7.3 waters) through
+  the lumen; it touches protein O in a few windows only (−7, +4 Å, and +9…+15 Å, the last from the pull
+  start). Provisional profile: ~7–12 kcal/mol across the barrel, bounded by poor overlap.
+  Neither profile is a result yet.
+- **Done (2026-10-25):** sections `umbrella_soft` (default C4, k 2.5; Ca, La, Lu) and
+  `umbrella_chbe` (Kantakevičius set, k 2.5; Ca, La) added with `docs/channel/system/add_section.py`;
+  they seed from the k = 10 windows' last frames at the same z0, so the default-vs-Ch-BE comparison uses
+  one protocol. `umbrella_windows.slurm` takes `SECTION=`. Queued on gpu_cuda, windows 20–49 in
+  blocks of 15 (8 h): Ch-BE **30576902–05** (CA 20, CA 35, LA 20, LA 35), soft **30576906–09** (same
+  order). Lu soft is not queued yet.
+- **Still open for Lu:** soft k alone will not undo the pull memory. Options: seed windows from both
+  pull directions and compare, run longer windows near Glu300, or add a coordination-number CV / metadynamics (as Merz/Hu did).
 
 **C12 – Implement 12-6-4 as `metal_parameters: 1264`.** (user, 2026-10-22; implemented on branch `umbrella`)
 - No reason not to: the IOD 12-6 set under-binds 3+ ions, and the user asked.

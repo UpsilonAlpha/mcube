@@ -40,7 +40,7 @@ umbrella:
     z_start: ZSTART
     z_end: ZEND
     spacing: 1.0                           # quick test; refine where wham flags poor overlap
-    k: 10.0
+    k: 10.0                                # too stiff for 1 A spacing (F12): use 2.5
     cylinder: {radius: 10.0, k: 10.0}
     pull_speed: 10.0
     equilibrate: 100
