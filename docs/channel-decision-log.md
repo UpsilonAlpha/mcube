@@ -907,6 +907,11 @@ explicit overrides.** (user, 2026-10-25)
   one protocol. `umbrella_windows.slurm` takes `SECTION=`. Queued on gpu_cuda, windows 20–49 in
   blocks of 15 (8 h): Ch-BE **30576902–05** (CA 20, CA 35, LA 20, LA 35), soft **30576906–09** (same
   order). Lu soft is not queued yet.
+- **La³⁺ (provisional WHAM, 33 windows, −25…+8 Å):** the same failure. The profile climbs ~150 kcal/mol,
+  overlap is below 0.05 after 13 windows (min 0.0), the ion holds 1–2 protein O through the lumen with
+  cn_protein equal to its start value in nearly every window, and it lags z0 by up to 1 Å. The soft and
+  Ch-BE La sections seed from these frames, so they start with the pulled contacts. Ch-BE's weaker
+  La–O C4 (9.5) may let them go; default-soft probably will not.
 - **Still open for Lu:** soft k alone will not undo the pull memory. Options: seed windows from both
   pull directions and compare, run longer windows near Glu300, or add a coordination-number CV / metadynamics (as Merz/Hu did).
 
