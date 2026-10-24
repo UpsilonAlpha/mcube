@@ -361,10 +361,18 @@ def make_qmmm(qmmm_inputs: Dict[str, Any], mm, fragment, qm_atoms, boundary_excl
 
 def resolve_actatoms(actatoms_file, inputs: Dict[str, Any], mm, fragment, qm_atoms, boundary_excluded) -> List[int]:
     """Active region: an active_atoms file (e.g. the reactant's), else all atoms within
-    `actradius` of `actregion_origin`, else just the QM atoms."""
+    `actradius` of `actregion_origin`, else just the QM atoms.
+
+    The QM atoms are always in it. `actregiondefine` selects whole residues, so a QM
+    residue reaching past the radius normally comes in entire - but a small enough
+    radius drops one, and a frozen QM residue is still treated quantum mechanically.
+    That is wrong and nothing in the output would say so, which is why the union is
+    unconditional rather than a setting. It is a no-op whenever the radius already
+    covers the QM region, so it costs nothing to leave on.
+    """
     if actatoms_file:
-        return read_intlist_from_file(actatoms_file)
-    if inputs.get("actradius"):
+        actatoms = read_intlist_from_file(actatoms_file)
+    elif inputs.get("actradius"):
         originatom = inputs.get("actregion_origin")
         if originatom is None:
             if not boundary_excluded:
@@ -372,8 +380,15 @@ def resolve_actatoms(actatoms_file, inputs: Dict[str, Any], mm, fragment, qm_ato
                                  "non-standard QM residue to centre the active region on")
             originatom = boundary_excluded[0]
         actregiondefine(mmtheory=mm, fragment=fragment, radius=inputs.get("actradius"), originatom=originatom)
-        return read_intlist_from_file("active_atoms")
-    return list(qm_atoms)
+        actatoms = read_intlist_from_file("active_atoms")
+    else:
+        return list(qm_atoms)
+    active = set(int(a) for a in actatoms)
+    outside = sorted(int(a) for a in qm_atoms if int(a) not in active)
+    if outside:
+        print(f"[INFO] {len(outside)} QM atoms fell outside the active region and were "
+              f"added to it: {outside[:6]}{' ...' if len(outside) > 6 else ''}")
+    return sorted(active | set(int(a) for a in qm_atoms))
 
 
 def distance(coords, i: int, j: int) -> float:
