@@ -1781,7 +1781,14 @@ That freed 7.3 GB: `md_naclong_results` 7.09 GB -> 74 MB, `nacqm` 848 -> 716 MB,
 
 At 111 of 300 steps after 4.9 h, and now >20 min on a single step, the remaining ~190 steps cannot finish before the 48 h walltime expires at 22:10 today. **`QM_MM_optimized.pdb` is only written at the end, so a timeout yields no optimised structure** - though `geometric_OPTtraj_optim.xyz` and `optimization_energies.log` retain the path so far. Nothing scientific is at risk either way: the MD end point is safe in `QM_MM_lastframe.pdb` and is already measured in D104.
 
-The cheap fix, if it is killed: rerun the optimisation alone from `QM_MM_lastframe.pdb` with `skip_equilibrate: true`, `opt_coordsystem: hdlc` (exposed for this in D-entry above), a smaller `actradius`, and the `cores: 4` that is now correct in the config. That is hours, not days.
+**Correction, same day, before anything was resubmitted: it was already HDLC, so the coordinate system is not the cause.** ASH's `geomeTRICOptimizer` switches TRIC to HDLC by itself whenever an active region is set, unless `force_coordsystem=True`, and the job's output says so: *"Warning: ActiveRegion is set but the coordsystem is TRIC... Now switching to HDLC"*, then `Coordinate system:  hdlc`. The attribution to TRIC above was wrong, and `opt_coordsystem: hdlc` would have been a no-op.
+
+Two things measured while checking that, both worth keeping:
+
+- **The QM region is far larger than the active radius, and that is fine.** It reaches **15.85 A** from the Zn, with 39 of its 119 atoms beyond `actradius: 8`. That looked like a third of the QM region being frozen, but `active_atoms` holds 467 atoms and **all 119 QM atoms are in it** - `actregiondefine` selects whole residues, so a residue with any atom inside the radius comes in entire. Nothing was frozen.
+- **mcube does not check that, though.** `resolve_actatoms` returns whatever `actregiondefine` wrote and never unions the QM atoms back in, so a smaller `actradius` could drop a whole QM residue out of the active region and freeze it while still treating it quantum-mechanically. Worth a guard that refuses when the active region does not contain the QM region; until then, any `actradius` change needs that containment re-checked by hand.
+
+So the cost driver is still unidentified. 467 active atoms under HDLC is already the recommended setup, and the levers left are a genuinely smaller active region (with the containment check), a lower `opt_maxiter` accepting a looser structure, or working out what the 15 x 30 MB `HT.v_*.txt` files are - they are the one unexplained signature.
 
 ## Resources (see `running-on-bunya.md`)
 
