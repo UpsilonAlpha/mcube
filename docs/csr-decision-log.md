@@ -1736,6 +1736,30 @@ So **80 degrees at 1 ns was a sampling artefact, not a property of the restraine
 
 **Running, and verified on the live job:** `--gfn 2` on the xtb command line, `Timestep: 0.001 ps`, `Simulation time: 50.0 ps`, 8 cores, and `[INFO] Starting structure: .../md_naclong_results/NVTtrajectory_lastframe_imaged.pdb (from nacqm.inputs.pdb_file)`. The imaged frame measures identically to the raw one (angle 101, O01-C4x 3.33), so imaging did not split the site. Restraints are absent from the qmmm section, so they are released here - this is the first run in which the complex is unrestrained, and whether it holds is the open question. `skip_optimize: false`, so a geometry optimisation follows the MD and its output is the intended NEB starting frame.
 
+**D104 - 50 ps GFN2 QM/MM: the complex holds and the zinc is fixed, but the near-attack geometry is gone.** (2026-10-25 08:30 AEST, job 30467248, `CSR_nac`, section `nacqm`)
+
+The MD finished all 50,000 steps; the geometry optimisation that follows it is still running at 111 of 300 steps. Everything below is the **MD end point** (`QM_MM_lastframe.pdb`), verified complete first - 49,424 atom records, terminated with `END`, byte-identical in size to the frame it started from - because scratch is at 296/300 GB and an over-quota write fails silently.
+
+**The substrate held, unrestrained.** This was the real test: the `qmmm` section carries no restraints, so 50 ps of GFN2 was the first run in which nothing held the complex together. Meropenem is still bound (Zn-mer O2x 4.88 A) with the beta-lactam intact (C4x-N1x 1.38 A). The Michaelis complex is stable without restraint, which is what the enzyme being a meropenemase requires.
+
+**GFN2 removed the classical over-coordination, exactly as intended.** The zinc goes from the **six** ligands the 100 ns MM run left (D102) to **five**:
+
+    MM, 100 ns                        GFN2, 50 ps
+    O01        1.86                   O01        1.88
+    Asp92 OD1  1.99                   Asp92 OD1  2.16
+    HOH D:1    2.04                   HOH D:1    2.25
+    His88      2.22                   His164     2.25
+    HOH E:557  2.27   <- spurious     His88      2.32
+    His164     2.32
+
+`E:557` left the first shell (now 3.34 A from Zn, hydrogen-bonded to O01 at 1.88 A rather than coordinated), and Asp92 relaxed to a cleaner monodentate contact (OD1 2.16, OD2 3.45). So the artefact D102 found was classical, and the QM/MM equilibration is what fixes it - the standard-protocol justification, confirmed rather than assumed.
+
+**But the near-attack geometry did not survive, and this reverses D102.** O01-C4x went **3.33 -> 3.86 A** and the attack angle **101 -> 57 degrees**, far outside the 95-120 Burgi-Dunitz window. It is not that some other water took over: `site.py nucleophiles` returns **every** candidate as "angle off" (50, 32, 57, 55, 71, 84, 33 degrees). D102 concluded the 101-degree NAC made `scan_attack` unnecessary. That held for the restrained classical ensemble and does not hold here: released and run under GFN2, the geometry relaxes away from attack. **Driving O01-C4x with `scan_attack` is therefore the route to a reactant-like structure for the NEB**, not an optional extra.
+
+**The hydroxide was not protonated.** It still carries one hydrogen (H03, 0.97 A) after 50 ps, against the expectation that QM/MM would protonate it. Its proton now points at Asp92 OD1 (2.75 A) rather than at the substrate. Lys226 remains fully protonated (3 H).
+
+**What this does not establish.** One frame is not an ensemble. That the end point is at 57 degrees does not show the NAC is never visited during the 50 ps, and `site.py` has `acceptors <traj> <topology>` and `joint` modes built for exactly that question. Running them over `QM_MM.dcd` is cheap next to another MD and is the honest way to decide whether the NAC is sampled at all before concluding it has to be driven.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
