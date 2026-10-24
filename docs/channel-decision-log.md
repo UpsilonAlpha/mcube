@@ -542,6 +542,10 @@ level and details proposed, not yet decided)
   `bse_basis.py --basis def2-TZVP --override La,Lu=lcecp-1-TZVP --out def2-tzvp_lcecp1.nw`.
   Mixing def2 with lcecp-1 is by design: Lukanowski & Weigend, PCCP 2026 made the lcecp-k sets
   error-consistent with def2.
+- **Remedy if the bias holds: Merz-style pair-specific C4 tuning** (user likes the approach,
+  2026-10-25): `docs/channel/c4-tuning.md` summarises Jafari et al. JPCB 2024 (per-ion acetate C4
+  fitted to experimental ΔG by PMF), Fındık et al. JCTC 2024, Panteva et al. 2015, and the Merz/Hu
+  ZIP work (metadynamics; umbrella sampling failed there), with the transfer plan for Ca/La/Lu.
 - Plan (user, 2026-10-23): (1) MM 12-6-4 umbrella over the whole path as a quick first ranking,
   on the cropped barrel (110–130 removed) in POPE; (2) 12-6-4 vs r2SCAN on water → carboxylate
   exchange around each ion (`docs/channel/coord/`), to see whether MM ranks the ions the way
