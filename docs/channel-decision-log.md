@@ -24,9 +24,9 @@ channel, built with mcube's existing stages as closely as possible.
   installed, CUDA 12 libraries missing: F11) is to be benchmarked.
 - *Model checks:* 12-6-4 reproduces Amber exactly (F5); Ca²⁺ and La³⁺ bulk shells are on target;
   Lu³⁺ 12-6-4 gives CN 7.6 in OpenMM and in Amber's own sander (F4) against 9.0 in the paper's
-  SI, so the gap is not our code. Whether 12-6-4 ranks the ions' carboxylate binding like r2SCAN
-  is the open check (C17, `docs/channel/coord/`; C12 already warned that the α-scaled C4 may
-  over-bind carboxylates).
+  SI, and OpenMM-on-prmtop agrees too, so the gap is not our code. Carboxylate check (C17):
+  12-6-4 ranks La vs Lu like r2SCAN (1–2 kcal/mol), but over-favours Ln³⁺ against Ca²⁺ by
+  11–13 kcal/mol where r2SCAN binds Ca by one carboxylate O.
 - *Superseded:* C5's xTB/MM QM leg and xTB→DFT reweighting, and C16's "xTB/MM for the rest".
 
 **The protein, in one page:** [channel/protein.md](channel/protein.md). It is BD122_14570, a
@@ -505,6 +505,34 @@ level and details proposed, not yet decided)
   geometries: Ca–O 2.44 Å (8 waters), La–O 2.60 Å (9). No proton moved. Interim reading: the
   ion ranking agrees where both methods have the same coordination, and MM can be wrong about
   Ca²⁺'s coordination mode; Lu pending.
+- **Carboxylate check, final (2026-10-24; La and Lu on lcecp-1-SVP (C19), Ca, water, acetate
+  on def2-SVP; every SCF converged; no proton moved).** Gas phase, kcal/mol, each species
+  optimised by each method:
+
+  | Reaction | 12-6-4 | r2SCAN | acetate O bound (DFT) |
+  |---|---|---|---|
+  | Ca, 1 water out | −186.8 | −204.0 | **1** (MM: 2) |
+  | Ca, 2 waters out | −171.8 | −178.7 | 2 |
+  | La, 1 water out | −280.9 | −287.2 | 2 |
+  | La, 2 waters out | −257.4 | −261.9 | 2 |
+  | Lu, 1 water out | −297.2 | −301.5 | 2 |
+  | Lu, 2 waters out | −269.0 | −274.5 | 2 |
+
+  | Difference | 12-6-4 | r2SCAN |
+  |---|---|---|
+  | Lu − La, 1 / 2 waters out | −16.3 / −11.6 | −14.3 / −12.6 |
+  | La − Ca, 1 / 2 waters out | −94.1 / −85.6 | −83.3 / −83.3 |
+  | Lu − Ca, 1 / 2 waters out | −110.4 / −97.2 | −97.5 / −95.8 |
+
+  r2SCAN aqua ions: Ca–O 2.44 Å (8), La–O 2.60 Å (9), Lu–O 2.36 Å (8).
+  **Reading:** 12-6-4 ranks **La against Lu** like r2SCAN, within 1–2 kcal/mol, with both
+  binding modes. It ranks **Ln against Ca** like r2SCAN only when Ca binds by two oxygens; when
+  r2SCAN puts Ca on one oxygen with a water kept, 12-6-4 (always two oxygens) favours the
+  lanthanides over Ca by **11–13 kcal/mol too much**. So an MM PMF can be trusted for La vs Lu
+  more than for Ca vs Ln, and if it shows Ca and Ln³⁺ coordinating a single Glu300 differently,
+  the Ca/Ln gap it gives is suspect in the lanthanides' favour. Gas phase, no BSSE correction,
+  Ca and Ln on different basis families: the absolute numbers are rough; the differences are
+  what this check is for.
 - Plan (user, 2026-10-23): (1) MM 12-6-4 umbrella over the whole path as a quick first ranking,
   on the cropped barrel (110–130 removed) in POPE; (2) 12-6-4 vs r2SCAN on water → carboxylate
   exchange around each ion (`docs/channel/coord/`), to see whether MM ranks the ions the way
