@@ -79,7 +79,7 @@ md:
     gentle: false            # see the README: only if minimisation leaves it unstable
 qmmm:
   inputs:
-    cores: 1
+    cores: 4                 # xTB threads (see running-on-bunya.md)
     temp: 300
     timestep: 0.001
     time: 50
