@@ -75,6 +75,13 @@ def build(args):
         raise SystemExit(f"expected one ion in {args.frame}, found {len(ions)}")
     ion = ions[0]
     r_ion = xyz[ion.index]
+    # the frame is wrapped atom by atom: bring everything to its image nearest the ion, which
+    # keeps each residue of the cluster whole (all of them lie well within half a box of it)
+    cell = topology.getUnitCellDimensions()
+    if cell is not None:
+        box = np.array([cell[i]._value for i in range(3)]) * 10.0
+        d = xyz - r_ion
+        xyz = r_ion + d - box * np.round(d / box)
     wanted = {int(r) - args.offset for r in args.residues.replace(",", ":").split(":") if r}
 
     def near(res):
