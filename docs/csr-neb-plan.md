@@ -87,13 +87,76 @@ How each question is answered:
 - Our **Asp92 is D120** (crystal 120 = model 92). As in CphA, it binds the Zn, and in our QM/MM MD it H-bonds both water oxygens.
 - CSR-1 has one Zn, like CphA. So the precedent favours **water + Asp general base** over a pre-formed hydroxide.
 
+
+## How long should the QM/MM equilibration be? (checked 2026-10-25)
+
+Asked because the length has to be defended in the write-up. Everything here was
+read in a Methods section unless marked otherwise.
+
+| Study | QM level | classical MD | QM/MM MD | DOI |
+| --- | --- | --- | --- | --- |
+| Chudyk *et al.* 2014, class A + **meropenem** | SCC-DFTB/ff12SB | min/heat | **50 ps equilibration, then 300 ps production** | 10.1039/C4CC06495J |
+| Chudyk *et al.* 2022, same group | SCC-DFTB/ff12SB | - | **300 ps before reaction calcs; 3 x 1 ns per system** | 10.1021/acsinfecdis.2c00152 |
+| Dal Peraro *et al.* 2007 | Car-Parrinello BLYP | 4 ns | **20 ps equilibration, ~70 ps per path** | 10.1021/ja0657556 |
+| Das & Nair 2017, NDM-1 | CP, PBE | 2 ns NPT + 10 ns NVT | **~10 ps before metadynamics** | 10.1039/C6CP08769H |
+| Simona *et al.* 2009, CphA | Car-Parrinello BLYP | - | **3 ps**, ~3 ps per constrained step | 10.1074/jbc.M109.049502 |
+| Saito & Takano 2022, urease - **the only enzyme GFN2-xTB/MM MD paper found** | **GFN2-xTB** | 10 ns NPT | **2.0 ps** | 10.1021/acs.jpcb.1c10200 |
+| Ackerman & Gatti 2013 | B3LYP scans | 100 ps | **none** | 10.1371/journal.pone.0055136 |
+| Lisa *et al.* 2017 | SIESTA/PBE opt | 10 ns NVT | **none** | 10.1038/s41467-017-00601-9 |
+| Gervasoni *et al.*, IMP-1 | DFTB3 then B3LYP opt | 20 ps heat + 240 ps NPT + 100 ns NVT | **none**, "starting from the last frame" | - |
+
+**Where our 50 ps sits.** Generous against DFT-level QM/MM MD, which runs 3-20 ps
+in this literature. Twenty-five times longer than the one published GFN2-xTB/MM
+enzyme protocol (n = 1). But **at the floor against the closest methodological
+neighbours**: 50 ps is exactly Chudyk 2014's *equilibration* figure for a
+meropenem complex, and there it is followed by 300 ps of production before
+structures are chosen - by 2022 the same group runs 300 ps before reaction
+calculations and 1 ns per system. The people who use a cheap Hamiltonian spend
+the savings on sampling, so that is where a reviewer would push.
+
+**There is no convention for GFN2-xTB/MM, and no guidance on sufficiency.** No
+methodological paper, benchmark or review gives a target length or a convergence
+criterion for QM/MM MD equilibration. Convergence statements in these papers
+attach to the *classical* stage only. Dal Peraro is the only one that reasons
+about QM/MM MD length at all, and negatively: it argues a conformational flip is
+"very unlikely to occur spontaneously" on a ~70 ps timescale and so models both
+pathways separately rather than trusting sampling. Chudyk tests convergence of
+the *free energy* by repeating umbrella sampling three times, not by lengthening
+equilibration. **So the honest write-up line is that the field states its length
+and does not defend it.**
+
+**Running no QM/MM MD is about half of the MBL set** (Ackerman & Gatti, Lisa,
+Gervasoni), and it correlates with DFT/static-path methodology. Also, across the
+whole set **no paper reports how many structures entered its path calculations** -
+Gervasoni says "starting from the last frame", one structure. Reporting a snapshot
+count would put us ahead of the field on that point.
+
+**Generic length is the wrong yardstick for our blocking question.** Zn(II) ligand
+exchange is slow next to every timescale above, so none of these numbers - not
+even Chudyk's 1 ns - is evidence that any equilibration length escapes an imposed
+coordination geometry. The one paper claiming DFTB3 QM/MM MD rectifies zinc
+over-coordination (Yang *et al.*, *JCIM* 2021, 10.1021/acs.jcim.1c01109) has
+Methods we could not obtain, so **D53's argument rests on a protocol we have not
+inspected.** The Bristol data repository may hold the lengths without ACS access
+(data.bris.ac.uk `0a9e8eab5a124a05efae9832328d9e0e`,
+`6719cd5ba4233eed9c958be63f3e658e`).
+
+**Could not be read:** Imhof 2009 Methods (ACS paywall - so "minimised structures"
+is still unverified), Xu-Xie-Guo *JBC* 2006 (not OA; its QM/MM MD length is
+unknown, and the 500 ps figure that search surfaces belongs to the separate 2005
+binding paper and is snippet-level, so it must not be quoted as a length), VIM-1
+(10.1021/acscatal.1c04786, ACS 403), Yang 2021 Methods, Wu-Xu-Guo 2010 SI.
+**Feng *et al.* 2017 (10.1038/s41467-017-02339-w) has no computational component
+at all** - crystallography and NMR only - so it can be cited for structure, as
+D107 does, but never for a protocol.
+
 ## Replication protocol for CSR-1 with modern methods
 
 | | Imhof 2009 / Xu–Guo 2006 | CSR-1 (mcube) |
 | --- | --- | --- |
 | QM level for sampling and paths | AM1/d (Imhof); SCC-DFTB (Guo) | GFN2-xTB/MM (electrostatic embedding) |
 | Energies | B3LYP model systems; DFT corrections | ωB97X-D3(BJ)/def2-SVP/MM single points along paths; def2-TZVPD on stationary points (D31) |
-| Reactant sampling | minimised structures (Imhof); QM/MM MD (Guo) | 50 ps QM/MM MD (D28/D29), several snapshots |
+| Reactant sampling | minimised structures (Imhof - **Methods not accessible, unverified**); QM/MM MD (Guo - **length unconfirmed**) | 50 ps QM/MM MD (D28/D29), several snapshots |
 | Paths | exhaustive path network (Imhof) | relaxed scans → NEB-CI → TS optimisation + IRC for every candidate step, assembled into a network |
 | Free energies | PMF by umbrella sampling (Guo) | xTB/MM umbrella sampling along the best path's coordinate(s), with WHAM/MBAR. Needs a new mcube stage. |
 | Validation | AM1/d vs B3LYP on model systems | xTB vs ωB97X on the QM/MM structures (D30), plus a cluster-model check |
