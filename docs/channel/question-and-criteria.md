@@ -50,6 +50,10 @@ Glu240) and Lu binds Glu240 (and Glu220) in the residence runs (C21).
      c4-tuning.md).
 4. **Calibrated on a known case:** the same protocol on acetate (or a lanmodulin EF-hand site) should
    reproduce the experimental Ln-over-Ca direction (acetate: Ln − Ca ≈ −1.5 kcal/mol, c4-tuning.md).
+   **Done 2026-10-25 (C22):** the direction is right, but there is a systematic bias. PCM gives La − Ca −6.0 (exp. −1.5)
+   and Lu − La −2.8 (exp. ≈ −0.2). So the protocol over-favours Ln over Ca by ~4.5 kcal/mol and Lu over
+   La by ~2.6 **per carboxylate**. Read site results against that offset: Ln over Ca counts only beyond
+   ~4.5 × (number of coordinating carboxylates), Lu over La only beyond ~2.6 × that number.
 
 ## Limits to state with any answer
 

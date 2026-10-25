@@ -799,6 +799,26 @@ blocks 30576666/67 held; the Ca jobs run)
   `lu_def_ring`, `lu_def_min`. 30598664 `la_chbe_min` is still on the SMD code; it saves its first
   geometry, then fails at the single point, and must be resubmitted (it continues from report.json/geom).
   The Lu scaled-C4 residence run 30581009 is still going.
+- **Calibration result (30599579; r2SCAN/TZVP, IEF-PCM water, C17 acetate geometries, no thermal
+  terms).** Binding of acetate, kcal/mol (1 water out / 2 waters out):
+
+  | Ion | PCM water | Experiment (c4-tuning.md) |
+  |---|---|---|
+  | Ca²⁺ | −16.4 / −7.2 | −1.3 to −1.6 |
+  | La³⁺ | −22.4 / −14.5 | −3.0 |
+  | Lu³⁺ | −25.2 / −15.8 | −3.2 (Yb) |
+
+  Relative, best mode each: **La − Ca −6.0 (exp. −1.4…−1.7); Lu − Ca −8.8; Lu − La −2.8 (exp. ≈ −0.2).**
+  - The direction is right (Ln over Ca, and slightly heavy over light).
+  - The protocol over-favours Ln³⁺ against Ca²⁺ by ~4.5 kcal/mol, and Lu against La by ~2.6, per carboxylate.
+  - The absolute values are 10–20 kcal/mol too negative, mostly because the association entropy (TΔS) and CDS
+    terms are missing.
+  - So criterion 3 applies as a *systematic offset*, not just scatter: a site result counts for Ln over Ca only if it
+    exceeds about 4.5 kcal/mol per coordinating carboxylate, and for Lu over La only if it exceeds about 2.6 per carboxylate.
+  - Caveat: the Ca 1-water geometry comes from a non-converged SVP optimisation (C17).
+- **Lu³⁺ scaled-C4 residence, final (30581009):** Glu240 is bound all 10 ns. Glu220 joins at ~4.1 ns and
+  stays (5.9 ns). cn_protein is 1.3 → 2.1. Sites: `lu_chbe_ring` (−4; Glu220/240 coordinating) and
+  `lu_chbe_min` (−2), jobs 30600588/89. `la_chbe_min` was resubmitted on PCM as 30600578.
 - **Metadynamics stage (support only):** `mcube metadynamics` (commit 6e85c16) is well-tempered MTD on
   n_COO with z held, or 2D, on `openmm.app.Metadynamics` with umbrella's CVs (ASH's wrapper uses the same
   class with a different CN function and no CV logging). `fes` reports integer-state free energies
