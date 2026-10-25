@@ -25,8 +25,8 @@ channel, built with mcube's existing stages as closely as possible.
 - *Model checks:* 12-6-4 reproduces Amber exactly (F5); Ca²⁺ and La³⁺ bulk shells are on target;
   Lu³⁺ 12-6-4 gives CN 7.6 in OpenMM and in Amber's own sander (F4) against 9.0 in the paper's
   SI, and OpenMM-on-prmtop agrees too, so the gap is not our code. Carboxylate check (C17):
-  12-6-4 ranks La vs Lu like r2SCAN (1–2 kcal/mol), but over-favours Ln³⁺ against Ca²⁺ by
-  11–13 kcal/mol where r2SCAN binds Ca by one carboxylate O.
+  12-6-4 ranks La vs Lu like r2SCAN (1–2 kcal/mol). The 11–13 kcal/mol Ln-over-Ca bias seen at SVP
+  drops to −6…+5 kcal/mol, with no consistent sign, at TZVP + counterpoise (C17 result, 2026-10-25).
 - *Next (C20):* the default 12-6-4 over-binds La³⁺ to carboxylates (experiment-fitted
   Kantakevičius 2022: C4 59.9 → 9.5; Ca²⁺ barely changes). mcube now takes `c4_set` /
   `c4_pairs`. Plan: Ca/La sensitivity run with the literature set, then fit La/Lu (and Ca) to
