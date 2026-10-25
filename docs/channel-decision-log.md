@@ -785,6 +785,20 @@ blocks 30576666/67 held; the Ca jobs run)
   the C17 acetate complexes, against experiment (La − Ca ≈ −1.4…−1.7, La − Yb ≈ +0.2 kcal/mol).
 - **Queued (general, 32 cores):** 30598663 calibration, 30598664 `la_chbe_min` (smoke test before
   the larger sites).
+- **SMD → IEF-PCM (2026-10-25):** the calibration crashed at its first solvated single point. PySCF's
+  pip build lacks the SMD non-electrostatic (CDS) library ("compile with -DENABLE_SMD=ON"), and
+  gpu4pyscf's SMD would need a GPU. So solvation is IEF-PCM, electrostatics only, at the same
+  dielectrics: site ε 4 and 29, water 78.36. The default radii are 1.2 × modified Bondi, with the
+  ion radii set explicitly. The site complexes differ only in the ion, so their CDS terms nearly
+  cancel; the aqua ions' do not quite, so this adds an uncertainty of a few kcal/mol for Ca vs Ln.
+  Checked: Ca(H₂O)₈²⁺ PCM-water solvation −175 kcal/mol, converged in 78 s.
+- **Lu³⁺ default residence, final (30581008, 10 ns):** Glu240 is bound for the whole run (one
+  episode). cn_protein is 1.5 → 1.9 and waters 6.9. Lu sites: `lu_def_ring` (−4; Glu240 coordinating,
+  Glu156/220/300 frozen; 7 waters) and `lu_def_min` (−1; Glu240 only).
+- **Running:** 30599579 calibration (PCM), 30599596–600 `la_def_ring`, `la_def_min`, `la_chbe_ring`,
+  `lu_def_ring`, `lu_def_min`. 30598664 `la_chbe_min` is still on the SMD code; it saves its first
+  geometry, then fails at the single point, and must be resubmitted (it continues from report.json/geom).
+  The Lu scaled-C4 residence run 30581009 is still going.
 - **Metadynamics stage (support only):** `mcube metadynamics` (commit 6e85c16) is well-tempered MTD on
   n_COO with z held, or 2D, on `openmm.app.Metadynamics` with umbrella's CVs (ASH's wrapper uses the same
   class with a different CN function and no CV logging). `fes` reports integer-state free energies
