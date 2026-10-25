@@ -114,6 +114,14 @@ structures are chosen - by 2022 the same group runs 300 ps before reaction
 calculations and 1 ns per system. The people who use a cheap Hamiltonian spend
 the savings on sampling, so that is where a reviewer would push.
 
+**Planned, not yet run (user, 2026-10-25): about 300 ps of production** after the
+equilibration, which is what Chudyk 2014 does and what brings us level with the
+closest comparable protocol. At the rate measured in `running-on-bunya.md`
+(~1.08 s/step at 1 fs with 4 threads) that is roughly 90 h of wall clock per run,
+so it wants either a longer walltime request on `general` or splitting across
+jobs - and `qmmm.py` has no restart path, though ASH does write
+`OpenMM_MD.chk`/`_state.xml` every few minutes.
+
 **There is no convention for GFN2-xTB/MM, and no guidance on sufficiency.** No
 methodological paper, benchmark or review gives a target length or a convergence
 criterion for QM/MM MD equilibration. Convergence statements in these papers
@@ -134,12 +142,26 @@ count would put us ahead of the field on that point.
 **Generic length is the wrong yardstick for our blocking question.** Zn(II) ligand
 exchange is slow next to every timescale above, so none of these numbers - not
 even Chudyk's 1 ns - is evidence that any equilibration length escapes an imposed
-coordination geometry. The one paper claiming DFTB3 QM/MM MD rectifies zinc
-over-coordination (Yang *et al.*, *JCIM* 2021, 10.1021/acs.jcim.1c01109) has
-Methods we could not obtain, so **D53's argument rests on a protocol we have not
-inspected.** The Bristol data repository may hold the lengths without ACS access
-(data.bris.ac.uk `0a9e8eab5a124a05efae9832328d9e0e`,
-`6719cd5ba4233eed9c958be63f3e658e`).
+coordination geometry.
+
+**But equilibration length is not what we judge the zinc against: the reference is
+the crystal structure** (user, 2026-10-25). CSR-1 is deposited - 6DN4 (mature wild
+type, 1.99 A), 6DQH/6NC5 (2.07 A) - and D39/D40 identify ZN302 as the Zn1 H-R-H
+site we keep and ZN301 as the canonical Zn2 site that only the R118H/Q121H/K254H
+mutant restores. So the question "is our zinc sphere right?" is answered by
+comparison with that density, not by how long anyone's MD ran. This also means the
+inaccessible Methods of Yang *et al.* 2021 (10.1021/acs.jcim.1c01109) do not
+undermine the zinc argument: that paper was only ever a secondary prop.
+
+**One thing to read off the PDB rather than this log.** D40 lists ZN302's ligands
+as "His87/His163 + two waters", but the mapping recorded in D22 is model =
+deposited - 28 (model His88 = PDB His116, model His164 = PDB His192), under which
+87 and 163 would be model 59 and 135 - not zinc ligands. One of the two numbering
+statements is wrong, and since the crystal sphere is now the reference standard,
+**the ligand list and its distances should be measured directly in the deposited
+file before being quoted.** Our optimised model currently has a five-coordinate
+zinc (O01 1.88, His88 2.13, His164 2.14, HOH 2.17, Asp92 OD1 2.19), and whether
+that matches the crystallographic sphere is exactly the comparison to make.
 
 **Could not be read:** Imhof 2009 Methods (ACS paywall - so "minimised structures"
 is still unverified), Xu-Xie-Guo *JBC* 2006 (not OA; its QM/MM MD length is
