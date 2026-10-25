@@ -1863,6 +1863,43 @@ So the "Lys226 is a spectator" reading of the optimised frame was **wrong** - it
 
 **Two things this settles that were worrying us.** Nothing being positioned to protonate N1x in the Michaelis complex is the **expected** result, not a defect: three papers converge on a water that arrives *after* ring opening, and on the anionic intermediate lasting long enough for it. And the pKa bookkeeping argues against the Lys226-to-hydroxide transfer of D29/D35: a 2+ cation 4-5 A away should **raise** a lysine's pKa, and a Zn-water pKa of ~5.6 in BcII against Lys ~10.5 puts the transfer uphill by ~6-7 kcal/mol, opposite in sign to the computed -13 to -16. GFN2-xTB's worst benchmarked functional group is exactly the protonated amine (MUE 5.3-7.7 kcal/mol; Arantes & Rezac 2025, doi:10.1021/acs.jctc.5c00690). **The clean four-coordinate DFT retest already specified in this log is the right next step, and it now has a clean geometry to run in.**
 
+**D108 - the crystallographic zinc sphere, measured: Asp92 is not on it.** (2026-10-25, from 6NC5 and 6DN4 downloaded from RCSB)
+
+The reference for zinc coordination is the crystal structure, not anyone's MD
+length (user). So it was measured rather than quoted. **6NC5, ZN302** - the Zn1
+H-R-H site our model keeps - has four ligands within 2.8 A:
+
+    1.90  HOH485:O          2.14  HOH493:O
+    2.09  HIS163:NE2        2.22  HIS87:NE2
+
+**Two histidines and two waters. No aspartate.** HOH493 is the water our model
+carries as O01 (`site.yaml` calls it "ex-HOH493") and HOH485 is the second, so the
+model reproduces the crystallographic sphere and then **adds Asp92 OD1 at 2.19 A**,
+giving five coordinate where the crystal gives four. Against the stated reference,
+Asp92 on the zinc is an addition, which supports reading it as over-coordination
+rather than a real feature - though note Asp92 is a **Zn2**-site residue (D-Q-K,
+per D22/D40) whose carboxylate has nothing to ligate while Zn2 is empty, so its
+drift onto Zn1 is at least a chemically motivated artefact rather than a random
+one.
+
+**Also measured, and it settles an earlier doubt:** HOH485 bridges ZN302 and
+**ZN303**, whose other ligands are two waters and an acetate (ACT307) - the
+artefact zinc. So the suspicion recorded earlier that HOH485 is the weakest member
+of our sphere is well founded.
+
+**6DN4, the mature wild type, contains no zinc at all.** Consistent with the
+published account of CSR-1 crystallising metal-free with a low-affinity beta site.
+
+**Correction to the numbering conflict raised in `csr-neb-plan.md` yesterday: it
+was my error, not the log's.** D40's "His87/His163" are 6NC5's own numbers, which
+map to the model at **+1** (87 -> 88, 163 -> 164, 91 -> 92, 225 -> 226). D22's
+"minus 28" describes a different file, `CSR_nontruncated_1metal_original.pdb`
+(crystal 29-302 -> model 1-274). Two files, two offsets; both statements were
+right and I conflated them. D40's reading of 6NC5 is confirmed exactly, including
+ZN301 = Asp91/His92/His225 - and since His92 and His225 **are** the Q121H and
+K254H substitutions, 6NC5 is a beta-site mutant and is not a wild-type reference
+for that site. 6DN4 is.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
