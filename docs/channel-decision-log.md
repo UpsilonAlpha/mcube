@@ -721,6 +721,20 @@ blocks 30576666/67 held; the Ca jobs run)
   changes from cv.csv). Reading: lifetimes ≪ 1 ns → z-only US with the flat-bottom restraint;
   lifetimes ≳ window length → 2D (z, carboxylate-O count) or metadynamics at the constriction; Ch-BE
   releasing where default does not → the C4 choice decides sampling as well as the answer.
+- **La³⁺, default C4 (30581006, 10 ns at z0 = 0):** **no exchange.** Glu156 is bound for all 10 ns
+  (one episode, bound at start and end). Glu240 binds at ~3.6 ns and stays for the remaining 6.4 ns.
+  cn_protein goes 1.7 → 3.6 O and waters 7.0 → 5.3, with z −0.4…−1.1 and r ≈ 5–6 Å, so La sits at
+  the wall between the two carboxylates. Glu300 is not within 3 Å. The cv.csv "changes" count (14724) is the
+  rounded switching-function CN flickering around x.5, not contact events; the frame-based episodes are
+  the measure. Reading: under the default C4 a La–Glu contact outlives a 10 ns window, so z-only
+  windows cannot equilibrate coordination here, and the window gained a second carboxylate rather
+  than releasing the first.
+- **Ca²⁺ Ch-BE section (30576902/03, 30 windows, k = 2.5), WHAM:** overlap still below 0.05 after z0 −10,
+  −5, −1, +3, +13 (min 0.0). The soft spring lets Ca slide to local minima (z0 −1 sits at −1.49,
+  z0 0 at +0.41; −4 and −3 both at −3.45), leaving 1–2 Å gaps. Provisional profile: 2–8 kcal/mol across
+  the barrel (−15…+8 Å), lowest at +10 Å (backbone-O contacts at the extracellular mouth), with a
+  peak of 8.8 at +13. Ca touches protein O in a few windows only (−9, −7, −1, +3/+4, +9…+14). Needs
+  extra windows at the gaps (or k ≈ 5 there) before it is a result; compare with umbrella_soft (16/30).
 
 ## Findings
 
