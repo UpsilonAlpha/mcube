@@ -839,6 +839,28 @@ blocks 30576666/67 held; the Ca jobs run)
 - **`lu_def_ring` is slow:** the first optimisation stopped on an SCF that would not converge (net −2
   cluster with Ca), and it restarted with second-order SCF. Step 5 after ~4 h, so it will need resubmitting at 24 h
   (it continues per ion).
+- **All four `min` sites done (2026-10-26).** Raw exchange ΔE in kcal/mol at ε 4 / ε 29 (negative =
+  the site prefers the second ion); n = coordinating carboxylates; ✗ = that ion's optimisation hit
+  the step limit:
+
+  | Site | n | Ca → La | Ca → Lu | La → Lu |
+  |---|---|---|---|---|
+  | `la_def_min` (Glu156 + Glu240) | 2 | +7.4 / −0.4 | −0.2 / −8.1 | −7.6 / −7.7 |
+  | `lu_chbe_min` (Glu220 + Glu240; Ca ✗) | 2 | +5.5 / −3.5 | −7.4 / −16.2 | −13.0 / −12.7 |
+  | `la_chbe_min` (Glu156; La ✗) | 1 | +31.0 / +6.6 | +19.2 / −5.4 | −11.8 / −12.0 |
+  | `lu_def_min` (Glu240) | 1 | +33.5 / +8.5 | +22.5 / −3.6 | −10.9 / −12.2 |
+
+  Corrected for the calibration bias (add 4.5n to the Ca → Ln columns, 2.6n to La → Lu):
+  - **Ca over La** at every site and in both dielectrics: +8.6…+38 kcal/mol, so the site does *not* prefer La.
+  - **Ca vs Lu** is not decided: −7.2…+27, with the sign flipping with the dielectric at the 2-Glu sites.
+  - **Lu over La** at every site: −2.4…−9.6, beyond the offset at 3 of 4 sites.
+  - Sites from La and Lu frames agree in sign (criterion 1).
+  - **But these are the stripped pockets (−1/−2).** The ring variants (−4) test criterion 2, and Dudev's −4
+    site is strongly Ln-selective.
+- **Ring sites:** `la_def_ring` (30599596) is still running at 9 h, past Ca. `la_chbe_ring`, `lu_def_ring` and
+  `lu_chbe_ring` ran out of memory at 96 GB, after their Ca step (PySCF max_memory 80 GB plus the dense IEF-PCM matrices
+  for 74–77 atoms). Resubmitted with `--mem=180G` as 30609315–17; they continue from the saved Ca
+  geometries. `lu_def_ring`'s Ca geometry did not converge in 150 steps, so treat it with care.
 - **Metadynamics stage (support only):** `mcube metadynamics` (commit 6e85c16) is well-tempered MTD on
   n_COO with z held, or 2D, on `openmm.app.Metadynamics` with umbrella's CVs (ASH's wrapper uses the same
   class with a different CN function and no CV logging). `fes` reports integer-state free energies
