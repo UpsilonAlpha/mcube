@@ -9,9 +9,10 @@ the decision, why, the evidence, and whether to revisit it. Same format as
 **Aim.** Potentials of mean force for a light and a heavy lanthanide and for Ca²⁺ crossing the
 channel, built with mcube's existing stages as closely as possible.
 
-**Current state (2026-10-23; read this first, then the entries it points to).**
-- *Question (C17):* is the channel better suited to Ca²⁺ or to Ln³⁺, and if Ln³⁺, La³⁺ or Lu³⁺?
-  Relative free energies across the constriction (dehydration plus coordination) answer it.
+**Current state (2026-10-25; read [channel/question-and-criteria.md](channel/question-and-criteria.md) first).**
+- *Question (C22, narrowed 2026-10-25):* which ion the constriction site (Glu156/240/300 ring)
+  prefers, Ca²⁺, La³⁺ or Lu³⁺. Permeation is out of scope. The main calculation is an r2SCAN cluster
+  exchange ΔG with SMD (C22); the z-only umbrella work below is history (C21: Ln contacts never break).
 - *Protein (C1, C2, protein.md):* BD122_14570, a DUF6662 12-strand outer-membrane barrel of
   *B. diazoefficiens*, next to lanmodulin and a lanthanide ABC importer; AF2 monomer (pLDDT
   96.7), no trimer. Glu300, the most conserved lumen residue, lines the constriction.
@@ -754,6 +755,41 @@ blocks 30576666/67 held; the Ca jobs run)
   the barrel (−15…+8 Å), lowest at +10 Å (backbone-O contacts at the extracellular mouth), with a
   peak of 8.8 at +13. Ca touches protein O in a few windows only (−9, −7, −1, +3/+4, +9…+14). Needs
   extra windows at the gaps (or k ≈ 5 there) before it is a result; compare with umbrella_soft (16/30).
+
+**C22 – Site affinity only; cluster exchange ΔG at the Glu ring is the main calculation.**
+(user, 2026-10-25; the reference is [channel/question-and-criteria.md](channel/question-and-criteria.md))
+- **Scope:** which ion the constriction site prefers. Permeation (exit barriers, profiles along z) is
+  out. Cancelled as permeation work: La soft/Ch-BE 30576904/05/08/09, Lu k = 10 blocks
+  30576666/67 and Ca soft 30576906/07 (21–24/30 done; the Ca Ch-BE set and all k = 10 windows stay on
+  disk). The Lu residence runs 30581008/09 continue; their frames feed the clusters.
+- **Method** (`docs/channel/coord/site_exchange.py`, `site.slurm`), after Angelova, Dudev et al.,
+  PCCP 2023 (PMC10094714). They use M06-2X/6-311++G(d,p)/SDD, SMD with ε 4 and 29 for the pocket, and
+  Ca-binding EF-hand sites. Their 3-carboxylate site prefers La over Ca by 14–20 kcal/mol, the 4-carboxylate
+  site by 30–48, and the 1-carboxylate site prefers Ca or neither. La vs heavier Ln moves by only ±2–7, not
+  monotonically (Dy best, Lu slightly negative).
+  - Ours: the site is cut from a bound MD frame and minimum-imaged around the ion. Glu becomes butanoate
+    capped at CA. Coordinating side chains are free except CA/HA/caps; non-coordinating ring Glu are frozen.
+    First-shell waters are within 3.3 Å. Each ion is swapped into the same cluster and optimised at
+    r2SCAN/def2-SVP (lcecp-1-SVP); single points at def2-TZVP (lcecp-1-TZVP) in the gas phase and in SMD
+    diethylether (ε 4.2) and propanonitrile (ε 29). Aqua ions (Ca 8, La 9, Lu 8 waters, C17 geometries)
+    and water are in SMD water. Ion cavity radii are set explicitly (Ca 2.0, La 2.2, Lu 1.98 Å), because
+    PySCF's SMD has a 2.0 Å placeholder for La/Lu; the cavity is built by element, so ECP core charges do
+    not shift the lookup. No thermal corrections.
+  - Variants test the pocket-charge sensitivity (criterion 2): `ring` keeps Glu156/220/240/300 (−4; the
+    non-coordinating ones frozen); `min` keeps only the coordinating Glu.
+  - Sites from La frames: `la_def_ring`/`la_def_min` (Glu156 + Glu240 coordinating, 6 waters) and
+    `la_chbe_ring`/`la_chbe_min` (Glu156 only, 8 waters). Lu frames follow when the residence runs end.
+  - A bug found on the way: the frames are wrapped atom by atom, so 4 of La's 7 first-shell waters were
+    across the box; fixed by minimum imaging in `build`.
+- **Calibration (criterion 4):** `site_exchange.py calibrate` applies the same SMD-water protocol to
+  the C17 acetate complexes, against experiment (La − Ca ≈ −1.4…−1.7, La − Yb ≈ +0.2 kcal/mol).
+- **Queued (general, 32 cores):** 30598663 calibration, 30598664 `la_chbe_min` (smoke test before
+  the larger sites).
+- **Metadynamics stage (support only):** `mcube metadynamics` (commit 6e85c16) is well-tempered MTD on
+  n_COO with z held, or 2D, on `openmm.app.Metadynamics` with umbrella's CVs (ASH's wrapper uses the same
+  class with a different CN function and no CV logging). `fes` reports integer-state free energies
+  and a 50/75/100 % convergence check. 222 tests pass. It is used only if the cluster ranking depends on the binding
+  mode.
 
 ## Findings
 
