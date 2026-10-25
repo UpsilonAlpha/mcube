@@ -1796,6 +1796,29 @@ Two things measured while checking that, both worth keeping:
 
 **So the fix needs no new setting: shrink `actradius`.** Fewer active waters means fewer constraints. That was unsafe before, because a smaller radius could drop a whole QM residue out of the active region and freeze it; `resolve_actatoms` now unions the QM atoms in unconditionally and says which it had to add, so the radius is free to come down. Recorded in `running-on-bunya.md` under the optimisation measurement.
 
+**D106 - the NEB starting structure, taken from the 8 A optimisation's plateau.** (2026-10-25 19:40 AEST, `CSR_nac`, `protdft/nacqm/QM_MM_opt_last.pdb`)
+
+**The 5 A rerun (job 30580259) FAILED, and it failed badly.** 124 steps in 60 min - fast, at ~29 s/step against 159 - then `RecursionError` inside Python's logging, downstream of repeated `numpy.linalg.LinAlgError: SVD did not converge`. The energies say what happened: the QM term stayed sane throughout (-181.68 to -181.19 Eh) while **the MM term went from -240.69 to +1139 Eh**. Shrinking the active region pulled the active/frozen boundary in close to the site, and after ~100 steps the optimiser drove active MM atoms into frozen neighbours. **5 A is ruled out**, and the lesson is the opposite of the one in D105: the radius was not the thing to change.
+
+**Two corrections to D105, both from looking in the wrong place.** The 5 A run's "zero SVD errors" came from grepping the **.out** for geomeTRIC's own `SVD Error` string; the real `LinAlgError` tracebacks go to the **.err**, so the SVD trouble was never gone. And `grep -c LinAlgError` on the 8 A run's .err is **0** - that run never crashed, its `SVD Error` lines were geomeTRIC's internal retry path recovering each time. So the 8 A optimisation was slow but healthy, and the claim in D105 that it "could not converge" was wrong: its energy fell -422.3655 -> -423.0022 Eh and then **plateaued**, the last three steps differing by under 1e-4 Eh.
+
+**So the structure already existed and no rerun was needed.** `docs/csr/traj_frame.py` (new, 8 tests) reads one frame of a multi-frame XYZ onto a PDB template, which is what geomeTRIC's `geometric_OPTtraj_Full.xyz` needed - it is the only record of an optimisation that never reached its end. Frame -1 of 111, energy **-423.00218567193 Eh**, matching `optimization_energies.log` step 108 exactly; 49,424 atoms, coordinates from the frame and everything else from `QM_MM_lastframe.pdb`.
+
+**What it is, measured:**
+
+    5 ligands within 2.8 A          Zn-Asp92 OD2  3.47     O01-C4x  4.00
+      1.88  C:2:OH:O01              Zn-mer O2x    5.16     C4x-N1x  1.37
+      2.13  A:88:HIS:NE2            O01 angle     62 deg   Lys226   3 H
+      2.14  A:164:HIS:NE2
+      2.17  D:1:HOH:O
+      2.19  A:92:ASP:OD1
+
+A clean five-coordinate zinc: the optimisation tightened both histidines (2.22/2.25 -> 2.13/2.14) and kept Asp92 monodentate (OD1 2.19, OD2 3.47). The beta-lactam is intact (C4x-N1x 1.37), the substrate is bound without coordinating the zinc (mer O2x 5.16), and the hydroxide is still a hydroxide - one proton, 0.96 A, pointing at Asp92 OD1 (2.50 A). Lys226 remains fully protonated.
+
+**It is not a near-attack geometry, which settles the question D104 raised.** O01-C4x went 3.86 -> **4.00 A** and the angle 57 -> **62 degrees** over the optimisation: relaxing to the nearest minimum moves *away* from attack, not towards it. Every candidate water is "angle off" (47-86 degrees). So `scan_attack` driving O01-C4x from 4.00 A down to ~1.45 A is how the reaction coordinate gets reached, confirmed now at the optimised geometry rather than inferred from one MD frame.
+
+**Caveat on calling it optimised.** The energy is converged - under 1e-4 Eh over the last three steps, i.e. better than 0.1 kcal/mol - but the maximum gradient component was still 1.9e-01 when the run stalled, almost certainly in soft solvent modes. This is a relaxed geometry, not a stationary point. Adequate as a NEB *starting* structure; if the NEB endpoints need to be true minima, that needs an optimisation that actually converges, and the radius to try is 6-7 A, since 8 A grinds and 5 A diverges.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
