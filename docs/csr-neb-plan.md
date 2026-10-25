@@ -4,18 +4,61 @@ How we go from the restrained MM model to reaction barriers. The decisions behin
 
 ## Questions
 
-CSR-1 is an unusual B3 with an RQK-HRH active site. The paths must answer:
-1. **Lys226 (K254):** does it stabilise meropenem hydrolysis, as Lys92 does in EcoRV?
-2. **Arg90 (R118) and Arg229:** are the arginines involved?
-3. **Asp92 (D120), the "bridging" aspartate:** is it involved?
+CSR-1 is an unusual B3 with an RQK-HRH active site, and the substitutions are at
+metal-ligand positions: **Arg90 (BBL R118) occupies a Zn1 ligand position** and
+**Lys226 (BBL K263) occupies the Zn2 ligand position**. A cation cannot ligate
+zinc, so the canonical second metal cannot bind and the site carries one zinc at
+Zn1.
+
+**Central hypothesis (D107).** Arg90 and Lys226 together supply, as two
+monovalent cations, the **+2 that the absent Zn2 would have carried**. They do
+Zn2's substrate-anchoring job electrostatically - Lys226 salt-bridges the C3
+carboxylate (2.61 A at closest over the QM/MM trajectory), Arg90 holds the
+6-alpha-hydroxyethyl in 99% of frames - while being unable to do its catalytic
+jobs: lowering the nucleophile's pKa and stabilising the anionic nitrogen. That
+would account for CSR-1 binding broadly and turning over poorly.
+
+**Where the two cations actually sit, measured in `QM_MM_opt_last.pdb`** - they
+act at opposite ends of the site, and only one of them is near the metal:
+
+    Arg90 NH1   Zn 4.41  O01 5.13  N1x 7.03  O3x  9.66
+    Lys226 NZ   Zn 8.73  O01 7.13  N1x 6.93  O3x  4.80
+    Arg229 NH2  Zn 9.34  O01 7.76  N1x 6.61  O3x  4.38
+
+So **Arg90** is the cation positioned to affect the nucleophile, while
+**Lys226** points away from the metal at the substrate carboxylate. A Zn2 metal
+would sit ~3.5-4 A from Zn1, not 8.7, so "Lys226 supplies the charge Zn2 would
+have carried" is geometrically loose; what it does plainly inherit is Zn2's
+**carboxylate-binding** role, since the C3 carboxylate binds Zn2 in canonical
+MBLs. **And Arg229 NH2 is closer to both the carboxylate and the leaving nitrogen
+than Lys226 is, while sitting outside the QM region** - on geometry alone,
+including Lys226 and excluding Arg229 is hard to justify if the question is
+cationic stabilisation of the anionic nitrogen.
+
+The paths must answer:
+1. **Lys226 (K254 / BBL K263):** does its charge contribute to the barriers, and
+   to which step? The hypothesis predicts it matters more for **ring opening**,
+   where the anionic nitrogen appears, than for the attack step. That is the
+   falsifiable part.
+2. **Arg90 (R118) and Arg229:** the same question for the arginines. Arg90 sits
+   at a Zn1 ligand position, beside the metal; **Arg229 is cationic and contacts
+   the substrate in 89% of frames but is not in the QM region.**
+3. **Asp92 (D120):** is it the general base? Its proton-accepting geometry says
+   yes (OD1 2.50 A from the nucleophile's proton). Note it is **monodentate to
+   the single zinc** (OD1 2.19, OD2 3.47), so it bridges nothing - the di-zinc
+   "bridging aspartate" label does not transfer to a mono-zinc site.
 
 How each question is answered:
 - **Who moves which proton:** along every NEB path, monitor Lys226 NZ, Asp92 OD1/OD2, the Zn water and O01 protons.
 - **Per-residue contributions** (as Imhof did for Lys92 in EcoRV): recompute each path's energies with the charges of Lys226, Arg90, Arg229 and Asp92 zeroed in turn, then optimise the path again with the residue removed or neutralised for the important cases.
-- **Where they sit at the start (D29):**
-  - Arg90 and Arg229 hold the 6α-hydroxyethyl and C2 side chain;
-  - Asp92 binds the Zn and H-bonds both water oxygens;
-  - Lys226 sits 2.7 Å from the O01 nucleophile.
+- **Where they sit at the start.** The two models disagree about Lys226, which is
+  why D107 measured it over a trajectory rather than in one frame:
+  - Arg90 and Arg229 hold the 6α-hydroxyethyl and C2 side chain (D29, 99%/89%);
+  - Asp92 binds the Zn and H-bonds both water oxygens (D29, 99.5%/100%);
+  - Lys226 is **2.7 Å from O01 in `CSR_crystal_v2`** (D29) but **5.6-7.3 Å from it
+    in `CSR_nac`**, where it instead salt-bridges the C3 carboxylate at 2.61 Å and
+    never comes within 4.7 Å of the leaving nitrogen (D107). Any claim about its
+    role has to say which model it refers to.
 
 ## Methods we replicate (checked against the abstracts, 2026-10-18)
 

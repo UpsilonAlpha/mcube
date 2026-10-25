@@ -7,6 +7,29 @@ A running record of the modelling decisions for the QM/MM study of meropenem hyd
 - a comparison against a small model system
 - the catalytic contribution of each residue
 
+**Central hypothesis (D107, 2026-10-25).** CSR-1's two active-site substitutions
+are at metal-ligand positions: Arg90 (BBL R118) at a Zn1 ligand position and
+Lys226 (BBL K263) at the Zn2 position. Together these two monovalent cations
+supply the **+2 that the absent Zn2 would have carried**. The hypothesis is that
+they take over Zn2's *substrate-anchoring* role electrostatically while being
+unable to take over its *catalytic* roles - depressing the nucleophile's pKa and
+stabilising the anionic nitrogen - which would explain broad-spectrum binding
+with poor turnover. Testable by per-residue charge deletion along each path, and
+it predicts a larger effect on ring opening than on nucleophilic attack.
+
+Two measured caveats on that wording, from `QM_MM_opt_last.pdb`: **Arg90 NH1 is
+4.41 A from the zinc** and 5.13 A from the nucleophile, but **Lys226 NZ is 8.73 A
+from the zinc** and points at the substrate carboxylate (4.80 A) instead - a Zn2
+metal would sit ~3.5-4 A from Zn1, so the two cations act at opposite ends of the
+site rather than jointly replacing one charge. And **Arg229 NH2 is 4.38 A from
+the carboxylate and 6.61 A from the leaving nitrogen, closer than Lys226 on both
+counts, yet is not in the QM region.**
+
+The Imhof/EcoRV borrowing is **methodological only** - minimum-energy paths plus
+per-residue electrostatic contributions. The structural analogy to EcoRV's Lys92
+is retired (D107): that residue mainly stabilises a metaphosphate, which amide
+hydrolysis has no counterpart for.
+
 Their AM1/d → our GFN2-xTB for exploration, with a DFT check. Their CPR-style path search → our CI-NEB, transition-state optimisation and IRC.
 
 **Paths on Bunya:**
