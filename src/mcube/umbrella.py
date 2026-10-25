@@ -261,6 +261,32 @@ def image_ion(coords, ion: int, reference, masses, box) -> np.ndarray:
     return coords
 
 
+def centroid_cv(expression: str, ion: int, reference, masses=None):
+    """A CustomCentroidBondForce of the reference centre (group 1) and the ion (group 2),
+    in nm; one instance per use, since a Force can belong to only one CustomCVForce."""
+    import openmm
+    f = openmm.CustomCentroidBondForce(2, expression)
+    if masses is None:
+        f.addGroup([int(a) for a in reference])
+    else:
+        f.addGroup([int(a) for a in reference], [float(masses[int(a)]) for a in reference])
+    f.addGroup([int(ion)])
+    f.addBond([0, 1], [])
+    return f
+
+
+def cn_cv(ion: int, atoms, cutoff: float = 3.0):
+    """Coordination number of the ion by `atoms`: sum_j 1/(1 + (r_ij/r0)^12), r0 = `cutoff` (A)."""
+    import openmm
+    cn = openmm.CustomBondForce("1/(1+(r/r0)^12)")
+    cn.addPerBondParameter("r0")
+    for j in atoms:
+        if int(j) != int(ion):
+            cn.addBond(int(ion), int(j), [float(cutoff) / 10.0])
+    cn.setUsesPeriodicBoundaryConditions(True)
+    return cn
+
+
 def bias_force(ion: int, reference, k: float, z0: float, cylinder=None, masses=None,
                cn_groups=None, cn_cutoff: float = 3.0):
     """The umbrella: 0.5 k (z - z0)^2 + 0.5 k_cyl max(0, r - R)^2 (k in kcal/mol/A^2, A).
@@ -275,28 +301,13 @@ def bias_force(ion: int, reference, k: float, z0: float, cylinder=None, masses=N
     log its hydration state as cheaply as it logs z, and could be biased later.
     """
     import openmm
-    z = openmm.CustomCentroidBondForce(2, "z2-z1")
-    r = openmm.CustomCentroidBondForce(2, "sqrt((x2-x1)^2+(y2-y1)^2)")
-    for f in (z, r):
-        if masses is None:
-            f.addGroup([int(a) for a in reference])
-        else:
-            f.addGroup([int(a) for a in reference], [float(masses[int(a)]) for a in reference])
-        f.addGroup([int(ion)])
-        f.addBond([0, 1], [])
     cyl = cylinder or {}
     force = openmm.CustomCVForce("0.5*mcube_us_k*(zcv-mcube_us_z0)^2"
                                  " + 0.5*mcube_cyl_k*max(0, rcv-mcube_cyl_r)^2")
-    force.addCollectiveVariable("zcv", z)
-    force.addCollectiveVariable("rcv", r)
+    force.addCollectiveVariable("zcv", centroid_cv("z2-z1", ion, reference, masses))
+    force.addCollectiveVariable("rcv", centroid_cv("sqrt((x2-x1)^2+(y2-y1)^2)", ion, reference, masses))
     for name, atoms in (cn_groups or {}).items():
-        cn = openmm.CustomBondForce("1/(1+(r/r0)^12)")
-        cn.addPerBondParameter("r0")
-        for j in atoms:
-            if int(j) != int(ion):
-                cn.addBond(int(ion), int(j), [float(cn_cutoff) / 10.0])
-        cn.setUsesPeriodicBoundaryConditions(True)
-        force.addCollectiveVariable(f"cn_{name}", cn)
+        force.addCollectiveVariable(f"cn_{name}", cn_cv(ion, atoms, cn_cutoff))
     force.addGlobalParameter("mcube_us_k", float(k) * TO_KJ_NM2)
     force.addGlobalParameter("mcube_us_z0", float(z0) / 10.0)
     force.addGlobalParameter("mcube_cyl_k", float(cyl.get("k", 0.0)) * TO_KJ_NM2)
@@ -510,6 +521,17 @@ def cn_atom_groups(topology, ion: int) -> Dict[str, List[int]]:
         elif atom.residue.name in AMINO_ACIDS:
             protein.append(atom.index)
     return {"water": water, "protein": protein}
+
+
+# Charged Asp/Glu only: ASH/GLH (Amber) and ASPP/GLUP (CHARMM) are the neutral acids, whose
+# oxygens are not carboxylates. The C-terminal OXT is left out (not part of the path).
+CARBOXYLATE_OXYGENS = {"ASP": ("OD1", "OD2"), "GLU": ("OE1", "OE2")}
+
+
+def carboxylate_oxygens(topology, ion: Optional[int] = None) -> List[int]:
+    """Side-chain carboxylate oxygens (Asp OD1/OD2, Glu OE1/OE2) of charged Asp and Glu."""
+    return [a.index for a in topology.atoms()
+            if a.index != ion and a.name in CARBOXYLATE_OXYGENS.get(a.residue.name, ())]
 
 
 def cn_cutoff(inputs, preprocess) -> float:

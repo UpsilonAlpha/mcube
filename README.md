@@ -11,6 +11,7 @@ A pipeline for protein–ligand systems, often metalloproteins, built on [ASH](h
 7. **sp**: PySCF QM/MM single point on a finished geometry, with density, MEP and HOMO/LUMO cubes
 8. **postprocess**: MD data plots, RMSD, RMSF (as B-factors) and a residue interaction network
 9. **umbrella**: umbrella sampling of an ion along the membrane normal, on the MM or the QM/MM model, with WHAM, BAR stitching of the two and reweighting to DFT
+10. **metadynamics**: well-tempered metadynamics of an ion on its carboxylate coordination number n_COO, inside an umbrella window or in 2D with z, with integer-state free energies
 
 The path through them is linear, with `sp` as the scoring step applied to each
 geometry you want an energy for:
@@ -19,6 +20,7 @@ geometry you want an energy for:
 preprocess -> md -> qmmm -> sp                    the complex, and its energy
                       \-> scan | neb -> ts -> sp   the path, its TS, and the barrier
 preprocess -> md -> umbrella                      a free-energy profile along z
+                          \-> metadynamics        ion-carboxylate states in a window
 ```
 
 `sp` is not a step the next stage consumes: it reads a finished geometry and
@@ -56,6 +58,7 @@ mcube ts config.yaml --pdb saddlepoint.pdb [--section ts_step1] [--actatoms acti
 mcube sp config.yaml --pdb QM_MM_optimized.pdb [--section sp_product]
 mcube postprocess config.yaml [--qmmm] [--redraw] [--cutoff 2.6] [--metals ZN MG] [--occupancy 0.1]
 mcube umbrella config.yaml {pull|window|energies|wham|stitch} [--window N] [--section S] [--level mm|xtb|dft]
+mcube metadynamics config.yaml {run|fes} [--section S]
 ```
 
 `python -m mcube ...` also works. Every stage writes its files to the current directory, so run each stage from its own working directory. Paths saved in `results` are absolute, so later stages can be run from anywhere.
@@ -355,6 +358,51 @@ mcube umbrella config.yaml stitch                                # BAR MM <-> xT
 - **wham** is a self-contained numpy WHAM with a block bootstrap. It warns where neighbouring windows overlap by less than 0.05. If the windows logged coordination numbers it also writes `<section>_hydration.csv` (mean and spread of each, per window, against z0) and warns where a window's water coordination is bimodal: two populations at least 2 apart, which means hydration was not sampled on that window length. With `--reweight dft` it uses the frames that have both `energies_dft` and `energies_xtb`, weighting each by exp(−βΔE) (Li et al., *JCTC* 2018, 14, 5583).
 - **stitch** follows Heimdal & Ryde (*PCCP* 2012): the constriction is sampled directly at xTB/MM, and the two ends are joined to the MM profile by BAR free energies there. The cycle closure — QM/MM rise across the range minus (MM rise + ΔA_hi − ΔA_lo) — is reported, and shows as the step at the far end.
 
+### `metadynamics.inputs` (optional section)
+
+Well-tempered metadynamics (OpenMM's `openmm.app.Metadynamics`, on the umbrella MM
+system) of the ion's carboxylate-oxygen coordination number n_COO: Σ 1/(1+(r/r0)¹²) over
+the OD1/OD2 of ASP and OE1/OE2 of GLU (neutral ASH/GLH/ASPP/GLUP are not carboxylates),
+r0 = `cn_cutoff`. For an ion that holds a carboxylate for longer than a window runs, which
+z alone cannot equilibrate. Two modes:
+
+- `cvs: [n_coo]` with `z0`: n_COO biased inside an umbrella window, z held by the umbrella
+  restraint (`k`) and the cylinder;
+- `cvs: [z, n_coo]` with `grid.z`: both biased in 2D; the cylinder still applies, the z
+  restraint is off, and `z_walls` adds flat-bottomed walls.
+
+`ion`, `reference`, `cylinder`, `k`, `timestep`, `platform`, `properties`, `temp`, `cores`,
+`metal_parameters`, `polarizabilities`, `c4_set`, `c4_pairs`, `cn_cutoff` and
+`nonbonded_cutoff` are taken from `umbrella.inputs` if set there, under `metadynamics.inputs`,
+under the `--section` inputs. So one config can hold several runs (ion, C4 set, z0).
+[`config_examples/metadynamics_config.yaml`](config_examples/metadynamics_config.yaml) is an example.
+
+| Key | Default | Description |
+| --- | --- | --- |
+| `cvs` | `[n_coo]` | Biased CVs, from `n_coo` and `z` (one or both) |
+| `z0`, `k` | required without z biased; 10.0 | z restraint centre (Å) and force constant (kcal/mol/Å²). `z0` also picks the seed |
+| `seed` | umbrella window at `z0`, else `md.results.lastframe` | Starting PDB. The default is the `lastframe` of the window in `seed_section` (default `umbrella`) centred on `z0` |
+| `height` | 1.0 | Initial Gaussian height, kJ/mol |
+| `sigma` | `{n_coo: 0.1, z: 0.3}` | Gaussian widths (z in Å); merged per CV |
+| `grid` | `{n_coo: {min: 0, max: 6}}` | `{cv: {min, max, bins}}` (z in Å); `bins` defaults to OpenMM's ⌈5 (max − min)/sigma⌉. z has no default |
+| `biasfactor` | 10.0 | γ: the CVs sample at γT |
+| `frequency`, `save_frequency` | 500, 10 × `frequency` | Steps between hills, and between writes of the bias grid to `bias/` |
+| `z_walls` | none | 2D only: `{min: Å, max: Å, k: kcal/mol/Å²}` |
+| `time`, `timestep` | 10000, 0.004 ps | Run length (each `run` adds `time`) |
+| `cv_frequency` | 250 | Steps between rows of `cv.csv` (time, z, r, cn_water, cn_protein, n_coo, bias energy in kJ/mol) |
+| `traj_frequency` | 25000 | Steps between DCD frames; 0 writes none |
+| `tag` | none | Work dir `<section>_<tag>` instead of `<section>` |
+
+Actions:
+
+```bash
+mcube metadynamics config.yaml run [--section S]   # again: extends the run from lastframe and the saved bias
+mcube metadynamics config.yaml fes [--section S]
+```
+
+- **run** writes `<section>/` and `<section>.results.run`. Every hill is logged to `hills.csv` (time, centre, well-tempered height). Running it again continues: OpenMM reloads the bias from `bias/`, the structure is `lastframe.pdb`, and `cv.csv`/`hills.csv` are appended to (velocities are redrawn).
+- **fes** rebuilds the bias V from `hills.csv` on the run's grid and gives F = −γ/(γ−1) V (kcal/mol) along each CV (`fes_<cv>.csv`, projected in 2D, plus `fes_2d.csv`). A smooth n_COO near the cutoff is not a state, so n_COO is reported as integer states, F_n = −kT ln ∫ exp(−F/kT) over [n − ½, n + ½] (`n_coo_states.csv`, `<section>.results.fes.n_coo_states_kcal`). The state free energies from the hills of the first 50 % and 75 % of the run are given next to them, and the largest change from 75 % to 100 % as `max_state_change_75_100_kcal`.
+
 ## Outputs by stage
 
 | Stage | Main files |
@@ -368,6 +416,7 @@ mcube umbrella config.yaml stitch                                # BAR MM <-> xT
 | ts | `Hessian_partial_TS`, `ts_optimized.pdb`, `irc_forward.pdb`, `irc_reverse.pdb`, `irc_*_opttraj.xyz` (or Sella's `sella_*.xyz`) |
 | postprocess | `Temperature.png`, `Density.png`, `BoxVolume.png`, `RMSD.png`, `interaction_network.csv/.png`, `rmsf_bfactor.pdb` |
 | umbrella | `pull/seed_NNN.pdb`, `pull/pull_cv.csv`; per window `<section>_NNN/{start.pdb, cv.csv, window.dcd, window.csv, lastframe.pdb, energies_<level>.csv}`; `<section>_pmf.csv`, `stitched_<section>.csv` |
+| metadynamics | `<section>/{start.pdb, cv.csv, hills.csv, bias/bias_*.npy, run.dcd, lastframe.pdb, fes_<cv>.csv, fes_2d.csv, n_coo_states.csv}` |
 
 ## postprocess
 

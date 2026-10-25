@@ -32,7 +32,8 @@ def thread_policy(stage: str, inputs: dict, cpus: int) -> dict:
         return {"OMP_NUM_THREADS": 1, "bind": False,
                 "why": "PySCF runs in-process and sets its own thread count from "
                        "sp_cores/dft_cores; binding would pin its BLAS threads"}
-    if stage == "md" or (stage == "umbrella" and str(inputs.get("engine", "mm")).lower() != "qmmm"):
+    if stage in ("md", "metadynamics") or (stage == "umbrella"
+                                           and str(inputs.get("engine", "mm")).lower() != "qmmm"):
         return {"OMP_NUM_THREADS": half, "bind": False,
                 "why": "OpenMM runs in-process; binding would pin it"}
     if stage == "neb":
@@ -49,7 +50,8 @@ def thread_policy(stage: str, inputs: dict, cpus: int) -> dict:
 
 # What each stage can actually use, from seff on real jobs (docs/running-on-bunya.md).
 # Asking for more is silently wasted, so `mcube env` says so at submit time.
-USEFUL_CPUS = {"preprocess": 2, "md": 16, "qmmm": 8, "scan": 8, "ts": 8, "sp": 32, "umbrella": 8}
+USEFUL_CPUS = {"preprocess": 2, "md": 16, "qmmm": 8, "scan": 8, "ts": 8, "sp": 32, "umbrella": 8,
+               "metadynamics": 8}
 
 
 def env_exports(config: str, stage: str, section: str | None = None) -> str:
@@ -162,6 +164,16 @@ def build_parser():
     p8.add_argument("--reweight", choices=["dft"],
                     help="wham: reweight each frame from xTB/MM to this level")
     p8.add_argument("--bootstrap", type=int, default=50, help="wham: block-bootstrap resamples")
+
+    # =========================================================
+    # METADYNAMICS
+    # =========================================================
+    p11 = subparsers.add_parser("metadynamics",
+                                help="Well-tempered metadynamics of an ion on n_COO (and z), and its FES")
+    p11.add_argument("config", help="Input yaml file")
+    p11.add_argument("action", choices=["run", "fes"])
+    p11.add_argument("--section", default="metadynamics",
+                     help="Config section; its inputs override metadynamics.inputs")
 
     # =========================================================
     # POSTPROCESS
