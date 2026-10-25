@@ -195,6 +195,29 @@ sections:
       platform: CUDA
       properties: {Precision: mixed}
 
+  # D107: Arg229 is cationic and contacts the substrate in 89% of frames (D29),
+  # yet sat outside the QM region - while Lys226, which is *further* from both the
+  # C3 carboxylate (4.80 vs 4.38 A) and the leaving nitrogen (6.93 vs 6.61 A), was
+  # inside it. If the question is which cations stand in for the absent Zn2 in
+  # stabilising the anionic nitrogen, that asymmetry cannot be defended.
+  #
+  # `extra_qm_residues` adds a residue for this stage only, rebuilt on the frame
+  # given, so there is no preprocess re-run and no change of atom order - the new
+  # trajectory stays comparable with `nacqm`'s. The QM charge goes +2 -> +3 with
+  # the guanidinium, which has to be stated or the SCF converges to the wrong
+  # species. `monitor` is deliberately absent: the qmmm stage resolves the key but
+  # never reads it, so contacts are measured on the trajectory afterwards.
+  nacarg:
+    stage: qmmm
+    start: protdft/nacqm/QM_MM_lastframe.pdb
+    inputs:
+      pdb_file: protdft/nacqm/QM_MM_lastframe.pdb
+      extra_qm_residues:
+        A: [229]
+      charge: 3
+      skip_equilibrate: false    # qmmm.inputs sets true; without this there is no MD
+      skip_optimize: true        # MD only; optimising is a separate decision
+
   # ---- Which protonation state is the reactant? Blocks every barrier. ----
   #
   # D96: starting from Lys226-H+ with a Zn-bound hydroxide, a QM/MM optimisation
