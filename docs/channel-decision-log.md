@@ -819,6 +819,26 @@ blocks 30576666/67 held; the Ca jobs run)
 - **Lu³⁺ scaled-C4 residence, final (30581009):** Glu240 is bound all 10 ns. Glu220 joins at ~4.1 ns and
   stays (5.9 ns). cn_protein is 1.3 → 2.1. Sites: `lu_chbe_ring` (−4; Glu220/240 coordinating) and
   `lu_chbe_min` (−2), jobs 30600588/89. `la_chbe_min` was resubmitted on PCM as 30600578.
+- **First site result, `lu_def_min`** (pocket −1: Glu240 alone, 7 waters; every optimisation and SCF
+  converged). Exchange ΔE, kcal/mol (negative = the site prefers the second ion):
+
+  | | gas | ε 4 | ε 29 |
+  |---|---|---|---|
+  | Ca → La | −66.5 | **+33.5** | **+8.5** |
+  | Ca → Lu | −101.6 | +22.5 | −3.6 |
+  | La → Lu | −35.1 | −10.9 | −12.2 |
+
+  - **Ca over La at a one-carboxylate site,** in both dielectrics, and more so after the calibration offset,
+    which favours Ln. This matches Dudev's 1-carboxylate site (Ca-selective at ε 4, about neutral at ε 29).
+  - **Ca vs Lu depends on the dielectric** (+22.5 / −3.6, both within the offset): no answer.
+  - **Lu over La by 11–12 kcal/mol,** about 9 after the 2.6 offset.
+  - The gas phase favours the 3+ ions by 35–100; solvation reverses that. This is the expected pattern, and
+    it is why the dielectric and the pocket charge decide the result.
+  - This is the stripped variant. The ring variant (−4) is the test of criterion 2; Dudev's −4 site
+    swings to strongly Ln-selective.
+- **`lu_def_ring` is slow:** the first optimisation stopped on an SCF that would not converge (net −2
+  cluster with Ca), and it restarted with second-order SCF. Step 5 after ~4 h, so it will need resubmitting at 24 h
+  (it continues per ion).
 - **Metadynamics stage (support only):** `mcube metadynamics` (commit 6e85c16) is well-tempered MTD on
   n_COO with z held, or 2D, on `openmm.app.Metadynamics` with umbrella's CVs (ASH's wrapper uses the same
   class with a different CN function and no CV logging). `fes` reports integer-state free energies
