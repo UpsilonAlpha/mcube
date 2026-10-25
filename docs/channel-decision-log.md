@@ -735,6 +735,19 @@ blocks 30576666/67 held; the Ca jobs run)
   3+ ion on a carboxylate is mostly Coulomb, not the C4 term. So for La³⁺, z-only windows will not
   equilibrate coordination at the constriction with either C4. The sampling scheme has to treat the
   ion–carboxylate contact explicitly (C21 options: 2D z × carboxylate-O count, or metadynamics on it).
+- **Lu³⁺, interim (still running, read from frames alone; 30581008 default 7.3 ns, 30581009 Lu–O2 15.6
+  6.1 ns):** Glu240 has been bound for the whole run in both (one episode each). With the weaker C4,
+  Glu220 has joined for the last 2 ns, so Lu gains a carboxylate where La did not. **All four runs: no
+  Ln–carboxylate contact has broken in 6–10 ns, with either C4.**
+- **Recommendation (pending the user's decision):** z-only US is out for Ln³⁺ at the constriction. The
+  slow coordinate is the number of carboxylate O on the ion, so restrain it explicitly with **2D umbrella
+  sampling (z × n_COO)**. The bias force already computes coordination numbers as collective variables,
+  so the carboxylate-O count is a third CN group with a second harmonic bias; 2D WHAM, then the free
+  energy projected on z. Grid: z −6…+6 Å (1 Å), n_COO 0, 1, 2, 3; ~52 windows × 2 ns per ion and C4,
+  ≈ 20 GPU-h per set. Outside ±6 Å, 1D soft-k windows with the flat-bottom Cα restraint. Metadynamics
+  (OPES/WT-MetaD on n_COO inside z windows) is the alternative, but needs PLUMED or a new OpenMM bias
+  in mcube and is harder to check. Ca²⁺ needs no 2D treatment (no lumen contacts), but should get the
+  same grid at the constriction for a like-for-like comparison.
 - **Ca²⁺ Ch-BE section (30576902/03, 30 windows, k = 2.5), WHAM:** overlap still below 0.05 after z0 −10,
   −5, −1, +3, +13 (min 0.0). The soft spring lets Ca slide to local minima (z0 −1 sits at −1.49,
   z0 0 at +0.41; −4 and −3 both at −3.45), leaving 1–2 Å gaps. Provisional profile: 2–8 kcal/mol across
