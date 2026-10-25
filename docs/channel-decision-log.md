@@ -729,6 +729,12 @@ blocks 30576666/67 held; the Ca jobs run)
   the measure. Reading: under the default C4 a La–Glu contact outlives a 10 ns window, so z-only
   windows cannot equilibrate coordination here, and the window gained a second carboxylate rather
   than releasing the first.
+- **La³⁺, Ch-BE C4 (La–O2 9.5; 30581007, 10 ns at z0 = 0):** **no exchange either.** Glu156 is bound
+  for all 10 ns (one episode), with no second carboxylate. cn_protein stays 1.7–1.8 (both halves) and waters
+  7.0. Cutting C4 six-fold stops the second Glu from binding but does not free the first. What holds a
+  3+ ion on a carboxylate is mostly Coulomb, not the C4 term. So for La³⁺, z-only windows will not
+  equilibrate coordination at the constriction with either C4. The sampling scheme has to treat the
+  ion–carboxylate contact explicitly (C21 options: 2D z × carboxylate-O count, or metadynamics on it).
 - **Ca²⁺ Ch-BE section (30576902/03, 30 windows, k = 2.5), WHAM:** overlap still below 0.05 after z0 −10,
   −5, −1, +3, +13 (min 0.0). The soft spring lets Ca slide to local minima (z0 −1 sits at −1.49,
   z0 0 at +0.41; −4 and −3 both at −3.45), leaving 1–2 Å gaps. Provisional profile: 2–8 kcal/mol across
