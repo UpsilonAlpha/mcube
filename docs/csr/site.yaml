@@ -211,7 +211,9 @@ sections:
     stage: qmmm
     start: protdft/nacqm/QM_MM_lastframe.pdb
     inputs:
-      pdb_file: protdft/nacqm/QM_MM_lastframe.pdb
+      # The frame is passed at run time, as run.slurm's third argument, which
+      # resolves it with readlink -f. A relative `pdb_file` here would break:
+      # run.slurm cd's into protdft/<section> before calling mcube.
       extra_qm_residues:
         A: [229]
       charge: 3
