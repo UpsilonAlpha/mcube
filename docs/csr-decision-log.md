@@ -1887,8 +1887,12 @@ one.
 artefact zinc. So the suspicion recorded earlier that HOH485 is the weakest member
 of our sphere is well founded.
 
-**6DN4, the mature wild type, contains no zinc at all.** Consistent with the
-published account of CSR-1 crystallising metal-free with a low-affinity beta site.
+**6DN4, the mature wild type, has no zinc modelled in it.** That is a fact about
+one crystal, not about the enzyme: **CSR-1 requires zinc to function** (user), so a
+metal-free deposition reflects the low-affinity beta site and the crystallisation
+conditions, not the catalytic state. It is evidence about metal *affinity*, and
+says nothing against a zinc-dependent mechanism. 6NC5's ZN302 remains the
+reference for the Zn1 sphere.
 
 **Correction to the numbering conflict raised in `csr-neb-plan.md` yesterday: it
 was my error, not the log's.** D40's "His87/His163" are 6NC5's own numbers, which
