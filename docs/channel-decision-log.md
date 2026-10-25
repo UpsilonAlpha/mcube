@@ -670,6 +670,42 @@ explicit overrides.** (user, 2026-10-25)
   4. Rerun the constriction windows for all three ions with the chosen set; that pair of PMFs is
      the MM answer to the selectivity question.
 
+**C21 – Reseed the Ln³⁺ windows: restrain the backbone, pull from both bulks, test for
+hysteresis.** (proposed 2026-10-25, not yet approved; La soft/Ch-BE 30576904/05/08/09 and Lu k = 10
+blocks 30576666/67 held; the Ca jobs run)
+- **What the pulls did** (pull_cv.csv and seed frames; channel numbering = mcube + 130):
+
+  | Ion, direction | Lumen contacts carried | Residue moved |
+  |---|---|---|
+  | Ca²⁺, +35 → −35 | none from +8 to −25 Å (7.3 waters throughout); backbone O of Lys145/Asn359 at the extracellular mouth (+9…+19), Glu209 at the periplasmic mouth (−26…−34) | — |
+  | La³⁺, −35 → +35 | Glu209 + Asp207 from −31 to −8 Å (2–2.8 O; ion trails z0 by 1.2–1.7 Å), released at −6; Glu156 from −3 to +6 (trails by up to 2.2 Å); Glu265 from +12 to +20 | the Asp207/Glu209 loop (at rest z ≈ −21…−27) dragged ~8 Å up to −13…−16 (its Cα too) |
+  | Lu³⁺, +35 → −35 | Gln306 at +9…+13; Glu240 from +5 to −11 Å (ion trails z0 by up to 2.5 Å), released at −11.5 | the Glu240 strand pulled down 3.4 Å (Cα), carboxylate 7 Å |
+
+  Conserved Glu300 (z ≈ −2…−5) is touched by neither Ln in the seeds. The Ln carboxylates that
+  matter in the lumen are Glu156 and Glu240, with Glu300 alongside: a ring of carboxylates near z ≈ 0.
+- **Why the windows remember the pull:** the 12-6-4 Ln–carboxylate bond is too strong to break in
+  1 ns, the pull distorts the protein so the window inherits a strained state, and the window's
+  100 ps equilibration restrains the seed's own coordination shell (`coordination_force`), which
+  locks the pulled contacts in before sampling starts.
+- **Proposal:**
+  1. **Backbone restraint** (new mcube input, e.g. `protein_restraint: {selection: "chain A and name
+     CA", k: 1.0}` kcal/mol/Å² to the md lastframe) in the pull and in every window. This stops strands and
+     loops being dragged (the 8 Å loop move, the 3.4 Å strand move) and leaves side chains free to
+     coordinate. It is common in β-barrel PMFs; it removes real backbone motion, which is a stated limitation.
+  2. **Two pulls per Ln, one from each bulk** (+35 → −35 and −35 → +35, 5 Å/ns, with the restraint;
+     ~14 ns ≈ 5 h each on an L40). Each window is seeded from the pull that reached it from the
+     nearer bulk, so contacts are gathered over half the path at most.
+  3. **No shell restraint during window equilibration for the umbrella stage** (an input to switch it off), so the
+     seed's contacts are not locked in.
+  4. **Hysteresis test before the full set:** run the windows z0 −6…+6 (13) from both pulls with
+     k = 2.5. Accept the protocol if cn_protein and the PMF from the two seed sets agree within ~0.3 O and
+     ~1 kcal/mol. Otherwise those windows need a coordination CV (2D z, CN) or metadynamics, as for ZIP.
+  5. Then the full soft-k (default C4) and Ch-BE sets for La, and the soft set for Lu, on the new seeds.
+     Ca stays as queued; it carries no lumen contacts. Its mouth contacts are backbone O, which the
+     restraint would not change.
+- **Cost:** mcube change ~40 lines plus tests; 4 pulls (~20 GPU-h); 13 × 2 × 2 hysteresis windows
+  (~20 GPU-h); then the sets already planned.
+
 ## Findings
 
 **F1 – `qmmm` did not apply `metal_parameters`.** (2026-10-22; fixed on branch `umbrella`)
