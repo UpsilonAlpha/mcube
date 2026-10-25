@@ -18,8 +18,10 @@ the pocket's charge and shape without collapsing onto the ion in the gas phase. 
 carries each ion in turn, and each is optimised (r2SCAN/def2-SVP, La/Lu on lcecp-1-SVP).
 
 Energies: r2SCAN single points in the larger basis (def2-TZVP, lcecp-1-TZVP), gas phase and
-SMD. The site is in SMD "diethylether" (eps 4.2, buried) and "propanonitrile" (eps 29,
-solvent-exposed), as Dudev. Aqua ions and water are in SMD water. Ion cavity radii are set
+IEF-PCM. The site is at eps 4 (buried) and eps 29 (solvent-exposed), the dielectrics Dudev
+use; aqua ions and water at eps 78.36. Dudev use SMD. PySCF's pip build lacks the SMD
+non-electrostatic (CDS) library, so this is electrostatics only. The site complexes differ only in
+the ion, so their CDS terms nearly cancel; the aqua ions' do not quite. Ion cavity radii are set
 explicitly (--radii), because PySCF's default for La/Lu is a 2.0 A placeholder. Aqua ions and
 water are the r2SCAN/SVP geometries from carboxylate_exchange.py (--aqua: Ca 8, La 9, Lu 8 waters).
 No thermal or entropy corrections (Dudev include them). The water counts are balanced, so they
@@ -30,7 +32,7 @@ largely cancel, but say so with any number.
       --basis-tzvp def2-tzvp_lcecp1.nw --cores 32
   python site_exchange.py calibrate --aqua coord_check/geom --basis-tzvp def2-tzvp_lcecp1.nw --out calib
 
-`calibrate` runs the same SMD-water protocol on the acetate complexes of carboxylate_exchange.py
+`calibrate` runs the same PCM-water protocol on the acetate complexes of carboxylate_exchange.py
 (M(H2O)n-k(OAc) + k H2O vs M(H2O)n + OAc-) for comparison with experiment: Ln - Ca about
 -1.4 to -1.7 kcal/mol, La - Yb about +0.2 (c4-tuning.md). It is criterion 4 of the doc.
 """
@@ -49,7 +51,8 @@ HARTREE_KCAL = 627.509474
 IONS = {"CA": ("Ca", 2, 8), "LA": ("La", 3, 9), "LU": ("Lu", 3, 8)}   # element, charge, aqua waters
 CHARGED = {"GLU": -1, "ASP": -1, "LYS": 1, "ARG": 1}
 BACKBONE = {"N", "H", "C", "O", "H1", "H2", "H3", "OXT"}
-SOLVENTS = {"eps4": "diethylether", "eps29": "propanonitrile"}
+SOLVENTS = {"eps4": 4.0, "eps29": 29.0}          # site dielectrics (Dudev)
+WATER = {"water": 78.3553}
 # cavity radii (A) for the ions; Shannon ionic radius + 1.0 A water-contact shell is a common
 # choice; they mostly sit inside a water shell, so the result is not sensitive to them
 DEFAULT_RADII = {"Ca": 2.0, "La": 2.2, "Lu": 1.98}
@@ -160,7 +163,7 @@ def make_mol(elems, xyz, charge, basis_file):
                  max_memory=int(os.environ.get("PYSCF_MAX_MEMORY", 60000)))
 
 
-def scf(mol, functional, solvent=None, radii=None):
+def scf(mol, functional, eps=None, radii=None):
     from pyscf import dft
     mf = dft.RKS(mol)
     mf.xc = functional
@@ -170,28 +173,30 @@ def scf(mol, functional, solvent=None, radii=None):
     mf.damp = 0.3
     mf.level_shift = 0.2
     mf = mf.density_fit()
-    if solvent:
+    if eps:
         from pyscf.data import radii as R
         from pyscf.data.elements import charge as Z
-        from pyscf.solvent import smd
-        mf = mf.SMD()
-        mf.with_solvent.solvent = solvent
+        from pyscf.solvent import pcm
+        mf = mf.PCM()
+        mf.with_solvent.method = "IEF-PCM"
+        mf.with_solvent.eps = float(eps)
         if radii:
-            # SMD's own table (Bohr, indexed by atomic number; the cavity is built by element,
-            # so ECP core charges do not shift the lookup), with the ions' entries replaced
-            table = smd.smd_radii(smd.solvent_db[solvent][2]).copy()
+            # PCM's default table (1.2 x modified Bondi, Bohr, indexed by atomic number; the
+            # cavity is built by element, so ECP core charges do not shift the lookup), with
+            # the ions' entries replaced by the given cavity radii
+            table = 1.2 * pcm.modified_Bondi.copy()
             for e, r in radii.items():
                 table[Z(e)] = r / R.BOHR
             mf.with_solvent.radii_table = table
     return mf
 
 
-def energy(elems, xyz, charge, basis_file, functional, solvent=None, radii=None):
+def energy(elems, xyz, charge, basis_file, functional, eps=None, radii=None):
     mol = make_mol(elems, xyz, charge, basis_file)
-    mf = scf(mol, functional, solvent, radii)
+    mf = scf(mol, functional, eps, radii)
     e = mf.kernel()
     if not mf.converged:
-        mf = scf(mol, functional, solvent, radii).newton()
+        mf = scf(mol, functional, eps, radii).newton()
         e = mf.kernel()
     return float(e) * HARTREE_KCAL, bool(mf.converged)
 
@@ -240,7 +245,7 @@ def save(path, report):
 
 
 def solution_energies(report, key, elems, xyz, charge, args, solvents):
-    """Gas and SMD single points in the large basis, cached in report[key]."""
+    """Gas and PCM single points in the large basis, cached in report[key]."""
     row = report.setdefault(key, {})
     for label, solvent in [("gas", None)] + list(solvents.items()):
         if label in row and row[label]["converged"]:
@@ -257,9 +262,9 @@ def aqua_species(args, report, solvents=None):
     out = {}
     for ion, (elem, charge, n) in IONS.items():
         e, x = read_xyz(aq / f"{ion}_aqua.xyz")
-        out[ion] = solution_energies(report, f"{ion}_aqua", e, x, charge, args, solvents or {"water": "water"})
+        out[ion] = solution_energies(report, f"{ion}_aqua", e, x, charge, args, solvents or WATER)
     e, x = read_xyz(aq / "water.xyz")
-    out["water"] = solution_energies(report, "water", e, x, 0, args, solvents or {"water": "water"})
+    out["water"] = solution_energies(report, "water", e, x, 0, args, solvents or WATER)
     return out
 
 
@@ -306,21 +311,21 @@ def run(args):
             row[label] = round(s2["E"] + a1["E"] + (n2 - n1) * w["E"] - s1["E"] - a2["E"], 2)
         rx[f"{m1}->{m2}"] = row
     report["exchange_kcal"] = rx
-    report["note"] = ("negative = site prefers the second ion; eps4/eps29 = site in SMD diethylether/"
-                      "propanonitrile, aqua ions and water in SMD water; no thermal corrections")
+    report["note"] = ("negative = site prefers the second ion; eps4/eps29 = site in IEF-PCM eps 4/29, "
+                      "aqua ions and water in IEF-PCM water; electrostatics only; no thermal corrections")
     save(rpath, report)
     print(json.dumps({"meta": {k: meta[k] for k in ("source_ion", "site_charge", "residues", "waters")},
                       "exchange_kcal": rx}, indent=1))
 
 
 def calibrate(args):
-    """Acetate binding in SMD water with the same protocol, against experiment (criterion 4)."""
+    """Acetate binding in PCM water with the same protocol, against experiment (criterion 4)."""
     aq = Path(args.aqua)
     out = Path(args.out); out.mkdir(parents=True, exist_ok=True)
     rpath = out / "report.json"
     report = load_report(rpath)
     sp = report.setdefault("species", {})
-    water = {"water": "water"}
+    water = WATER
     a = aqua_species(args, sp, water)
     e, x = read_xyz(aq / "acetate.xyz")
     ace = solution_energies(sp, "acetate", e, x, -1, args, water)
