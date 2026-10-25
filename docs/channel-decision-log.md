@@ -549,6 +549,31 @@ level and details proposed, not yet decided)
   `bse_basis.py --basis def2-TZVP --override La,Lu=lcecp-1-TZVP --out def2-tzvp_lcecp1.nw`.
   Mixing def2 with lcecp-1 is by design: Lukanowski & Weigend, PCCP 2026 made the lcecp-k sets
   error-consistent with def2.
+- **Result (2026-10-25, 30576672 → 30576673; every TZVP SCF converged):** r2SCAN/def2-TZVP
+  (lcecp-1-TZVP for La, Lu) at the r2SCAN/SVP geometries, kcal/mol, gas phase:
+
+  | Reaction | 12-6-4 | TZVP | TZVP + CP |
+  |---|---|---|---|
+  | Ca, 1 / 2 waters out | −186.8 / −171.8 | −193.7 / −176.2 | −190.8 / −174.3 |
+  | La, 1 / 2 waters out | −280.9 / −257.4 | −281.8 / −263.2 | −280.6 / −262.5 |
+  | Lu, 1 / 2 waters out | −297.2 / −269.0 | −296.9 / −276.7 | −295.1 / −276.4 |
+
+  | Difference (1 / 2 waters out) | 12-6-4 | TZVP + CP | 12-6-4 error |
+  |---|---|---|---|
+  | La − Ca | −94.1 / −85.6 | −89.8 / −88.3 | −4.3 / +2.7 |
+  | Lu − Ca | −110.4 / −97.2 | −104.3 / −102.1 | −6.1 / +4.9 |
+  | Lu − La | −16.3 / −11.6 | −14.5 / −13.8 | −1.9 / +2.2 |
+
+  **Reading: the 11–13 kcal/mol Ln-over-Ca bias was mostly a small-basis artefact.** At TZVP + CP,
+  12-6-4 over-favours Ln³⁺ against Ca²⁺ by 4–6 kcal/mol in the 1-water step (Ca monodentate in
+  r2SCAN) and under-favours them by 3–5 in the 2-water step, so there is no consistent sign. The SVP
+  Ca 1-water value (−204.0) was the outlier: TZVP lowers it by 10, while every other reaction moves by 0–5.
+  Counterpoise shifts are 0.3–2.9. La vs Lu stays within ~2 kcal/mol at every level. Caveats: the
+  Ca 1-water geometry is from the redo, whose final SVP SCF did not converge (monodentate, Ca–O
+  2.49 / 3.53 Å, as before). These are gas-phase energies only, with no thermal or solvent terms.
+  Consequence for C20: the QM check alone does not demand a large Ca/Ln C4 correction. The
+  experimental acetate data (c4-tuning.md: Ln − Ca ≈ −1.5 kcal/mol in water) and the Kantakevičius
+  La set remain the reasons to tune.
 - **Remedy if the bias holds: Merz-style pair-specific C4 tuning** (user likes the approach,
   2026-10-25): `docs/channel/c4-tuning.md` summarises Jafari et al. JPCB 2024 (per-ion acetate C4
   fitted to experimental ΔG by PMF), Fındık et al. JCTC 2024, Panteva et al. 2015, and the Merz/Hu
