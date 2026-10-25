@@ -705,6 +705,22 @@ blocks 30576666/67 held; the Ca jobs run)
      restraint would not change.
 - **Cost:** mcube change ~40 lines plus tests; 4 pulls (~20 GPU-h); 13 × 2 × 2 hysteresis windows
   (~20 GPU-h); then the sets already planned.
+- **Revised after discussion (user, 2026-10-25):** prefer a *flat-bottom* Cα restraint (free within
+  ~2× md RMSF, harmonic beyond; report how often it engages) to a harmonic one. The two-seed test
+  is not sufficient alone: seeds can agree because neither binds or unbinds. Strengthened test: three
+  seeds per window (from the pull, from the opposite pull, and a hydrated swap-in seed), 3–5 windows across
+  the carboxylate ring, 5 ns, accepted only if the cn_protein distributions converge, the two halves agree,
+  and contacts change several times. **First a residence-time diagnostic,** to see whether z-only US can
+  converge at all.
+- **Residence-time test (queued 2026-10-25, `short` on gpu_viz, 6 h each):** one 10 ns window at z0 = 0,
+  k = 2.5, seeded from the bound k = 10 window 035, frames every 25 ps. Sections `umbrella_res`
+  (default C4) and `umbrella_res_chbe`. Jobs: **30581006** La default, **30581007** La Ch-BE (La–O2
+  9.5), **30581008** Lu default, **30581009** Lu with La–O2 9.5 scaled to Lu: 98.1 × 9.5/59.9 =
+  **15.6** (an assumption; no fitted Lu value exists, C20). Analysis: `docs/channel/system/residence.py
+  <ION>/umbrella_res_035` (per-residue contact fraction, episodes, mean/longest lifetime, cn_protein
+  changes from cv.csv). Reading: lifetimes ≪ 1 ns → z-only US with the flat-bottom restraint;
+  lifetimes ≳ window length → 2D (z, carboxylate-O count) or metadynamics at the constriction; Ch-BE
+  releasing where default does not → the C4 choice decides sampling as well as the answer.
 
 ## Findings
 
