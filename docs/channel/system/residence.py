@@ -5,9 +5,10 @@
 Reads the window's start.pdb (topology), window.dcd (frames) and cv.csv (cn_protein every CV
 step). For every protein oxygen within `cutoff` of the ion in any frame it reports, per residue
 (channel numbering = mcube + offset): the fraction of frames in contact, the number of contact
-episodes, and their mean and longest length. The censored first/last episodes are flagged. From
-cv.csv it counts changes of the rounded protein coordination number, which resolves faster events
-than the frames. Prints a JSON summary and writes residence.json in the window directory.
+episodes, and their mean and longest length. The censored first/last episodes are flagged. When
+cv.csv is complete it also gives z and the coordination numbers by half; a running window (cv.csv
+still buffered) is read from its frames alone. Prints a JSON summary and writes residence.json in
+the window directory.
 """
 import argparse
 import json
@@ -35,6 +36,8 @@ def main():
     ap.add_argument("window")
     ap.add_argument("--cutoff", type=float, default=3.0)
     ap.add_argument("--offset", type=int, default=130)
+    ap.add_argument("--frame-ps", type=float, default=25.0,
+                    help="ps between frames when cv.csv is not written yet (traj_frequency x timestep)")
     ap.add_argument("--ion", default=None, help="ion residue name (default: LA/LU/CA found in the topology)")
     a = ap.parse_args()
     from mdtraj.formats import DCDTrajectoryFile
@@ -57,8 +60,11 @@ def main():
     d -= cell[:, None, :] * np.round(d / cell[:, None, :])               # orthorhombic minimum image
     d = np.linalg.norm(d, axis=2)
     n_frames = len(xyz)
-    cvt = np.genfromtxt(win / "cv.csv", delimiter=",", names=True)["time_ps"]
-    dt = float(cvt[-1]) / n_frames                                       # ps between frames
+    # cv.csv is buffered until the window ends; a running window is read from its frames alone
+    cv_file = win / "cv.csv"
+    cv = (np.genfromtxt(cv_file, delimiter=",", names=True)
+          if cv_file.exists() and cv_file.stat().st_size > 100 else None)
+    dt = float(cv["time_ps"][-1]) / n_frames if cv is not None else a.frame_ps
 
     by_res = {}
     for j, o in enumerate(oxy):
@@ -82,20 +88,17 @@ def main():
             "bound_at_end": bool(on[-1]),
         }
 
-    cv = np.genfromtxt(win / "cv.csv", delimiter=",", names=True)
-    cn = np.rint(cv["cn_protein"]).astype(int)
-    changes = int((np.diff(cn) != 0).sum())
-    half = len(cn) // 2
-    summary = {
-        "window": win.resolve().as_posix(),
-        "frames": n_frames, "frame_ps": round(dt, 2), "time_ps": round(float(cv["time_ps"][-1]), 1),
-        "z_mean": round(float(cv["z_A"].mean()), 2), "z_std": round(float(cv["z_A"].std()), 2),
-        "cn_protein_first_half": round(float(cv["cn_protein"][:half].mean()), 2),
-        "cn_protein_second_half": round(float(cv["cn_protein"][half:].mean()), 2),
-        "cn_water_mean": round(float(cv["cn_water"].mean()), 2),
-        "cn_protein_changes": changes,
-        "residues": residues,
-    }
+    summary = {"window": win.resolve().as_posix(), "frames": n_frames, "frame_ps": round(dt, 2),
+               "time_ps": round(n_frames * dt, 1), "running": cv is None}
+    if cv is not None:
+        half = len(cv) // 2
+        summary.update({
+            "z_mean": round(float(cv["z_A"].mean()), 2), "z_std": round(float(cv["z_A"].std()), 2),
+            "cn_protein_first_half": round(float(cv["cn_protein"][:half].mean()), 2),
+            "cn_protein_second_half": round(float(cv["cn_protein"][half:].mean()), 2),
+            "cn_water_mean": round(float(cv["cn_water"].mean()), 2),
+        })
+    summary["residues"] = residues
     (win / "residence.json").write_text(json.dumps(summary, indent=1))
     print(json.dumps(summary, indent=1))
 
