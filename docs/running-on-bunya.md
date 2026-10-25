@@ -178,13 +178,17 @@ dumps the matrix (~30 MB each here), nudges `v` by 0.001 and retries, logging *"
 Error - saving HT.v_... increasing v by 0.001 and trying again"* to
 `geometric_OPTtraj.log`. Job 30467248 produced 15 of them in one hour and its trust
 radius collapsed to 2.8e-04 with the gradient still at 1.9e-01, i.e. it could not
-converge. The cause is the constraint count: mcube holds every active-region **MM**
-water rigid (O-H and H-H pairs; QM waters are left free so they can transfer
-protons), so a 467-atom active region carries a few hundred distance constraints and
-the constraint Jacobian becomes ill-conditioned. The lever is a smaller `actradius`,
-which cuts the number of constrained waters - safe since the QM region is now unioned
-into the active region. The coordinate system is **not** the lever: ASH switches TRIC
-to HDLC by itself whenever an active region is set.
+converge. **The cause is not the constraint count** - counted rather than assumed,
+`constraints.txt` holds 24 distance constraints for 8 waters, not the hundreds first
+guessed here. mcube freezes each active-region MM water with three distances (O-H,
+O-H and H-H; QM waters are left free so they can transfer protons), which rigidifies
+the triangle exactly. What tips geomeTRIC's SVD over is still open: the candidates
+are the active-region size itself under HDLC, and a water reaching a near-linear
+geometry, where the H-H constraint stops being independent of the two O-H ones.
+Shrinking `actradius` helps empirically (467 active atoms and 8 constrained waters
+gave 15 SVD failures in an hour; 203 atoms and 4 waters gave none in the first
+minutes) but it treats a symptom. The coordinate system is **not** the lever: ASH
+switches TRIC to HDLC by itself whenever an active region is set.
 
 Things to try next time (not yet tested):
 
