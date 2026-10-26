@@ -30,6 +30,9 @@ CUTOFF = 3.5  # A; salt bridge / H-bond heavy-atom contact
 
 def atoms(top, names=None, resseq=None, resname=None, element=None):
     """Atom indices matching every constraint given. Raises if none match."""
+    # Waters carry the same resSeq as protein residues here (a HOH 226 sits
+    # beside Lys226) and this refuses only an *empty* selection, not an
+    # over-matching one, so probes name the residue as well as the number.
     picked = []
     for atom in top.atoms:
         if resseq is not None and atom.residue.resSeq != resseq:
@@ -59,34 +62,34 @@ def probes(top):
     spec = [
         # Lys226 = BBL K263, at the vacant Zn2 ligand position (D107)
         ("Lys226 NZ - O01 nucleophile",
-         dict(resseq=226, names={"NZ"}), nucleophile),
+         dict(resseq=226, resname="LYS", names={"NZ"}), nucleophile),
         ("Lys226 NZ - mer O3x",
-         dict(resseq=226, names={"NZ"}), dict(resname="mer", names={"O3x"})),
+         dict(resseq=226, resname="LYS", names={"NZ"}), dict(resname="mer", names={"O3x"})),
         ("Lys226 NZ - mer O4x",
-         dict(resseq=226, names={"NZ"}), dict(resname="mer", names={"O4x"})),
+         dict(resseq=226, resname="LYS", names={"NZ"}), dict(resname="mer", names={"O4x"})),
         ("Lys226 NZ - mer N1x (leaving N)",
-         dict(resseq=226, names={"NZ"}), dict(resname="mer", names={"N1x"})),
+         dict(resseq=226, resname="LYS", names={"NZ"}), dict(resname="mer", names={"N1x"})),
         ("Lys226 NZ - any mer O",
-         dict(resseq=226, names={"NZ"}), mer_o),
+         dict(resseq=226, resname="LYS", names={"NZ"}), mer_o),
         # Arg90 = BBL R118, at a Zn1 ligand position
         ("Arg90 guanidinium - carboxylate O3x/O4x",
-         dict(resseq=90, names=guanidinium), carboxylate),
+         dict(resseq=90, resname="ARG", names=guanidinium), carboxylate),
         ("Arg90 guanidinium - any mer O",
-         dict(resseq=90, names=guanidinium), mer_o),
+         dict(resseq=90, resname="ARG", names=guanidinium), mer_o),
         ("Arg90 guanidinium - O01 nucleophile",
-         dict(resseq=90, names=guanidinium), nucleophile),
+         dict(resseq=90, resname="ARG", names=guanidinium), nucleophile),
         # Arg229, in the QM region for the nacarg run only (D110)
         ("Arg229 guanidinium - carboxylate O3x/O4x",
-         dict(resseq=229, names=guanidinium), carboxylate),
+         dict(resseq=229, resname="ARG", names=guanidinium), carboxylate),
         ("Arg229 guanidinium - any mer O",
-         dict(resseq=229, names=guanidinium), mer_o),
+         dict(resseq=229, resname="ARG", names=guanidinium), mer_o),
         ("Arg229 guanidinium - O01 nucleophile",
-         dict(resseq=229, names=guanidinium), nucleophile),
+         dict(resseq=229, resname="ARG", names=guanidinium), nucleophile),
         # Asp92 = D120, the proposed general base; monodentate to the one zinc
         ("Asp92 OD1 - O01 nucleophile",
-         dict(resseq=92, names={"OD1"}), nucleophile),
+         dict(resseq=92, resname="ASP", names={"OD1"}), nucleophile),
         ("Asp92 OD1/OD2 - O01 nucleophile",
-         dict(resseq=92, names={"OD1", "OD2"}), nucleophile),
+         dict(resseq=92, resname="ASP", names={"OD1", "OD2"}), nucleophile),
         # The attack coordinate and the metal, to sit beside the log's table
         ("O01 - mer C4x (attack)",
          nucleophile, dict(resname="mer", names={"C4x"})),
