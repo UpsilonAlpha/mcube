@@ -259,6 +259,7 @@ def run(args):
 
 def analyse_traj(args):
     import mdtraj
+    # several files are joined in the order given (a resumed qmmm run: QM_MM_part1.dcd, ..., QM_MM.dcd)
     traj = mdtraj.load(args.traj, top=args.top)
     t = traj.topology
     ion = next(a.index for a in t.atoms if a.residue.name == args.ion)
@@ -267,7 +268,8 @@ def analyse_traj(args):
     boxes = traj.unitcell_lengths * 10.0
     dt = float(args.dt) if args.dt else float(traj.timestep)
     report = analyse(frames, boxes, 0, list(range(1, len(oxygens) + 1)), dt, args.tstar)
-    report.update({"mode": "trajectory", "ion": args.ion, "traj": str(Path(args.traj).resolve()),
+    report.update({"mode": "trajectory", "ion": args.ion,
+                   "traj": [str(Path(p).resolve()) for p in args.traj],
                    "skip_ps": args.skip})
     if args.skip:
         k = int(round(args.skip / dt))
@@ -298,6 +300,9 @@ def qmmm_config(args):
             "charge": ION[args.ion][1], "mult": 1, "xtb_method": "GFN2",
             "cores": args.cores, "temp": mm["temp_K"], "timestep": 0.001, "time": args.ps,
             "traj_frequency": args.every, "skip_optimize": True,
+            # a timed-out QM/MM MD continues from ASH's state file on resubmission (time is
+            # the total); with no state file it starts fresh, so it is safe on the first run
+            "resume": True,
             "metal_parameters": str(mm["set"])}},
     }
     for key, value in (("xtb_etemp", args.etemp), ("xtb_pc_hardness", args.pc_hardness)):
@@ -339,7 +344,7 @@ def main():
     r.add_argument("--out", required=True)
     a = sub.add_parser("analyse")
     a.add_argument("--top", required=True)
-    a.add_argument("--traj", required=True)
+    a.add_argument("--traj", required=True, nargs="+", help="one or more DCDs, joined in order")
     a.add_argument("--ion", required=True, choices=sorted(ION))
     a.add_argument("--dt", type=float, help="ps between frames (default: from the file)")
     a.add_argument("--skip", type=float, default=0.0, help="ps to discard at the start")

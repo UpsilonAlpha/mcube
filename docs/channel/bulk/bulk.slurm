@@ -21,6 +21,8 @@
 #   XTB_ETEMP         xTB electronic temperature (K); SHELL2 a QM cutoff (A) that takes in
 #                     the second shell; PC_HARDNESS the xTB hardness of the MM point charges
 # MM on these 4.1k-atom boxes ran ~15-20 ns/day on 8 CPUs, so 4 ns needs ~5-6 h; the limit is 12 h.
+# A QM/MM leg that times out continues where it stopped (qmmm `resume: true`; QMPS stays the
+# total): resubmit the same command with SKIP_MM=1. The analysis joins the trajectory segments.
 # Smoke test:
 #   sbatch --export=ALL,RUN=$S/channel/bulk/smoke,NS=0.01,EQUIL=10,QMPS=0.2 -t 1:00:00 bulk.slurm LA iod
 
@@ -72,7 +74,9 @@ python -m mcube qmmm config.yaml
 RC=$?
 
 echo "== shell analysis of the QM/MM trajectory"
-python $B analyse --top $RUN/system.pdb --traj QM_MM.dcd --ion $ION --dt $DT --skip 2 \
+# a resumed run (qmmm `resume: true`) leaves its earlier segments as QM_MM_part<N>.dcd
+python $B analyse --top $RUN/system.pdb --traj $(ls QM_MM_part*.dcd 2>/dev/null | sort -V) QM_MM.dcd \
+    --ion $ION --dt $DT --skip 2 \
     --out $RUN/${QMDIR}_report
 echo "RC=$RC"
 exit $RC
