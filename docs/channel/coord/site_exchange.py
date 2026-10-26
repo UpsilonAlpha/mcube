@@ -163,7 +163,7 @@ def make_mol(elems, xyz, charge, basis_file):
                  max_memory=int(os.environ.get("PYSCF_MAX_MEMORY", 60000)))
 
 
-def scf(mol, functional, eps=None, radii=None):
+def scf(mol, functional, eps=None, radii=None, lebedev=None):
     from pyscf import dft
     mf = dft.RKS(mol)
     mf.xc = functional
@@ -180,6 +180,8 @@ def scf(mol, functional, eps=None, radii=None):
         mf = mf.PCM()
         mf.with_solvent.method = "IEF-PCM"
         mf.with_solvent.eps = float(eps)
+        if lebedev:
+            mf.with_solvent.lebedev_order = int(lebedev)
         if radii:
             # PCM's default table (1.2 x modified Bondi, Bohr, indexed by atomic number; the
             # cavity is built by element, so ECP core charges do not shift the lookup), with
@@ -202,22 +204,25 @@ def energy(elems, xyz, charge, basis_file, functional, eps=None, radii=None):
 
 
 def optimise(elems, xyz, charge, frozen, basis_file, functional, maxsteps, workdir,
-             eps=None, radii=None):
+             eps=None, radii=None, lebedev=None):
     """Constrained optimisation, in the gas phase or (eps) in IEF-PCM. The ring clusters are
     anionic (four Glu-, two of them uncoordinated), and in the gas phase their SCF flips
-    between solutions from step to step (C22); a dielectric binds the extra charge."""
+    between solutions from step to step (C22); a dielectric binds the extra charge.
+    `lebedev` coarsens the PCM cavity grid for the gradients only: with PySCF's default
+    (order 29, 302 points per atom) the PCM gradient of a ~70-atom cluster segfaults (C22).
+    The single points keep the default grid."""
     from pyscf.geomopt.geometric_solver import kernel as geomopt
     mol = make_mol(elems, xyz, charge, basis_file)
     cons = None
     if frozen:
         cons = Path(workdir) / "constraints.txt"
         cons.write_text("$freeze\nxyz " + ",".join(str(i + 1) for i in frozen) + "\n")
-    mf = scf(mol, functional, eps, radii)
+    mf = scf(mol, functional, eps, radii, lebedev)
     try:
         conv, mol = geomopt(mf, maxsteps=maxsteps, constraints=str(cons) if cons else None)
     except RuntimeError as err:
         print(f"[WARN] optimisation stopped: {err}; retrying with second-order SCF", flush=True)
-        conv, mol = geomopt(scf(mol, functional, eps, radii).newton(), maxsteps=maxsteps,
+        conv, mol = geomopt(scf(mol, functional, eps, radii, lebedev).newton(), maxsteps=maxsteps,
                             constraints=str(cons) if cons else None)
     return bool(conv), mol.atom_coords(unit="Angstrom")
 
@@ -291,7 +296,7 @@ def run(args):
         if not gfile.exists():
             t0 = time.time()
             conv, x = optimise(e, xyz, q, meta["frozen"], args.basis_svp, args.functional,
-                               args.maxsteps, site, args.opt_eps, args.radii)
+                               args.maxsteps, site, args.opt_eps, args.radii, args.opt_lebedev)
             write_xyz(gfile, e, x, json.dumps({"converged": conv}))
             sp.setdefault(key, {})["opt"] = {"converged": conv, "seconds": round(time.time() - t0, 1)}
             save(rpath, report)
@@ -384,6 +389,8 @@ def main():
             q.add_argument("--site", required=True)
             q.add_argument("--basis-svp", required=True)
             q.add_argument("--maxsteps", type=int, default=150)
+            q.add_argument("--opt-lebedev", type=int, default=None,
+                           help="PCM Lebedev order for the optimisation only (e.g. 13; default PySCF's 29)")
             q.add_argument("--opt-eps", type=float, default=None,
                            help="optimise in IEF-PCM at this dielectric (default: gas phase)")
         else:
