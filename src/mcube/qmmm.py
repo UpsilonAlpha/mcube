@@ -617,9 +617,10 @@ def resolve_resume(inputs: Dict[str, Any], pdb_file: Optional[str] = None):
     step_note = f", {steps} steps" if steps is not None else ""
     remaining = requested - elapsed
     # A finished run does not land on its target exactly: OpenMM accumulates the
-    # timestep, so 50000 steps of 1 fs report 50 ps + 3e-11. Anything shorter
-    # than one timestep cannot be run at all, so call it done rather than
-    # queueing a job for a few femtoseconds.
+    # timestep, so 50000 steps of 1 fs land within ~3e-11 ps of 50 either side.
+    # Job 30598032 finished 2.6e-11 short, which is the direction that matters:
+    # `remaining <= 0` misses, and a 24 h job gets queued to integrate 26 fs.
+    # Anything shorter than one timestep cannot be run at all, so call it done.
     timestep = inputs.get("timestep") or 0.001
     if remaining < timestep:
         print(f"[INFO] Resume: {state.name} is already at {elapsed:.3f} ps"

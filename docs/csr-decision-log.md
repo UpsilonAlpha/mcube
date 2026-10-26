@@ -1913,12 +1913,29 @@ for that site. 6DN4 is.
 **Three things found while building it, each of which would have cost a run.**
 
 1. **ASH's restart overwrites the trajectory it resumed from.** Its DCDReporter is only ever constructed inside `if restart is False`, with `append=False`, so a state-file restart in a fresh process truncates `QM_MM.dcd`. mcube now moves the previous segments to `QM_MM_part1.dcd`, `QM_MM_part2.dcd`, ... and records them in `results.trajfile_parts`; they concatenate in that order, followed by `QM_MM.dcd`. ASH's `restart=True` path is for calling `.run()` again on a live object in one process, not for a new job.
-2. **A finished run does not report its target time.** OpenMM accumulates the timestep, so 50000 steps of 1 fs come back as 50 ps + 3e-11. Testing `remaining <= 0` therefore misses, and mcube would have queued a job to integrate 3e-11 ps. The cutoff is one timestep, which is the shortest thing that can actually be run.
+2. **A finished run does not report its target time.** OpenMM accumulates the timestep, so 50000 steps of 1 fs land within ~3e-11 ps of 50, on either side. **Measured on job 30598032, which finished 2.6e-11 ps *short*** (`time="49.99999999997417"`) - and short is the direction that matters, because `remaining <= 0` then misses and a 24 h job gets queued to integrate 26 fs. The cutoff is one timestep, the shortest thing that can actually be run. A synthetic 50000-step state file written for the tests drifted the other way (+2.6e-11), so neither sign can be assumed.
 3. **The state file does not carry the thermostat's random stream.** Velocities are restored but the Langevin noise restarts from a new seed, so a resumed run is not bit-identical to an uninterrupted one. Immaterial for equilibration - the thermostat is not part of the physics being measured - but it has to be stated, because it means the segments are one trajectory in the thermodynamic sense and not in the deterministic one.
 
 **Why the state file and not the checkpoint.** ASH accepts either, and prefers `chkfile` when both are given. The checkpoint is an opaque binary blob tied to the platform that wrote it; the state file is portable XML whose root element carries `time` and `stepCount` - which is the number resume needs, readable from the first 4 kB without OpenMM and without parsing tens of megabytes of coordinates. Requiring the closing `>` of the opening tag also means a half-written file, from an over-quota write or a job killed mid-save, raises rather than yielding a plausible wrong elapsed time.
 
 15 tests in `tests/test_qmmm_resume.py`, which write their state files with OpenMM itself rather than hand-rolling the header, so the format being parsed is the real one. That is how finding 2 surfaced. Full suite 237 passed, 5 skipped.
+
+**D110 - Job 30598032: 50 ps with Arg229 in the QM region. The nucleophile moves further from attack, not closer.** (2026-10-26)
+
+COMPLETED, exit 0:0, elapsed 23:56:12, ended 21:53:32 - **four minutes inside the walltime.** 50,000 steps at 1 fs confirmed from `OpenMM_MD_final_state.xml` (`stepCount="50000"`). 1.72 s/step, slightly worse than the 1.68 estimated from adding the guanidinium. Scratch at 156/300 GB, so nothing here is suspect on quota grounds. The QM region is **137 atoms** against `nacqm`'s 119: Arg229's 18 side-chain atoms (CB to NH2 with hydrogens, backbone left in MM), with `charge: 3` as set. Lys226 NZ carries three hydrogens, so both cations are present and cationic, which was the point of the run.
+
+**Zinc, five-coordinate, unchanged in character from D108:** O01 1.90, His164 NE2 2.10, Asp92 OD1 2.11, HOH485 2.16, His88 NE2 2.18. Asp92 OD2 is 4.22, so the aspartate is firmly monodentate - it still bridges nothing.
+
+**The result that matters, and it is negative.** The attack geometry has degraded again:
+
+    O01-C4x        angle      source
+    3.33 A         101 deg    100 ns classical MD (D102)
+    3.86 A          57 deg    50 ps QM/MM, no Arg229 (D104)
+    6.20 A          63 deg    50 ps QM/MM, Arg229 in QM (this run)
+
+The second Zn-bound water is no better (HOH485-C4x 6.27, angle 79), and Zn-mer O2x is 6.76. **Putting Arg229 in the QM region did not pull the substrate back into a near-attack arrangement; the nucleophile drifted half again as far away.** So the conclusion of D104 is now independently reproduced with a different QM region: **GFN2-xTB QM/MM MD will not hand us a near-attack frame, and `scan_attack` has to drive the O01-C4x coordinate.** Two runs, 100 ps of QM/MM between them, agree on this.
+
+**What this does not say.** It is not evidence against the +2-substitution hypothesis, and it does not invalidate the NEB start frame: that came from `nacqm`'s *optimisation* (D106), not from either MD end point. Nor does it show the substrate has left the site - Zn-mer O2x at 6.76 is a single contact, and this stage's `monitor` is deliberately unset, so Lys226-O3x and the Arg229 contacts were not measured. **Whether the substrate is still anchored over these 50 ps is open, and it decides whether this trajectory is usable for the charge-deletion analysis at all.** Measuring the same contacts as D107 over `qmmm_nacarg/QM_MM.dcd` is the next step.
 
 ## Resources (see `running-on-bunya.md`)
 
