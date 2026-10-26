@@ -201,19 +201,23 @@ def energy(elems, xyz, charge, basis_file, functional, eps=None, radii=None):
     return float(e) * HARTREE_KCAL, bool(mf.converged)
 
 
-def optimise(elems, xyz, charge, frozen, basis_file, functional, maxsteps, workdir):
+def optimise(elems, xyz, charge, frozen, basis_file, functional, maxsteps, workdir,
+             eps=None, radii=None):
+    """Constrained optimisation, in the gas phase or (eps) in IEF-PCM. The ring clusters are
+    anionic (four Glu-, two of them uncoordinated), and in the gas phase their SCF flips
+    between solutions from step to step (C22); a dielectric binds the extra charge."""
     from pyscf.geomopt.geometric_solver import kernel as geomopt
     mol = make_mol(elems, xyz, charge, basis_file)
     cons = None
     if frozen:
         cons = Path(workdir) / "constraints.txt"
         cons.write_text("$freeze\nxyz " + ",".join(str(i + 1) for i in frozen) + "\n")
-    mf = scf(mol, functional)
+    mf = scf(mol, functional, eps, radii)
     try:
         conv, mol = geomopt(mf, maxsteps=maxsteps, constraints=str(cons) if cons else None)
     except RuntimeError as err:
         print(f"[WARN] optimisation stopped: {err}; retrying with second-order SCF", flush=True)
-        conv, mol = geomopt(scf(mol, functional).newton(), maxsteps=maxsteps,
+        conv, mol = geomopt(scf(mol, functional, eps, radii).newton(), maxsteps=maxsteps,
                             constraints=str(cons) if cons else None)
     return bool(conv), mol.atom_coords(unit="Angstrom")
 
@@ -275,6 +279,8 @@ def run(args):
     rpath = site / "report.json"
     report = load_report(rpath)
     report["meta"] = meta
+    if report.setdefault("opt_eps", args.opt_eps) != args.opt_eps:
+        raise SystemExit(f"{site} was optimised with opt_eps {report['opt_eps']}; use a fresh site directory")
     sp = report.setdefault("species", {})
     geom = site / "geom"; geom.mkdir(exist_ok=True)
     for ion, (elem, charge, _) in IONS.items():
@@ -285,7 +291,7 @@ def run(args):
         if not gfile.exists():
             t0 = time.time()
             conv, x = optimise(e, xyz, q, meta["frozen"], args.basis_svp, args.functional,
-                               args.maxsteps, site)
+                               args.maxsteps, site, args.opt_eps, args.radii)
             write_xyz(gfile, e, x, json.dumps({"converged": conv}))
             sp.setdefault(key, {})["opt"] = {"converged": conv, "seconds": round(time.time() - t0, 1)}
             save(rpath, report)
@@ -378,6 +384,8 @@ def main():
             q.add_argument("--site", required=True)
             q.add_argument("--basis-svp", required=True)
             q.add_argument("--maxsteps", type=int, default=150)
+            q.add_argument("--opt-eps", type=float, default=None,
+                           help="optimise in IEF-PCM at this dielectric (default: gas phase)")
         else:
             q.add_argument("--out", required=True)
     args = p.parse_args()
