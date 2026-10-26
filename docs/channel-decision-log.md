@@ -861,6 +861,15 @@ blocks 30576666/67 held; the Ca jobs run)
   `lu_chbe_ring` ran out of memory at 96 GB, after their Ca step (PySCF max_memory 80 GB plus the dense IEF-PCM matrices
   for 74–77 atoms). Resubmitted with `--mem=180G` as 30609315–17; they continue from the saved Ca
   geometries. `lu_def_ring`'s Ca geometry did not converge in 150 steps, so treat it with care.
+- **Gas-phase optimisation fails for the ring clusters (2026-10-26).** In `la_def_ring` the La optimisation,
+  on second-order SCF after a first SCF failure, alternates between two energies 0.34 Eh (~210 kcal/mol)
+  apart on successive steps, and its trust radius keeps shrinking: the SCF is landing on different solutions.
+  `lu_chbe_ring` restarted the same way. The ring clusters are anionic (four Glu⁻, two uncoordinated
+  and frozen; net −2 with Ca, −1 with Ln), and in vacuum the excess charge is barely bound. **Fix:**
+  `--opt-eps 4` optimises in IEF-PCM ε 4, which binds it. To keep one protocol for the ring vs min
+  comparison (criterion 2), **all eight sites rerun** with PCM optimisation in `<site>_p4/`
+  (30615271–78; ring sites 180 GB). The gas-optimised min results above stay as a check on how much the
+  geometry protocol matters. Ring jobs 30599596 and 30609315–17 were cancelled.
 - **Metadynamics stage (support only):** `mcube metadynamics` (commit 6e85c16) is well-tempered MTD on
   n_COO with z held, or 2D, on `openmm.app.Metadynamics` with umbrella's CVs (ASH's wrapper uses the same
   class with a different CN function and no CV logging). `fes` reports integer-state free energies
