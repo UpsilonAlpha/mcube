@@ -1904,6 +1904,22 @@ ZN301 = Asp91/His92/His225 - and since His92 and His225 **are** the Q121H and
 K254H substitutions, 6NC5 is a beta-site mutant and is not a wild-type reference
 for that site. 6DN4 is.
 
+**D109 - `resume: true` on the qmmm stage, so a long QM/MM MD can be a chain of jobs.** (2026-10-26)
+
+300 ps of production at the measured 1.08-1.68 s/step is 90-140 h. Bunya's `general` partition allows 14 days, so one job can hold it, but a job that dies at hour 80 currently throws away everything. ASH already writes `OpenMM_MD_state.xml` and `OpenMM_MD_final_state.xml` as it runs and says in its own output that they can restart a simulation; `qmmm.py` simply never passed them.
+
+**What it does.** `resume: true` restores the newest state file - positions *and* velocities - and runs only the remainder of `time`. `time` stays the **total** wanted, so resuming a 50 ps run that stopped at 21 ps runs 29 ps, and the flag is a one-line addition to a config that already ran, with nothing else to adjust. A run already at its target is not rerun; with nothing to resume from it starts fresh and says so, so the flag is safe to leave in place across a chain of resubmissions. Default is false: unlike `scan`'s `resume`, where skipping finished points cannot change a result, here it decides whether a rerun continues a trajectory or replaces it.
+
+**Three things found while building it, each of which would have cost a run.**
+
+1. **ASH's restart overwrites the trajectory it resumed from.** Its DCDReporter is only ever constructed inside `if restart is False`, with `append=False`, so a state-file restart in a fresh process truncates `QM_MM.dcd`. mcube now moves the previous segments to `QM_MM_part1.dcd`, `QM_MM_part2.dcd`, ... and records them in `results.trajfile_parts`; they concatenate in that order, followed by `QM_MM.dcd`. ASH's `restart=True` path is for calling `.run()` again on a live object in one process, not for a new job.
+2. **A finished run does not report its target time.** OpenMM accumulates the timestep, so 50000 steps of 1 fs come back as 50 ps + 3e-11. Testing `remaining <= 0` therefore misses, and mcube would have queued a job to integrate 3e-11 ps. The cutoff is one timestep, which is the shortest thing that can actually be run.
+3. **The state file does not carry the thermostat's random stream.** Velocities are restored but the Langevin noise restarts from a new seed, so a resumed run is not bit-identical to an uninterrupted one. Immaterial for equilibration - the thermostat is not part of the physics being measured - but it has to be stated, because it means the segments are one trajectory in the thermodynamic sense and not in the deterministic one.
+
+**Why the state file and not the checkpoint.** ASH accepts either, and prefers `chkfile` when both are given. The checkpoint is an opaque binary blob tied to the platform that wrote it; the state file is portable XML whose root element carries `time` and `stepCount` - which is the number resume needs, readable from the first 4 kB without OpenMM and without parsing tens of megabytes of coordinates. Requiring the closing `>` of the opening tag also means a half-written file, from an over-quota write or a job killed mid-save, raises rather than yielding a plausible wrong elapsed time.
+
+15 tests in `tests/test_qmmm_resume.py`, which write their state files with OpenMM itself rather than hand-rolling the header, so the format being parsed is the real one. That is how finding 2 surfaced. Full suite 237 passed, 5 skipped.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

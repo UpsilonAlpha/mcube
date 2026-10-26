@@ -89,6 +89,8 @@ qmmm:
     implicit: true
     xtb_method: GFN2
     skip_equilibrate: false
+    resume: false               # true: continue the MD from ASH's state file,
+                                # running only the remainder of `time`
     skip_optimize: false
     actradius: 0                # >0: optimise atoms within this radius (Angstrom) of actregion_origin
     # actregion_origin: 5154    # atom index; default: first non-standard QM atom

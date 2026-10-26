@@ -221,9 +221,12 @@ from optimisation steps runs 2-4x too pessimistic. At 1.08 s/step, 50 ps
 
 **Walltime is not the constraint it looks like.** `general` allows 14 days
 (`sinfo -o "%P %l"`), not the 24 h in `run.slurm`'s default, so a multi-day
-QM/MM MD fits in one job. ASH also writes `OpenMM_MD.chk`,
-`OpenMM_MD_checkpoint.chk` and `OpenMM_MD_state.xml` every few minutes, so a
-timed-out run is recoverable by hand even though mcube has no resume path.
+QM/MM MD fits in one job. A timed-out or killed run is also recoverable: set
+`resume: true` on the section and resubmit it unchanged, and it continues from
+ASH's `OpenMM_MD_state.xml`, running only the remainder of `time` (D109). The
+earlier trajectory is kept as `QM_MM_part1.dcd`, `QM_MM_part2.dcd`, ..., since
+ASH would otherwise overwrite `QM_MM.dcd` on restart. So a 300 ps production run
+can be a chain of shorter jobs, which also queues faster than a 14-day request.
 
 **Following progress, and what it writes.** `inputfile` runmode logs every xtb
 invocation, so `grep -c "Running xtb with" <job>.out` is an exact step counter.

@@ -119,8 +119,10 @@ equilibration, which is what Chudyk 2014 does and what brings us level with the
 closest comparable protocol. At the rate measured in `running-on-bunya.md`
 (~1.08 s/step at 1 fs with 4 threads) that is roughly 90 h of wall clock per run,
 so it wants either a longer walltime request on `general` or splitting across
-jobs - and `qmmm.py` has no restart path, though ASH does write
-`OpenMM_MD.chk`/`_state.xml` every few minutes.
+jobs. **Splitting is now the easier of the two:** `resume: true` on the qmmm
+stage continues from ASH's state file and runs only the remainder of `time`, so
+a 300 ps target can be a chain of jobs that resubmit the same section unchanged
+(D109).
 
 **There is no convention for GFN2-xTB/MM, and no guidance on sufficiency.** No
 methodological paper, benchmark or review gives a target length or a convergence
