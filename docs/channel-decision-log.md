@@ -900,6 +900,23 @@ blocks 30576666/67 held; the Ca jobs run)
   and a Lu frame, now agree within ~5 kcal/mol (criterion 1).
   - After the offset: Ca over La (+34.5 / +9.4); Ca vs Lu undecided (+24 / −1.6); Lu over La (−7.7 / −8.4).
 - **The session moved** to bun147:19973 (the bun155 session ended). All jobs kept running.
+- **Two-Glu min sites, PCM-optimised (2026-10-27); n = 2; in both, Ca's optimisation ended unconverged at 150
+  steps.** ε 4 / ε 29, gas-optimised in brackets:
+
+  | Site | Ca → La | Ca → Lu | La → Lu |
+  |---|---|---|---|
+  | `la_def_min_p4` (Glu156 + Glu240) | **−18.1 / −25.9** (+7.4 / −0.4) | −24.4 / −32.4 (−0.2 / −8.1) | −6.3 / −6.5 (−7.6 / −7.7) |
+  | `lu_chbe_min_p4` (Glu220 + Glu240) | +2.9 / −6.7 (+5.5 / −3.5) | −7.5 / −16.9 (−7.4 / −16.2) | −10.4 / −10.2 (−13.0 / −12.7) |
+
+  - `lu_chbe_min` hardly moves and keeps the signs: after the offset, Ca over La (+11.9 / +2.4), Ca vs Lu undecided
+    (+1.5 / −7.9), Lu over La (−5.2 / −5.0).
+  - **`la_def_min` jumps ~25 kcal/mol toward Ln** in the Ca → Ln columns only (La → Lu barely changes). That
+    points at the Ca energy: an unconverged Ca geometry has too high an energy, which pushes exactly these
+    columns negative. So it is not taken as a result.
+  - The Ca step of both sites is rerunning from its unconverged geometry with `--maxsteps 300`, keeping the
+    La/Lu geometries and energies: `<site>_p4c`, jobs **30680249** (`la_def_min`) and **30680250** (`lu_chbe_min`).
+  - Ring sites: three have finished Ca, and `la_def_ring`/`la_chbe_ring` have La geometries ✗ (150 steps); `lu_chbe_ring`
+    has La done; `lu_def_ring` is on La. Session now bun151:34126.
 - **Metadynamics stage (support only):** `mcube metadynamics` (commit 6e85c16) is well-tempered MTD on
   n_COO with z held, or 2D, on `openmm.app.Metadynamics` with umbrella's CVs (ASH's wrapper uses the same
   class with a different CN function and no CV logging). `fes` reports integer-state free energies
