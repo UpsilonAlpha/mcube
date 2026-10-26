@@ -891,6 +891,15 @@ blocks 30576666/67 held; the Ca jobs run)
   - Optimising in PCM moves Ca vs Ln by ~8 kcal/mol toward the lanthanides; La vs Lu barely changes (≤1).
   - After the offset: Ca over La (+29.4 / +4.9); Ca vs Lu still undecided (+19.5 / −6.2); Lu over La (−7.4 / −8.5).
   - The signs are the same as with gas optimisation.
+- **`la_chbe_min_p4`** (Glu156 only, n = 1; all converged), ε 4 / ε 29, gas-optimised in brackets:
+  - Ca → La +30.0 / +4.9 (+31.0 / +6.6)
+  - Ca → Lu +19.6 / −6.1 (+19.2 / −5.4)
+  - La → Lu −10.3 / −11.0 (−11.8 / −12.0)
+
+  Here PCM optimisation changes things by ≤ 1.7, against ~8 for `lu_def_min`. The two one-Glu sites, from a La frame
+  and a Lu frame, now agree within ~5 kcal/mol (criterion 1).
+  - After the offset: Ca over La (+34.5 / +9.4); Ca vs Lu undecided (+24 / −1.6); Lu over La (−7.7 / −8.4).
+- **The session moved** to bun147:19973 (the bun155 session ended). All jobs kept running.
 - **Metadynamics stage (support only):** `mcube metadynamics` (commit 6e85c16) is well-tempered MTD on
   n_COO with z held, or 2D, on `openmm.app.Metadynamics` with umbrella's CVs (ASH's wrapper uses the same
   class with a different CN function and no CV logging). `fes` reports integer-state free energies
