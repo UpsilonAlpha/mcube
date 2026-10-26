@@ -390,7 +390,9 @@ def main():
             q.add_argument("--basis-svp", required=True)
             q.add_argument("--maxsteps", type=int, default=150)
             q.add_argument("--opt-lebedev", type=int, default=None,
-                           help="PCM Lebedev order for the optimisation only (e.g. 13; default PySCF's 29)")
+                           help="PCM Lebedev order for the optimisation only (default PySCF's 29). "
+                                "PCM has switching parameters only for some point counts: 11 (50), "
+                                "15 (86), 17 (110), 19 (146) ... work; 13 (74) and 25 (230) raise KeyError")
             q.add_argument("--opt-eps", type=float, default=None,
                            help="optimise in IEF-PCM at this dielectric (default: gas phase)")
         else:
