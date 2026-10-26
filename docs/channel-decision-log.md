@@ -877,6 +877,20 @@ blocks 30576666/67 held; the Ca jobs run)
   keep order 29. Resubmitted: 30622024–27 (`la_def_ring`, `la_chbe_ring`, `lu_def_ring`,
   `lu_chbe_ring`, all `_p4`, 180 GB). The PCM `opt_eps` 4.0 is confirmed in the min reports. `la_def_min_p4`
   had one SCF collapse (a step 7.4 Eh higher); geomeTRIC should reject it, so watch it.
+- **Order 13 raised KeyError 74:** PySCF's PCM has switching parameters only for some point
+  counts. The ring sites were resubmitted at `--opt-lebedev 15` (86 points) as 30623448–51; they run without crashes.
+- **First PCM-optimised result, `lu_def_min_p4`** (Glu240 only, n = 1; all converged). ε 4 / ε 29,
+  gas-optimised values in brackets:
+
+  | | ε 4 | ε 29 |
+  |---|---|---|
+  | Ca → La | +24.9 (+33.5) | +0.4 (+8.5) |
+  | Ca → Lu | +15.0 (+22.5) | −10.7 (−3.6) |
+  | La → Lu | −10.0 (−10.9) | −11.1 (−12.2) |
+
+  - Optimising in PCM moves Ca vs Ln by ~8 kcal/mol toward the lanthanides; La vs Lu barely changes (≤1).
+  - After the offset: Ca over La (+29.4 / +4.9); Ca vs Lu still undecided (+19.5 / −6.2); Lu over La (−7.4 / −8.5).
+  - The signs are the same as with gas optimisation.
 - **Metadynamics stage (support only):** `mcube metadynamics` (commit 6e85c16) is well-tempered MTD on
   n_COO with z held, or 2D, on `openmm.app.Metadynamics` with umbrella's CVs (ASH's wrapper uses the same
   class with a different CN function and no CV logging). `fes` reports integer-state free energies
