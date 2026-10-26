@@ -870,6 +870,13 @@ blocks 30576666/67 held; the Ca jobs run)
   comparison (criterion 2), **all eight sites rerun** with PCM optimisation in `<site>_p4/`
   (30615271–78; ring sites 180 GB). The gas-optimised min results above stay as a check on how much the
   geometry protocol matters. Ring jobs 30599596 and 30609315–17 were cancelled.
+- **PCM gradients segfault for the ring clusters (2026-10-26):** all four ring `_p4` jobs died at their
+  first PCM gradient (RC 139), even for Ca, which has no ECP. With ~71 atoms × 302 cavity points the
+  grid-point integrals scale as n_ao² × n_grid (~10¹⁰). The min sites (~40 atoms) run.
+  `--opt-lebedev 13` (74 points per atom) is now used for the ring optimisations only; the single points
+  keep order 29. Resubmitted: 30622024–27 (`la_def_ring`, `la_chbe_ring`, `lu_def_ring`,
+  `lu_chbe_ring`, all `_p4`, 180 GB). The PCM `opt_eps` 4.0 is confirmed in the min reports. `la_def_min_p4`
+  had one SCF collapse (a step 7.4 Eh higher); geomeTRIC should reject it, so watch it.
 - **Metadynamics stage (support only):** `mcube metadynamics` (commit 6e85c16) is well-tempered MTD on
   n_COO with z held, or 2D, on `openmm.app.Metadynamics` with umbrella's CVs (ASH's wrapper uses the same
   class with a different CN function and no CV logging). `fes` reports integer-state free energies
