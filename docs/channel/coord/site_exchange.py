@@ -53,6 +53,9 @@ CHARGED = {"GLU": -1, "ASP": -1, "LYS": 1, "ARG": 1}
 BACKBONE = {"N", "H", "C", "O", "H1", "H2", "H3", "OXT"}
 SOLVENTS = {"eps4": 4.0, "eps29": 29.0}          # site dielectrics (Dudev)
 WATER = {"water": 78.3553}
+# --solvation smd: the SMD solvents Dudev use at these dielectrics (diethyl ether 4.24,
+# propanonitrile 29.32, water); needs a PySCF built with -DENABLE_SMD=ON (build_pyscf_smd.slurm)
+SMD_SOLVENTS = {4.0: "diethylether", 29.0: "propanonitrile", 78.3553: "water"}
 # cavity radii (A) for the ions; Shannon ionic radius + 1.0 A water-contact shell is a common
 # choice; they mostly sit inside a water shell, so the result is not sensitive to them
 DEFAULT_RADII = {"Ca": 2.0, "La": 2.2, "Lu": 1.98}
@@ -163,7 +166,7 @@ def make_mol(elems, xyz, charge, basis_file):
                  max_memory=int(os.environ.get("PYSCF_MAX_MEMORY", 60000)))
 
 
-def scf(mol, functional, eps=None, radii=None, lebedev=None):
+def scf(mol, functional, eps=None, radii=None, lebedev=None, solvation="pcm"):
     from pyscf import dft
     mf = dft.RKS(mol)
     mf.xc = functional
@@ -173,7 +176,20 @@ def scf(mol, functional, eps=None, radii=None, lebedev=None):
     mf.damp = 0.3
     mf.level_shift = 0.2
     mf = mf.density_fit()
-    if eps:
+    if eps and solvation == "smd":
+        from pyscf.data.elements import charge as Z
+        from pyscf.solvent import smd
+        mf = mf.SMD()
+        mf.with_solvent.solvent = SMD_SOLVENTS[float(eps)]
+        if radii:
+            # SMD's own Coulomb radii (in A; O depends on the solvent's acidity), with the ions'
+            # entries replaced as for PCM: SMD has no La/Lu radii
+            alpha = smd.solvent_db[mf.with_solvent.solvent][2]
+            table = smd.smd_radii(alpha)
+            for e, r in radii.items():
+                table[Z(e)] = r
+            mf.with_solvent.radii_table = table
+    elif eps:
         from pyscf.data import radii as R
         from pyscf.data.elements import charge as Z
         from pyscf.solvent import pcm
@@ -193,12 +209,12 @@ def scf(mol, functional, eps=None, radii=None, lebedev=None):
     return mf
 
 
-def energy(elems, xyz, charge, basis_file, functional, eps=None, radii=None):
+def energy(elems, xyz, charge, basis_file, functional, eps=None, radii=None, solvation="pcm"):
     mol = make_mol(elems, xyz, charge, basis_file)
-    mf = scf(mol, functional, eps, radii)
+    mf = scf(mol, functional, eps, radii, solvation=solvation)
     e = mf.kernel()
     if not mf.converged:
-        mf = scf(mol, functional, eps, radii).newton()
+        mf = scf(mol, functional, eps, radii, solvation=solvation).newton()
         e = mf.kernel()
     return float(e) * HARTREE_KCAL, bool(mf.converged)
 
@@ -260,7 +276,8 @@ def solution_energies(report, key, elems, xyz, charge, args, solvents):
         if label in row and row[label]["converged"]:
             continue
         t0 = time.time()
-        e, ok = energy(elems, xyz, charge, args.basis_tzvp, args.functional, solvent, args.radii)
+        e, ok = energy(elems, xyz, charge, args.basis_tzvp, args.functional, solvent, args.radii,
+                       args.solvation)
         row[label] = {"E": round(e, 3), "converged": ok, "seconds": round(time.time() - t0, 1)}
         print(f"[{key} {label}] {row[label]}", flush=True)
     return row
@@ -286,6 +303,9 @@ def run(args):
     report["meta"] = meta
     if report.setdefault("opt_eps", args.opt_eps) != args.opt_eps:
         raise SystemExit(f"{site} was optimised with opt_eps {report['opt_eps']}; use a fresh site directory")
+    if report.setdefault("solvation", "pcm") != args.solvation:
+        raise SystemExit(f"{site} has {report['solvation']} energies; for {args.solvation} use a copy of it "
+                         "without the solvated entries (see --solvation)")
     sp = report.setdefault("species", {})
     geom = site / "geom"; geom.mkdir(exist_ok=True)
     for ion, (elem, charge, _) in IONS.items():
@@ -335,6 +355,8 @@ def calibrate(args):
     out = Path(args.out); out.mkdir(parents=True, exist_ok=True)
     rpath = out / "report.json"
     report = load_report(rpath)
+    if report.setdefault("solvation", "pcm") != args.solvation:
+        raise SystemExit(f"{out} has {report['solvation']} energies; use a fresh --out for {args.solvation}")
     sp = report.setdefault("species", {})
     water = WATER
     a = aqua_species(args, sp, water)
@@ -385,6 +407,11 @@ def main():
         q.add_argument("--cores", type=int, default=os.cpu_count())
         q.add_argument("--radii", default=",".join(f"{k}={v}" for k, v in DEFAULT_RADII.items()),
                        help="ion cavity radii in A, e.g. Ca=2.0,La=2.2,Lu=1.98")
+        q.add_argument("--solvation", choices=("pcm", "smd"), default="pcm",
+                       help="single-point solvation; optimisation stays IEF-PCM. For SMD on a finished "
+                            "site, copy it (geom/ and report.json without the eps4/eps29/water "
+                            "entries and exchange_kcal, solvation set to smd): the cached geometries "
+                            "and gas energies are reused")
         if name == "run":
             q.add_argument("--site", required=True)
             q.add_argument("--basis-svp", required=True)
