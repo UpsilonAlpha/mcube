@@ -25,6 +25,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+BASE_STAGES = ("preprocess", "md", "qmmm", "sp", "scan", "neb", "ts", "umbrella")
 NEW_PDB = "./csr_crystal_start_ohH.pdb"
 OLD_XML, NEW_XML = "../hydroxide.xml", "../water_nuc.xml"
 
@@ -73,7 +74,14 @@ def main(argv):
             "HIS tautomers must carry over, and require_his_variants would "
             "reject the run without them.")
 
-    out = strip_results(config)
+    # Named sections are dropped, not copied. They are top-level keys like
+    # `nacqm` beside the base stages, and the lysH arm's carry `pdb_file`
+    # pinned to CSR_nac paths - an explicit pdb_file is honoured, so running
+    # one here would silently compute on the lysH structure. Sections come
+    # from site.yaml via sections.py instead, which is the single source for
+    # what each calculation is.
+    sections = [k for k in config if k not in BASE_STAGES]
+    out = strip_results({k: v for k, v in config.items() if k in BASE_STAGES})
     pre_out = out["preprocess"]["inputs"]
     pre_out["protein_pdb"] = NEW_PDB
     pre_out["forcefields"] = [NEW_XML if f == OLD_XML else f
@@ -95,8 +103,8 @@ def main(argv):
     print(f"  forcefields      {pre_out['forcefields']}")
     print(f"  residue_variants {pre_out['residue_variants']}")
     print(f"  pH               {pre_out['pH']}")
-    dropped = sorted(set(config) - set(out)) or "none at the top level"
-    print(f"  results/timestamp stripped; stages kept: {sorted(out)}")
+    print(f"  stages kept:      {sorted(out)}")
+    print(f"  sections dropped: {sorted(sections) or 'none'}")
     print("  next: python sections.py config.yaml ohHmd ohHqm")
 
 

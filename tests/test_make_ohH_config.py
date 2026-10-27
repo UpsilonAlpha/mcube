@@ -115,6 +115,25 @@ def test_the_stages_themselves_are_kept(mod, src, tmp_path):
     assert set(out) == {"preprocess", "md", "qmmm"}
 
 
+def test_named_sections_are_dropped(mod, tmp_path):
+    """The lysH arm's sections pin `pdb_file` to CSR_nac paths, and an explicit
+    pdb_file is honoured - so a section copied across would silently compute on
+    the other arm's structure. They belong to site.yaml, not to a derived
+    config."""
+    source = dict(LYSH)
+    source["nacqm"] = {"stage": "qmmm", "inputs": {
+        "pdb_file": "/scratch/user/uquadhik/CSR_nac/protdft/nacqm/last.pdb"}}
+    source["md_naclong"] = {"stage": "md", "inputs": {"nvt_time": 100000}}
+    path = tmp_path / "withsections.yaml"
+    path.write_text(yaml.safe_dump(source, sort_keys=False))
+    dest = tmp_path / "out.yaml"
+    mod.main([str(path), str(dest)])
+    text = dest.read_text()
+    out = yaml.safe_load(text)
+    assert "nacqm" not in out and "md_naclong" not in out
+    assert "CSR_nac" not in text, "a path into the lysH run survived"
+
+
 # ---- refusals --------------------------------------------------------------
 
 def test_refuses_to_overwrite(mod, src, tmp_path):
