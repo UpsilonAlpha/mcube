@@ -1036,6 +1036,81 @@ blocks 30576666/67 held; the Ca jobs run)
     - La → Lu is also the same size in both, but it stays **unresolved pending SMD** (literature comparison above).
   - Remaining: `la_chbe_ring_p4c` (30702581) and `lu_def_ring_p4c` (30702600) have both optimisations converged
     and are on their single points.
+- **Third ring site: `la_chbe_ring_p4c`** (La frame, Ch-BE C4; Glu156 coordinating, Glu220/240/300 frozen; pocket −4,
+  n = 1, 8 waters; all three ions converged; RC 0). ε 4 / ε 29, with `la_chbe_min_p4` (same frame) in brackets:
+
+  | | Raw | Ring − min | After offset (n = 1) |
+  |---|---|---|---|
+  | Ca → La | −25.4 / −12.0 (+30.0 / +4.9) | −55.4 / −16.9 | −20.9 / −7.5 |
+  | Ca → Lu | −35.0 / −21.5 (+19.6 / −6.1) | −54.6 / −15.4 | −30.5 / −17.0 |
+  | La → Lu | −9.6 / −9.5 (−10.3 / −11.0) | +0.7 / +1.5 | −7.0 / −6.9 |
+
+  - **La over Ca and Lu over Ca** in both dielectrics, beyond the offset. The min site from the same frame
+    was strongly Ca-selective.
+  - Three frozen Glu⁻ here, against two in the n = 2 rings, and the Ca → Ln shift is the largest so far (−55 at ε 4).
+  - La → Lu is unchanged by the ring.
+- **Fourth ring site: `lu_def_ring_p4c`** (Lu frame, default C4; Glu240 coordinating, Glu156/220/300 frozen; pocket −4,
+  n = 1, 7 waters; all three ions converged; RC 0). ε 4 / ε 29, with `lu_def_min_p4` in brackets:
+
+  | | Raw | Ring − min | After offset (n = 1) |
+  |---|---|---|---|
+  | Ca → La | −19.3 / −8.3 (+24.9 / +0.4) | −44.2 / −8.7 | −14.8 / −3.8 |
+  | Ca → Lu | −21.6 / −10.2 (+15.0 / −10.7) | −36.6 / +0.5 | −17.1 / −5.7 |
+  | La → Lu | −2.3 / −1.9 (−10.0 / −11.1) | +7.7 / +9.2 | +0.3 / +0.7 |
+
+  - **La over Ca at ε 4** (−14.8); at ε 29 the gap (−3.8) is just under the ~4 kcal/mol model error.
+  - **Lu over Ca** in both dielectrics.
+  - **La vs Lu ≈ 0** (raw −2.3 / −1.9). This is the only site that matches Nikolova *et al.*'s small Ln-vs-La gaps.
+- **Summary of all eight sites (2026-10-27; every ion converged at every site).** After the calibration offset
+  (Ca → Ln + 4.5 n, La → Lu + 2.6 n), kcal/mol, ε 4 / ε 29; negative = the site prefers the second ion:
+
+  | Site | Frame / C4 | Coordinating Glu | Pocket | n | Ca → La | Ca → Lu | La → Lu (unresolved) |
+  |---|---|---|---|---|---|---|---|
+  | `lu_def_min` | Lu / default | 240 | −1 | 1 | +29.4 / +4.9 | +19.5 / −6.2 | −7.4 / −8.5 |
+  | `la_chbe_min` | La / Ch-BE | 156 | −1 | 1 | +34.5 / +9.4 | +24.1 / −1.6 | −7.7 / −8.4 |
+  | `la_def_min` | La / default | 156, 240 | −2 | 2 | +17.2 / +9.0 | +10.9 / +2.5 | −1.1 / −1.3 |
+  | `lu_chbe_min` | Lu / Ch-BE | 220, 240 | −2 | 2 | +11.9 / +2.4 | +1.5 / −7.8 | −5.2 / −5.0 |
+  | `lu_def_ring` | Lu / default | 240 | −4 | 1 | −14.8 / −3.8 | −17.1 / −5.7 | +0.3 / +0.7 |
+  | `la_chbe_ring` | La / Ch-BE | 156 | −4 | 1 | −20.9 / −7.5 | −30.5 / −17.0 | −7.0 / −6.9 |
+  | `la_def_ring` | La / default | 156, 240 | −4 | 2 | −11.4 / +2.8 | −29.2 / −14.8 | −12.6 / −12.3 |
+  | `lu_chbe_ring` | Lu / Ch-BE | 220, 240 | −4 | 2 | −4.4 / +4.9 | −22.8 / −10.9 | −13.2 / −10.6 |
+
+  **Answer (cluster model, relative):**
+  - **Ca vs Ln is set by the pocket charge the ion feels, not by which Glu bind it.**
+    - With only the coordinating Glu (−1/−2), the site prefers **Ca over La** at all four sites in both dielectrics.
+      Ca vs Lu is undecided there.
+    - With the full ring (−4), it prefers **La over Ca** at all four sites at ε 4, and **Lu over Ca** at all four
+      in both dielectrics.
+    - At ε 29, Ca vs La in the ring is within the model error at three of four sites.
+    - The flip is larger with three uncoordinated Glu⁻ (n = 1 rings) than with two (n = 2).
+    - This is Dudev's pocket-charge rule (Nikolova *et al.* 2023: −4/−3 favour Ln, −1 favours Ca).
+  - **Criterion 1 (La frame vs Lu frame) holds:** within each pocket class, sites cut from La and Lu frames agree in sign
+    at ε 4 in every column. So the binding pose from either ion's MD does not change the answer.
+  - **Criterion 2 (larger cluster) fails for Ca vs Ln:** adding the second-shell Glu⁻ reverses it. The ranking is therefore
+    not a property of the first shell, and the cluster model alone cannot give it. It turns on whether the ring's
+    uncoordinated Glu are charged and unscreened in the protein: their protonation state, nearby Lys/Arg/cations,
+    water access.
+    - If they are charged and buried, the site is a lanthanide site: Ln over Ca, Lu at least as good as La.
+    - If one or more is protonated or screened, the site is Ca-selective.
+  - **La vs Lu: unresolved.** The corrected values run from +0.7 to −13.2 and depend on the site. One site (`lu_def_ring`)
+    gives ≈ 0, as in the literature; the others give 5–13 for Lu. Our acetate calibration and the literature both say
+    PCM over-favours Lu, and lanmodulin experimentally prefers light Ln. Not a result until SMD reproduces it.
+  - **Limits:**
+    - A static cluster in a continuum: no protein flexibility, no explicit long-range electrostatics.
+    - IEF-PCM electrostatics only (no CDS).
+    - No thermal or entropy terms; the calibration offset absorbs part of this.
+    - Fixed Glu protonation. This is now the central assumption.
+    - An AF2 monomer with residues 110–130 cropped.
+    - Preference at the site is not occupancy in vivo: free Ca²⁺ is µM–mM, free Ln³⁺ nM or less.
+  - **Next steps** (proposed, not started):
+    1. **Ring protonation / pKa** (PROPKA or a constant-pH check on Glu156/220/240/300, apo and with each ion bound).
+       It decides whether the −4 ring is realistic, which is what decides Ca vs Ln. Minutes on a CPU.
+    2. **SMD check** (SMD single points on our converged geometries: `lu_def_ring`, `la_def_ring`, one min site, and the
+       acetate calibration). It decides whether La vs Lu is real and tightens the Ca vs Ln offset. A few CPU-hours per
+       site, in an SMD-enabled code (ORCA if available on Bunya; else PySCF built with SMD).
+    3. **QM/MM snapshot single points** (exchange energy on 5–10 MD frames per ion, protein as point charges). It
+       decides Ca vs Ln with the real second-shell screening. About 1–2 days of CPU on the existing mcube machinery.
+  - The cluster stage is complete. Hourly checks stop here.
 
 ## Findings
 

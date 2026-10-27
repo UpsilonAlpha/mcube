@@ -60,8 +60,10 @@ Glu240) and Lu binds Glu240 (and Glu220) in the residence runs (C21).
 
 ## Status of the answer (2026-10-27)
 
-- **Ca vs Ln:** depends on the effective pocket charge. The stripped sites favour Ca, and the −4 ring
-  favours Ln, which matches the literature rule. Settling it needs the protein environment (QM/MM snapshots).
+- **Ca vs Ln:** depends on the effective pocket charge. All eight cluster sites are done (C22 summary).
+  All four stripped sites (−1/−2) favour Ca over La. All four −4 ring sites favour La over Ca at ε 4 and Lu over Ca in
+  both dielectrics, which matches the literature rule. La-frame and Lu-frame sites agree. Settling it needs the
+  ring's real charge state: first the pKa of the uncoordinated Glu, then QM/MM snapshots.
 - **La vs Lu: unresolved, pending an SMD check.** Our PCM sites favour Lu by 5–13 kcal/mol even after
   the calibration offset. That is about 10× Nikolova *et al.*, and against lanmodulin's experimental
   light-Ln preference. It is probably an artefact of IEF-PCM with hand-set ion radii. Do not report "Lu over La"
