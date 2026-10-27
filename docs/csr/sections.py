@@ -84,7 +84,12 @@ def main(site_file, names):
     if unknown:
         raise SystemExit("not in %s: %s" % (site_file, ", ".join(unknown)))
 
-    home = Path(site_file).resolve().parent
+    # The config's directory, which is what mcube resolves these against - not
+    # site.yaml's, which is in the repo and holds none of the run's structures.
+    config = Path("config.yaml")
+    if not config.is_file():
+        raise SystemExit("no config.yaml here; run this from the run directory")
+    home = config.resolve().parent
     # Check everything before writing anything.
     planned, problems = {}, []
     for name in names:
@@ -122,7 +127,6 @@ def main(site_file, names):
             print("  -", p)
         raise SystemExit(1)
 
-    config = Path("config.yaml")
     with _locked(config):
         data = yaml.safe_load(open(config))
         for section, (inputs, _, _) in planned.items():

@@ -132,3 +132,42 @@ class TestRefusals:
             "hessian_atoms": ["B:1:ZN"]}}})
         mod.main(file, ["step1"])
         assert written(home, "neb_step1")["product_pdb"] == "md_results/last.pdb"
+
+
+class TestTheBaseIsTheConfigNotTheSiteFile:
+    """site.yaml lives in the repo; the structures live in the run directory.
+
+    The existing path test could not tell the two apart, because its helper
+    writes site.yaml into the same directory as config.yaml. In reality they
+    are far apart - `python $M/docs/csr/sections.py $M/docs/csr/site.yaml ohHmin`
+    run from /scratch/.../CSR_nac - and resolving against site.yaml's directory
+    looked for the run's frames inside the git checkout, refusing every section
+    with "pdb_file missing" for a file that was plainly there.
+    """
+
+    def test_a_site_file_outside_the_run_still_finds_the_structure(
+            self, mod, home, tmp_path):
+        repo = tmp_path.parent / "repo_docs_csr"
+        repo.mkdir(exist_ok=True)
+        path = repo / "site.yaml"
+        path.write_text(yaml.safe_dump({"sections": {"znhis": {
+            "stage": "scan",
+            "inputs": {"pdb_file": "md_results/last.pdb",
+                       "atoms": ["B:1:ZN"]}}}}, sort_keys=False))
+        mod.main(str(path), ["znhis"])
+        assert written(home, "scan_znhis")["pdb_file"] == "md_results/last.pdb"
+
+    def test_a_structure_beside_the_site_file_does_not_count(
+            self, mod, home, tmp_path, capsys):
+        """The mirror image: a file next to site.yaml is in the repo, not in
+        the run, and must not satisfy the check."""
+        repo = tmp_path.parent / "repo_decoy"
+        (repo / "md_results").mkdir(parents=True, exist_ok=True)
+        (repo / "md_results" / "decoy.pdb").write_text(PDB)
+        path = repo / "site.yaml"
+        path.write_text(yaml.safe_dump({"sections": {"znhis": {
+            "stage": "scan",
+            "inputs": {"pdb_file": "md_results/decoy.pdb"}}}}, sort_keys=False))
+        with pytest.raises(SystemExit):
+            mod.main(str(path), ["znhis"])
+        assert "decoy.pdb" in capsys.readouterr().out
