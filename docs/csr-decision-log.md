@@ -2072,6 +2072,32 @@ The saved coordination holds 4203 for the zinc, right for the lysH ordering. Bui
 
 **Where the ohH arm stands.** `md_naclong_results/ohH_start.pdb` is correct and validated (D114): 49,424 atoms, total charge 0, nucleophile -1 -> 0, Lys226 +1 -> 0. Only the minimisation of it is void. `md_ohHmin_results/frag-minimized.pdb` must not be used.
 
+**D117 - Every path is read against the config's directory, and migrating the runs to it audited the archive.** (2026-10-27, user: "Let's just make everything relative to the working dir - that way you can copy and there's no ambiguity")
+
+Force-field lists were the last paths resolving differently from the rest - OpenMM read them from the stage's working directory while `pdb_file` had moved to the config's. Two bases in one `inputs` block is what put a substrate carbon where the zinc should have been (D115), so there is now one: **the config's own directory**, which is also the unit that gets copied.
+
+**The rule is narrow, because a force-field list holds two kinds of entry.** `resolve_forcefields` rewrites one only when a file of that name sits beside the config. OpenMM's bundled names (`amber14/protein.ff14SB.xml`) are not there, so they pass through to OpenMM untouched; absolute paths already say what they mean. **Entries starting with `..` are left alone and warned about rather than resolved**, and that exclusion is load-bearing: `<config dir>/../water_nuc.xml` is `/scratch/user/uquadhik`, where spare copies accumulate, so resolving it could silently prefer a stranger over the file the stage reads today.
+
+**The migration, by `docs/csr/migrate_paths.py` (dry run by default, backup on apply): 49 changes across 10 configs.** `../hydroxide.xml` becomes `hydroxide.xml` - the prefix is stripped and the file looked for *beside* the config, because that is what the entry meant when the stage ran a level down, not `home/".."/value`, which is a different file. Absolute paths into a run's own directory become bare names.
+
+**What it refused to touch is the interesting part, and it is an audit of the archive.**
+
+**Five configs read force-field files out of a *different* run's directory**, inherited by copying and unnoticed because the files exist:
+
+    CSR_nac           -> CSR_unrestrained2   openff_MER.xml
+    CSR_unrestrained  -> CSR_crystal         hydroxide.xml, openff_MER.xml
+    CSR_unrestrained2 -> CSR_crystal         hydroxide.xml, openff_MER.xml
+    CSR_crystal_v3    -> CSR_crystal_v2      hydroxide.xml, openff_MER.xml
+    CSR_gln93         -> CSR_crystal         hydroxide.xml, openff_MER.xml
+
+Rewriting one of these to a bare name would change **which file the run uses**, which is a decision about the science rather than a path fix, so they are reported and left as they are. **For `CSR_nac`, the live run, it does not matter**: its own `openff_MER.xml` and the CSR_unrestrained2 one it actually reads differ by **two lines, both `<DateGenerated>`**. OpenFF is deterministic for the same SMILES, so nothing computed from D98 onward is affected - but nothing was checking, and the five configs are the concrete form of the hazard the user's instruction removes.
+
+**Two configs were already broken, independently of any of this.** `CSR_gln93` lists `../hydroxide.xml` three times with no `hydroxide.xml` beside its config, so that entry resolved to nothing under the old rule either. `CSR_hydrolysed` lists `openff_hydrolysed_meropenem.xml` and `openff_hyd.xml`, neither of which is in its directory. Both would fail on the first force-field read; neither is in use.
+
+**Results stay absolute, deliberately.** `inputs` says what to use and travels with the directory; `results` records what *was* used and should stay unambiguous even if the directory is later copied or moved. The one place mcube had this backwards - `save_input` pinning the resolved absolute `pdb_file` back into `inputs`, which is how a derived config inherits a path home - is noted for the same treatment.
+
+9 tests on the resolver and 8 on the migration; suite 353 pass, 5 skipped.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
