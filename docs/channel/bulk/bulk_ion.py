@@ -9,7 +9,8 @@ Modes:
 
   run       MM in a cubic TIP3P box (NPT, 300 K) with mcube's metal parameters, then the
             shell analysis. Writes system.pdb (the final box, ion at the centre, residues
-            numbered 1..N per chain, ready for `mcube preprocess` with skip_solvate).
+            numbered 1..N per chain, ready for `mcube preprocess` with skip_solvate), and with
+            --dcd-every full-system frames.dcd (for the QM/MM swaps of docs/channel/qmmm).
   qmmm-config  an mcube config (preprocess + qmmm, QM/MM MD only) for that box, the QM
             region being the ion and the shell preprocess detects inside the MM first minimum.
   analyse   the same shell analysis on any trajectory, e.g. the xTB/MM `QM_MM.dcd` of
@@ -224,6 +225,12 @@ def run(args):
     frames = np.empty((n, len(oxygens) + 1, 3), dtype=np.float32)
     boxes = np.empty((n, 3))
     keep = [ion] + oxygens
+    if args.dcd_every:
+        # Full-system frames for QM/MM vertical swaps (docs/channel/qmmm/exchange.py), from the
+        # start of sampling; the topology is the system.pdb written at the end (same atom order)
+        from openmm.app import DCDReporter
+        sim.reporters.append(DCDReporter(str(out / "frames.dcd"),
+                                         int(round(args.dcd_every / args.timestep))))
     t0 = time.time()
     for i in range(n):
         if i and i % max(1, n // 10) == 0:
@@ -240,6 +247,7 @@ def run(args):
     report = analyse(frames, boxes, 0, list(range(1, len(keep))), args.dt, args.tstar)
     report.update({"mode": "mm", "ion": args.ion, "set": args.set, "temp_K": args.temp,
                    "timestep_ps": args.timestep, "friction_per_ps": args.friction,
+                   "dcd_every_ps": args.dcd_every,
                    "atoms": top.getNumAtoms(), "waters": len(oxygens),
                    "sigma_nm": round(sigma.value_in_unit(unit.nanometer), 5),
                    "epsilon_kJ": round(eps.value_in_unit(unit.kilojoule_per_mole), 5),
@@ -341,6 +349,8 @@ def main():
     r.add_argument("--timestep", type=float, default=0.002, help="ps")
     r.add_argument("--friction", type=float, default=1.0, help="Langevin friction, 1/ps")
     r.add_argument("--waters", type=int, help="solvate with this many waters instead of --box")
+    r.add_argument("--dcd-every", type=float, help="ps between full-system frames in frames.dcd "
+                   "(for docs/channel/qmmm/exchange.py); none by default")
     r.add_argument("--out", required=True)
     a = sub.add_parser("analyse")
     a.add_argument("--top", required=True)
