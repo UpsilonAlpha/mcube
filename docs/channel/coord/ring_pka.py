@@ -73,7 +73,12 @@ def environment(traj, rings, ion):
                 continue
             nb = md.compute_neighbors(traj, cut[key], np.array(oe), haystack_indices=hay, periodic=True)
             # distinct residues (water molecules, salt-bridge partners)
-            rec[key] = [len({top.atom(int(i)).residue.index for i in f}) for f in nb]
+            per_frame = [{top.atom(int(i)).residue for i in f} for f in nb]
+            rec[key] = [len(s) for s in per_frame]
+            if key in ("basic", "acid"):
+                names = [f"{r.name}{r.resSeq}" for s in per_frame for r in s]
+                rec[f"{key}_partners"] = {n: round(names.count(n) / traj.n_frames, 2)
+                                          for n in sorted(set(names), key=names.count, reverse=True)[:4]}
         if ion is not None:
             pairs = np.array([[o, ion] for o in oe] + [[cd, ion]])
             d = md.compute_distances(traj, pairs, periodic=True) * 10.0
@@ -141,6 +146,9 @@ def main():
         for key in ("basic", "water", "na", "acid", "lipid"):
             row[f"{key}_mean"] = round(float(np.mean(e[key])), 2)
             row[f"{key}_frac_any"] = round(float(np.mean(np.array(e[key]) > 0)), 2)
+        for key in ("basic", "acid"):
+            # partner residues, mcube numbering (channel = + offset), fraction of frames
+            row[f"{key}_partners"] = e.get(f"{key}_partners", {})
         if ion is not None:
             row["d_ion_O_mean"] = round(float(np.mean(e["d_ion_O"])), 2)
             row["coordinating_frac"] = round(float(np.mean(np.array(e["d_ion_O"]) < 3.0)), 2)
