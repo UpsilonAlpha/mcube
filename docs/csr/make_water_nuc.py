@@ -98,6 +98,7 @@ def main(argv):
 
     zn = o01 = h03 = None
     oh_index = oh_line = None
+    nuc_residue = None
     coords = []
     for index, line in enumerate(lines):
         if not line.startswith(("ATOM", "HETATM")):
@@ -107,6 +108,7 @@ def main(argv):
         if resname == "ZN" or name == "ZN":
             zn = (x, y, z)
         if resname == "OH":
+            nuc_residue = (chain, resseq)
             if name == "O01":
                 o01, oh_index, oh_line = (x, y, z), index, line
             elif name == "H03":
@@ -125,17 +127,22 @@ def main(argv):
 
     h04 = place_h04(zn, o01, h03)
 
-    near = sorted(((norm(sub(h04, xyz)), key) for key, xyz in coords))
-    for distance, key in near:
-        if key[2] == "O01":
-            continue
-        if distance < CLASH:
-            raise SystemExit(
-                f"H04 would sit {distance:.2f} A from {':'.join(key)}, inside "
-                f"the {CLASH} A clash cutoff. Nothing was written - the "
-                "placement needs doing by hand for this structure.")
-        break
-    closest = next((d, k) for d, k in near if k[2] != "O01")
+    # The clash check looks at OTHER residues only. H04's nearest neighbour is
+    # always its own partner hydrogen, at 2*0.9572*sin(104.52/2) = 1.513 A,
+    # which sits a hundredth of an angstrom above the cutoff - so counting the
+    # nucleophile's own atoms would make every correct placement a near miss
+    # and some of them a spurious refusal.
+    near = sorted((norm(sub(h04, xyz)), key) for key, xyz in coords
+                  if (key[0], key[1]) != nuc_residue)
+    if not near:
+        raise SystemExit(f"{src} holds nothing but the nucleophile.")
+    distance, key = near[0]
+    if distance < CLASH:
+        raise SystemExit(
+            f"H04 would sit {distance:.2f} A from {':'.join(key)}, inside the "
+            f"{CLASH} A clash cutoff. Nothing was written - the placement "
+            "needs doing by hand for this structure.")
+    closest = near[0]
 
     # Build the new H04 line from the O01 line so the chain, residue number and
     # formatting are inherited rather than reconstructed.

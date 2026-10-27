@@ -127,6 +127,18 @@ def test_the_new_bond_is_written_as_conect_before_end(mod, lysH, tmp_path):
     assert frozenset((o01, h04)) in bonded, "O01-H04 was not recorded"
 
 
+def test_the_waters_own_partner_hydrogen_is_not_a_clash(mod, lysH, tmp_path, capsys):
+    """H04's nearest neighbour is always H03, at 2*0.9572*sin(104.52/2) = 1.513
+    A - a hundredth of an angstrom above the 1.5 A cutoff. Counting the
+    nucleophile's own atoms makes every correct placement a near miss, and a
+    slightly different input geometry a spurious refusal."""
+    out = tmp_path / "out.pdb"
+    mod.main([str(lysH), str(out)])
+    neighbour = capsys.readouterr().out.split("nearest other atom:")[1]
+    assert "H03" not in neighbour, "the water's own hydrogen was counted"
+    assert "C:2" not in neighbour, "an atom of the nucleophile was counted"
+
+
 def test_input_without_conect_is_refused(mod, tmp_path):
     lines = [
         pdb_line(1, "ZN", "ZN", "B", "1", (0.0, 0.0, 0.0)),
