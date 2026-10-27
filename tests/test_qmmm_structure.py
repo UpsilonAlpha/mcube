@@ -128,10 +128,11 @@ class TestActiveRegionContainsTheQMRegion:
         got = self.actatoms(qmmm, monkeypatch, [10, 11, 12, 13, 900], {"actradius": 8, "actregion_origin": "B:1:ZN"})
         assert got == [10, 11, 12, 13, 900]
 
-    def test_a_region_given_in_the_config_is_completed_too(self, qmmm, monkeypatch):
-        """A reactant's region reused for the product must still cover QM."""
-        got = self.actatoms(qmmm, monkeypatch, [], {"actatoms": "10-12"})
-        assert got == [10, 11, 12, 900]
+    def test_an_index_list_is_refused_rather_than_completed(self, qmmm, monkeypatch):
+        """A region reused from elsewhere cannot be made safe by completing it:
+        the indices themselves may name different atoms here."""
+        with pytest.raises(KeyError, match="actradius"):
+            self.actatoms(qmmm, monkeypatch, [], {"actatoms": "10-12"})
 
     def test_it_says_so_when_it_adds_any(self, qmmm, monkeypatch, capsys):
         self.actatoms(qmmm, monkeypatch, [10, 11, 12], {"actradius": 8, "actregion_origin": "B:1:ZN"})

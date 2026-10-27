@@ -46,6 +46,7 @@ def md_forcefields(inputs: Dict[str, Any], preprocess: Dict[str, Any]) -> list:
 
     if ligand_forcefields:
         default_forcefields.append(ligand_forcefields)
+    # Not read against the config's directory, unlike `pdb_file`: see mm_settings.
     return default_forcefields
 
 

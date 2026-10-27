@@ -213,18 +213,17 @@ Minimisation always runs, with the metal-site restraints already active. `mcube 
 
 `mcube qmmm config.yaml --section qmmm_product`, with `qmmm_product.inputs.pdb_file` naming the other structure, runs the same inputs (overridden by `qmmm_product.inputs`, e.g. `skip_equilibrate: true` or `opt_constraints`) on another structure (e.g. each NEB endpoint) without overwriting the other run's results.
 
-**The active region is `actatoms` or `actatoms_from` (qmmm, scan, neb, ts).** `actatoms` is the region itself, written as index ranges — `actatoms: 4203-4634,5001`, one readable line even for a few thousand atoms; a plain YAML list of indices is accepted too. `actatoms_from: <section>` reuses the region that section recorded in its `results.actatoms`, which is how a reactant, a product and the NEB between them share one region; every stage records its own, so running the reactant is enough to point the others at. Sharing matters because `actradius` is measured on each structure separately, so the same radius gives slightly different regions on two endpoints, and two energies computed over different sets of movable atoms are not comparable. (This replaces the `active_atoms` file that `--actatoms` used to point at. ASH still writes that file when `actradius` builds the region; the config records the result.)
+**The active region is always derived, never carried in as indices (qmmm, scan, neb, ts).** `actradius` around `actregion_origin`, unioned with the QM atoms, computed on the structure that section runs on — so the region is reproducible from the config without any index travelling between structures. There is no `actatoms` or `actatoms_from` input and no `--actatoms` file; a config that still has one is refused with the keys to set instead.
 
-A recorded region carries its provenance: next to `results.actatoms` go `actatoms_structure` (the structure it was built on) and `actatoms_fingerprint`, a short hash of the element, residue name and atom name at each of its indices. `actatoms_from` checks the fingerprint against the structure in front of it and refuses when it disagrees, naming both structures. Indices are the one kind of input that can stop matching the structure silently: a frame built by moving a proton between residues shifts every atom between them by one, so saved indices stay valid-looking and name different atoms (that is decision D115, where restraints meant for a zinc held a substrate carbon). An atom count would not catch it — moving a proton leaves the count unchanged — which is why the check is per atom.
+The list it produced is written to `active_atoms_used` beside the run, and the section records `actatoms_file` (its path), `actatoms_count`, `actatoms_structure` (the structure it was derived from) and `actatoms_fingerprint` — a short hash of the element, residue name and atom name at each index. That is a record of what happened, not an input: nothing reads it back as a region. Indices are the one kind of data that can stop matching a structure silently — a frame built by moving a proton between residues shifts every atom between them by one, so saved indices stay valid-looking and name different atoms (decision D115, where restraints meant for a zinc held a substrate carbon; an atom count would not catch it, since moving a proton leaves the count unchanged). Re-deriving cannot go stale, and it is cheaper than guarding a list that can.
 
-`scan`, `neb` and `ts` use `qmmm.inputs` for `charge`, `mult`, `xtb_method`, `forcefields`, `cores` (scan, ts), the QM region and (unless overridden) `actradius`/`actregion_origin`. Each reads its own base section's `inputs` (`scan`, `neb`, `ts`), overridden by the inputs of the `--section` it writes its results to, so several scans or steps can live in one config:
+`scan`, `neb` and `ts` use `qmmm.inputs` for `charge`, `mult`, `xtb_method`, `forcefields`, `cores` (scan, ts), the QM region and (unless overridden) `actradius`/`actregion_origin`. `forcefields` is the one path-valued input not read against the config's directory: OpenMM resolves those itself, and the same list carries its bundled names (`amber14/protein.ff14SB.xml`), so bringing them into line would be a breaking migration of every config with a `../` entry. Each reads its own base section's `inputs` (`scan`, `neb`, `ts`), overridden by the inputs of the `--section` it writes its results to, so several scans or steps can live in one config:
 
 ```yaml
 scan:
   inputs: {points: 16, opt_maxiter: 200}
 scan_attack:            # mcube scan config.yaml --section scan_attack
   inputs: {pdb_file: protdft/qmmm_reactant/QM_MM_optimized.pdb,
-           actatoms_from: qmmm_reactant,
            atoms: [4255, 4208], start: 3.0, end: 1.45}
 ```
 
@@ -256,7 +255,7 @@ Each point is optimised from the previous one with the scanned distance fixed. W
 | `springconst`, `springconst2`, `energy_weighted`, `zoom` | ASH | NEB only |
 | `hessian_for_TS`, `partial_hessian_atoms`, `partial_npoint_choice`, `modelhessian`, `tsmode_tangent_threshold`, `OptTS_maxiter`, `OptTS_convergence_setting`, `OptTS_conv_criteria`, `OptTS_coordsystem` | `hessian_for_TS: partial`, else ASH | NEBTS only |
 | `reactant_pdb`, `product_pdb` | required | The two minima the step runs between. Both are keys, not arguments, and neither has a default: the two structures are the step the barrier belongs to, so nothing else would record which barrier was computed. Read against the config's directory and pinned into the section. |
-| `actatoms`, `actatoms_from`, `actradius`, `actregion_origin` | qmmm values | Active region. With none of them, only the QM atoms move. Use `actatoms_from` to share the endpoints' region. |
+| `actradius`, `actregion_origin` | qmmm values | Active region, derived on the endpoints' own structure. With no radius, only the QM atoms move. |
 | `numfreq` | `true` | Numerical frequencies on the saddle point |
 | `hessian_atoms` | QM atoms | Atoms in the frequency calculation (cost ≈ 6 gradients per atom) |
 

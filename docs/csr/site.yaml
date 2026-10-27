@@ -410,16 +410,17 @@ sections:
   # reactant's own atom order because `scan` writes every point through the
   # reactant's MM topology. Fill both in from the runs that produced them.
   #
-  # `actatoms_from` makes the two endpoints and the NEB share one active region.
-  # It matters: `actradius` is measured on each structure separately, so the same
-  # radius gives slightly different regions on two geometries, and energies over
-  # different sets of movable atoms are not comparable.
+  # The active region is not set here and cannot be copied from the endpoints:
+  # each run derives it from `actradius`/`actregion_origin` on its own structure
+  # and records the list it used. Check those counts match across the two
+  # endpoints and the NEB - `actradius` is measured per structure, so the same
+  # radius can give slightly different regions on two geometries, and energies
+  # over different sets of movable atoms are not comparable.
   step1:                       # NEB over the attack
     stage: neb
     inputs:
       reactant_pdb: protdft/qmmm_protH_oh/QM_MM_optimized.pdb
       product_pdb: protdft/scan_attack/scan_15.pdb
-      actatoms_from: qmmm_protH_oh
       images: 12
       method: nebts            # NEB-CI then a geomeTRIC TS optimisation of the climbing image
       interpolation: idpp
@@ -429,7 +430,6 @@ sections:
     inputs:
       reactant_pdb: protdft/scan_attack/scan_15.pdb
       product_pdb: protdft/scan_ringopen/scan_11.pdb
-      actatoms_from: qmmm_protH_oh
       images: 12
       method: nebts
       interpolation: idpp
@@ -446,7 +446,6 @@ sections:
     stage: ts
     inputs:
       pdb_file: protdft/neb_step1/saddlepoint.pdb
-      actatoms_from: qmmm_protH_oh
       hessian_atoms: [C:2:O01, C:1:C4x, C:1:O2x, C:1:N1x, B:1:ZN]
       monitor:
         - [C:2:O01, C:1:C4x]
@@ -459,7 +458,6 @@ sections:
     stage: ts
     inputs:
       pdb_file: protdft/neb_step2/saddlepoint.pdb
-      actatoms_from: qmmm_protH_oh
       hessian_atoms: [C:1:C4x, C:1:N1x, A:226:NZ, B:1:ZN]
       monitor:
         - [C:1:C4x, C:1:N1x]

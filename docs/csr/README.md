@@ -59,12 +59,13 @@ Paths in `inputs` are read against the config's directory, whichever directory
 the job script runs the stage from — so `md_results/lastframe.pdb` means the same
 file to `md` and to `qmmm`. (`forcefields` is the exception: OpenMM resolves
 those itself, from the directory the stage runs in, which is why they carry
-`../`.) The active region is `actatoms` (index ranges, e.g. `4203-4634,5001`) or
-`actatoms_from: <section>` to reuse the region another section recorded, in place
-of the `active_atoms` file that used to be passed with `--actatoms`. A recorded
-region carries the structure it was built on and a per-atom fingerprint, and
-`actatoms_from` refuses a structure it does not describe — the D115 failure mode,
-where indices saved against one atom order were applied to another.
+`../`.) The active region is not passed at all any more: it is derived from
+`actradius` and `actregion_origin` on the structure the section runs on, and the
+list it used is written to `active_atoms_used` beside the run, with its path,
+count, structure and a per-atom fingerprint recorded in that section's results.
+An `actatoms` or `actatoms_from` key is refused. That is the D115 lesson applied
+to the one remaining index list: a region derived on one frame and applied to
+another freezes the wrong atoms, and re-deriving is cheaper than guarding it.
 
 
 `sections.py` writes `<stage>_<name>`, so the `scan_znco` entry in `site.yaml`

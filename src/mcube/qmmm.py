@@ -38,8 +38,6 @@ from .preprocess import (
     qm_region_settings,
     resolve_atom_inputs,
     config_relative,
-    parse_atom_ranges,
-    format_atom_ranges,
     atom_fingerprint,
 )
 
@@ -162,7 +160,13 @@ def stage_inputs(config: str, base: str, section: Optional[str] = None) -> Dict[
 
 
 def mm_settings(qmmm_inputs: Dict[str, Any], md: Dict[str, Any]):
-    """Force-field files and implicit-solvent flag: qmmm.inputs, else what md used."""
+    """Force-field files and implicit-solvent flag: qmmm.inputs, else what md used.
+
+    Unlike `pdb_file`, these are not read against the config's directory: OpenMM
+    resolves them itself, and the same list carries its bundled names
+    (`amber14/protein.ff14SB.xml`). Bringing them into line is a breaking
+    migration of every config that has a `../` entry, so it is the user's call.
+    """
     forcefields = qmmm_inputs.get("forcefields")
     if forcefields is None:
         forcefields = (md.get("results") or {}).get("forcefields")
@@ -382,19 +386,34 @@ def make_qmmm(qmmm_inputs: Dict[str, Any], mm, fragment, qm_atoms, boundary_excl
     )
 
 
-def actatoms_record(mm, pdb_file: str, actatoms) -> Dict[str, Any]:
-    """The active region as a section records it: the ranges, the structure they
-    were derived from, and a fingerprint of the atoms they name.
+ACTATOMS_FILE = "active_atoms_used"
 
-    Another section reuses the region with `actatoms_from`, which is a one-line
-    config edit - so the structure and the fingerprint travel with it, and
-    `resolve_actatoms` refuses the reuse when they no longer describe the
-    structure in front of it. Without them this would be the D115 hazard with a
-    shorter path to it.
+
+def actatoms_record(mm, pdb_file: str, actatoms) -> Dict[str, Any]:
+    """Write the active region this run used, and the record that names it.
+
+    The region is derived from the config (`actradius` around
+    `actregion_origin`, unioned with the QM atoms), so the config already says
+    how to reproduce it; what it cannot show is the list that came out, which is
+    hundreds to thousands of indices. So the list goes to a file beside the run
+    and the section records its path, with the structure it was derived from and
+    a fingerprint of the atoms it names.
+
+    That record is an output, not an input. Nothing reads it back as a region:
+    indices only mean something against one atom order, and any edit that moves
+    an atom between residues renumbers everything after it - which is how D115
+    came about, with restraints meant for the zinc holding a substrate carbon.
+    Re-deriving on the structure in front of us cannot go stale, and it is
+    cheaper than guarding a list that can.
     """
     atoms = sorted(int(a) for a in actatoms)
+    path = Path(ACTATOMS_FILE)
+    # Plain indices, so ASH's read_intlist_from_file can read it back if a
+    # person wants to inspect or reuse it deliberately.
+    path.write_text(" ".join(str(a) for a in atoms) + "\n")
     return {
-        "actatoms": format_atom_ranges(atoms),
+        "actatoms_file": path.resolve().as_posix(),
+        "actatoms_count": len(atoms),
         "actatoms_structure": Path(pdb_file).resolve().as_posix(),
         "actatoms_fingerprint": atom_fingerprint(mm.topology, atoms),
     }
@@ -402,23 +421,17 @@ def actatoms_record(mm, pdb_file: str, actatoms) -> Dict[str, Any]:
 
 def resolve_actatoms(config: str, inputs: Dict[str, Any], mm, fragment, qm_atoms,
                      boundary_excluded, pdb_file: Optional[str] = None) -> List[int]:
-    """Active region: `inputs.actatoms`, else the region `inputs.actatoms_from`
-    named section recorded, else all atoms within `actradius` of
-    `actregion_origin`, else just the QM atoms.
+    """Active region: all atoms within `actradius` of `actregion_origin`, else
+    just the QM atoms. Always derived on the structure being run.
 
-    The region decides which atoms can move at all, so two runs with the same
-    config and different regions are not the same calculation: it belongs in the
-    config, not in a file beside the run and not on the command line. It is
-    written as index ranges (`4203-4634,5001`), which is one readable line even
-    for a few thousand atoms - see `format_atom_ranges`.
-
-    `actatoms_from: <section>` reuses the region that section recorded in its
-    results, which is how a reactant, a product and the NEB between them share
-    one region. Sharing it matters because `actradius` is measured on each
-    structure separately, so the same radius gives slightly different regions on
-    two endpoints - and two energies computed over different sets of movable
-    atoms are not comparable. Every stage records its own region, so the
-    reactant run is enough to point the others at.
+    It is never carried in as a list of indices - not from a file given on the
+    command line, not from a key in this section, and not from another section's
+    results. An index list is only valid against one atom order, so a region
+    built on one frame and applied to another freezes the wrong atoms and
+    nothing in the output says so (D115). Everything the derivation needs is in
+    the config, so re-deriving costs one `actregiondefine` call and removes the
+    staleness instead of guarding it. `actatoms_record` writes out what it
+    produced.
 
     The QM atoms are always in it. `actregiondefine` selects whole residues, so a QM
     residue reaching past the radius normally comes in entire - but a small enough
@@ -427,36 +440,16 @@ def resolve_actatoms(config: str, inputs: Dict[str, Any], mm, fragment, qm_atoms
     unconditional rather than a setting. It is a no-op whenever the radius already
     covers the QM region, so it costs nothing to leave on.
     """
-    if inputs.get("actatoms") is not None:
-        actatoms = parse_atom_ranges(inputs["actatoms"], "actatoms")
-    elif inputs.get("actatoms_from"):
-        source = str(inputs["actatoms_from"])
-        results = load_section(config, source).get("results") or {}
-        recorded = results.get("actatoms")
-        if not recorded:
-            raise KeyError(
-                f"actatoms_from: {source} - that section has no recorded active "
-                f"region ({source}.results.actatoms). Run it first, or set "
-                "`actatoms` to the region directly (index ranges, e.g. "
-                "`4203-4634,5001`).")
-        actatoms = parse_atom_ranges(recorded, f"{source}.results.actatoms")
-        # Indices mean nothing without the structure they were derived from: two
-        # sections of this system whose atom order differs by one hydrogen is the
-        # ohH comparison, not a hypothetical. Refuse rather than freeze the wrong
-        # atoms, which no output would show.
-        expected = results.get("actatoms_fingerprint")
-        if expected and mm is not None:
-            if atom_fingerprint(mm.topology, actatoms) != expected:
-                raise ValueError(
-                    f"actatoms_from: {source} - its active region was built on "
-                    f"{results.get('actatoms_structure', 'another structure')} and "
-                    f"does not describe {pdb_file or 'this structure'}: the atoms "
-                    "at those indices are not the same atoms. Any edit that moves "
-                    "an atom between residues renumbers everything after it. Build "
-                    "the region on this structure with `actradius`/"
-                    "`actregion_origin`, or set `actatoms` here once you have "
-                    "checked which indices are right.")
-    elif inputs.get("actradius"):
+    stale = [key for key in ("actatoms", "actatoms_from") if inputs.get(key) is not None]
+    if stale:
+        raise KeyError(
+            f"{', '.join(stale)}: an active region cannot be given as indices, "
+            "because indices are only valid against the atom order they were "
+            "derived from. Set `actradius` and `actregion_origin` and the region "
+            "is rebuilt on the structure this section runs on; the list it used "
+            f"is written to `{ACTATOMS_FILE}` and its path recorded in "
+            "`results.actatoms_file`.")
+    if inputs.get("actradius"):
         originatom = inputs.get("actregion_origin")
         if originatom is None:
             if not boundary_excluded:

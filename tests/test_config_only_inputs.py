@@ -20,6 +20,7 @@ tests/test_umbrella.py.
 import sys
 import textwrap
 import types
+from pathlib import Path
 
 import pytest
 
@@ -121,81 +122,77 @@ class TestConfigRelativePaths:
     def test_nothing_stays_nothing(self, mc):
         assert mc.preprocess.config_relative("config.yaml", None) is None
 
-
 # =========================================================
 # The active region
 # =========================================================
 
-class TestAtomRanges:
-    """A region is hundreds to thousands of indices. As a YAML list that is one
-    line per atom, which is why it lived in a file; as ranges it is one line."""
+class TestTheActiveRegionIsDerived:
+    """It is never carried in as indices - not on the command line, not in this
+    section, not from another section's results. An index list is valid only
+    against the atom order it was derived from, and any edit that moves an atom
+    between residues renumbers everything after it: that is D115, where
+    restraints meant for the zinc held a substrate carbon. Everything the
+    derivation needs is already in the config, so re-deriving on the structure in
+    front of us removes the staleness instead of guarding it."""
 
-    def test_runs_collapse(self, mc):
-        assert mc.preprocess.format_atom_ranges([4203, 4204, 4205, 5001]) == "4203-4205,5001"
-
-    def test_a_round_trip_keeps_every_atom(self, mc):
-        atoms = [1, 2, 3, 7, 10, 11]
-        text = mc.preprocess.format_atom_ranges(atoms)
-        assert mc.preprocess.parse_atom_ranges(text) == atoms
-
-    @pytest.mark.parametrize("value, expected", [
-        ("10-12,900", [10, 11, 12, 900]),
-        ([10, "12-14"], [10, 12, 13, 14]),
-        ([10, 11], [10, 11]),
-        ("7", [7]),
-    ])
-    def test_every_accepted_form(self, mc, value, expected):
-        assert mc.preprocess.parse_atom_ranges(value) == expected
-
-    def test_a_selector_says_what_to_use_instead(self, mc):
-        """Selectors resolve per structure; an index list does not, which is the
-        point of sharing one region between two geometries."""
-        with pytest.raises(ValueError, match="actregion_origin"):
-            mc.preprocess.parse_atom_ranges("B:1:ZN", "actatoms")
-
-    def test_a_backwards_range_is_refused(self, mc):
-        with pytest.raises(ValueError, match="counts backwards"):
-            mc.preprocess.parse_atom_ranges("9-1", "actatoms")
-
-
-class TestActiveRegionFromTheConfig:
     QM = [10, 11, 900]
 
-    def config(self, tmp_path, body=""):
-        path = tmp_path / "config.yaml"
-        path.write_text(body or "qmmm:\n  inputs: {}\n")
-        return str(path)
+    def resolve(self, mc, inputs, mm=None, fragment=None):
+        return mc.qmmm.resolve_actatoms("config.yaml", inputs, mm, fragment, self.QM, [])
 
-    def resolve(self, mc, config, inputs):
-        return mc.qmmm.resolve_actatoms(config, inputs, None, None, self.QM, [])
-
-    def test_a_region_in_the_config_is_used(self, mc, tmp_path):
-        got = self.resolve(mc, self.config(tmp_path), {"actatoms": "10-12"})
-        assert got == [10, 11, 12, 900]
-
-    def test_another_section_s_recorded_region_is_reused(self, mc, tmp_path):
-        """The reactant, the product and the NEB between them must share one
-        region: `actradius` is measured per structure, so the same radius gives
-        slightly different regions on two endpoints, and two energies computed
-        over different movable atoms are not comparable."""
-        config = self.config(tmp_path, "qmmm_reactant:\n  results:\n    actatoms: 10-12\n")
-        got = self.resolve(mc, config, {"actatoms_from": "qmmm_reactant"})
-        assert got == [10, 11, 12, 900]
-
-    def test_actatoms_wins_over_actatoms_from(self, mc, tmp_path):
-        config = self.config(tmp_path, "qmmm_reactant:\n  results:\n    actatoms: 500-501\n")
-        got = self.resolve(mc, config, {"actatoms": "10-12",
-                                        "actatoms_from": "qmmm_reactant"})
-        assert got == [10, 11, 12, 900]
-
-    def test_a_section_with_no_recorded_region_names_it(self, mc, tmp_path):
-        """Pointing at a section that has not run yet is the likely mistake, and
-        an empty region would silently freeze everything but the QM atoms."""
+    @pytest.mark.parametrize("inputs", [
+        {"actatoms": "10-12"},
+        {"actatoms": [10, 11, 12]},
+        {"actatoms_from": "qmmm_reactant"},
+    ])
+    def test_indices_in_the_config_are_refused(self, mc, inputs):
         with pytest.raises(KeyError) as exc:
-            self.resolve(mc, self.config(tmp_path), {"actatoms_from": "qmmm_reactant"})
+            self.resolve(mc, inputs)
         text = str(exc.value)
-        assert "qmmm_reactant.results.actatoms" in text   # what is missing
-        assert "actatoms" in text                         # and what to set instead
+        assert "actradius" in text and "actregion_origin" in text   # what to set
+        assert "active_atoms_used" in text                          # where the list ends up
+
+    def test_no_radius_is_still_just_the_qm_atoms(self, mc):
+        assert self.resolve(mc, {}) == self.QM
+
+    def test_the_region_is_rebuilt_on_this_structure(self, mc, monkeypatch):
+        """The derivation runs against the structure in front of it every time,
+        so there is nothing to go stale between two frames of one system."""
+        seen = {}
+        monkeypatch.setattr(mc.qmmm, "actregiondefine", lambda **k: seen.update(k))
+        monkeypatch.setattr(mc.qmmm, "read_intlist_from_file", lambda *a: [10, 11, 12])
+        got = self.resolve(mc, {"actradius": 8, "actregion_origin": "B:1:ZN"},
+                           mm="the-mm", fragment="the-fragment")
+        assert seen["fragment"] == "the-fragment" and seen["radius"] == 8
+        assert got == [10, 11, 12, 900]      # and the QM atoms are always in it
+
+
+class TestTheRegionIsRecorded:
+    """The config says how to rebuild the region; what it cannot show is the list
+    that came out, which is hundreds to thousands of indices. So the list goes to
+    a file beside the run and the section records its path - an output and a
+    record, not an input anything reads back as a region."""
+
+    def record(self, mc, tmp_path, monkeypatch, atoms=(0, 1, 2)):
+        monkeypatch.chdir(tmp_path)
+        mm = types.SimpleNamespace(topology=topology())
+        return mc.qmmm.actatoms_record(mm, str(tmp_path / "start.pdb"), atoms)
+
+    def test_the_list_is_written_where_the_record_says(self, mc, tmp_path, monkeypatch):
+        record = self.record(mc, tmp_path, monkeypatch)
+        assert Path(record["actatoms_file"]).read_text().split() == ["0", "1", "2"]
+        assert record["actatoms_count"] == 3
+
+    def test_the_record_names_the_structure_it_was_derived_from(self, mc, tmp_path, monkeypatch):
+        """Without it the file says which atoms, but not which atom order."""
+        record = self.record(mc, tmp_path, monkeypatch)
+        assert record["actatoms_structure"].endswith("start.pdb")
+        assert record["actatoms_fingerprint"]
+
+    def test_the_file_is_plain_indices_so_ash_can_read_it_back(self, mc, tmp_path, monkeypatch):
+        """Deliberate reuse stays possible; nothing in mcube does it for you."""
+        record = self.record(mc, tmp_path, monkeypatch, atoms=[2, 0, 1])
+        assert Path(record["actatoms_file"]).read_text() == "0 1 2\n"
 
 
 # =========================================================
@@ -291,7 +288,7 @@ class TestMdTakesItsStructureFromTheConfig:
 
 
 # =========================================================
-# The region's provenance
+# What an index list cannot say for itself
 # =========================================================
 
 class Atom:
@@ -320,61 +317,19 @@ def topology(swap=False):
     return Topology(atoms)
 
 
-class TestRegionProvenance:
-    """`actatoms_from` is a one-line config edit, so the region it copies has to
-    carry the structure it was derived from. D115: saved indices stayed
-    syntactically valid while the structure under them changed, and the run
-    restrained a substrate carbon as the metal."""
+class TestAtomFingerprint:
+    """What a recorded region is stamped with, so a reader can tell which atom
+    order it describes. D115's edit moved one proton between residues, which
+    leaves the atom count unchanged - so the stamp is per atom."""
 
-    def test_the_fingerprint_changes_when_an_atom_changes_residue(self, mc):
-        atoms = [0, 1, 2]
-        before = mc.preprocess.atom_fingerprint(topology(), atoms)
-        after = mc.preprocess.atom_fingerprint(topology(swap=True), atoms)
-        assert before != after
+    def test_it_changes_when_an_atom_changes_residue(self, mc):
+        assert (mc.preprocess.atom_fingerprint(topology(), [0, 1, 2])
+                != mc.preprocess.atom_fingerprint(topology(swap=True), [0, 1, 2]))
 
-    def test_the_same_structure_gives_the_same_fingerprint(self, mc):
+    def test_the_same_structure_gives_the_same_stamp(self, mc):
         assert (mc.preprocess.atom_fingerprint(topology(), [0, 2])
                 == mc.preprocess.atom_fingerprint(topology(), [0, 2]))
 
     def test_an_index_past_the_end_says_the_structure_is_a_different_one(self, mc):
         with pytest.raises(ValueError, match="different structure"):
             mc.preprocess.atom_fingerprint(topology(), [0, 9])
-
-    def recorded(self, mc, tmp_path, swap=False):
-        """A config in which `qmmm_reactant` has run and recorded its region."""
-        mm = types.SimpleNamespace(topology=topology(swap=swap))
-        record = mc.qmmm.actatoms_record(mm, str(tmp_path / "reactant.pdb"), [0, 1, 2])
-        path = tmp_path / "config.yaml"
-        path.write_text("qmmm_reactant:\n  results:\n"
-                        + "".join("    %s: %s\n" % (k, v) for k, v in record.items()))
-        return str(path)
-
-    def test_reuse_on_the_same_structure_is_allowed(self, mc, tmp_path):
-        config = self.recorded(mc, tmp_path)
-        mm = types.SimpleNamespace(topology=topology())
-        got = mc.qmmm.resolve_actatoms(config, {"actatoms_from": "qmmm_reactant"},
-                                       mm, None, [0], [], "product.pdb")
-        assert got == [0, 1, 2]
-
-    def test_reuse_on_a_renumbered_structure_is_refused(self, mc, tmp_path):
-        """The ohH comparison: two sections of one system whose atom order differs
-        by one hydrogen. Freezing the wrong atoms would show up nowhere."""
-        config = self.recorded(mc, tmp_path)
-        mm = types.SimpleNamespace(topology=topology(swap=True))
-        with pytest.raises(ValueError) as exc:
-            mc.qmmm.resolve_actatoms(config, {"actatoms_from": "qmmm_reactant"},
-                                     mm, None, [0], [], "product.pdb")
-        text = str(exc.value)
-        assert "qmmm_reactant" in text                 # which section's region
-        assert "reactant.pdb" in text                   # what it was built on
-        assert "product.pdb" in text                    # what it was applied to
-        assert "actregion_origin" in text               # and what to do instead
-
-    def test_a_region_recorded_without_a_fingerprint_is_still_usable(self, mc, tmp_path):
-        """Configs from before this check keep working; they just get no check."""
-        path = tmp_path / "config.yaml"
-        path.write_text("qmmm_reactant:\n  results:\n    actatoms: 0-2\n")
-        mm = types.SimpleNamespace(topology=topology(swap=True))
-        got = mc.qmmm.resolve_actatoms(str(path), {"actatoms_from": "qmmm_reactant"},
-                                       mm, None, [0], [], "product.pdb")
-        assert got == [0, 1, 2]

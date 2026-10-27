@@ -375,8 +375,10 @@ The scans give a first energy profile, show which steps are separate, and supply
   - `images` (default 12);
   - CI on;
   - convergence settings;
-  - `actatoms_from: <the reactant's section>`, so the endpoints and the NEB
-    share one active region;
+  - the same `actradius` and `actregion_origin` as the endpoints, each run
+    deriving the region on its own structure (compare the recorded
+    `actatoms_count`; a difference means the radius cuts through something that
+    moved);
   - xTB `runmode: library`;
   - cores split between images and xTB threads.
 
@@ -410,9 +412,9 @@ See "TS refinement and IRC" below. Run on each climbing image:
 Implemented (decision log D26; see the README for every key):
 
 1. **Constrained QM/MM optimisation:** `qmmm.inputs.opt_constraints`, `[[i, j]]` (hold) or `[[i, j, d]]` (set).
-2. **Relaxed scan:** `mcube scan config.yaml --section scan_attack`, with `pdb_file`, `actatoms_from`, `atoms`, `start`, `end` and `points` in the section. Writes `scan_XX.pdb` and `scan_energies.csv`.
+2. **Relaxed scan:** `mcube scan config.yaml --section scan_attack`, with `pdb_file`, `atoms`, `start`, `end` and `points` in the section. Writes `scan_XX.pdb` and `scan_energies.csv`.
 3. **NEB settings from the config:** `neb.inputs` (or a per-step section given with `--section`): `images` (12), `CI`, `maxiter`, tolerances, interpolation, springs, `method: nebts`. Writes `saddlepoint.pdb`.
-4. **TS refinement and IRC:** `mcube ts config.yaml --section ts_attack`, with `pdb_file` (the NEB's `saddlepoint.pdb`) and `actatoms_from` in the section. Runs the TS optimisation with a partial Hessian over `hessian_atoms`, a frequency check, and a quasi-IRC along the imaginary mode (or Sella), with `monitor` distances reported.
+4. **TS refinement and IRC:** `mcube ts config.yaml --section ts_attack`, with `pdb_file` (the NEB's `saddlepoint.pdb`) in the section. Runs the TS optimisation with a partial Hessian over `hessian_atoms`, a frequency check, and a quasi-IRC along the imaginary mode (or Sella), with `monitor` distances reported.
 
 Still to do: **DFT/MM single points along paths**, PySCF on GPU (needs gpu4pyscf in a separate env).
 
