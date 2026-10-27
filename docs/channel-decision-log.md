@@ -1111,6 +1111,59 @@ blocks 30576666/67 held; the Ca jobs run)
     3. **QM/MM snapshot single points** (exchange energy on 5–10 MD frames per ion, protein as point charges). It
        decides Ca vs Ln with the real second-shell screening. About 1–2 days of CPU on the existing mcube machinery.
   - The cluster stage is complete. Hourly checks stop here.
+- **Next steps 1 and 2 started (user, 2026-10-28: "do both 1 and 2 in that order").** QM/MM was to follow
+  "if still necessary".
+- **Ring protonation and environment** (`docs/channel/coord/ring_pka.py`, `ring_pka.slurm`, job 30727249; reports
+  in `$S/channel/pka/<label>/report.json`).
+  - Method:
+    - PROPKA 3.5.1 on 20 frames per run, protein only. PROPKA ignores the ion, the membrane and explicit water.
+    - Environment of each carboxylate in every 10th frame (every 2nd for the apo run).
+    - Runs: apo NVT, and the four 10 ns residence runs (La / Lu × default / Ch-BE C4).
+    - The Ca NVT run is not usable: its Ca stayed 31–37 Å from the ring.
+  - Partner residues are in channel numbering.
+
+  | Run | Glu156 pKa | Glu220 pKa | Glu240 pKa | Glu300 pKa |
+  |---|---|---|---|---|
+  | apo | 5.1 ± 0.5 | 5.5 ± 1.1 | 5.0 ± 0.5 | 4.0 ± 0.4 |
+  | `la_def` (La on 156, 240) | 7.6 ± 1.4 | 6.7 ± 0.5 | 6.4 ± 0.8 | 2.6 ± 0.5 |
+  | `la_chbe` (La on 156) | 6.4 ± 0.9 | 6.4 ± 0.6 | 5.8 ± 0.4 | 3.8 ± 0.8 |
+  | `lu_def` (Lu on 240) | 6.7 ± 0.9 | 6.2 ± 1.1 | 6.5 ± 0.8 | 3.4 ± 0.7 |
+  | `lu_chbe` (Lu on 220, 240) | 7.0 ± 1.2 | 6.3 ± 1.2 | 6.1 ± 1.0 | 4.1 ± 0.3 |
+
+  - **All four ring Glu are charged.**
+    - In the apo protein no frame has a pKa above 7.
+    - In the bound frames, PROPKA (blind to the ion) puts Glu156/220/240 at 5.8–7.6. The cause is desolvation
+      and Glu–Glu crowding around the empty ion position.
+    - The ion's own field lowers these by about 6–13 pK units at ε 20 (1.4–3.2 at ε 80), on a crude Coulomb
+      estimate at the measured carboxyl C distance. That outweighs the rise.
+    - So the formal −4 holds: protonation does not screen the ring.
+  - **What does screen it:**
+    - **Glu300 is not part of the pocket.** It is salt-bridged to Arg302 in 95–100 % of frames in every run
+      (Arg366 as well, 5–100 %) and sits 11–13 Å from the ion. The ring clusters froze Glu300 without its
+      arginines, so they count a bare −1 that the protein neutralises.
+    - **Glu220 is partly paired:** with Arg202 (apo 71 %, La runs ~60 %, Lu runs 5–10 %) and His222 (5–28 %).
+    - **Na⁺ sits at the uncoordinated Glu in the bound runs:** within 4 Å of Glu220 in 80–100 % of frames and of
+      Glu156 in 55–88 % (Lu runs, where Glu156 is uncoordinated). In the apo run it is ~0 %.
+      - Caveat: standard Amber Na⁺ parameters over-bind carboxylates (the reason for NBFIX/CUFIX corrections),
+        so this occupancy may be too high.
+    - **The carboxylates are hydrated:** 3–7.5 waters within 3.5 Å of each, and no lipid headgroup within 6 Å.
+      The site is solvent-exposed, closer to the ε 29 case than to the buried ε 4.
+    - Glu156 and Glu240 have no basic partner in any run.
+  - **Consequence for the cluster answer:**
+    - The −4 ring at ε 4 overstates the charge and burial the ion feels.
+    - A realistic pocket is about −3 (−2 if the Na⁺ stays), exposed, with Glu300 neutralised.
+    - That lies between the min and ring rows of the summary. There, Ca vs La is within the model error and
+      Ca vs Lu leans Lu (ring rows at ε 29: −5.7 … −17, but those include a bare Glu300).
+    - So the cluster model cannot decide Ca vs Ln. **QM/MM is still necessary**: electrostatic embedding includes
+      Arg302/Arg366, Arg202, His222, the Na⁺ and the water explicitly. It is being set up as vertical ion swaps on
+      shared MD frames (`docs/channel/qmmm/`, entry to follow).
+- **SMD check (step 2) setup:**
+  - Gaussian 16 is installed on Bunya but not accessible to this account (permission denied).
+  - So PySCF 2.13.0 is built from the git tag with `-DENABLE_SMD=ON` into the venv `$S/envs/smd`
+    (`docs/channel/coord/build_pyscf_smd.slurm`). The PyPI sdist lacks the SMD Fortran sources.
+  - `site_exchange.py --solvation smd` (with `SMD=1` in `site.slurm`) recomputes only the solvated single points
+    on the converged PCM geometries, in SMD diethyl ether / propanonitrile / water. The ion radii are set as for
+    PCM, because SMD has none for La/Lu.
 
 ## Findings
 
