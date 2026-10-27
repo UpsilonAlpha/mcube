@@ -33,6 +33,6 @@ for name in ("water", "diethylether", "propanonitrile"):
     mf.with_solvent.solvent = name
     e = mf.kernel()
     print(name, smd.solvent_db[mf.with_solvent.solvent][:3], e)
-print("La/Lu default SMD radii (A):", smd.smd_radii(0.0)[57], smd.smd_radii(0.0)[71])
+print("La/Lu default SMD radii (Bohr):", smd.smd_radii(0.0)[57], smd.smd_radii(0.0)[71])
 EOF
 echo "RC=$?"

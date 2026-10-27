@@ -177,17 +177,20 @@ def scf(mol, functional, eps=None, radii=None, lebedev=None, solvation="pcm"):
     mf.level_shift = 0.2
     mf = mf.density_fit()
     if eps and solvation == "smd":
+        from pyscf.data import radii as R
         from pyscf.data.elements import charge as Z
         from pyscf.solvent import smd
         mf = mf.SMD()
         mf.with_solvent.solvent = SMD_SOLVENTS[float(eps)]
         if radii:
-            # SMD's own Coulomb radii (in A; O depends on the solvent's acidity), with the ions'
-            # entries replaced as for PCM: SMD has no La/Lu radii
+            # SMD's own Coulomb radii (O depends on the solvent's acidity), with the ions' entries
+            # replaced as for PCM: SMD has none for La/Lu (2.0 A fallback). The table is in Bohr,
+            # like PCM's; ion radii given in A here made ~1.2 A cavities with holes in the
+            # aqua-ion shells (C22, 2026-10-28)
             alpha = smd.solvent_db[mf.with_solvent.solvent][2]
             table = smd.smd_radii(alpha)
             for e, r in radii.items():
-                table[Z(e)] = r
+                table[Z(e)] = r / R.BOHR
             mf.with_solvent.radii_table = table
     elif eps:
         from pyscf.data import radii as R
