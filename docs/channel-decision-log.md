@@ -1209,6 +1209,9 @@ blocks 30576666/67 held; the Ca jobs run)
   - **Site array submitted:** 30728689 (29 jobs, 10 at a time; `jobs_site_rest.txt` leaves out the smoke test's
     directory while it runs).
   - Bulk frame runs (30727693/94) are at 0.2/2 ns, 16–18 ns/day, so they need about 3 h more.
+- **SMD calibration failed on a bug, fixed** (commit 9d35dab): a fresh report directory defaulted to "pcm" and then
+  refused `--solvation smd`. Resubmitted as 30729256. The site SMD jobs (pre-set to smd) were not affected; three
+  are computing single points and the two ring jobs are queued. The site array's first 10 tasks are running.
 
 ## Findings
 
