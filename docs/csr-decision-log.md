@@ -2035,6 +2035,43 @@ and "at the DFT level of theory, the monodentate complex has a structure in whic
 
 **Four things testing caught, each of which would have cost a job.** (1) The H04 line is built from O01's to inherit the formatting, and inherited its **element column** too - the new hydrogen went out as an oxygen, so the residue was O-H-O, matched no water template, and OpenMM reported it as a malformed glycine. The test fixtures could not have caught it because `pdb_line` never wrote columns 77-78 at all. (2) **`md` ignores `--pdb`** and reads `inputs.pdb_file`, so passing the frame as run.slurm's third argument would have equilibrated preprocess's own output and looked normal; it now refuses when the two disagree. (3) Paths in `inputs` resolve from the stage's output directory while `start` resolves from the config directory, so the qmmm force-field paths were a level too shallow. (4) A 3-atom water template matches every bulk water by bond graph unless it is parameter-identical to HOH, which aborts the whole system.
 
+**D115 - The ohH minimisation ran and its result is invalid: md restrains saved atom indices against a structure whose atom order changed, so the zinc was never restrained.** (2026-10-27, job 30699162)
+
+**The job itself was fine.** COMPLETED in **3 min 16 s** on 8 CPUs - which vindicates moving it off the GPU, where `gpu_cuda` had quoted an 80 minute queue for 500 minimisation steps (job 30698605, cancelled). Scratch 158/300 GB.
+
+**What it reported.** `md` prints the metal's coordination sphere either side of the run, and it changed:
+
+    LEFT      Zn - A:164:NE2  (was 2.32 A)
+    LEFT      Zn - D:1:O      (was 2.04 A)
+    MOVED     Zn - E:557:O    2.27 -> 2.04 A
+
+**An anchoring histidine left the zinc.** That alone disqualifies the structure as a starting point, so the 50 ps QM/MM was **not** submitted.
+
+**The cause is not the added proton.** `coordination_restraints`, which `md` records back in selector form, reads:
+
+    [['C:1:C1x', 'D:1:O', 1.9], ['C:1:C1x', 'A:164:NE2', 2.09],
+     ['C:1:C1x', 'C:2:H03', 2.14], ['C:1:C1x', 'A:88:NE2', 2.22], ...]
+
+The "metal" is **meropenem's C1x**, and one donor is the nucleophile's *hydrogen*. Every metal restraint was applied to the wrong atom, so **the zinc was unrestrained** and the force field rearranged its sphere - which is exactly what the restrained pipeline exists to prevent (D98's "the metal site is never left free in MM").
+
+**Why, in one line:** `md_restraints` does `rows = resolve_atoms(results.get("coordination"), pdb_file)`, and `preprocess.results.coordination` is a list of **raw atom indices** into `processed_pdb`. `resolve_atoms` passes integers through untouched, so the saved indices are applied verbatim to whatever structure the stage is given, with nothing checking that they still name the same atoms.
+
+**Measured, 0-based:**
+
+    index   lysH frame          ohH frame
+    4202    OXT PRO A 275       ZN
+    4203    ZN                  C1x mer
+
+The saved coordination holds 4203 for the zinc, right for the lysH ordering. Building the ohH frame removed Lys226's HZ3 and inserted H04 at the nucleophile, so every atom between the two shifted down by one and the zinc became 4202 - while atoms after the insertion (D:1:O at 4257) kept their index, which is why some restraints looked right and others did not.
+
+**This is a general mcube bug, not a slip in this workflow.** Every run until now reused `processed_pdb`'s atom order, so the saved indices happened to stay valid; the first structure edited by hand broke them silently. The same hazard was already noted for `resolve_qm_region`, which falls through to `preprocess.results.qm_atoms` - stale indices there too. **The ohH qmmm section is safe from it only because `extra_qm_residues` forces the region to be rebuilt from residues on the actual file** (noted when that section was written, D114).
+
+**What the fix has to be.** `md` should verify that each saved coordination index still names the atom it was detected on - element and residue are enough - and refuse with a message naming the mismatch, rather than restraining whatever now sits at that position. A re-detect-on-this-structure option would then be the way to run an edited frame at all, because the atom order cannot be preserved: the proton has to leave one residue and join another, and a PDB residue's atoms must be contiguous, so any correct edit renumbers.
+
+**Not fixed here.** `src/mcube/md.py` currently holds uncommitted work from the CLI flag refactor, so it was left alone rather than mingling two changes in one file. The two belong together in any case: a flag that carries data outside the config and an index saved in the config that silently stops matching the structure are the same disease - state that is not re-derived from the thing in front of it.
+
+**Where the ohH arm stands.** `md_naclong_results/ohH_start.pdb` is correct and validated (D114): 49,424 atoms, total charge 0, nucleophile -1 -> 0, Lys226 +1 -> 0. Only the minimisation of it is void. `md_ohHmin_results/frag-minimized.pdb` must not be used.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
