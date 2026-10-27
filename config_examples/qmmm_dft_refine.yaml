@@ -8,7 +8,7 @@
 #   mcube qmmm       config.yaml                              # QM/MM MD + xTB minimisation
 #   mcube scan       config.yaml --section scan_attack        # xTB: find the path
 #   mcube neb        config.yaml --section neb_step1 ...      # xTB: approximate TS
-#   mcube qmmm       config.yaml --section qmmm_R_dft --pdb ...   # DFT: refine the minima
+#   mcube qmmm       config.yaml --section qmmm_R_dft    # DFT: refine the minima
 #   mcube ts         config.yaml --section ts_step1_dft ...        # DFT: TS, freqs, IRC
 preprocess:
   inputs:
@@ -91,8 +91,8 @@ ts_step1_dft:
 # --- DFT: the reported energies ----------------------------------------------
 # Each stationary point is scored by its own sp run, on the geometry that stage
 # optimised, so every number in the paper comes from the same level:
-#   mcube sp config.yaml --section sp_reactant --pdb .../QM_MM_optimized.pdb
-#   mcube sp config.yaml --section sp_ts       --pdb .../ts_optimized.pdb
+#   mcube sp config.yaml --section sp_reactant   # sp_reactant.inputs.pdb_file
+#   mcube sp config.yaml --section sp_ts         # sp_ts.inputs.pdb_file
 # Submit these on a wide allocation: a DFT SCF scales across cores and wants
 # tens of gigabytes, while the xTB and DFT gradient stages above do not.
 sp:

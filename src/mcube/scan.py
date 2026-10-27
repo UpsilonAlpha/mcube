@@ -48,7 +48,7 @@ from typing import Dict, Any, List, Tuple
 
 import numpy as np
 
-from .preprocess import resolve_cores, save_result, load_section
+from .preprocess import resolve_cores, save_result, save_input, load_section
 from .qmmm import (
     apply_stage_metal_parameters,
     resolve_qm_region,
@@ -56,7 +56,10 @@ from .qmmm import (
     mm_settings,
     make_mm,
     make_qmmm,
+    ACT_KEYS,
+    actatoms_record,
     resolve_actatoms,
+    resolve_start_structure,
     distance,
     check_in_active,
     water_constraints,
@@ -168,10 +171,13 @@ def run(args) -> Dict[str, Any]:
     if two_d and "end2" not in inputs:
         raise KeyError(f"{section}.inputs: a 2D scan needs `atoms2` and `end2` (and usually `points2`)")
 
-    pdb_file = getattr(args, "pdb", None) or inputs.get("pdb_file") or \
-        (load_section(args.config, "qmmm").get("results") or {}).get("optimized_pdb")
-    if pdb_file is None:
-        raise ValueError("No starting structure: give --pdb (e.g. the reactant's QM_MM_optimized.pdb)")
+    pdb_file, pdb_source = resolve_start_structure(
+        args.config, section, inputs,
+        [((load_section(args.config, "qmmm").get("results") or {}).get("optimized_pdb"),
+          "qmmm.results.optimized_pdb")], stage="scan")
+    print(f"[INFO] Starting structure: {pdb_file} (from {pdb_source})")
+    if not inputs.get("pdb_file"):
+        save_input(args.config, section, "pdb_file", pdb_file)
 
     charge, mult = qmmm_inputs.get("charge"), qmmm_inputs.get("mult")
     cores = resolve_cores(inputs.get("cores", qmmm_inputs.get("cores")))
@@ -193,9 +199,9 @@ def run(args) -> Dict[str, Any]:
     apply_stage_metal_parameters(qmmm_inputs, preprocess, md, mm, forcefields, qm_atoms)
     qmmm_theory = make_qmmm(qmmm_inputs, mm, fragment, qm_atoms, boundary_excluded, cores)
 
-    act_inputs = {**qmmm_inputs, **{k: inputs[k] for k in ("actradius", "actregion_origin") if k in inputs}}
-    actatoms = resolve_actatoms(getattr(args, "actatoms", None), act_inputs, mm, fragment,
-                                qm_atoms, boundary_excluded)
+    act_inputs = {**qmmm_inputs, **{k: inputs[k] for k in ACT_KEYS if k in inputs}}
+    actatoms = resolve_actatoms(args.config, act_inputs, mm, fragment,
+                                qm_atoms, boundary_excluded, pdb_file)
     extra = inputs.get("constraints") or []
     check_in_active([[i, j]] + ([[i2, j2]] if two_d else []) + list(extra), actatoms, "scan")
     monitor = [[int(a), int(b)] for a, b in (inputs.get("monitor") or [])]
@@ -215,6 +221,9 @@ def run(args) -> Dict[str, Any]:
     result: Dict[str, Any] = {
         "pdb_file": Path(pdb_file).resolve().as_posix(),
         "atoms": [i, j],
+        # Recorded with its provenance so another section can reuse this exact
+        # region with `actatoms_from: <section>` instead of a file beside the run.
+        **actatoms_record(mm, pdb_file, actatoms),
         "qm_level": qm_level_label(qmmm_inputs),
         "constraints": bond_constraints(extra, fragment.coords),
         "points": [],

@@ -7,10 +7,17 @@ Replaces the one-off `mk_*.py` scripts: a new calculation is a few lines of YAML
 in site.yaml rather than a new Python file. Each named section is written to
 config.yaml as `<stage>_<name>`, which is the section name to pass to mcube.
 
-Nothing is written unless every atom selector in the section resolves in that
-section's own `start` structure. That check exists because a scan whose second
-coordinate starts beyond hydrogen-bond distance is not a proton transfer, and
-two days of compute were lost to exactly that before it was added.
+Nothing is written unless every structure the section names exists and every
+atom selector in it resolves in that structure. The selector check exists
+because a scan whose second coordinate starts beyond hydrogen-bond distance is
+not a proton transfer, and two days of compute were lost to exactly that before
+it was added.
+
+The structure is `inputs.pdb_file` (for `neb`, `reactant_pdb` and
+`product_pdb`), which is also what mcube reads: there is no separate `start` key
+any more and no structure on the command line, so one place says which structure
+a calculation used and that place is checked here. Paths are read against the
+config's directory, as mcube reads them.
 """
 from __future__ import annotations
 
@@ -25,6 +32,11 @@ from mcube.preprocess import _locked
 SELECTOR_KEYS = ("atoms", "atoms2", "opt_constraints", "constraints", "coordination",
                  "monitor", "hessian_atoms", "partial_hessian_atoms",
                  "actregion_origin")
+
+# Structure keys, in the order a section's selectors are checked against: for a
+# NEB the two endpoints are one system in two geometries, so the reactant's
+# atom order is the one the selectors have to resolve in.
+STRUCTURE_KEYS = ("pdb_file", "reactant_pdb", "product_pdb")
 
 
 def selectors_in(inputs):
@@ -61,31 +73,48 @@ def main(site_file, names):
     if not names or names == ["--list"]:
         print("sections defined in %s:" % site_file)
         for name, body in available.items():
+            inputs = body.get("inputs") or {}
             print("  %-14s %-6s %s" % (name, body.get("stage", "?"),
-                                       body.get("start", "(start given at run time)")))
+                                       inputs.get("pdb_file")
+                                       or inputs.get("reactant_pdb")
+                                       or "(from the previous stage)"))
         return
 
     unknown = [n for n in names if n not in available]
     if unknown:
         raise SystemExit("not in %s: %s" % (site_file, ", ".join(unknown)))
 
+    home = Path(site_file).resolve().parent
     # Check everything before writing anything.
     planned, problems = {}, []
     for name in names:
         body = available[name]
         stage, inputs = body.get("stage", "qmmm"), dict(body.get("inputs") or {})
         section = "%s_%s" % (stage, name)
-        start = body.get("start")
+        if "start" in body:
+            problems.append("%s: `start` is gone; put the structure in "
+                            "`inputs.pdb_file` (neb: `reactant_pdb` and "
+                            "`product_pdb`), where mcube reads it" % name)
+            continue
+        if stage == "neb" and not all(inputs.get(k) for k in ("reactant_pdb", "product_pdb")):
+            problems.append("%s: a neb section needs both `reactant_pdb` and "
+                            "`product_pdb` in `inputs`" % name)
+            continue
+        # Paths are read against the config's directory, as mcube reads them.
+        given = [(key, inputs[key], home / inputs[key])
+                 for key in STRUCTURE_KEYS if inputs.get(key)]
+        for key, value, path in given:
+            if not path.exists():
+                problems.append("%s: %s missing: %s" % (name, key, value))
+        start = given[0][2] if given and given[0][2].exists() else None
         sels = selectors_in(inputs)
-        if start and not Path(start).exists():
-            problems.append("%s: start structure missing: %s" % (name, start))
-        elif start and sels:
+        if start and sels:
             index = atom_index(start)
             missing = [s for s in sels if s not in index]
             if missing:
                 problems.append("%s: selectors not in %s: %s"
-                                % (name, start, ", ".join(missing)))
-        planned[section] = (inputs, start, sels)
+                                % (name, given[0][1], ", ".join(missing)))
+        planned[section] = (inputs, given[0][1] if given else None, sels)
 
     if problems:
         print("NOT WRITING. Problems:")
@@ -103,8 +132,8 @@ def main(site_file, names):
         os.replace("config.yaml.edit.tmp", config)
 
     for section, (inputs, start, sels) in planned.items():
-        print("%-26s start=%s  %d selectors checked"
-              % (section, start or "(at run time)", len(sels)))
+        print("%-26s pdb=%s  %d selectors checked"
+              % (section, start or "(from the previous stage)", len(sels)))
 
 
 if __name__ == "__main__":

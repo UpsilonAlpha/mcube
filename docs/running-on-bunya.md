@@ -308,10 +308,16 @@ NEB needs reactant and product with identical atoms in identical order, solvent 
 
 1. Preprocess (solvate) the **reactant** only.
 2. Build the product inside the same box: `scripts/build_product_box.py finalsystem.pdb product_solute.pdb product_solvated.pdb`. It checks atom identity, aligns on the non-reactive solute atoms and reports solvent clashes. For CSR: RMSD 0.000 Å, no water within 2.0 Å.
-3. QM/MM-optimise both endpoints with the same active region:
-   - `mcube qmmm config.yaml --pdb ... --section qmmm_reactant`
-   - then `... --section qmmm_product --actatoms ../reactant_opt/active_atoms`
-4. Run NEB on the two `QM_MM_optimized.pdb` files with the same `--actatoms`.
+3. QM/MM-optimise both endpoints with the same active region. Both the structure
+   and the region are config keys, so each section says what it ran on:
+   - `qmmm_reactant.inputs.pdb_file`, then `mcube qmmm config.yaml --section qmmm_reactant`
+   - `qmmm_product.inputs`: `pdb_file` plus `actatoms_from: qmmm_reactant`, which
+     reuses the region the reactant recorded in its `results.actatoms`
+4. Run NEB on the two `QM_MM_optimized.pdb` files: `reactant_pdb` and
+   `product_pdb` in the `neb` section, with the same `actatoms_from`. Sharing the
+   region is not cosmetic — `actradius` is measured on each structure separately,
+   so the same radius gives slightly different regions on two endpoints, and two
+   energies over different sets of movable atoms are not comparable.
 
 Running MD on the reactant and the product separately gives each its own water configuration, so those trajectories can't be used as NEB endpoints.
 

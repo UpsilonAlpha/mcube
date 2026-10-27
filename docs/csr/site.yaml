@@ -53,9 +53,18 @@ site:
     hbond: 2.6                 # H...acceptor, for "is a proton pointing at it"
     metal_bound: 2.6           # Zn-O below this counts as a zinc ligand
 
-# Calculations. Each becomes a section in config.yaml; `start` is recorded for
-# the job script and checked to exist. Anything mcube's stage accepts can go in
-# `inputs` verbatim, so adding a calculation is a few lines here.
+# Calculations. Each becomes a section in config.yaml. The starting structure is
+# `inputs.pdb_file` like any other input - there is no separate `start` key and
+# no structure on the command line, so the config says what was computed - and
+# sections.py checks that it exists and that every atom selector resolves in it.
+# Paths in `inputs.pdb_file` are read against this directory (the config's),
+# whichever directory the job script runs the stage from. Anything mcube's stage
+# accepts can go in `inputs` verbatim, so adding a calculation is a few lines
+# here.
+#
+# NOTE: `forcefields` and `default_forcefields` are the exception - OpenMM
+# resolves those itself, from the directory the stage runs in, which is why they
+# still carry `../` or `../../`.
 sections:
 
   # D42. Each of these is an optimisation only; score the result with a
@@ -63,8 +72,8 @@ sections:
   # single point gets 64 cores while the xTB optimisation does not need them.
   cleanR_lysH:                 # proton on Lys226
     stage: qmmm
-    start: md_results/NVTtrajectory_lastframe.pdb
     inputs:
+      pdb_file: md_results/NVTtrajectory_lastframe.pdb
       skip_equilibrate: true
       opt_maxiter: 600
       opt_constraints:
@@ -74,8 +83,8 @@ sections:
 
   cleanR_ohH:                  # proton on O01
     stage: qmmm
-    start: md_results/NVTtrajectory_lastframe.pdb
     inputs:
+      pdb_file: md_results/NVTtrajectory_lastframe.pdb
       skip_equilibrate: true
       opt_maxiter: 600
       opt_constraints:
@@ -85,8 +94,8 @@ sections:
 
   md_pose:                     # D59: is the substrate pose robust?
     stage: qmmm
-    start: protdft/coscan/scan_08.pdb
     inputs:
+      pdb_file: protdft/coscan/scan_08.pdb
       skip_equilibrate: false
       skip_optimize: true
       time: 25
@@ -97,8 +106,8 @@ sections:
 
   scan_znasp:                  # D53: pull Asp92 off the zinc
     stage: scan
-    start: protdft/zncheck/relax/QM_MM_optimized.pdb
     inputs:
+      pdb_file: protdft/zncheck/relax/QM_MM_optimized.pdb
       atoms: [B:1:ZN, A:92:OD2]
       start: 2.05
       end: 3.05
@@ -108,8 +117,8 @@ sections:
 
   scan_znco:                   # D58: pull the substrate carbonyl off the zinc
     stage: scan
-    start: protdft/zncheck/relax/QM_MM_optimized.pdb
     inputs:
+      pdb_file: protdft/zncheck/relax/QM_MM_optimized.pdb
       atoms: [B:1:ZN, C:1:O2x]
       start: 2.15
       end: 4.00
@@ -142,8 +151,8 @@ sections:
   # automatically once it is inside `cutoff` of the metal.
   zngln:
     stage: scan
-    start: protdft/qmmm/QM_MM_optimized.pdb
     inputs:
+      pdb_file: protdft/qmmm/QM_MM_optimized.pdb
       atoms: [B:1:ZN, A:93:OE1]
       start: 1.80
       end: 4.20
@@ -242,14 +251,10 @@ sections:
   # on a minimisation.
   ohHmin:
     stage: md
-    start: md_naclong_results/ohH_start.pdb
     inputs:
-      # Paths in `inputs` resolve from the stage's own output directory, which
-      # for md is `md_ohHmin_results/`, so they are one level deeper than
-      # `start` - which run.slurm resolves against the config directory before
-      # it changes into that output directory. And md reads its structure from
-      # the config rather than from --pdb, so this key is not optional.
-      pdb_file: ../md_naclong_results/ohH_start.pdb
+      # Read against the config's directory, not `md_ohHmin_results/` where this
+      # stage runs, so the path is the same one any other stage would write.
+      pdb_file: md_naclong_results/ohH_start.pdb
       default_forcefields:
         - amber14/protein.ff14SB.xml
         - amber14/tip3p.xml
@@ -269,10 +274,8 @@ sections:
   # residues on the actual file.
   ohH:
     stage: qmmm
-    start: md_ohHmin_results/frag-minimized.pdb
     inputs:
-      # Two levels deep here: a qmmm stage runs in `protdft/qmmm_ohH/`.
-      pdb_file: ../../md_ohHmin_results/frag-minimized.pdb
+      pdb_file: md_ohHmin_results/frag-minimized.pdb
       forcefields:
         - amber14/protein.ff14SB.xml
         - amber14/tip3p.xml
@@ -300,11 +303,8 @@ sections:
   # never reads it, so contacts are measured on the trajectory afterwards.
   nacarg:
     stage: qmmm
-    start: protdft/nacqm/QM_MM_lastframe.pdb
     inputs:
-      # The frame is passed at run time, as run.slurm's third argument, which
-      # resolves it with readlink -f. A relative `pdb_file` here would break:
-      # run.slurm cd's into protdft/<section> before calling mcube.
+      pdb_file: protdft/nacqm/QM_MM_lastframe.pdb
       extra_qm_residues:
         A: [229]
       charge: 3
@@ -368,9 +368,13 @@ sections:
   #
   # Endpoints must be one system in two geometries - `neb` refuses a product
   # whose atom order differs, and `scan` is what guarantees it, because it
-  # writes every point through the reactant's own MM topology. Pass the starting
-  # structure at run time (run.slurm's third argument) rather than fixing it
-  # here, since which Michaelis complex we start from is still being settled.
+  # writes every point through the reactant's own MM topology.
+  #
+  # Which Michaelis complex these start from is still being settled, so neither
+  # section fixes `pdb_file` yet: set it here before running one. Left unset,
+  # `scan` falls back to `qmmm.results.optimized_pdb` and pins whatever that was
+  # into the section, so the config still records which structure produced the
+  # path - but naming it is how the choice gets reviewed rather than inherited.
 
   attack:                      # step 1 product: drive the nucleophile in
     stage: scan
@@ -399,9 +403,23 @@ sections:
       opt_maxiter: 300
       resume: true
 
-  step1:                       # NEB over the attack; endpoints on the command line
+  # Both endpoints are keys here, not arguments: the two minima are the step the
+  # barrier belongs to, so a path given on the command line would leave nothing
+  # recording which barrier was computed. The reactant is the optimised Michaelis
+  # complex; the product is the corresponding scan's last point, which is in the
+  # reactant's own atom order because `scan` writes every point through the
+  # reactant's MM topology. Fill both in from the runs that produced them.
+  #
+  # `actatoms_from` makes the two endpoints and the NEB share one active region.
+  # It matters: `actradius` is measured on each structure separately, so the same
+  # radius gives slightly different regions on two geometries, and energies over
+  # different sets of movable atoms are not comparable.
+  step1:                       # NEB over the attack
     stage: neb
     inputs:
+      reactant_pdb: protdft/qmmm_protH_oh/QM_MM_optimized.pdb
+      product_pdb: protdft/scan_attack/scan_15.pdb
+      actatoms_from: qmmm_protH_oh
       images: 12
       method: nebts            # NEB-CI then a geomeTRIC TS optimisation of the climbing image
       interpolation: idpp
@@ -409,6 +427,9 @@ sections:
   step2:
     stage: neb
     inputs:
+      reactant_pdb: protdft/scan_attack/scan_15.pdb
+      product_pdb: protdft/scan_ringopen/scan_11.pdb
+      actatoms_from: qmmm_protH_oh
       images: 12
       method: nebts
       interpolation: idpp
@@ -424,6 +445,8 @@ sections:
   saddle1:
     stage: ts
     inputs:
+      pdb_file: protdft/neb_step1/saddlepoint.pdb
+      actatoms_from: qmmm_protH_oh
       hessian_atoms: [C:2:O01, C:1:C4x, C:1:O2x, C:1:N1x, B:1:ZN]
       monitor:
         - [C:2:O01, C:1:C4x]
@@ -435,6 +458,8 @@ sections:
   saddle2:
     stage: ts
     inputs:
+      pdb_file: protdft/neb_step2/saddlepoint.pdb
+      actatoms_from: qmmm_protH_oh
       hessian_atoms: [C:1:C4x, C:1:N1x, A:226:NZ, B:1:ZN]
       monitor:
         - [C:1:C4x, C:1:N1x]
@@ -453,13 +478,16 @@ sections:
   # sections because each run writes its results back into its own.
   sp_co0:
     stage: sp
-    start: protdft/coscan/scan_00.pdb     # Zn-O2x 2.15 A
-    inputs: *sp_only
+    inputs:
+      <<: *sp_only
+      pdb_file: protdft/coscan/scan_00.pdb   # Zn-O2x 2.15 A
   sp_co4:
     stage: sp
-    start: protdft/coscan/scan_04.pdb     # Zn-O2x 3.08 A
-    inputs: *sp_only
+    inputs:
+      <<: *sp_only
+      pdb_file: protdft/coscan/scan_04.pdb   # Zn-O2x 3.08 A
   sp_co8:
     stage: sp
-    start: protdft/coscan/scan_08.pdb     # Zn-O2x 4.00 A
-    inputs: *sp_only
+    inputs:
+      <<: *sp_only
+      pdb_file: protdft/coscan/scan_08.pdb   # Zn-O2x 4.00 A

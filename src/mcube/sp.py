@@ -14,8 +14,7 @@ sized separately.
 Nothing about the result changes: this is the same `QMMMTheory` single point
 that used to run at the end of `qmmm`, on the same geometry.
 
-    mcube sp config.yaml --pdb protdft/qmmm/QM_MM_optimized.pdb
-    mcube sp config.yaml --section sp_product      # results into their own section
+    mcube sp config.yaml --section sp_product   # sp_product.inputs.pdb_file
 
 Inputs are read from `qmmm.inputs`, then `sp.inputs`, then the `--section`
 inputs, so the force fields, charge, multiplicity and QM region do not have to
@@ -47,6 +46,7 @@ from .qmmm import (
     pyscf_memory,
     resolve_qm_region,
     resolve_stage_atoms,
+    resolve_start_structure,
 )
 
 from ash import *
@@ -95,11 +95,10 @@ def run(args) -> Dict[str, Any]:
 
     # A single point has to be told which geometry to score: there is no sensible
     # default, and silently taking the last MD frame would score the wrong thing.
-    pdb_file = getattr(args, "pdb", None) or inputs.get("pdb_file")
-    if pdb_file is None:
-        raise SystemExit(
-            "sp needs a structure: pass --pdb (e.g. a stage's QM_MM_optimized.pdb) "
-            "or set pdb_file in the section's inputs")
+    # So no fallback here, unlike every other stage.
+    pdb_file, pdb_source = resolve_start_structure(
+        args.config, section, inputs, stage="sp", what="geometry to score")
+    print(f"[INFO] Geometry: {pdb_file} (from {pdb_source})")
 
     forcefields, implicit = mm_settings(inputs, md)
     mult = inputs.get("mult")

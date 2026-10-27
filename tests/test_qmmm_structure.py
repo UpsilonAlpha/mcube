@@ -3,7 +3,9 @@
 The fallback to `md.results.lastframe` is a convenience for the usual
 preprocess -> md -> qmmm chain, but it silently reached into another run's
 directory once, and QM/MM started on the wrong structure converges and looks
-fine. Runs without ASH via the stub used in tests/test_umbrella.py.
+fine. There is no `--pdb` to override it any more: a structure that is not in
+the config is a result nothing records. Runs without ASH via the stub used in
+tests/test_umbrella.py.
 """
 
 import sys
@@ -51,16 +53,13 @@ def home(tmp_path):
     )
 
 
-def resolve(qmmm, home, inputs=None, md=None, pdb=None):
-    return qmmm.resolve_start_structure(home.config, "qmmm", inputs or {}, md or {}, pdb)
+def resolve(qmmm, home, inputs=None, md=None):
+    return qmmm.resolve_start_structure(
+        home.config, "qmmm", inputs or {},
+        [((md or {}).get("lastframe"), "md.results.lastframe")])
 
 
 class TestPrecedence:
-    def test_pdb_argument_wins(self, qmmm, home):
-        path, source = resolve(qmmm, home, inputs={"pdb_file": home.mine},
-                               md={"lastframe": home.mine}, pdb=home.mine)
-        assert source == "--pdb" and path.endswith("mine.pdb")
-
     def test_section_input_beats_the_md_fallback(self, qmmm, home):
         _, source = resolve(qmmm, home, inputs={"pdb_file": home.mine},
                             md={"lastframe": home.theirs})
@@ -90,11 +89,20 @@ class TestFailuresAreClear:
         _, source = resolve(qmmm, home, inputs={"pdb_file": home.theirs})
         assert source == "qmmm.inputs.pdb_file"
 
-    def test_nothing_at_all_names_the_three_ways(self, qmmm, home):
+    def test_nothing_at_all_names_both_ways(self, qmmm, home):
         with pytest.raises(KeyError) as exc:
             resolve(qmmm, home)
         text = str(exc.value)
-        assert "pdb_file" in text and "--pdb" in text and "md" in text
+        assert "`qmmm.inputs`" in text               # the key to set
+        assert "md.results.lastframe" in text        # and the stage that writes one
+
+    def test_a_relative_pdb_file_is_read_against_the_config(self, qmmm, home, monkeypatch, tmp_path):
+        """The trap: the job script runs each stage from its own output directory,
+        so a relative `pdb_file` used to mean a different file per stage."""
+        monkeypatch.chdir(tmp_path / "run_b")
+        path, source = resolve(qmmm, home, inputs={"pdb_file": "mine.pdb"})
+        assert source == "qmmm.inputs.pdb_file"
+        assert path == str(home.mine).replace("\\", "/")
 
     def test_a_named_but_missing_file_says_which_input_named_it(self, qmmm, home):
         with pytest.raises(FileNotFoundError, match="qmmm.inputs.pdb_file"):
@@ -107,10 +115,10 @@ class TestActiveRegionContainsTheQMRegion:
 
     QM = [10, 11, 12, 900]          # 900 is the far end of a QM residue
 
-    def actatoms(self, qmmm, monkeypatch, written, inputs=None, path=None):
+    def actatoms(self, qmmm, monkeypatch, written, inputs=None, config="config.yaml"):
         monkeypatch.setattr(qmmm, "read_intlist_from_file", lambda *a: list(written))
         monkeypatch.setattr(qmmm, "actregiondefine", lambda **k: None)
-        return qmmm.resolve_actatoms(path, inputs or {}, None, None, self.QM, [])
+        return qmmm.resolve_actatoms(config, inputs or {}, None, None, self.QM, [])
 
     def test_a_qm_atom_outside_the_radius_is_added(self, qmmm, monkeypatch):
         got = self.actatoms(qmmm, monkeypatch, [10, 11, 12, 13], {"actradius": 8, "actregion_origin": "B:1:ZN"})
@@ -120,9 +128,9 @@ class TestActiveRegionContainsTheQMRegion:
         got = self.actatoms(qmmm, monkeypatch, [10, 11, 12, 13, 900], {"actradius": 8, "actregion_origin": "B:1:ZN"})
         assert got == [10, 11, 12, 13, 900]
 
-    def test_an_actatoms_file_is_completed_too(self, qmmm, monkeypatch):
-        """A reactant's active_atoms file reused for the product must still cover QM."""
-        got = self.actatoms(qmmm, monkeypatch, [10, 11, 12], path="active_atoms")
+    def test_a_region_given_in_the_config_is_completed_too(self, qmmm, monkeypatch):
+        """A reactant's region reused for the product must still cover QM."""
+        got = self.actatoms(qmmm, monkeypatch, [], {"actatoms": "10-12"})
         assert got == [10, 11, 12, 900]
 
     def test_it_says_so_when_it_adds_any(self, qmmm, monkeypatch, capsys):
@@ -141,4 +149,4 @@ class TestActiveRegionContainsTheQMRegion:
         monkeypatch.setattr(qmmm, "read_intlist_from_file", lambda *a: [10])
         monkeypatch.setattr(qmmm, "actregiondefine", lambda **k: None)
         with pytest.raises(ValueError, match="no actregion_origin"):
-            qmmm.resolve_actatoms(None, {"actradius": 8}, None, None, self.QM, [])
+            qmmm.resolve_actatoms("config.yaml", {"actradius": 8}, None, None, self.QM, [])

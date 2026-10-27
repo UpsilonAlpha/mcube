@@ -102,7 +102,7 @@ neb:
 
 # PySCF QM/MM single point + cube files, run as its own stage so the SCF can
 # have the cores and memory it scales with:
-#   mcube sp config.yaml --pdb QM_MM_optimized.pdb
+#   mcube sp config.yaml --section sp   # sp.inputs.pdb_file: QM_MM_optimized.pdb
 # Force fields, charge, mult and the QM region are inherited from qmmm.inputs.
 sp:
   inputs:

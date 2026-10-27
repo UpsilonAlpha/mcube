@@ -37,6 +37,10 @@ from .preprocess import (
     build_qm_region,
     qm_region_settings,
     resolve_atom_inputs,
+    config_relative,
+    parse_atom_ranges,
+    format_atom_ranges,
+    atom_fingerprint,
 )
 
 from ash import *
@@ -88,45 +92,63 @@ ATOM_KEYS = ("actregion_origin", "opt_constraints", "atoms", "atoms2", "constrai
              "partial_hessian_atoms", "monitor")
 
 
+# Active-region keys a stage's own section may set, overriding qmmm.inputs
+ACT_KEYS = ("actatoms", "actatoms_from", "actradius", "actregion_origin")
+
+
 def resolve_stage_atoms(inputs: Dict[str, Any], mm) -> Dict[str, Any]:
     """Atom selectors in a stage's inputs -> indices, using the MM topology."""
     return resolve_atom_inputs(inputs, mm.topology, ATOM_KEYS)
 
 
 def resolve_start_structure(config: str, section: str, inputs: Dict[str, Any],
-                            md_results: Dict[str, Any], pdb_arg: Optional[str]):
+                            fallbacks=(), stage: str = "qmmm",
+                            what: str = "starting structure"):
     """The structure this stage runs on, and where it came from.
 
-    Precedence: `--pdb`, then this section's `pdb_file`, then the md stage's
-    `lastframe`. That last one is a convenience for the usual
-    preprocess -> md -> qmmm chain, and it is refused when it reaches outside
-    the config's own directory, because it is then almost certainly a frame
-    from a different run - and QM/MM started on the wrong structure converges
-    and looks entirely normal, so nothing downstream would catch it.
+    Precedence: this section's `pdb_file`, then each `(value, source)` in
+    `fallbacks` - the previous stage's output, for the usual
+    preprocess -> md -> qmmm chain. There is no command-line override: a
+    structure that is not in the config is a result nothing records, and
+    `save_input` pins whichever one was used back into the section.
+
+    A relative `pdb_file` is read against the config's directory, not the
+    stage's working directory (see `config_relative`).
+
+    A fallback is refused when it reaches outside the config's own directory,
+    because it is then almost certainly a frame from a different run - and
+    QM/MM started on the wrong structure converges and looks entirely normal,
+    so nothing downstream would catch it. A `pdb_file` the user named is
+    allowed to point anywhere: naming it is a deliberate choice.
     """
-    for value, source in ((pdb_arg, "--pdb"),
-                          (inputs.get("pdb_file"), f"{section}.inputs.pdb_file"),
-                          (md_results.get("lastframe"), "md.results.lastframe")):
+    given = inputs.get("pdb_file")
+    candidates = [(config_relative(config, given) if given else None,
+                   f"{section}.inputs.pdb_file")]
+    candidates += [(value, source) for value, source in fallbacks]
+    for value, source in candidates:
         if value:
             break
     else:
+        named = "".join(f", or run the stage that writes `{source}`"
+                        for _, source in fallbacks)
         raise KeyError(
-            "No starting structure for the qmmm stage. Set `pdb_file` in "
-            f"`{section}.inputs`, pass `--pdb`, or run the `md` stage first so that "
-            "`md.results.lastframe` exists.")
+            f"No {what} for the {stage} stage. Set `pdb_file` in "
+            f"`{section}.inputs`{named}.")
     path = Path(value)
     if not path.is_file():
         raise FileNotFoundError(
-            f"Starting structure named by {source} does not exist: {value}")
-    if source == "md.results.lastframe":
+            f"{what.capitalize()} named by {source} does not exist: {value} "
+            f"(a relative path is resolved against the config's directory, "
+            f"{Path(config).resolve().parent})")
+    if source != f"{section}.inputs.pdb_file":
         home = Path(config).resolve().parent
         if home not in path.resolve().parents:
             raise ValueError(
-                f"The qmmm stage would fall back to {value} (md.results.lastframe), "
+                f"The {stage} stage would fall back to {value} ({source}), "
                 f"which is outside this config's directory {home}. That is usually a "
                 "frame from another run, and QM/MM started on the wrong structure "
                 "converges and looks fine, so set `pdb_file` in "
-                f"`{section}.inputs` to the frame you mean, or pass --pdb.")
+                f"`{section}.inputs` to the frame you mean.")
     return path.resolve().as_posix(), source
 
 
@@ -360,9 +382,43 @@ def make_qmmm(qmmm_inputs: Dict[str, Any], mm, fragment, qm_atoms, boundary_excl
     )
 
 
-def resolve_actatoms(actatoms_file, inputs: Dict[str, Any], mm, fragment, qm_atoms, boundary_excluded) -> List[int]:
-    """Active region: an active_atoms file (e.g. the reactant's), else all atoms within
-    `actradius` of `actregion_origin`, else just the QM atoms.
+def actatoms_record(mm, pdb_file: str, actatoms) -> Dict[str, Any]:
+    """The active region as a section records it: the ranges, the structure they
+    were derived from, and a fingerprint of the atoms they name.
+
+    Another section reuses the region with `actatoms_from`, which is a one-line
+    config edit - so the structure and the fingerprint travel with it, and
+    `resolve_actatoms` refuses the reuse when they no longer describe the
+    structure in front of it. Without them this would be the D115 hazard with a
+    shorter path to it.
+    """
+    atoms = sorted(int(a) for a in actatoms)
+    return {
+        "actatoms": format_atom_ranges(atoms),
+        "actatoms_structure": Path(pdb_file).resolve().as_posix(),
+        "actatoms_fingerprint": atom_fingerprint(mm.topology, atoms),
+    }
+
+
+def resolve_actatoms(config: str, inputs: Dict[str, Any], mm, fragment, qm_atoms,
+                     boundary_excluded, pdb_file: Optional[str] = None) -> List[int]:
+    """Active region: `inputs.actatoms`, else the region `inputs.actatoms_from`
+    named section recorded, else all atoms within `actradius` of
+    `actregion_origin`, else just the QM atoms.
+
+    The region decides which atoms can move at all, so two runs with the same
+    config and different regions are not the same calculation: it belongs in the
+    config, not in a file beside the run and not on the command line. It is
+    written as index ranges (`4203-4634,5001`), which is one readable line even
+    for a few thousand atoms - see `format_atom_ranges`.
+
+    `actatoms_from: <section>` reuses the region that section recorded in its
+    results, which is how a reactant, a product and the NEB between them share
+    one region. Sharing it matters because `actradius` is measured on each
+    structure separately, so the same radius gives slightly different regions on
+    two endpoints - and two energies computed over different sets of movable
+    atoms are not comparable. Every stage records its own region, so the
+    reactant run is enough to point the others at.
 
     The QM atoms are always in it. `actregiondefine` selects whole residues, so a QM
     residue reaching past the radius normally comes in entire - but a small enough
@@ -371,8 +427,35 @@ def resolve_actatoms(actatoms_file, inputs: Dict[str, Any], mm, fragment, qm_ato
     unconditional rather than a setting. It is a no-op whenever the radius already
     covers the QM region, so it costs nothing to leave on.
     """
-    if actatoms_file:
-        actatoms = read_intlist_from_file(actatoms_file)
+    if inputs.get("actatoms") is not None:
+        actatoms = parse_atom_ranges(inputs["actatoms"], "actatoms")
+    elif inputs.get("actatoms_from"):
+        source = str(inputs["actatoms_from"])
+        results = load_section(config, source).get("results") or {}
+        recorded = results.get("actatoms")
+        if not recorded:
+            raise KeyError(
+                f"actatoms_from: {source} - that section has no recorded active "
+                f"region ({source}.results.actatoms). Run it first, or set "
+                "`actatoms` to the region directly (index ranges, e.g. "
+                "`4203-4634,5001`).")
+        actatoms = parse_atom_ranges(recorded, f"{source}.results.actatoms")
+        # Indices mean nothing without the structure they were derived from: two
+        # sections of this system whose atom order differs by one hydrogen is the
+        # ohH comparison, not a hypothetical. Refuse rather than freeze the wrong
+        # atoms, which no output would show.
+        expected = results.get("actatoms_fingerprint")
+        if expected and mm is not None:
+            if atom_fingerprint(mm.topology, actatoms) != expected:
+                raise ValueError(
+                    f"actatoms_from: {source} - its active region was built on "
+                    f"{results.get('actatoms_structure', 'another structure')} and "
+                    f"does not describe {pdb_file or 'this structure'}: the atoms "
+                    "at those indices are not the same atoms. Any edit that moves "
+                    "an atom between residues renumbers everything after it. Build "
+                    "the region on this structure with `actradius`/"
+                    "`actregion_origin`, or set `actatoms` here once you have "
+                    "checked which indices are right.")
     elif inputs.get("actradius"):
         originatom = inputs.get("actregion_origin")
         if originatom is None:
@@ -655,7 +738,8 @@ def run(args) -> Dict[str, Any]:
     md_results = md.get("results") or {}
 
     pdb_file, pdb_source = resolve_start_structure(
-        args.config, section, inputs, md_results, getattr(args, "pdb", None))
+        args.config, section, inputs,
+        [(md_results.get("lastframe"), "md.results.lastframe")])
     print(f"[INFO] Starting structure: {pdb_file} (from {pdb_source})")
     if not inputs.get("pdb_file"):
         save_input(args.config, section, "pdb_file", pdb_file)
@@ -733,8 +817,11 @@ def run(args) -> Dict[str, Any]:
             qmmm_theory = make_qmmm(inputs, mm, fragment, qm_atoms, boundary_excluded, cores)
 
         # An active_atoms file reuses another run's active region (e.g. the reactant's for the product)
-        actatoms = resolve_actatoms(getattr(args, "actatoms", None), inputs, mm, fragment,
-                                    qm_atoms, boundary_excluded)
+        actatoms = resolve_actatoms(args.config, inputs, mm, fragment,
+                                    qm_atoms, boundary_excluded, pdb_file)
+        # Recorded with its provenance so another section can reuse this exact
+        # region with `actatoms_from: <section>` instead of a file beside the run.
+        result.update(actatoms_record(mm, pdb_file, actatoms))
 
         # Optional bond constraints: [[i, j]] holds the current distance, [[i, j, d_Å]] sets it
         user_pairs = inputs.get("opt_constraints") or []
@@ -767,9 +854,10 @@ def run(args) -> Dict[str, Any]:
     # four threads, so one job cannot size both. See sp.py.
     if inputs.get("singlepoint") is not None:
         target = result.get("optimized_pdb") or result.get("lastframe") or pdb_file
-        print("[INFO] `singlepoint` is no longer part of the qmmm stage. To run it:\n"
-              f"         mcube sp {args.config} --pdb {target}\n"
-              "       Submit it separately so the SCF can have the cores and memory it "
-              "scales with (see sp.py).")
+        print("[INFO] `singlepoint` is no longer part of the qmmm stage. To run it, set\n"
+              f"         sp_<name>.inputs.pdb_file: {target}\n"
+              f"       then `mcube sp {args.config} --section sp_<name>`. Submit it "
+              "separately so the SCF can have the cores and memory it scales with "
+              "(see sp.py).")
 
     return result

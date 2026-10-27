@@ -48,10 +48,23 @@ python $D/sections.py $D/site.yaml scan_znco       # add it, checking selectors
 sbatch -J znco --cpus-per-task=8 --mem=16G $D/run.slurm scan scan_znco
 ```
 
-The starting structure belongs in the section's `pdb_file`, not on the command
-line. `md` has always read it from there and ignored a `--pdb`, which could
-silently equilibrate preprocess's own output instead (D114); the other stages
-are being brought into line so that `config.yaml` describes the run on its own.
+The starting structure belongs in the section's `pdb_file` (a NEB's two
+endpoints in `reactant_pdb` and `product_pdb`), and there is no longer any way to
+pass one on the command line: `run.slurm` takes no third argument and no stage
+takes `--pdb`. `md` had always read its structure from the config and ignored a
+`--pdb`, which could silently equilibrate preprocess's own output instead (D114);
+every stage now works that way, so `config.yaml` describes the run on its own.
+
+Paths in `inputs` are read against the config's directory, whichever directory
+the job script runs the stage from — so `md_results/lastframe.pdb` means the same
+file to `md` and to `qmmm`. (`forcefields` is the exception: OpenMM resolves
+those itself, from the directory the stage runs in, which is why they carry
+`../`.) The active region is `actatoms` (index ranges, e.g. `4203-4634,5001`) or
+`actatoms_from: <section>` to reuse the region another section recorded, in place
+of the `active_atoms` file that used to be passed with `--actatoms`. A recorded
+region carries the structure it was built on and a per-atom fingerprint, and
+`actatoms_from` refuses a structure it does not describe — the D115 failure mode,
+where indices saved against one atom order were applied to another.
 
 
 `sections.py` writes `<stage>_<name>`, so the `scan_znco` entry in `site.yaml`

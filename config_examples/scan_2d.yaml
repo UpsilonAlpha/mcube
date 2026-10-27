@@ -9,7 +9,7 @@
 # across the grid shows whether the proton moves before, during or after the
 # bond forms -- and to which acceptor.
 #
-#   mcube scan config.yaml --section scan2d_relay --pdb reactant_optimized.pdb
+#   mcube scan config.yaml --section scan2d_relay   # scan2d_relay.inputs.pdb_file
 #
 # Choosing the second coordinate:
 #   * Pick the actual proton and acceptor from the OPTIMISED REACTANT, not from a

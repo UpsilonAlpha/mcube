@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Write chosen trajectory frames as full-system PDBs for later stages
-(e.g. `mcube qmmm --pdb`).
+(to name in a section's `pdb_file`).
 
 Frames are written with OpenMM and the topology PDB, so atom order, names,
 residue ids, chains and ligand CONECT records match the input exactly, and

@@ -20,6 +20,7 @@ from .preprocess import (
     save_result,
     load_section,
     ligand_resname,
+    config_relative,
 )
 from .md import md_membrane
 from .membrane_analysis import report as membrane_report, options_from_config
@@ -76,12 +77,27 @@ def run(args):
     preprocess = load_section(args.config, "preprocess")
     lig = (preprocess.get("results") or {}).get("ligand_resname") or ligand_resname(preprocess.get("inputs") or {})
 
+    # Which trajectory was analysed is part of the result, so it comes from
+    # `postprocess.inputs` (read against the config's directory) rather than
+    # from a flag; with neither key set it is the run the config already
+    # records. `--trajectory` used to be accepted here and then ignored.
+    pp_inputs = load_section(args.config, "postprocess").get("inputs") or {}
+    given_pdb = config_relative(args.config, pp_inputs.get("pdb_file"))
+    given_traj = config_relative(args.config, pp_inputs.get("trajectory"))
+    for key, value in (("pdb_file", given_pdb), ("trajectory", given_traj)):
+        if value and not Path(value).is_file():
+            raise FileNotFoundError(
+                f"postprocess.inputs.{key} does not exist: {value}. Paths in "
+                f"`inputs` are read against the config's directory "
+                f"({Path(args.config).resolve().parent}), not the directory the "
+                "stage runs in.")
+
     if args.qmmm:
         qmmm = load_section(args.config, "qmmm")
         md = load_section(args.config, "md")
 
-        pdbfile = qmmm["results"]["lastframe"]
-        trajectory = qmmm["results"]["trajfile"]
+        pdbfile = given_pdb or qmmm["results"]["lastframe"]
+        trajectory = given_traj or qmmm["results"]["trajfile"]
         optimization = qmmm["results"]["opttraj"]
 
         u = mda.Universe(pdbfile, optimization)
@@ -95,8 +111,8 @@ def run(args):
 
     else:
         md = load_section(args.config, "md")
-        pdbfile = md["results"]["lastframe"]
-        trajectory = md["results"]["trajfile"]
+        pdbfile = given_pdb or md["results"]["lastframe"]
+        trajectory = given_traj or md["results"]["trajfile"]
         csv = md["results"]["csv"]
 
         df = pl.read_csv(csv)
@@ -129,7 +145,7 @@ def run(args):
         # A membrane system gets the membrane report (box, bilayer, partner pose) in place of the
         # ligand-centred analysis below; its options are `postprocess.inputs.membrane` (optional).
         if md_membrane(md.get("inputs") or {}, preprocess):
-            spec = (load_section(args.config, "postprocess").get("inputs") or {}).get("membrane") or {}
+            spec = pp_inputs.get("membrane") or {}
             out = spec.get("out", "membrane_report")
             rep = membrane_report(pdbfile, trajectory, out, **options_from_config(spec))
             result["membrane_report"] = [Path(f).resolve().as_posix() for f in rep["files"]]

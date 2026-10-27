@@ -15,12 +15,18 @@
 #
 # One job script for every mcube stage.
 #
-#   sbatch -J <name> [resources] run.slurm <stage> <section> [start.pdb]
+#   sbatch -J <name> [resources] run.slurm <stage> <section>
 #
 #   stage    preprocess | md | qmmm | sp | scan | neb | ts
 #   section  the config.yaml section, e.g. scan_znco or md_nac. preprocess has
 #            none, so there it just names the output directory
-#   start    optional --pdb; omit to let mcube take it from the previous stage
+#
+# The structure a stage starts from is NOT an argument: it is `pdb_file` in that
+# section's `inputs` (a neb's two endpoints are `reactant_pdb` and
+# `product_pdb`), read against this directory whichever directory the stage runs
+# in. So the config alone says what was computed, and the same command recomputes
+# the same thing. mcube prints the structure it resolved and pins it into the
+# section.
 #
 # Examples:
 #
@@ -28,11 +34,10 @@
 #   sbatch -J md     --cpus-per-task=16 --mem=16G                run.slurm md md
 #   sbatch -J mdnac  --cpus-per-task=16 --mem=16G                run.slurm md md_nac
 #   sbatch -J react  --cpus-per-task=8  --mem=16G                run.slurm qmmm qmmm_reactant
-#   sbatch -J spR    --cpus-per-task=32 --mem=96G --time=12:00:00 run.slurm sp sp_reactant \
-#          protdft/qmmm_reactant/QM_MM_optimized.pdb
-#   sbatch -J coscan --cpus-per-task=8  --mem=16G                run.slurm scan scan_znco start.pdb
+#   sbatch -J spR    --cpus-per-task=32 --mem=96G --time=12:00:00 run.slurm sp sp_reactant
+#   sbatch -J coscan --cpus-per-task=8  --mem=16G                run.slurm scan scan_znco
 #   sbatch -J neb1   --cpus-per-task=16 --mem=32G                run.slurm neb neb_step1
-#   sbatch -J ts1    --cpus-per-task=8  --mem=16G                run.slurm ts ts_saddle1 saddlepoint.pdb
+#   sbatch -J ts1    --cpus-per-task=8  --mem=16G                run.slurm ts ts_saddle1
 #
 # Thread placement is not an argument: `mcube env` derives it from the stage and
 # the config (see thread_policy in cli.py) and this script applies it, so a stage
@@ -45,7 +50,16 @@ export PYTHONUNBUFFERED=1
 
 STAGE=${1:?stage: preprocess, md, qmmm, sp, scan, neb or ts}
 SECTION=${2:?config.yaml section, or the stage name for preprocess/md}
-START=${3:-}
+
+# This used to be a structure, passed on to --pdb. Refused rather than ignored:
+# an old command line that still carries one would otherwise run on whatever the
+# config happens to say, and look entirely normal.
+if [ -n "${3:-}" ]; then
+  echo "run.slurm takes no third argument. Set pdb_file in ${SECTION}.inputs" >&2
+  echo "in config.yaml instead (neb: reactant_pdb and product_pdb); it is read" >&2
+  echo "against the config's directory, so '$3' goes in as written." >&2
+  exit 2
+fi
 
 # preprocess has no --section: it writes to the one place in the config, and the
 # second argument only names its output directory. md takes one, and keeps its
@@ -68,17 +82,9 @@ eval "$(mcube env "$ROOT/config.yaml" "$STAGE" "${SECTION_ARGS[@]}")"
 
 mkdir -p "$OUT"
 
-if [ -n "$START" ]; then
-  START_ABS=$(readlink -f "$START")
-  test -f "$START_ABS" || { echo "missing start structure: $START" >&2; exit 1; }
-  ARGS=(--pdb "$START_ABS")
-else
-  ARGS=()
-fi
-
 cd "$OUT"
 date
-mcube "$STAGE" "$ROOT/config.yaml" "${SECTION_ARGS[@]}" "${ARGS[@]}"
+mcube "$STAGE" "$ROOT/config.yaml" "${SECTION_ARGS[@]}"
 date
 echo "[DONE] $SECTION"
 

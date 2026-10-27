@@ -10,12 +10,15 @@ geomeTRIC TS optimisation of the climbing image with a partial Hessian.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Dict, Any
 
 from .preprocess import (
     atom_names,
     save_result,
+    save_input,
     load_section,
+    config_relative,
 )
 
 from .qmmm import (
@@ -25,6 +28,8 @@ from .qmmm import (
     mm_settings,
     make_mm,
     make_qmmm,
+    ACT_KEYS,
+    actatoms_record,
     resolve_actatoms,
     write_pdb,
     resolve_stage_atoms,
@@ -45,6 +50,40 @@ NEBTS_ONLY_KEYS = (
     "hessian_for_TS", "modelhessian", "tsmode_tangent_threshold", "partial_hessian_atoms",
     "partial_npoint_choice",
 )
+
+
+def resolve_endpoints(config: str, section: str, inputs: Dict[str, Any]):
+    """The two endpoint structures, from `reactant_pdb` and `product_pdb`.
+
+    Both are required and neither has a default: the two minima *are* the step
+    this NEB computes, so a path that is not in the config leaves nothing saying
+    which barrier the result belongs to. Paths are read against the config's
+    directory, like every other structure input, and pinned back into the
+    section once resolved.
+    """
+    paths = {}
+    missing = []
+    for key in ("reactant_pdb", "product_pdb"):
+        value = inputs.get(key)
+        if not value:
+            missing.append(key)
+            continue
+        path = config_relative(config, value)
+        if not Path(path).is_file():
+            missing.append(f"{key} ({value} does not exist)")
+            continue
+        paths[key] = Path(path).resolve().as_posix()
+    if missing:
+        raise KeyError(
+            f"neb needs both endpoints in `{section}.inputs`: "
+            + ", ".join(missing)
+            + ". Set `reactant_pdb` and `product_pdb` to the two optimised minima "
+              "(e.g. each endpoint run's QM_MM_optimized.pdb); paths are read "
+              f"against the config's directory, {Path(config).resolve().parent}.")
+    for key, value in paths.items():
+        if inputs.get(key) != value:
+            save_input(config, section, key, value)
+    return paths["reactant_pdb"], paths["product_pdb"]
 
 
 def check_same_system(reactant_pdb: str, product_pdb: str, react, prod) -> None:
@@ -121,6 +160,11 @@ def run(args) -> Dict[str, Any]:
     neb_inputs = stage_inputs(args.config, "neb", section)
     qmmm_inputs = qm_level_inputs(qmmm_inputs, neb_inputs)  # qm_engine/dft_* may be set per section
 
+    reactant_pdb, product_pdb = resolve_endpoints(args.config, section, neb_inputs)
+    print(f"[INFO] Endpoints: {reactant_pdb} -> {product_pdb}")
+    result["reactant_pdb"] = reactant_pdb
+    result["product_pdb"] = product_pdb
+
     charge = qmmm_inputs["charge"]
     mult = qmmm_inputs["mult"]
     numimages = neb_inputs.get("images", 12)
@@ -142,12 +186,12 @@ def run(args) -> Dict[str, Any]:
     forcefields, implicit = mm_settings(qmmm_inputs, md)
 
     print("[STEP] Building MM system...")
-    mm = make_mm(forcefields, args.reactant, implicit, theory_cores)  # OpenMM threads per image
+    mm = make_mm(forcefields, reactant_pdb, implicit, theory_cores)  # OpenMM threads per image
     neb_inputs = resolve_stage_atoms(neb_inputs, mm)
     qmmm_inputs = resolve_stage_atoms(qmmm_inputs, mm)
 
     print("[STEP] Building QM region...")
-    qm_atoms, boundary_excluded = resolve_qm_region({**qmmm_inputs, **{k: neb_inputs[k] for k in ('qm_residues', 'extra_qm_residues') if k in neb_inputs}}, preprocess, args.reactant)
+    qm_atoms, boundary_excluded = resolve_qm_region({**qmmm_inputs, **{k: neb_inputs[k] for k in ('qm_residues', 'extra_qm_residues') if k in neb_inputs}}, preprocess, reactant_pdb)
     # The same metal parameters as md, before the QMMMTheory is built
     apply_stage_metal_parameters(qmmm_inputs, preprocess, md, mm, forcefields, qm_atoms)
     result["qm_level"] = qm_level_label(qmmm_inputs)
@@ -157,20 +201,21 @@ def run(args) -> Dict[str, Any]:
     ################################################
     # Defining reactant and product ASH fragments
     #################################################
-    react=Fragment(pdbfile=args.reactant, charge=charge, mult=mult)
-    prod=Fragment(pdbfile=args.product, charge=charge, mult=mult)
+    react=Fragment(pdbfile=reactant_pdb, charge=charge, mult=mult)
+    prod=Fragment(pdbfile=product_pdb, charge=charge, mult=mult)
 
-    check_same_system(args.reactant, args.product, react, prod)
+    check_same_system(reactant_pdb, product_pdb, react, prod)
 
     # Not the xTB library: ASH's library path cannot return a QM/MM point-charge
     # gradient and calls ashexit() when asked for one. Parallel images each get their
     # own working directory from ASH, so inputfile mode does not collide.
     qmmm_theory = make_qmmm(qmmm_inputs, mm, react, qm_atoms, boundary_excluded, theory_cores)
 
-    # Active region: --actatoms file, else actradius around actregion_origin, else the QM atoms
-    act_inputs = {**qmmm_inputs, **{k: neb_inputs[k] for k in ("actradius", "actregion_origin") if k in neb_inputs}}
-    actatoms = resolve_actatoms(getattr(args, "actatoms", None), act_inputs, mm, react,
-                                qm_atoms, boundary_excluded)
+    # Active region: actatoms_file, else actradius around actregion_origin, else the QM atoms
+    act_inputs = {**qmmm_inputs, **{k: neb_inputs[k] for k in ACT_KEYS if k in neb_inputs}}
+    actatoms = resolve_actatoms(args.config, act_inputs, mm, react,
+                                qm_atoms, boundary_excluded, reactant_pdb)
+    result.update(actatoms_record(mm, reactant_pdb, actatoms))
     print(f"[INFO] NEB active region: {len(actatoms)} atoms")
 
     keys = NEB_KEYS + (NEBTS_ONLY_KEYS if method == "nebts" else NEB_ONLY_KEYS)

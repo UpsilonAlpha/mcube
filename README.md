@@ -52,16 +52,20 @@ pip install -e .
 mcube preprocess config.yaml
 mcube md config.yaml
 mcube qmmm config.yaml
-mcube scan config.yaml --pdb reactant.pdb --section scan_attack [--actatoms active_atoms]
-mcube neb config.yaml --reactant reactant.pdb --product product.pdb [--section neb_step1] [--actatoms active_atoms] [--cores N]
-mcube ts config.yaml --pdb saddlepoint.pdb [--section ts_step1] [--actatoms active_atoms]
-mcube sp config.yaml --pdb QM_MM_optimized.pdb [--section sp_product]
+mcube scan config.yaml --section scan_attack
+mcube neb config.yaml [--section neb_step1] [--cores N]
+mcube ts config.yaml [--section ts_step1]
+mcube sp config.yaml --section sp_product
 mcube postprocess config.yaml [--qmmm] [--redraw] [--cutoff 2.6] [--metals ZN MG] [--occupancy 0.1]
 mcube umbrella config.yaml {pull|window|energies|wham|stitch} [--window N] [--section S] [--level mm|xtb|dft]
 mcube metadynamics config.yaml {run|fes} [--section S]
 ```
 
 `python -m mcube ...` also works. Every stage writes its files to the current directory, so run each stage from its own working directory. Paths saved in `results` are absolute, so later stages can be run from anywhere.
+
+**No option carries data into a run.** The structures, the active region and every other input live in the named config section, so `config.yaml` alone says what was computed and the same command recomputes it; `--section`, `--qm-section` and `--window` only say which part of the config to use, and `--cores` names a resource. The flags that used to carry data (`--pdb`, `--actatoms`, `--reactant`, `--product`, `--trajectory`) are gone, and argparse refuses them, so a job script that still passes one fails at submit time instead of running on something else. What made this more than tidiness: `md` had always read its structure from `md.inputs.pdb_file` and silently ignored a `--pdb`, so a structure passed on the command line equilibrated `preprocess.results.processed_pdb` instead and the result looked entirely normal.
+
+**Relative paths in `inputs` are read against the config's own directory**, not the directory the stage runs in, so one path means one file whichever stage reads it. (`forcefields` and `default_forcefields` are the exception: OpenMM resolves those itself, relative to the working directory.) Each stage prints the structure it resolved, records where it came from, and pins it into the section, so a rerun cannot quietly resolve it to something else.
 
 `--cores` defaults to `$SLURM_CPUS_PER_TASK` (or 1). The `md`, `qmmm`, `scan` and `ts` stages take their core count from `cores` in the config instead, and `sp` from `sp_cores`.
 
@@ -144,7 +148,7 @@ A stale chain ID fails loudly in some places and silently in others: a `chain:re
 
 | Key | Default | Description |
 | --- | --- | --- |
-| `pdb_file`, `ligand_xml`, `default_forcefields` | from preprocess | Overrides. **`pdb_file` is the only way to give this stage a structure:** it does not read `--pdb`, and raises rather than ignore one, because silently equilibrating `preprocess.results.processed_pdb` instead produces a result that looks entirely normal |
+| `pdb_file`, `ligand_xml`, `default_forcefields` | from preprocess | Overrides. `pdb_file` is the only way to give this stage a structure, as for every other stage; read against the config's directory, and refused with the resolved path if it does not exist, because silently equilibrating `preprocess.results.processed_pdb` instead produces a result that looks entirely normal |
 | `cores` | | OpenMM CPU threads |
 | `platform`, `properties` | `CPU` | OpenMM platform, e.g. `CUDA` with `{Precision: mixed}` on a GPU node (see `docs/running-on-bunya.md`) |
 | `temp` | | Temperature (K) |
@@ -207,15 +211,21 @@ Minimisation always runs, with the metal-site restraints already active. `mcube 
 
 **NEB endpoints must be one system in two geometries.** `neb` refuses a reactant and product that differ in atom count *or in atom order*, naming the first atoms that disagree. The order check matters because NEB interpolates atom *i* of the reactant toward atom *i* of the product: a product with the same atoms in a different order gives a path between atoms that are not counterparts, and it converges anyway. Build the product with `scan` from the reactant — scan writes every point through the reactant's own MM topology, so the order matches by construction. A product solvated or parameterised through its own `preprocess` run will not match, however carefully it was prepared.
 
-`mcube qmmm config.yaml --pdb other.pdb --section qmmm_product` runs the same inputs (overridden by `qmmm_product.inputs`, if given, e.g. `skip_equilibrate: true` or `opt_constraints`) on another structure (e.g. each NEB endpoint) without overwriting the other run's results. `--actatoms FILE` (qmmm, scan, neb and ts) reuses an active-atom list such as the reactant run's `active_atoms`, so both NEB endpoints and the NEB share one active region.
+`mcube qmmm config.yaml --section qmmm_product`, with `qmmm_product.inputs.pdb_file` naming the other structure, runs the same inputs (overridden by `qmmm_product.inputs`, e.g. `skip_equilibrate: true` or `opt_constraints`) on another structure (e.g. each NEB endpoint) without overwriting the other run's results.
+
+**The active region is `actatoms` or `actatoms_from` (qmmm, scan, neb, ts).** `actatoms` is the region itself, written as index ranges — `actatoms: 4203-4634,5001`, one readable line even for a few thousand atoms; a plain YAML list of indices is accepted too. `actatoms_from: <section>` reuses the region that section recorded in its `results.actatoms`, which is how a reactant, a product and the NEB between them share one region; every stage records its own, so running the reactant is enough to point the others at. Sharing matters because `actradius` is measured on each structure separately, so the same radius gives slightly different regions on two endpoints, and two energies computed over different sets of movable atoms are not comparable. (This replaces the `active_atoms` file that `--actatoms` used to point at. ASH still writes that file when `actradius` builds the region; the config records the result.)
+
+A recorded region carries its provenance: next to `results.actatoms` go `actatoms_structure` (the structure it was built on) and `actatoms_fingerprint`, a short hash of the element, residue name and atom name at each of its indices. `actatoms_from` checks the fingerprint against the structure in front of it and refuses when it disagrees, naming both structures. Indices are the one kind of input that can stop matching the structure silently: a frame built by moving a proton between residues shifts every atom between them by one, so saved indices stay valid-looking and name different atoms (that is decision D115, where restraints meant for a zinc held a substrate carbon). An atom count would not catch it — moving a proton leaves the count unchanged — which is why the check is per atom.
 
 `scan`, `neb` and `ts` use `qmmm.inputs` for `charge`, `mult`, `xtb_method`, `forcefields`, `cores` (scan, ts), the QM region and (unless overridden) `actradius`/`actregion_origin`. Each reads its own base section's `inputs` (`scan`, `neb`, `ts`), overridden by the inputs of the `--section` it writes its results to, so several scans or steps can live in one config:
 
 ```yaml
 scan:
   inputs: {points: 16, opt_maxiter: 200}
-scan_attack:            # mcube scan config.yaml --pdb R.pdb --section scan_attack --actatoms active_atoms
-  inputs: {atoms: [4255, 4208], start: 3.0, end: 1.45}
+scan_attack:            # mcube scan config.yaml --section scan_attack
+  inputs: {pdb_file: protdft/qmmm_reactant/QM_MM_optimized.pdb,
+           actatoms_from: qmmm_reactant,
+           atoms: [4255, 4208], start: 3.0, end: 1.45}
 ```
 
 ### `scan.inputs`
@@ -232,7 +242,7 @@ scan_attack:            # mcube scan config.yaml --pdb R.pdb --section scan_atta
 | `constraints` | none | Extra bonds held during the scan, `[[i, j]]` or `[[i, j, d]]` |
 | `opt_maxiter` | 200 | Optimisation steps per point. A point that runs out keeps its last geometry, is marked `converged: false`, and the scan continues. |
 | `monitor` | none | Distances `[[i, j], …]` reported at every point (CSV and results) |
-| `pdb_file` | `qmmm.results.optimized_pdb` | Starting structure (or `--pdb`) |
+| `pdb_file` | `qmmm.results.optimized_pdb` | Starting structure. Read against the config's directory; the resolved path is pinned into the section |
 
 Each point is optimised from the previous one with the scanned distance fixed. Writes `scan_XX.pdb` (full system) and `scan_energies.csv`; `results` (`points` with target/actual distance, energy, kcal/mol relative to point 0, PDB; `max_point`) are saved after every point, so a stopped scan can be continued from its last PDB with a new `start`. It also writes `surface_results.txt` in ASH's own surface format and plots the profile with ASH's `reactionprofile_plot` (1D) or `contourplot` (2D), so the result can be fed to `read_surfacedict_from_file` and `analyze_surface` instead of mcube carrying its own plotting and stationary-point detection. A plotting failure is a warning, never fatal.
 
@@ -245,7 +255,8 @@ Each point is optimised from the previous one with the scanned distance fixed. W
 | `CI`, `maxiter`, `conv_type`, `tol_scale`, `tol_max_fci`, `tol_rms_fci`, `tol_turn_on_ci`, `cichange_freqcheck`, `free_end`, `interpolation`, `idpp_maxiter`, `idpp_springconst`, `restart_file`, `TS_guess_file` | ASH | Passed to ASH's `NEB`/`NEBTS` (ASH defaults: CI on, 100 iterations, tol_max_fci 0.026 / tol_rms_fci 0.013 Eh/Å for NEB, 0.10 / 0.05 for NEBTS, IDPP interpolation) |
 | `springconst`, `springconst2`, `energy_weighted`, `zoom` | ASH | NEB only |
 | `hessian_for_TS`, `partial_hessian_atoms`, `partial_npoint_choice`, `modelhessian`, `tsmode_tangent_threshold`, `OptTS_maxiter`, `OptTS_convergence_setting`, `OptTS_conv_criteria`, `OptTS_coordsystem` | `hessian_for_TS: partial`, else ASH | NEBTS only |
-| `actradius`, `actregion_origin` | qmmm values | Active region. With no radius, only the QM atoms move. |
+| `reactant_pdb`, `product_pdb` | required | The two minima the step runs between. Both are keys, not arguments, and neither has a default: the two structures are the step the barrier belongs to, so nothing else would record which barrier was computed. Read against the config's directory and pinned into the section. |
+| `actatoms`, `actatoms_from`, `actradius`, `actregion_origin` | qmmm values | Active region. With none of them, only the QM atoms move. Use `actatoms_from` to share the endpoints' region. |
 | `numfreq` | `true` | Numerical frequencies on the saddle point |
 | `hessian_atoms` | QM atoms | Atoms in the frequency calculation (cost ≈ 6 gradients per atom) |
 
@@ -257,7 +268,7 @@ Each point is optimised from the previous one with the scanned distance fixed. W
 
 | Key | Default | Description |
 | --- | --- | --- |
-| `pdb_file` | `neb.results.saddlepoint_pdb` | TS guess (or `--pdb`) |
+| `pdb_file` | `neb.results.saddlepoint_pdb` | TS guess. Read against the config's directory; the resolved path is pinned into the section |
 | `hessian_atoms` | QM atoms | Atoms with an exact (numerical) Hessian, for the TS optimisation and the frequency check. The reacting atoms and their neighbours are enough; cost ≈ 3 (npoint 1) or 6 (npoint 2) gradients per atom. |
 | `monitor` | none | `[[i, j], …]` distances reported for the guess, the TS and both IRC ends |
 | `tsopt` | `true` | geomeTRIC TS optimisation; the rest of the active region's Hessian comes from `modelhessian` (`unit`, `Almloef`, `Lindh`, `Schlegel`, `xtb`) |
@@ -286,8 +297,9 @@ separately.
 Inputs are read from `qmmm.inputs`, then `sp.inputs`, then the `--section`
 inputs, so the force fields, charge, multiplicity and QM region are inherited
 from the model being scored and only the level and the resources need stating.
-A structure is required — `--pdb` or `pdb_file` — because there is no sensible
-default geometry for a single point.
+A structure is required — `pdb_file` in the section's inputs — because there is
+no sensible default geometry for a single point: silently scoring the last MD
+frame would score the wrong thing.
 
 | Key | Default | Description |
 | --- | --- | --- |
@@ -305,7 +317,7 @@ default geometry for a single point.
 ```bash
 # the usual pair: xTB QM/MM on a modest allocation, then the SCF on a big one
 sbatch --cpus-per-task=8  --mem=24G  ... mcube qmmm config.yaml --section qmmm_reactant
-sbatch --cpus-per-task=64 --mem=192G ... mcube sp   config.yaml --section sp_reactant        --pdb protdft/qmmm_reactant/QM_MM_optimized.pdb
+sbatch --cpus-per-task=64 --mem=192G ... mcube sp   config.yaml --section sp_reactant        # sp_reactant.inputs.pdb_file
 ```
 
 ### `umbrella.inputs` (optional section)
@@ -467,7 +479,7 @@ All are in `scripts/`:
 - `nucleophile_candidates.py <top.pdb> <traj.dcd> --carbon C:1:C4x --oxygen C:1:O2x [--metal ..] [--base ..] [--extra ..]`: candidate nucleophile oxygens (all waters + extras) near an electrophilic carbon: distance, attack angle, metal binding and H-bonds to base candidates per frame, summarised per candidate
 - `contact_report.py <topology.pdb> <traj.dcd> --target SEL --sel SEL [--cutoff 3.5] [--near 10] [--frames list]`: polar contacts between chosen residues and a target group, with occupancy (optionally on a subset of frames)
 - `strip_solvent.py <in.pdb> <out.pdb> [--keep D] [--keep C:2]`: removes bulk water and monatomic ions (keeping chosen chains/residues) so an MD end point can be the next `preprocess.inputs.protein_pdb`
-- `extract_frames.py <topology.pdb> <traj.dcd> --frames 300 400 -1`: writes chosen frames as full-system PDBs (same atom order and ids, the frame's own box in CRYST1), e.g. as `mcube qmmm --pdb` inputs
+- `extract_frames.py <topology.pdb> <traj.dcd> --frames 300 400 -1`: writes chosen frames as full-system PDBs (same atom order and ids, the frame's own box in CRYST1), to name in a section's `pdb_file`
 - `d3_correction.py <structure.pdb> config.yaml [--section S] [--method wb97x] [--damping d3bj]`: post-SCF DFT-D3 energy of the QM region (QM atoms + ASH-style link atoms), to add to single points run without dispersion
 - `check_bonds.py <topology.pdb> <traj.dcd> --config config.yaml [--tol 0.25] [--contact 1.75]`: checks that bond geometry in the QM region (or `--sel`) is preserved: stretched bonds, new heavy-atom contacts and proton transfers per frame, with an `intact` flag per frame in `bond_frames.csv`
 - `membrane_report.py <topology.pdb> <traj.dcd ...> --out PREFIX [--receptor A] [--partner B] [--site RES ...] [--core-exclude LO-HI] [--footprint FILE] [--track N=RES] [--distance N=R1,R2] [--angle N=R1,R2,R3]`: membrane health per frame for any membrane run (box, area per lipid, P-P thickness, leaflet imbalance, lipids and water inside the bundle). With a receptor and a partner chain it adds the partner's pose: RMSF in the receptor frame and internal, RMSD, drift, contacts and their retention, and occupancy of chosen receptor residues and of a reference contact set (`--write-footprint` on a reference run writes one). Receptor readouts are named on the command line, so the same call works for any protein.

@@ -24,6 +24,7 @@ from .preprocess import (
     save_result,
     load_section,
     resolve_atoms,
+    config_relative,
 )
 from . import ions
 from . import membrane as membrane_mod
@@ -271,25 +272,22 @@ def run(args) -> Dict[str, Any]:
     if section != "md":
         print(f"[INFO] md.inputs overridden by {section}.inputs; results -> {section}")
 
-    pdb_file = inputs.get("pdb_file")
-    if pdb_file is None:
-        pdb_file = preprocess["results"]["processed_pdb"]
-
-    # This stage takes its structure from the config, not from --pdb, unlike
-    # qmmm and everything after it. Ignoring one silently would run the whole
-    # equilibration on preprocess's own output instead, and the result would
-    # look entirely normal.
-    given = getattr(args, "pdb", None)
-    if given and Path(given).resolve() != Path(pdb_file).resolve():
-        raise ValueError(
-            f"md takes its starting structure from the config, so --pdb "
-            f"{given} would be ignored and {pdb_file} used instead. Set "
-            f"`{section}.inputs.pdb_file` to the structure you want.")
-
     membrane = md_membrane(inputs, preprocess)
     if membrane and inputs.get("implicit"):
         raise ValueError("`membrane` and `implicit` cannot both be set in the md inputs: a bilayer "
                          "needs an explicit, periodic box.")
+
+    # Relative to the config, not to the directory the job script runs the stage
+    # in: the same `pdb_file` then means the same file for every stage.
+    pdb_file = config_relative(args.config, inputs.get("pdb_file"))
+    if pdb_file is None:
+        pdb_file = preprocess["results"]["processed_pdb"]
+    elif not Path(pdb_file).is_file():
+        raise FileNotFoundError(
+            f"{section}.inputs.pdb_file does not exist: {pdb_file}. Paths in "
+            f"`inputs` are read against the config's directory "
+            f"({Path(args.config).resolve().parent}), not the directory the "
+            "stage runs in.")
 
     restraints, detected = md_restraints(inputs, preprocess, pdb_file)
     if restraints:

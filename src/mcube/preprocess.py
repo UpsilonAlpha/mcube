@@ -6,12 +6,13 @@ Protein/Ligand preprocessing utilities (pipeline-ready).
 from __future__ import annotations
 
 import argparse
+import hashlib
 import math
 import yaml
 import os
 import shutil
 from contextlib import contextmanager
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, List, Tuple
 from pathlib import Path
 from datetime import datetime
 
@@ -195,6 +196,112 @@ def load_section(filename: str, section: str) -> Dict[str, Any]:
         data = yaml.safe_load(f) or {}
 
     return data.get(section, {})
+
+
+def config_relative(config: str, value) -> str:
+    """A path from the config, resolved against the config's own directory.
+
+    Every stage is launched from its output directory (`md_<section>_results/`
+    or `protdft/<section>/`), so a relative path in `inputs` used to mean
+    "relative to wherever this stage happens to run" - and the same key then
+    meant different files for `md` and for `qmmm`. Reading it relative to the
+    config instead makes a path mean one thing wherever it is written and
+    wherever the job script cd's to, which is the point of keeping the run in
+    the config. Absolute paths are left alone.
+    """
+    if value is None:
+        return None
+    path = Path(value)
+    if path.is_absolute():
+        return path.as_posix()
+    return (Path(config).resolve().parent / path).as_posix()
+
+
+def format_atom_ranges(atoms) -> str:
+    """[4203, 4204, 4205, 5001] -> "4203-4205,5001".
+
+    An active region is a few hundred to a few thousand indices. Written out as
+    a YAML list that is one line per atom and unreadable, which is why the list
+    used to live in a file beside the run instead of in the config. Collapsed to
+    runs it is a single line a reader can take in, so it can be a config value
+    like anything else.
+    """
+    out, atoms = [], sorted({int(a) for a in atoms})
+    start = previous = None
+    for atom in atoms + [None]:
+        if previous is not None and atom == previous + 1:
+            previous = atom
+            continue
+        if start is not None:
+            out.append(str(start) if start == previous else f"{start}-{previous}")
+        start = previous = atom
+    return ",".join(out)
+
+
+def atom_fingerprint(topology, indices) -> str:
+    """A short hash of what the atoms at `indices` actually are.
+
+    An index list saved in the config stays syntactically valid while the
+    structure under it changes, and nothing in the list says which structure it
+    was derived from. That is how D115 happened: a frame built by moving one
+    proton between residues shifted every atom between them by one, saved
+    coordination indices were applied verbatim to it, and the run restrained a
+    substrate carbon as the metal and reported it as such.
+
+    An atom count would not have caught that - moving a proton leaves the count
+    unchanged - so the hash covers element, residue name and atom name at each
+    index, plus the system's atom count. Twelve hex characters is one config line
+    whatever the region's size.
+    """
+    if isinstance(topology, (str, Path)):
+        topology = PDBFile(str(topology)).topology
+    atoms = list(topology.atoms())
+    parts = [str(len(atoms))]
+    for index in indices:
+        i = int(index)
+        if i >= len(atoms) or i < 0:
+            raise ValueError(
+                f"atom index {i} is outside this structure, which has "
+                f"{len(atoms)} atoms: the indices were derived from a different "
+                "structure.")
+        atom = atoms[i]
+        element = atom.element.symbol if atom.element is not None else "?"
+        parts.append(f"{i}:{element}:{atom.residue.name}:{atom.name}")
+    return hashlib.sha1("|".join(parts).encode()).hexdigest()[:12]
+
+
+def parse_atom_ranges(value, what: str = "atoms") -> List[int]:
+    """"4203-4205,5001", [4203, "4204-4205"] or [4203, 4204] -> [4203, 4204, 4205].
+
+    Accepts whatever `format_atom_ranges` writes, a plain YAML list of indices,
+    and any mixture, so a region can be pasted between sections by hand.
+    """
+    items = value if isinstance(value, (list, tuple)) else str(value).split(",")
+    atoms: List[int] = []
+    for item in items:
+        if isinstance(item, bool):
+            raise ValueError(f"{what}: {item!r} is not an atom index")
+        if isinstance(item, int):
+            atoms.append(item)
+            continue
+        for part in str(item).split(","):
+            part = part.strip()
+            if not part:
+                continue
+            first, _, last = part.partition("-")
+            try:
+                lo = int(first)
+                hi = int(last) if last else lo
+            except ValueError:
+                raise ValueError(
+                    f"{what}: {part!r} is not an atom index or an `i-j` range. "
+                    "Active regions are written as indices, e.g. "
+                    "`4203-4634,5001`; name atoms by selector in "
+                    "`actregion_origin` instead.") from None
+            if hi < lo:
+                raise ValueError(f"{what}: range {part!r} counts backwards")
+            atoms.extend(range(lo, hi + 1))
+    return sorted(set(atoms))
 
 
 def pdb_resseq(field: str) -> int:

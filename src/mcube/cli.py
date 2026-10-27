@@ -85,6 +85,19 @@ def env_exports(config: str, stage: str, section: str | None = None) -> str:
     return "\n".join(lines) + "\n"
 
 
+# Nothing that changes a result is an option here: the structures, the active
+# region and every other input live in the named config section, so `config.yaml`
+# alone says what was computed and a rerun of the same command reproduces it.
+# Options only address the config (`--section`, `--qm-section`, `--window`) or
+# name a resource (`--cores`). The one that bit us: `md` had always read its
+# structure from `md.inputs.pdb_file` and silently ignored `--pdb`, so a
+# structure passed on the command line equilibrated the wrong file and the
+# result looked entirely normal.
+#
+# Still outstanding, for the same reason: umbrella's `--level`, `--stride`,
+# `--reweight` and `--bootstrap`, and postprocess's `--cutoff`, `--metals`,
+# `--spring_constant`, `--iterations` and `--occupancy`. Each of those changes
+# the number that comes out, so each belongs in the stage's own inputs too.
 def build_parser():
     parser = argparse.ArgumentParser(prog="mcube")
 
@@ -99,15 +112,12 @@ def build_parser():
 
     p3 = subparsers.add_parser("qmmm", help="Run QM/MM")
     p3.add_argument("config", help="Input yaml file")
-    p3.add_argument("--pdb", help="Starting structure (overrides qmmm.inputs.pdb_file)")
     p3.add_argument("--section", default="qmmm", help="Config section to write results to")
-    p3.add_argument("--actatoms", help="File of active-atom indices (e.g. another run's active_atoms)")
 
     # The single point is a separate stage from qmmm because a DFT SCF scales
     # across cores while the xTB MD in front of it does not: see sp.py.
     p9 = subparsers.add_parser("sp", help="QM/MM single point (PySCF) on a finished geometry")
     p9.add_argument("config", help="Input yaml file")
-    p9.add_argument("--pdb", help="Structure to score (e.g. a stage's QM_MM_optimized.pdb)")
     p9.add_argument("--section", default="sp", help="Config section to write results to")
 
     # Not a stage: prints the thread settings a job script should apply for a
@@ -123,9 +133,6 @@ def build_parser():
     p4 = subparsers.add_parser("neb", help="Nudged elastic band simulation")
 
     p4.add_argument("config", help="Input yaml file")
-    p4.add_argument("--product", required=True, help="Product PDB file")
-    p4.add_argument("--reactant", required=True, help="Reactant PDB file")
-    p4.add_argument("--actatoms", help="File of active-atom indices (e.g. the reactant's active_atoms)")
     p4.add_argument("--section", default="neb",
                     help="Config section for results; its inputs override neb.inputs")
     p4.add_argument("--cores", type=int, default=int(os.environ.get("SLURM_CPUS_PER_TASK", 1)))
@@ -135,17 +142,13 @@ def build_parser():
     # =========================================================
     p6 = subparsers.add_parser("scan", help="Relaxed QM/MM distance scan")
     p6.add_argument("config", help="Input yaml file")
-    p6.add_argument("--pdb", help="Starting structure (e.g. the reactant's QM_MM_optimized.pdb)")
     p6.add_argument("--section", default="scan",
                     help="Config section defining the scan (its inputs override scan.inputs) and receiving results")
-    p6.add_argument("--actatoms", help="File of active-atom indices (e.g. the reactant's active_atoms)")
 
     p7 = subparsers.add_parser("ts", help="TS optimisation, frequency check and IRC")
     p7.add_argument("config", help="Input yaml file")
-    p7.add_argument("--pdb", help="TS guess (e.g. the NEB's saddlepoint.pdb)")
     p7.add_argument("--section", default="ts",
                     help="Config section for results; its inputs override ts.inputs")
-    p7.add_argument("--actatoms", help="File of active-atom indices (e.g. the reactant's active_atoms)")
 
     # =========================================================
     # UMBRELLA SAMPLING
@@ -181,7 +184,6 @@ def build_parser():
     p5 = subparsers.add_parser("postprocess", help="Analyse trajectory")
 
     p5.add_argument("config", help="Input yaml file")
-    p5.add_argument("--trajectory", help="DCD file")
     p5.add_argument("--cutoff", type=float, default=2.6)
     p5.add_argument("--cores", type=int, default=int(os.environ.get("SLURM_CPUS_PER_TASK", 1)))
     p5.add_argument("--metals", nargs="+", default=["ZN"])

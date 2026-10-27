@@ -39,7 +39,7 @@ taken from `ts.inputs`):
                                      # minimisations (QM waters are always left free)
 
 Charge, multiplicity, force fields, xTB settings, cores and the active region
-come from qmmm.inputs; use --actatoms with the reactant's active_atoms.
+come from qmmm.inputs; set `actatoms_file` to the reactant's active_atoms.
 """
 
 from __future__ import annotations
@@ -50,7 +50,7 @@ from typing import Dict, Any, List
 
 import numpy as np
 
-from .preprocess import resolve_cores, save_result, load_section
+from .preprocess import resolve_cores, save_result, save_input, load_section
 from .qmmm import (
     apply_stage_metal_parameters,
     resolve_qm_region,
@@ -58,7 +58,10 @@ from .qmmm import (
     mm_settings,
     make_mm,
     make_qmmm,
+    ACT_KEYS,
+    actatoms_record,
     resolve_actatoms,
+    resolve_start_structure,
     distance,
     check_in_active,
     water_constraints,
@@ -109,10 +112,13 @@ def run(args) -> Dict[str, Any]:
     result["qm_level"] = qm_level_label(qmmm_inputs)
     qmmm_inputs = qm_level_inputs(qmmm_inputs, inputs)  # qm_engine/dft_* may be set per section
 
-    pdb_file = getattr(args, "pdb", None) or inputs.get("pdb_file") or \
-        (load_section(args.config, "neb").get("results") or {}).get("saddlepoint_pdb")
-    if pdb_file is None:
-        raise ValueError("No TS guess: give --pdb (e.g. the NEB's saddlepoint.pdb)")
+    pdb_file, pdb_source = resolve_start_structure(
+        args.config, section, inputs,
+        [((load_section(args.config, "neb").get("results") or {}).get("saddlepoint_pdb"),
+          "neb.results.saddlepoint_pdb")], stage="ts", what="TS guess")
+    print(f"[INFO] TS guess: {pdb_file} (from {pdb_source})")
+    if not inputs.get("pdb_file"):
+        save_input(args.config, section, "pdb_file", pdb_file)
 
     charge, mult = qmmm_inputs.get("charge"), qmmm_inputs.get("mult")
     cores = resolve_cores(inputs.get("cores", qmmm_inputs.get("cores")))
@@ -137,9 +143,10 @@ def run(args) -> Dict[str, Any]:
                             cores // workers if workers > 1 else cores,
                             )   # not 'library': no QM/MM point-charge gradient there
 
-    act_inputs = {**qmmm_inputs, **{k: inputs[k] for k in ("actradius", "actregion_origin") if k in inputs}}
-    actatoms = resolve_actatoms(getattr(args, "actatoms", None), act_inputs, mm, fragment,
-                                qm_atoms, boundary_excluded)
+    act_inputs = {**qmmm_inputs, **{k: inputs[k] for k in ACT_KEYS if k in inputs}}
+    actatoms = resolve_actatoms(args.config, act_inputs, mm, fragment,
+                                qm_atoms, boundary_excluded, pdb_file)
+    result.update(actatoms_record(mm, pdb_file, actatoms))
     hessatoms: List[int] = [int(a) for a in (inputs.get("hessian_atoms") or qm_atoms)]
     monitor = inputs.get("monitor") or []
     check_in_active([[a, a] for a in hessatoms], actatoms, "hessian_atoms")
