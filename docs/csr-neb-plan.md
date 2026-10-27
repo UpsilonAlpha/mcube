@@ -13,7 +13,7 @@ Zn1.
 **Central hypothesis (D107).** Arg90 and Lys226 together supply, as two
 monovalent cations, the **+2 that the absent Zn2 would have carried**. They do
 Zn2's substrate-anchoring job electrostatically - Lys226 salt-bridges the C3
-carboxylate (2.61 A at closest over the QM/MM trajectory), Arg90 holds the
+carboxylate (2.61 A at closest over `nacqm`'s 50 ps - but **this opens to 4.26 A over the following 50 ps and no cation holds the substrate at all; see D111**), Arg90 holds the
 6-alpha-hydroxyethyl in 99% of frames - while being unable to do its catalytic
 jobs: lowering the nucleophile's pKa and stabilising the anionic nitrogen. That
 would account for CSR-1 binding broadly and turning over poorly.
@@ -53,10 +53,13 @@ How each question is answered:
 - **Per-residue contributions** (as Imhof did for Lys92 in EcoRV): recompute each path's energies with the charges of Lys226, Arg90, Arg229 and Asp92 zeroed in turn, then optimise the path again with the residue removed or neutralised for the important cases.
 - **Where they sit at the start.** The two models disagree about Lys226, which is
   why D107 measured it over a trajectory rather than in one frame:
-  - Arg90 and Arg229 hold the 6α-hydroxyethyl and C2 side chain (D29, 99%/89%);
+  - Arg90 and Arg229 hold the 6α-hydroxyethyl and C2 side chain (D29, 99%/89%)
+    — **in classical MD. Under QM/MM neither keeps a 3.5 Å contact with the
+    substrate in any frame** (D111), so this bullet describes the force field;
   - Asp92 binds the Zn and H-bonds both water oxygens (D29, 99.5%/100%);
   - Lys226 is **2.7 Å from O01 in `CSR_crystal_v2`** (D29) but **5.6-7.3 Å from it
-    in `CSR_nac`**, where it instead salt-bridges the C3 carboxylate at 2.61 Å and
+    in `CSR_nac`**, where it salt-bridges the C3 carboxylate at 2.61 Å over the
+    first 50 ps, loses that contact over the next 50 ps (D111), and
     never comes within 4.7 Å of the leaving nitrogen (D107). Any claim about its
     role has to say which model it refers to.
 
