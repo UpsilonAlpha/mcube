@@ -275,6 +275,17 @@ def run(args) -> Dict[str, Any]:
     if pdb_file is None:
         pdb_file = preprocess["results"]["processed_pdb"]
 
+    # This stage takes its structure from the config, not from --pdb, unlike
+    # qmmm and everything after it. Ignoring one silently would run the whole
+    # equilibration on preprocess's own output instead, and the result would
+    # look entirely normal.
+    given = getattr(args, "pdb", None)
+    if given and Path(given).resolve() != Path(pdb_file).resolve():
+        raise ValueError(
+            f"md takes its starting structure from the config, so --pdb "
+            f"{given} would be ignored and {pdb_file} used instead. Set "
+            f"`{section}.inputs.pdb_file` to the structure you want.")
+
     membrane = md_membrane(inputs, preprocess)
     if membrane and inputs.get("implicit"):
         raise ValueError("`membrane` and `implicit` cannot both be set in the md inputs: a bilayer "

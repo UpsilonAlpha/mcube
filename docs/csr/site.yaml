@@ -195,71 +195,88 @@ sections:
       platform: CUDA
       properties: {Precision: mixed}
 
-  # ---- The ohH arm of the protonation test (D112, M0). ----
+  # ---- The ohH arm of the protonation test (D112, M0, D114). ----
   #
-  # The same site with the proton moved from Lys226 NZ onto the nucleophile, so
-  # that the test VIM-2 used can be run here: equilibrate each protonation state
-  # and keep the one that holds the active site the crystal shows (Protocols for
-  # Metallo- and Serine-beta-Lactamase Free Energy Predictions, J Phys Chem B
-  # 2024, 128:12416, PMC11664573 - they ran 100 ps of QM/MM MD per state and
-  # judged by zinc coordination against the crystal, not by an energy).
+  # The same site with the proton moved from Lys226 NZ onto the nucleophile, to
+  # run the test VIM-2 used: equilibrate each protonation state and keep the one
+  # that holds the active site the crystal shows (J Phys Chem B 2024, 128:12416,
+  # PMC11664573 - 100 ps of QM/MM MD per state, judged by zinc coordination
+  # against the crystal, not by an energy). Imhof decides protonation the same
+  # way, by whether a state is a stable minimum: "all attempts to move protons
+  # from Lys92 to the metaphosphate failed".
   #
-  # The lysH arm is already run: naclong's 100 ns plus nacqm and nacarg's 100 ps
-  # of QM/MM, which lose the substrate entirely (D111). This is the other arm.
-  # It is NOT `protH_oh` below: that pins HZ1 next to O01 while the MM bond to
-  # Lys226 NZ is still there, which is fine for a constrained optimisation and
-  # useless for free dynamics - the constraint would be doing the work.
+  # Both arms start from `md_naclong`'s 100 ns lastframe - the frame `nacqm`
+  # itself started from, at O01-C4x 3.33 A and 101 degrees - so they differ by
+  # where one hydrogen sits and in nothing else. There is no fresh preprocess
+  # and no second 100 ns. The lysH arm is `nacqm` (50 ps) continued by
+  # `qmmm_nacarg` (50 ps), which loses the substrate entirely (D111).
   #
-  # Needs its own directory and preprocess (as CSR_nac did, D98). Build the
-  # input with
+  # Build the frame with
   #
-  #   python make_water_nuc.py csr_crystal_start.pdb csr_crystal_start_ohH.pdb
+  #   python make_water_nuc.py <naclong lastframe> ohH_start.pdb \
+  #          --lys A:226 --floor 1.2
   #
-  # then copy CSR_nac's config and change preprocess.inputs in three places:
+  # which adds H04, renames the residue OH -> NUW, and removes Lys226's HZ3.
+  # One hydrogen leaves the lysine and one joins the nucleophile, so the atom
+  # count, the total charge and the QM charge of +3 are all unchanged. The
+  # lysine keeps the name LYS deliberately: OpenMM matches LYN by bond graph,
+  # whereas renaming it would make `build_qm_region` treat it as non-standard,
+  # because this config's `amino_acids` list overrides mcube's default and omits
+  # LYN, and put its whole backbone in the QM region.
   #
-  #   protein_pdb:      ./csr_crystal_start_ohH.pdb
-  #   forcefields:      ../water_nuc.xml replacing ../hydroxide.xml
-  #   residue_variants: add  226: LYN   to the existing HIS variants
-  #
-  # and nothing else. LYN is OpenMM's neutral lysine and drops HZ3, so the two
-  # systems have the same atom count, the same total charge, and the same QM
-  # charge of +3 with Arg229 - the arms differ by where one hydrogen sits.
-  # `pH` is left unset: preprocess defaults to 8.0 on the explicit-solvent path,
-  # which is the assay pH, and pH 7 and 8 are in any case identical under
-  # OpenMM's thresholds (ASP/GLU 4.4, CYS 8.5, LYS 10.0, HIS 6.5).
-  ohHmd:
+  # `--floor 1.2` is needed because the best clearance any water orientation
+  # achieves at that oxygen is 1.71 A: the restrained equilibration held O01 at
+  # 3.47 A from C4x and pressed the hydroxide against meropenem, so the position
+  # has room for one hydrogen rather than two. Hence the minimisation below.
+
+  # Minimisation only - no warm-up, no NPT, no production. `gentle` is off by
+  # default and these two flags drop the rest, so the stage runs OpenMM_Opt and
+  # stops, reporting the coordination sphere either side of it. That is also
+  # the check we want: whether the zinc sphere survives adding the proton.
+  # Minutes on a GPU. The restraints are the same as naclong's, so the
+  # nucleophile is held in place while the clash relaxes rather than drifting.
+  ohHmin:
     stage: md
+    start: md_naclong_results/ohH_start.pdb
     inputs:
+      # Paths in `inputs` resolve from the stage's own output directory, which
+      # for md is `md_ohHmin_results/`, so they are one level deeper than
+      # `start` - which run.slurm resolves against the config directory before
+      # it changes into that output directory. And md reads its structure from
+      # the config rather than from --pdb, so this key is not optional.
+      pdb_file: ../md_naclong_results/ohH_start.pdb
+      default_forcefields:
+        - amber14/protein.ff14SB.xml
+        - amber14/tip3p.xml
+        - ../water_nuc.xml          # not hydroxide.xml: the nucleophile is a water
       restraints:
-        - [C:2:O01, C:1:C4x, 3.47]   # as naclong, so the arms start alike
-      nvt_time: 100000          # ps, matching naclong exactly
-      traj_frequency: 5000
-      timestep: 0.002           # see below
+        - [C:2:O01, C:1:C4x, 3.47]
+      skip_npt: true
+      skip_nvt: true
       platform: CUDA
       properties: {Precision: mixed}
 
-  # Why 2 fs where naclong used 4. `rigidWater` recognises residues named HOH
-  # and not NUW, so the nucleophile's H-O-H angle is flexible here while bulk
-  # water's is constrained (checked against OpenMM, not assumed). With HBonds
-  # constraining the O-H bonds the angle is the only free mode, and at ~21 fs
-  # it is too fast for a 4 fs step. Doubles the GPU time to about 13 h at the
-  # rate D100 measured, which is cheap next to getting the comparison wrong.
-  # The qmmm stage builds its MM system with rigidwater=False and
-  # autoconstraints=None, so the nucleophile is entirely free there - which is
-  # what lets the proton move during QM/MM MD.
-
-  # 50 ps first, as the user asked, then another 50 by changing `time` to 100
-  # and resubmitting this same section: `resume: true` restores ASH's state file
-  # and runs only the remainder (D109). On the first run there is nothing to
-  # resume from, so it says so and starts fresh. No `start` or `pdb_file`: the
-  # stage falls back to this config's own `md.results.lastframe`, which is what
-  # we want, and records which structure it used.
-  ohHqm:
+  # 50 ps, then another 50 by changing `time` to 100 and resubmitting this same
+  # section: `resume: true` restores ASH's state file and runs only the
+  # remainder (D109). `extra_qm_residues` is not optional here even though
+  # Arg229 is also wanted for its own sake - without it `resolve_qm_region`
+  # falls through to preprocess's saved atom *indices*, which are stale against
+  # a frame where one hydrogen has moved. With it, the region is rebuilt from
+  # residues on the actual file.
+  ohH:
     stage: qmmm
+    start: md_ohHmin_results/frag-minimized.pdb
     inputs:
+      # Two levels deep here: a qmmm stage runs in `protdft/qmmm_ohH/`.
+      pdb_file: ../../md_ohHmin_results/frag-minimized.pdb
+      forcefields:
+        - amber14/protein.ff14SB.xml
+        - amber14/tip3p.xml
+        - ../../water_nuc.xml
+        - ../../preprocess_results/openff_MER.xml
       extra_qm_residues:
         A: [229]
-      charge: 3                  # unchanged: the proton moved inside the QM region
+      charge: 3                 # unchanged: the proton moved inside the QM region
       skip_equilibrate: false
       skip_optimize: true
       time: 50

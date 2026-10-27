@@ -27,6 +27,14 @@ whichever side points further from the metal. That is a geometric choice, not a
 mechanistic one - it does not aim the new proton at Asp92 or at anything else,
 and the first picoseconds of QM/MM are what actually settle it.
 
+`--floor A` sets how much clearance the new hydrogens need (default 1.9). What
+counts as acceptable depends on what runs next: going straight into MD wants
+real room, while a minimisation first only needs the contact to be recoverable.
+In naclong's frame the best any water orientation achieves is 1.71 A - the
+restrained equilibration pressed the hydroxide against meropenem, and that
+oxygen position has room for one hydrogen rather than two - so that arm
+minimises before the QM/MM MD, which is what VIM-2 did for each of its states.
+
 Refuses rather than guesses: missing atoms, a degenerate Zn-O01-H03 geometry, or
 a placement that lands on top of an existing atom all raise. The last matters
 because a hydrogen dropped into a clash looks fine in a PDB and blows up a
@@ -205,6 +213,21 @@ def parse_lys(spec):
 
 def main(argv):
     lys = None
+    floor = CLASH
+    if "--floor" in argv:
+        at = argv.index("--floor")
+        if at + 1 >= len(argv):
+            raise SystemExit("--floor needs a distance in angstroms")
+        try:
+            floor = float(argv[at + 1])
+        except ValueError:
+            raise SystemExit(f"--floor wants a number, not {argv[at + 1]!r}")
+        if floor < 1.0:
+            raise SystemExit(
+                f"--floor {floor} is below 1.0 A. A contact that tight is not "
+                "a clash to be minimised away, it is two atoms on top of each "
+                "other.")
+        argv = argv[:at] + argv[at + 2:]
     if "--lys" in argv:
         at = argv.index("--lys")
         if at + 1 >= len(argv):
@@ -282,17 +305,17 @@ def main(argv):
         raise SystemExit(f"{src} holds nothing but the nucleophile.")
     h04, clearance, key, phi = place_h04(zn, o01, h03, others)
     h03_new = None
-    if clearance < CLASH:
+    if clearance < floor:
         print(f"[INFO] Every position on the cone clashes - the best is "
-              f"{clearance:.2f} A from {':'.join(key)}, inside the {CLASH} A "
+              f"{clearance:.2f} A from {':'.join(key)}, inside the {floor} A "
               "cutoff. The hydroxide is pressed against its surroundings, so "
               "reorienting the whole water with the oxygen fixed.")
-        found = reorient_water(zn, o01, h03, others, CLASH)
+        found = reorient_water(zn, o01, h03, others, floor)
         _, clearance, h03_new, h04 = found
-        if clearance < CLASH:
+        if clearance < floor:
             raise SystemExit(
                 f"the best orientation of a water at O01 clears only "
-                f"{clearance:.2f} A, against a {CLASH} A cutoff. The "
+                f"{clearance:.2f} A, against a {floor} A cutoff. The "
                 "nucleophile position itself has no room for two "
                 "hydrogens in this frame, so it needs relaxing before the "
                 "proton is added - a minimisation, as VIM-2 ran for each "

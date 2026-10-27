@@ -338,3 +338,40 @@ def test_without_lys_the_lysine_is_left_alone(mod, lysH_lysine, tmp_path):
     out = tmp_path / "out.pdb"
     mod.main([str(lysH_lysine), str(out)])
     assert "HZ3" in out.read_text()
+
+
+# ---- the clearance floor ----------------------------------------------------
+
+def test_floor_lets_a_tight_but_recoverable_contact_through(mod, tmp_path):
+    """naclong's frame achieves 1.71 A at best. That is too tight to walk
+    straight into MD but fine to minimise away, so the acceptable clearance is
+    an argument rather than a constant."""
+    zn, o01, h03 = (0.0, 0.0, 0.0), (1.9, 0.0, 0.0), (2.4, 0.83, 0.0)
+    ring = []
+    for _, xyz in mod.cone_positions(o01, h03, steps=12):
+        direction = mod.unit(mod.sub(xyz, o01))
+        ring.append(tuple(o + 2.6 * d for o, d in zip(o01, direction)))
+    lines = [
+        pdb_line(1, "ZN", "ZN", "B", "1", zn),
+        pdb_line(2, "O01", "OH", "C", "2", o01),
+        pdb_line(3, "H03", "OH", "C", "2", h03),
+    ] + [
+        pdb_line(4 + i, "C", "LIG", "X", "9", xyz)
+        for i, xyz in enumerate(ring)
+    ] + ["CONECT    2    3\n", "END\n"]
+    src = tmp_path / "tight.pdb"
+    src.write_text("".join(lines))
+    out = tmp_path / "out.pdb"
+    mod.main([str(src), str(out), "--floor", "1.2"])
+    assert out.exists()
+
+
+def test_a_floor_below_one_angstrom_is_refused(mod, lysH, tmp_path):
+    """Below 1 A it is not a clash to minimise away, it is an overlap."""
+    with pytest.raises(SystemExit, match="below 1.0 A"):
+        mod.main([str(lysH), str(tmp_path / "out.pdb"), "--floor", "0.5"])
+
+
+def test_a_non_numeric_floor_is_refused(mod, lysH, tmp_path):
+    with pytest.raises(SystemExit, match="wants a number"):
+        mod.main([str(lysH), str(tmp_path / "out.pdb"), "--floor", "tight"])
