@@ -303,7 +303,8 @@ def run(args):
     report["meta"] = meta
     if report.setdefault("opt_eps", args.opt_eps) != args.opt_eps:
         raise SystemExit(f"{site} was optimised with opt_eps {report['opt_eps']}; use a fresh site directory")
-    if report.setdefault("solvation", "pcm") != args.solvation:
+    # reports from before --solvation existed are PCM; a fresh one takes this run's
+    if report.setdefault("solvation", "pcm" if report.get("species") else args.solvation) != args.solvation:
         raise SystemExit(f"{site} has {report['solvation']} energies; for {args.solvation} use a copy of it "
                          "without the solvated entries (see --solvation)")
     sp = report.setdefault("species", {})
@@ -355,7 +356,7 @@ def calibrate(args):
     out = Path(args.out); out.mkdir(parents=True, exist_ok=True)
     rpath = out / "report.json"
     report = load_report(rpath)
-    if report.setdefault("solvation", "pcm") != args.solvation:
+    if report.setdefault("solvation", "pcm" if report.get("species") else args.solvation) != args.solvation:
         raise SystemExit(f"{out} has {report['solvation']} energies; use a fresh --out for {args.solvation}")
     sp = report.setdefault("species", {})
     water = WATER
