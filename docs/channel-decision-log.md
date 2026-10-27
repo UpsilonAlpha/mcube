@@ -1013,6 +1013,29 @@ blocks 30576666/67 held; the Ca jobs run)
 
     (Ref. 5 lists only the initials PMC shows; middle initials are not checked. The 2005 JACS pages are from the
     Academia Sinica repository record.)
+- **Second ring site: `la_def_ring_p4c`** (La frame, default C4; Glu156 + Glu240 coordinating, Glu220/300 frozen;
+  pocket −4, n = 2, 6 waters; all three ions converged). ε 4 / ε 29, with `la_def_min_p4c` (same frame) in brackets:
+
+  | | Raw | Ring − min | After offset (n = 2) |
+  |---|---|---|---|
+  | Ca → La | −20.4 / −6.2 (+8.2 / +0.0) | −28.6 / −6.2 | −11.4 / +2.8 |
+  | Ca → Lu | −38.2 / −23.8 (+1.9 / −6.5) | −40.1 / −17.3 | −29.2 / −14.8 |
+  | La → Lu | −17.8 / −17.5 (−6.3 / −6.5) | −11.5 / −11.0 | −12.6 / −12.3 |
+
+  - **Convergence:** in the `_p4` run, La and Lu hit the 150-step limit. In the rerun, La converged in 5 steps
+    (ΔE ~2 × 10⁻⁶ Eh) and Lu in about 100 more, starting from La's geometry. So the 150-step failure was a flat
+    surface, not a property of the site. The unconverged `_p4` values were within 2 kcal/mol of these.
+  - **First shells:** Ca 2.34–2.47 Å (7 ligands), then 2.70–2.78. La 2.50–2.75 (10 within 2.75). Lu 2.33–2.48 (9),
+    then 2.78.
+  - **Criterion 2:** as in `lu_chbe_ring`, the two frozen Glu⁻ move every column toward the 3+ ions, here by more.
+    Ca over La at the min site becomes La over Ca at ε 4, and Ca vs La stays within the offset at ε 29.
+  - **Criterion 1** (vs the Lu-frame `lu_chbe_ring`, also n = 2, corrected −4.4 / +4.9, −22.8 / −10.9, −13.2 / −10.6):
+    - The same signs in every column.
+    - Ca vs La: La-leaning at ε 4 and within the offset at ε 29, in both frames.
+    - Ca vs Lu: Lu over Ca in both frames.
+    - La → Lu is also the same size in both, but it stays **unresolved pending SMD** (literature comparison above).
+  - Remaining: `la_chbe_ring_p4c` (30702581) and `lu_def_ring_p4c` (30702600) have both optimisations converged
+    and are on their single points.
 
 ## Findings
 
