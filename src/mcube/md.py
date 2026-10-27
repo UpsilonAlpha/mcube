@@ -20,6 +20,7 @@ from .preprocess import (
     pair_distances,
     report_coordination,
     resolve_cores,
+    resolve_forcefields,
     to_selectors,
     save_result,
     load_section,
@@ -35,8 +36,12 @@ from . import membrane as membrane_mod
 # Unified run() function
 # ==============================
 
-def md_forcefields(inputs: Dict[str, Any], preprocess: Dict[str, Any]) -> list:
-    """Force-field XML files: md.inputs overrides, else preprocess defaults + ligand XML."""
+def md_forcefields(inputs: Dict[str, Any], preprocess: Dict[str, Any],
+                   config=None) -> list:
+    """Force-field XML files: md.inputs overrides, else preprocess defaults + ligand XML.
+
+    `config` is what the entries are read against; see
+    `resolve_forcefields`."""
     ligand_forcefields = inputs.get("ligand_xml")
     if ligand_forcefields is None:
         ligand_forcefields = (preprocess.get("results") or {}).get("ligand_xml")
@@ -44,7 +49,8 @@ def md_forcefields(inputs: Dict[str, Any], preprocess: Dict[str, Any]) -> list:
     default_forcefields = inputs.get("default_forcefields")
     if default_forcefields is None:
         default_forcefields = preprocess["inputs"]["default_forcefields"]
-    default_forcefields = list(default_forcefields)
+    default_forcefields = resolve_forcefields(list(default_forcefields), config) \
+        if config is not None else list(default_forcefields)
 
     if ligand_forcefields:
         default_forcefields.append(ligand_forcefields)
@@ -82,13 +88,13 @@ def apply_metal_parameters(mm, pdb_file: str, metals, which: str, forcefields=No
 
 
 def build_md_theory(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file: str,
-                    restraints, cores=None):
+                    restraints, cores=None, config=None):
     """
     The classical system used by the md stage: force fields, HBond constraints,
     rigid water, 1.5 amu hydrogens and the harmonic distance restraints that
     hold the metal site. Returns (OpenMMTheory, force-field list).
     """
-    default_forcefields = md_forcefields(inputs, preprocess)
+    default_forcefields = md_forcefields(inputs, preprocess, config)
 
     if inputs.get("implicit"):
         default_forcefields.append("implicit/gbn2.xml")
@@ -335,6 +341,7 @@ def run(args) -> Dict[str, Any]:
     result["coordination_start"] = shell_before
 
     mm, default_forcefields = build_md_theory(inputs, preprocess, pdb_file, restraints,
+                                              config=args.config,
                                               cores=resolve_cores(inputs.get("cores")))
 
     # IOD by default: Amber's stock metal radii put the metal-oxygen minimum too

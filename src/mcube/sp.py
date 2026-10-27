@@ -100,7 +100,7 @@ def run(args) -> Dict[str, Any]:
         args.config, section, inputs, stage="sp", what="geometry to score")
     print(f"[INFO] Geometry: {pdb_file} (from {pdb_source})")
 
-    forcefields, implicit = mm_settings(inputs, md)
+    forcefields, implicit = mm_settings(inputs, md, args.config)
     mult = inputs.get("mult")
 
     print("[STEP] Building MM system...")

@@ -183,7 +183,7 @@ def run(args) -> Dict[str, Any]:
         print(f"[INFO] {neb_workers} NEB images run in parallel: run this stage "
               "with OMP_PROC_BIND/OMP_PLACES unset (the xtb-parallel recipe)")
 
-    forcefields, implicit = mm_settings(qmmm_inputs, md)
+    forcefields, implicit = mm_settings(qmmm_inputs, md, args.config)
 
     print("[STEP] Building MM system...")
     mm = make_mm(forcefields, reactant_pdb, implicit, theory_cores)  # OpenMM threads per image

@@ -433,7 +433,7 @@ def mm_system(pdb, inputs: Dict[str, Any], preprocess: Dict[str, Any], md: Dict[
     md_in = md.get("inputs") or {}
     if md_in.get("implicit"):
         raise NotImplementedError("umbrella sampling needs explicit solvent")
-    forcefields = (md.get("results") or {}).get("forcefields") or md_forcefields(md_in, preprocess)
+    forcefields = (md.get("results") or {}).get("forcefields") or md_forcefields(md_in, preprocess, config)
     temp = temperature_of(inputs, md)
     cutoff = float(inputs.get("nonbonded_cutoff", md_in.get("nonbonded_cutoff", membrane_mod.NONBONDED_CUTOFF)))
     if md_membrane(md_in, preprocess):
@@ -821,7 +821,7 @@ def run_qmmm_window(config, section, inputs, preprocess, md, index: int) -> Dict
                                        masses, box), "start.pdb")
 
     qin = qmmm_level_inputs(config, inputs)
-    forcefields, implicit = mm_settings(qin, md)
+    forcefields, implicit = mm_settings(qin, md, config)
     cores = resolve_cores(qin.get("cores"))
     mm = make_mm(forcefields, start, implicit, cores, inputs.get("platform", "CPU"),
                  inputs.get("properties"))
@@ -926,7 +926,7 @@ def run_energies(config, section, inputs, preprocess, md, index: int, level: str
                            mm_settings)
         qm_rule = umbrella_inputs(config, qm_section)
         qin = qmmm_level_inputs(config, qm_rule)
-        forcefields, implicit = mm_settings(qin, md)
+        forcefields, implicit = mm_settings(qin, md, config)
         cores = resolve_cores(qin.get("dft_cores" if level == "dft" else "cores", qin.get("cores")))
         for f in range(traj.n_frames):
             frame_pdb = f"energy_frame_{f:04d}.pdb"

@@ -852,6 +852,50 @@ def build_qm_region(
     return sorted(qm_atoms), sorted(boundary_excluded)
 
 
+def resolve_forcefields(entries, config) -> list:
+    """Force-field entries read against the config's directory.
+
+    A config directory is meant to be copyable: the user's rule is that
+    everything resolves against it, so a run that is copied keeps using its own
+    files instead of silently reaching back into the directory it came from.
+    Three of the CSR configs were doing exactly that - reading `openff_MER.xml`
+    and `hydroxide.xml` out of another run - because an absolute path survives
+    a copy intact.
+
+    An entry is rewritten only when a file of that name sits beside the config.
+    That leaves OpenMM's bundled names (`amber14/protein.ff14SB.xml`) alone,
+    since no such file is there, and it leaves absolute paths alone, since they
+    already say what they mean.
+
+    An entry starting with `..` is never rewritten, and that exclusion is
+    load-bearing rather than tidiness: `<config dir>/../water_nuc.xml` is the
+    scratch root, where spare copies accumulate, so resolving it would silently
+    prefer a stranger over the file the stage reads today. Such an entry is
+    reported instead, because under this rule it no longer means what it did.
+    """
+    if not entries:
+        return entries
+    home = Path(config).resolve().parent
+    out, stale = [], []
+    for entry in entries:
+        text = str(entry)
+        if text.startswith(".."):
+            stale.append(text)
+            out.append(text)
+            continue
+        candidate = home / text
+        out.append(candidate.resolve().as_posix()
+                   if not Path(text).is_absolute() and candidate.is_file()
+                   else text)
+    if stale:
+        print(f"[WARN] force-field {'entries' if len(stale) > 1 else 'entry'} "
+              f"{', '.join(stale)} start with '..' and are left alone. Paths "
+              f"are read against {home} now, so drop the '../' if the file "
+              "sits beside the config - as written these point outside the "
+              "run directory and will not travel with a copy of it.")
+    return out
+
+
 def qm_region_settings(inputs: Dict[str, Any]) -> Dict[str, Any]:
     """backbone_atoms / amino_acids overrides from the preprocess inputs."""
     return {

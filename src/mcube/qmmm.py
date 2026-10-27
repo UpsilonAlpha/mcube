@@ -31,6 +31,7 @@ from openmm.app import PDBFile
 from . import ions
 from .preprocess import (
     resolve_cores,
+    resolve_forcefields,
     save_result,
     save_input,
     load_section,
@@ -189,17 +190,19 @@ def stage_inputs(config: str, base: str, section: Optional[str] = None) -> Dict[
     return inputs
 
 
-def mm_settings(qmmm_inputs: Dict[str, Any], md: Dict[str, Any]):
+def mm_settings(qmmm_inputs: Dict[str, Any], md: Dict[str, Any], config=None):
     """Force-field files and implicit-solvent flag: qmmm.inputs, else what md used.
 
-    Unlike `pdb_file`, these are not read against the config's directory: OpenMM
-    resolves them itself, and the same list carries its bundled names
-    (`amber14/protein.ff14SB.xml`). Bringing them into line is a breaking
-    migration of every config that has a `../` entry, so it is the user's call.
+    Read against the config's directory like every other path, so a copied run
+    directory uses its own files. `resolve_forcefields` leaves OpenMM's bundled
+    names and absolute paths alone; it only rewrites an entry when a file of
+    that name sits beside the config.
     """
     forcefields = qmmm_inputs.get("forcefields")
     if forcefields is None:
         forcefields = (md.get("results") or {}).get("forcefields")
+    if config is not None:
+        forcefields = resolve_forcefields(forcefields, config)
     implicit = qmmm_inputs.get("implicit", (md.get("inputs") or {}).get("implicit", False))
     return forcefields, implicit
 
@@ -767,7 +770,7 @@ def run(args) -> Dict[str, Any]:
     if not inputs.get("pdb_file"):
         save_input(args.config, section, "pdb_file", pdb_file)
 
-    forcefields, implicit = mm_settings(inputs, md)
+    forcefields, implicit = mm_settings(inputs, md, args.config)
 
     print("[STEP] Building MM system...")
     cores = resolve_cores(inputs.get("cores"))

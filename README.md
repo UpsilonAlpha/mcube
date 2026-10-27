@@ -150,7 +150,7 @@ A stale chain ID fails loudly in some places and silently in others: a `chain:re
 
 | Key | Default | Description |
 | --- | --- | --- |
-| `pdb_file`, `ligand_xml`, `default_forcefields` | from preprocess | Overrides. `pdb_file` is the only way to give this stage a structure, as for every other stage; read against the config's directory, and refused with the resolved path if it does not exist, because silently equilibrating `preprocess.results.processed_pdb` instead produces a result that looks entirely normal |
+| `pdb_file`, `ligand_xml`, `default_forcefields` | from preprocess | Overrides. `pdb_file` is the only way to give this stage a structure, as for every other stage; read against the config's directory, and refused with the resolved path if it does not exist, because silently equilibrating `preprocess.results.processed_pdb` instead produces a result that looks entirely normal. Force-field entries are read against the config's directory too — see **Where paths are read from** |
 | `coordination_redetect` | `false` | Measure the metal coordination on this stage's own structure instead of using what `preprocess.results.coordination` recorded, with the same `metals`, `cutoff`, `donor_elements` and `constraint_exclude_residues` from the preprocess inputs. Needed to run a structure whose atom order differs from the one preprocess produced — a frame edited to move a proton between residues, say, which renumbers because a PDB residue's atoms must be contiguous. The distances come out as this structure has them, which is the point, so such a run is not comparable with one that used the recorded numbers: `results.coordination_source` records which happened. |
 | `cores` | | OpenMM CPU threads |
 | `platform`, `properties` | `CPU` | OpenMM platform, e.g. `CUDA` with `{Precision: mixed}` on a GPU node (see `docs/running-on-bunya.md`) |
@@ -494,3 +494,30 @@ All are in `scripts/`:
 - **Metal-site restraints.** Metal–donor contacts are held near their initial length by harmonic restraint during classical MD. In QM/MM, the QM region is free.
 - **NPT with implicit solvent.** NPT is not possible with implicit solvent and is skipped automatically.
 - **No checkpointing.** Each stage reruns from the start. Results are saved after each step, so partial results survive a crash.
+
+
+## Where paths are read from
+
+Everything a config names is read against **the config's own directory**, so a
+run directory is self-contained: copy it, and the copy uses its own files.
+
+That matters more than it sounds. Three CSR configs were found reading
+`openff_MER.xml` and `hydroxide.xml` out of a *different* run's directory,
+inherited when the config was copied and unnoticed because the files existed.
+And a path read against the stage's working directory instead is worse again:
+`../hydroxide.xml` means different files from `md_x_results/` and
+`protdft/x/`, so one section used at two depths cannot be written correctly.
+
+Force-field lists have two kinds of entry in them, so the rule is narrow:
+
+| Entry | What happens |
+| --- | --- |
+| a file beside the config (`hydroxide.xml`, `preprocess_results/openff_MER.xml`) | resolved against the config's directory |
+| one of OpenMM's bundled names (`amber14/protein.ff14SB.xml`) | left alone — no such file is beside the config, and OpenMM finds it in its own data directory |
+| an absolute path | left alone; it already says what it means, and rewriting it would change which file is used |
+| anything starting with `..` | **left alone and warned about.** `<config dir>/../water_nuc.xml` is the directory the runs sit in, where spare copies accumulate, so resolving it could silently prefer a stranger over the file the stage reads today. Drop the `../` if the file is beside the config |
+
+Results are different, and deliberately so: `results` records absolute paths,
+because it is the record of one particular run and should stay unambiguous
+even if the directory is later copied or moved.
+

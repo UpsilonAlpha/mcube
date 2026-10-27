@@ -181,7 +181,7 @@ def run(args) -> Dict[str, Any]:
 
     charge, mult = qmmm_inputs.get("charge"), qmmm_inputs.get("mult")
     cores = resolve_cores(inputs.get("cores", qmmm_inputs.get("cores")))
-    forcefields, implicit = mm_settings(qmmm_inputs, md)
+    forcefields, implicit = mm_settings(qmmm_inputs, md, args.config)
 
     print("[STEP] Building MM system...")
     mm = make_mm(forcefields, pdb_file, implicit, cores)
