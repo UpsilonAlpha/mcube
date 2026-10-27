@@ -41,7 +41,10 @@ from pathlib import Path
 
 OH_LEN = 0.9572          # A, TIP3P
 HOH_ANGLE = 104.52       # degrees, TIP3P
-CLASH = 1.5              # A; nothing but O01 may be closer than this to H04
+CLASH = 1.9              # A. An H...H contact at 1.5 A is strongly repulsive -
+                         # normal is 2.2-2.4 - and the first MD step would feel
+                         # it. 1.9 is a floor, not a target; the cone scan
+                         # reports the clearance it actually achieved.
 
 
 def parse(line):
@@ -76,26 +79,63 @@ def unit(a):
     return tuple(x / length for x in a)
 
 
-def place_h04(zn, o01, h03):
-    """The second hydrogen of a metal-bound water, in the Zn-O-H plane."""
-    a = unit(sub(h03, o01))                 # O -> H03
-    away = unit(sub(o01, zn))               # O -> away from the metal
-    normal = cross(a, away)
-    if norm(normal) < 1e-6:
-        raise ValueError(
-            "Zn, O01 and H03 are collinear, so the Zn-O01-H03 plane is "
-            "undefined and there is no 'away from the metal' side to pick. "
-            "Place H04 by hand for this structure.")
-    normal = unit(normal)
-    perp = unit(cross(normal, a))           # in plane, perpendicular to a
+def cone_positions(o01, h03, steps=72):
+    """Every H04 position allowed by the TIP3P geometry, as (angle, xyz).
+
+    With O01 and H03 fixed, the bond length and the H-O-H angle leave one free
+    parameter: H04 lies on a cone about the O01->H03 axis. Picking a position in
+    the Zn-O-H plane is only one point on that cone, and in a solvated frame it
+    can land on top of the substrate - it did, 1.51 A from meropenem's H5x. So
+    the cone is scanned instead and the clearest position taken.
+    """
+    axis = unit(sub(h03, o01))
+    # Any vector not parallel to the axis, to start an orthonormal pair from.
+    seed = (1.0, 0.0, 0.0)
+    if abs(dot(seed, axis)) > 0.9:
+        seed = (0.0, 1.0, 0.0)
+    u = unit(cross(axis, seed))
+    v = unit(cross(axis, u))
     theta = math.radians(HOH_ANGLE)
-    options = []
-    for sign in (1.0, -1.0):
-        direction = tuple(math.cos(theta) * ai + sign * math.sin(theta) * pi
-                          for ai, pi in zip(a, perp))
-        options.append((dot(direction, away), direction))
-    _, best = max(options)                  # the one pointing further from Zn
-    return tuple(o + OH_LEN * d for o, d in zip(o01, best))
+    out = []
+    for step in range(steps):
+        phi = 2.0 * math.pi * step / steps
+        radial = tuple(math.cos(phi) * ui + math.sin(phi) * vi
+                       for ui, vi in zip(u, v))
+        direction = tuple(math.cos(theta) * ai + math.sin(theta) * ri
+                          for ai, ri in zip(axis, radial))
+        out.append((math.degrees(phi),
+                    tuple(o + OH_LEN * d for o, d in zip(o01, direction))))
+    return out
+
+
+def place_h04(zn, o01, h03, others=()):
+    """The clearest allowed position for the water's second hydrogen.
+
+    `others` is (key, xyz) for every atom that is not part of the nucleophile.
+    The position chosen is the one whose closest approach to them is largest;
+    among positions within 0.1 A of that, the one furthest from the metal wins,
+    which keeps the chemical preference for both hydrogens pointing away from
+    the cation as a tiebreak rather than as the rule.
+    """
+    if norm(sub(h03, o01)) < 1e-6:
+        raise ValueError("O01 and H03 are at the same position")
+    away = unit(sub(o01, zn))
+    # Only atoms near the nucleophile can be the closest approach, and scanning
+    # the cone against all 49000 would be needlessly slow.
+    near = [(key, xyz) for key, xyz in others
+            if norm(sub(xyz, o01)) < 6.0]
+    scored = []
+    for phi, xyz in cone_positions(o01, h03):
+        if near:
+            clearance, key = min((norm(sub(xyz, other)), k)
+                                 for k, other in near)
+        else:
+            clearance, key = float("inf"), None
+        scored.append((clearance, dot(unit(sub(xyz, o01)), away), phi, xyz, key))
+    best = max(scored)[0]
+    viable = [s for s in scored if s[0] >= best - 0.1]
+    clearance, _, phi, xyz, key = max(viable, key=lambda s: s[1])
+    return xyz, clearance, key, phi
 
 
 def parse_lys(spec):
@@ -176,24 +216,21 @@ def main(argv):
                 "would not leave a neutral lysine. Nothing was written.")
         drop_index = lys_atoms["HZ3"]
 
-    h04 = place_h04(zn, o01, h03)
-
-    # The clash check looks at OTHER residues only. H04's nearest neighbour is
-    # always its own partner hydrogen, at 2*0.9572*sin(104.52/2) = 1.513 A,
-    # which sits a hundredth of an angstrom above the cutoff - so counting the
-    # nucleophile's own atoms would make every correct placement a near miss
-    # and some of them a spurious refusal.
-    near = sorted((norm(sub(h04, xyz)), key) for key, xyz in coords
-                  if (key[0], key[1]) != nuc_residue)
-    if not near:
+    # The nucleophile's own atoms are excluded: H04's partner hydrogen is
+    # always 2*0.9572*sin(104.52/2) = 1.513 A away by construction, so counting
+    # it would make every correct placement look like a near miss.
+    others = [(key, xyz) for key, xyz in coords
+              if (key[0], key[1]) != nuc_residue]
+    if not others:
         raise SystemExit(f"{src} holds nothing but the nucleophile.")
-    distance, key = near[0]
-    if distance < CLASH:
+    h04, clearance, key, phi = place_h04(zn, o01, h03, others)
+    if clearance < CLASH:
         raise SystemExit(
-            f"H04 would sit {distance:.2f} A from {':'.join(key)}, inside the "
-            f"{CLASH} A clash cutoff. Nothing was written - the placement "
-            "needs doing by hand for this structure.")
-    closest = near[0]
+            f"the clearest position on the cone still puts H04 {clearance:.2f} "
+            f"A from {':'.join(key)}, inside the {CLASH} A cutoff. The "
+            "nucleophile has no room for a second hydrogen in this frame, so "
+            "it needs placing by hand. Nothing was written.")
+    closest = (clearance, key)
 
     # Build the new H04 line from the O01 line so the chain, residue number and
     # formatting are inherited rather than reconstructed.

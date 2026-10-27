@@ -53,7 +53,7 @@ def lysH(tmp_path):
 
 def test_h04_has_tip3p_geometry(mod):
     zn, o01, h03 = (0.0, 0.0, 0.0), (1.9, 0.0, 0.0), (2.4, 0.83, 0.0)
-    h04 = mod.place_h04(zn, o01, h03)
+    h04, _, _, _ = mod.place_h04(zn, o01, h03)
     assert mod.norm(mod.sub(h04, o01)) == pytest.approx(mod.OH_LEN, abs=1e-6)
     a = mod.unit(mod.sub(h03, o01))
     b = mod.unit(mod.sub(h04, o01))
@@ -61,25 +61,39 @@ def test_h04_has_tip3p_geometry(mod):
     assert angle == pytest.approx(mod.HOH_ANGLE, abs=1e-4)
 
 
-def test_h04_is_in_the_zn_o_h_plane(mod):
-    zn, o01, h03 = (0.0, 0.0, 0.0), (1.9, 0.0, 0.0), (2.4, 0.83, 0.3)
-    h04 = mod.place_h04(zn, o01, h03)
-    normal = mod.unit(mod.cross(mod.sub(h03, o01), mod.sub(zn, o01)))
-    assert mod.dot(normal, mod.sub(h04, o01)) == pytest.approx(0.0, abs=1e-6)
+def test_every_cone_position_keeps_the_tip3p_geometry(mod):
+    """The free parameter is the rotation about O01->H03; bond length and angle
+    are fixed, so no position on the cone may distort the water."""
+    o01, h03 = (1.9, 0.0, 0.0), (2.4, 0.83, 0.0)
+    for _, xyz in mod.cone_positions(o01, h03):
+        assert mod.norm(mod.sub(xyz, o01)) == pytest.approx(mod.OH_LEN, abs=1e-9)
+        a = mod.unit(mod.sub(h03, o01))
+        b = mod.unit(mod.sub(xyz, o01))
+        assert math.degrees(math.acos(max(-1.0, min(1.0, mod.dot(a, b)))))             == pytest.approx(mod.HOH_ANGLE, abs=1e-6)
 
 
-def test_h04_points_away_from_the_metal(mod):
-    """Both hydrogens of a metal-bound water point away from the cation. The
-    rejected alternative solution folds H04 back towards the zinc."""
+def test_the_scan_avoids_an_obstacle_the_in_plane_choice_would_hit(mod):
+    """The real frame put the in-plane position 1.51 A from meropenem's H5x.
+    With a blocker there, the scan must step around it rather than accept it."""
     zn, o01, h03 = (0.0, 0.0, 0.0), (1.9, 0.0, 0.0), (2.4, 0.83, 0.0)
-    h04 = mod.place_h04(zn, o01, h03)
+    free, _, _, _ = mod.place_h04(zn, o01, h03)
+    blocker = [((("C", "1", "H5x")), free)]
+    moved, clearance, _, _ = mod.place_h04(zn, o01, h03, blocker)
+    assert mod.norm(mod.sub(moved, free)) > 0.5, "it stayed on the obstacle"
+    assert clearance > 1.0
+
+
+def test_with_nothing_nearby_it_points_away_from_the_metal(mod):
+    """Clearance decides; the chemical preference is only the tiebreak, so it
+    governs when every position is equally clear."""
+    zn, o01, h03 = (0.0, 0.0, 0.0), (1.9, 0.0, 0.0), (2.4, 0.83, 0.0)
+    h04, _, _, _ = mod.place_h04(zn, o01, h03)
     assert mod.norm(mod.sub(h04, zn)) > mod.norm(mod.sub(o01, zn))
 
 
-def test_collinear_geometry_is_refused(mod):
-    """With H03 along the Zn-O axis there is no plane and no 'away' side."""
-    with pytest.raises(ValueError, match="collinear"):
-        mod.place_h04((0.0, 0.0, 0.0), (1.9, 0.0, 0.0), (2.9, 0.0, 0.0))
+def test_a_degenerate_nucleophile_is_refused(mod):
+    with pytest.raises(ValueError, match="same position"):
+        mod.place_h04((0.0, 0.0, 0.0), (1.9, 0.0, 0.0), (1.9, 0.0, 0.0))
 
 
 # ---- the file it writes -----------------------------------------------------
@@ -167,7 +181,7 @@ def test_a_clash_is_refused_and_nothing_is_written(mod, tmp_path):
     src = tmp_path / "clash.pdb"
     src.write_text("".join(lines))
     out = tmp_path / "out.pdb"
-    with pytest.raises(SystemExit, match="clash cutoff"):
+    with pytest.raises(SystemExit, match="no room for a second hydrogen"):
         mod.main([str(src), str(out)])
     assert not out.exists()
 
