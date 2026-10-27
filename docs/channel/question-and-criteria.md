@@ -64,7 +64,11 @@ Glu240) and Lu binds Glu240 (and Glu220) in the residence runs (C21).
   All four stripped sites (−1/−2) favour Ca over La. All four −4 ring sites favour La over Ca at ε 4 and Lu over Ca in
   both dielectrics, which matches the literature rule. La-frame and Lu-frame sites agree. Settling it needs the
   ring's real charge state: first the pKa of the uncoordinated Glu, then QM/MM snapshots.
-- **La vs Lu: unresolved, pending an SMD check.** Our PCM sites favour Lu by 5–13 kcal/mol even after
+- **SMD check done (2026-10-28, C22):** SMD halves the calibration biases and moves Ca → Ln 3–12 kcal/mol toward Ca,
+  with no sign changes. La vs Lu shrinks by 3–4 but the sites still disagree (+2.5 to −12 after the SMD offset), so
+  **La vs Lu stays unresolved**, now as a geometry dependence rather than a solvation artefact. QM/MM swaps are
+  running for Ca vs Ln.
+- **La vs Lu (earlier, before the SMD check):** Our PCM sites favour Lu by 5–13 kcal/mol even after
   the calibration offset. That is about 10× Nikolova *et al.*, and against lanmodulin's experimental
   light-Ln preference. It is probably an artefact of IEF-PCM with hand-set ion radii. Do not report "Lu over La"
   until SMD single points on our geometries reproduce it (C22).

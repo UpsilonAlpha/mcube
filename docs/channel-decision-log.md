@@ -1268,6 +1268,14 @@ blocks 30576666/67 held; the Ca jobs run)
       and La, and leans to Lu over Ca at one of the two ring sites.
     - La vs Lu cannot be separated.
     - The QM/MM swaps test the Ca vs Ln part directly.
+- **QM/MM status (2026-10-28, ~10:00):**
+  - Bulk frame runs done (2 ns each, 40 frames). `exchange.py frames` with `--water` wrote 30 water jobs
+    (frames at 1.0–2.0 ns; QM region the ion + 10 waters for La, + 9 for Lu). **Water array 30737574** submitted
+    (10 at a time, 8 h).
+  - The site array's first 10 tasks and the smoke test have run 8.4–8.9 h.
+  - The smoke test is at step 110 of 150 without converging. If the 150-step limit is too tight for the 8 Å active
+    region, analyse will leave such frames out; how many it drops shows when the first tasks end.
+  - The code-server session moved to bun151:11922.
 
 ## Findings
 
