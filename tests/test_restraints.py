@@ -78,29 +78,29 @@ class TestPairDistances:
 class TestMdRestraints:
     def test_rows_preprocess_wrote_are_used_as_given(self, mc, pdb):
         """preprocess writes [i, j, d, k], so an edited k in the config is what runs."""
-        restraints, detected = mc.md.md_restraints(
+        restraints, detected, _ = mc.md.md_restraints(
             {}, {"results": {"coordination": [[0, 1, 2.1, 12.5]]}}, pdb)
         assert restraints == [[0, 1, 2.1, 12.5]]
         # Recorded apart from chosen restraints: it asserts nothing new.
         assert detected == restraints
 
     def test_a_bare_pair_is_measured_at_this_runs_geometry(self, mc, pdb):
-        restraints, _ = mc.md.md_restraints(
+        restraints, _, _ = mc.md.md_restraints(
             {}, {"results": {"coordination": [[0, 1]]}}, pdb)
         assert restraints == [[0, 1, 2.1, mc.preprocess.COORDINATION_FORCE]]
 
     def test_nothing_detected_gives_no_restraints(self, mc, pdb):
-        assert mc.md.md_restraints({}, {"results": {}}, pdb) == (None, [])
+        assert mc.md.md_restraints({}, {"results": {}}, pdb)[:2] == (None, [])
 
     def test_an_explicit_restraint_on_the_same_pair_wins(self, mc, pdb):
-        restraints, detected = mc.md.md_restraints(
+        restraints, detected, _ = mc.md.md_restraints(
             {"restraints": [[0, 1, 2.2, 20.0]]},
             {"results": {"coordination": [[0, 1, 2.1, 50.0]]}}, pdb)
         assert restraints == [[0, 1, 2.2, 20.0]]
         assert detected == []
 
     def test_chosen_and_detected_restraints_coexist(self, mc, pdb):
-        restraints, detected = mc.md.md_restraints(
+        restraints, detected, _ = mc.md.md_restraints(
             {"restraints": [[0, 3, 3.0, 20.0]]},
             {"results": {"coordination": [[0, 1, 2.1, 50.0]]}}, pdb)
         assert restraints == [[0, 3, 3.0, 20.0], [0, 1, 2.1, 50.0]]
@@ -108,27 +108,151 @@ class TestMdRestraints:
 
     def test_an_asked_row_inherits_the_default_force_constant(self, mc, pdb):
         """One rule for every pair: a named restraint is filled like a detected one."""
-        restraints, detected = mc.md.md_restraints(
+        restraints, detected, _ = mc.md.md_restraints(
             {"restraints": [[0, 1, 2.2]]}, {"results": {}}, pdb)
         assert restraints == [[0, 1, 2.2, mc.preprocess.COORDINATION_FORCE]]
         assert detected == []
 
     def test_an_asked_row_with_no_distance_is_held_where_it_is(self, mc, pdb):
-        restraints, _ = mc.md.md_restraints(
+        restraints, _, _ = mc.md.md_restraints(
             {"restraints": [[0, 1]]}, {"results": {}}, pdb)
         assert restraints == [[0, 1, 2.1, mc.preprocess.COORDINATION_FORCE]]
 
     def test_coordination_force_is_read_from_the_config(self, mc, pdb):
         """The literature-based default is a config input, not a buried constant."""
-        restraints, _ = mc.md.md_restraints(
+        restraints, _, _ = mc.md.md_restraints(
             {"restraints": [[0, 1]]},
             {"inputs": {"coordination_force": 30.0}, "results": {}}, pdb)
         assert restraints == [[0, 1, 2.1, 30.0]]
 
     def test_selectors_resolve(self, mc, pdb):
-        restraints, _ = mc.md.md_restraints(
+        restraints, _, _ = mc.md.md_restraints(
             {}, {"results": {"coordination": [["B:1:ZN", "A:88:NE2"]]}}, pdb)
         assert restraints == [[0, 1, 2.1, mc.preprocess.COORDINATION_FORCE]]
+
+
+# The fixture above writes no element column, which is all the distance tests
+# need. Element identity is what the D115 checks turn on, so these write it.
+def write_site(path, atoms):
+    """atoms: (chain, resid, name, element, x, y, z), in file order."""
+    with open(path, "w") as fh:
+        for n, (chain, resid, name, element, x, y, z) in enumerate(atoms, 1):
+            fh.write("HETATM%5d %-4s %-3s %1s%4s    %8.3f%8.3f%8.3f"
+                     "                      %2s\n"
+                     % (n, name, "LIG", chain, resid, x, y, z, element))
+    return str(path)
+
+
+ZN_NE2 = [("B", "1", "ZN", "ZN", 0.0, 0.0, 0.0),
+          ("A", "88", "NE2", "N", 0.0, 0.0, 2.1)]
+
+
+class TestCoordinationIsAboutThisStructure:
+    """D115: `preprocess.results.coordination` held raw atom indices, `md` applied
+    them to whatever structure it was given, and a frame built by moving one
+    proton between residues had renumbered every atom between the two. The
+    restraints meant for the zinc held meropenem's C1x, the zinc ran unrestrained
+    through an MM minimisation and lost an anchoring histidine, and nothing in the
+    output said so - the run simply looked normal."""
+
+    SECTIONS = {"inputs": {"metals": ["ZN"], "donor_elements": ["N", "O", "S"],
+                           "cutoff": 2.8},
+                "results": {}}
+
+    def sections(self, coordination=None):
+        out = {"inputs": dict(self.SECTIONS["inputs"]), "results": {}}
+        if coordination is not None:
+            out["results"]["coordination"] = coordination
+        return out
+
+    def test_selectors_survive_renumbering(self, mc, tmp_path):
+        """What preprocess writes now. The same two rows resolve to different
+        indices in two structures, which is the whole point."""
+        shifted = write_site(tmp_path / "shifted.pdb",
+                             [("Z", "9", "XX", "C", 0.0, 0.0, 9.9)] + ZN_NE2)
+        rows = [["B:1:ZN", "A:88:NE2", 2.1, 50.0]]
+        here, _, _ = mc.md.md_restraints(
+            {}, self.sections(rows), write_site(tmp_path / "here.pdb", ZN_NE2))
+        there, _, _ = mc.md.md_restraints({}, self.sections(rows), shifted)
+        assert here == [[0, 1, 2.1, 50.0]]
+        assert there == [[1, 2, 2.1, 50.0]]      # one atom inserted in front
+
+    def test_indices_that_no_longer_name_a_metal_are_refused(self, mc, tmp_path):
+        pdb = write_site(tmp_path / "site.pdb", ZN_NE2)
+        """The D115 row shape: the pair still resolves, and names the wrong atoms."""
+        with pytest.raises(ValueError) as exc:
+            mc.md.md_restraints({}, self.sections([[1, 2, 2.1, 50.0]]), pdb)
+        text = str(exc.value)
+        assert "index 1 should be a metal" in text and "ZN" in text   # expected
+        assert "N HIS" in text or "N" in text                         # and found
+        assert "coordination_redetect" in text                        # and the way out
+
+    def test_a_donor_index_that_names_a_hydrogen_is_refused(self, mc, tmp_path):
+        """One of D115's recorded donors was the nucleophile's hydrogen."""
+        with_h = write_site(tmp_path / "withh.pdb",
+                            ZN_NE2 + [("E", "502", "H03", "H", 0.0, 0.0, 1.0)])
+        with pytest.raises(ValueError, match="should be a donor"):
+            mc.md.md_restraints({}, self.sections([[0, 2, 2.1, 50.0]]), with_h)
+
+    def test_an_index_past_the_end_is_refused(self, mc, tmp_path):
+        pdb = write_site(tmp_path / "site.pdb", ZN_NE2)
+        with pytest.raises(ValueError, match="past the end"):
+            mc.md.md_restraints({}, self.sections([[0, 99, 2.1, 50.0]]), pdb)
+
+    def test_indices_that_still_name_a_metal_and_a_donor_are_used(self, mc, tmp_path):
+        """The usual case - the same structure preprocess ran on - is untouched."""
+        pdb = write_site(tmp_path / "site.pdb", ZN_NE2)
+        restraints, _, source = mc.md.md_restraints(
+            {}, self.sections([[0, 1, 2.1, 50.0]]), pdb)
+        assert restraints == [[0, 1, 2.1, 50.0]]
+        assert source == "preprocess.results.coordination"
+
+
+class TestRedetectOnThisStructure:
+    """The atom order of an edited frame cannot be preserved: the proton has to
+    leave one residue and join another, and a PDB residue's atoms must be
+    contiguous. So re-detecting on the structure in front of the stage is the only
+    way to run one at all - with the same rule and the same inputs preprocess
+    used."""
+
+    def sections(self):
+        return {"inputs": {"metals": ["ZN"], "donor_elements": ["N", "O", "S"],
+                           "cutoff": 2.8, "coordination_force": 30.0},
+                "results": {"coordination": [[99, 98, 9.9, 1.0]]}}
+
+    def test_it_detects_on_the_structure_given_not_what_was_saved(self, mc, tmp_path):
+        """The saved row names atoms that are not there; re-detection ignores it."""
+        here = write_site(tmp_path / "system.pdb", ZN_NE2)
+        restraints, detected, source = mc.md.md_restraints(
+            {"coordination_redetect": True}, self.sections(), here)
+        assert restraints == [[0, 1, 2.1, 30.0]]     # Zn - NE2, as measured here
+        assert detected == restraints
+        assert "redetected" in source and "system.pdb" in source
+
+    def test_the_distances_are_the_ones_this_structure_has(self, mc, tmp_path):
+        """Which is the point, and why the source is recorded: a re-detected run
+        is not comparable with one that used the saved numbers."""
+        moved = write_site(tmp_path / "moved.pdb",
+                           [("B", "1", "ZN", "ZN", 0.0, 0.0, 0.0),
+                            ("A", "88", "NE2", "N", 0.0, 0.0, 2.4)])
+        restraints, _, _ = mc.md.md_restraints(
+            {"coordination_redetect": True}, self.sections(), moved)
+        assert restraints == [[0, 1, 2.4, 30.0]]
+
+    def test_the_cutoff_is_the_one_preprocess_used(self, mc, tmp_path):
+        """Same rule, not a looser one: a contact beyond `cutoff` is not a contact."""
+        far = write_site(tmp_path / "far.pdb",
+                         [("B", "1", "ZN", "ZN", 0.0, 0.0, 0.0),
+                          ("A", "88", "NE2", "N", 0.0, 0.0, 3.5)])
+        restraints, _, _ = mc.md.md_restraints(
+            {"coordination_redetect": True}, self.sections(), far)
+        assert restraints is None
+
+    def test_it_says_so_when_there_are_no_metals_to_detect(self, mc, tmp_path):
+        pdb = write_site(tmp_path / "site.pdb", ZN_NE2)
+        with pytest.raises(KeyError, match="metals"):
+            mc.md.md_restraints({"coordination_redetect": True},
+                                {"inputs": {}, "results": {}}, pdb)
 
 
 class TestWriteAshSurface:

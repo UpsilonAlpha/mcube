@@ -25,6 +25,8 @@ from .preprocess import (
     load_section,
     resolve_atoms,
     config_relative,
+    check_coordination_atoms,
+    find_coordinators,
 )
 from . import ions
 from . import membrane as membrane_mod
@@ -245,21 +247,48 @@ def md_restraints(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file: 
     force constant, same "hold it where it is" if no distance is given. Nothing
     here distinguishes a residue from a ligand.
 
-    Returns (restraints, detected) with `detected` the auto-generated subset, so
-    the results can record which restraints were a measurement and which were a
-    choice. Only a distance someone chose can launder an assumption into a later
-    run: holding a contact where it already was asserts nothing new.
+    `coordination_redetect: true` measures the coordination on `pdb_file` instead
+    of taking what preprocess recorded, with the same `metals`, `cutoff`,
+    `donor_elements` and `constraint_exclude_residues` from the preprocess
+    inputs - the same rule, applied to the structure in front of the stage. That
+    is how an edited frame runs at all: a proton has to leave one residue and
+    join another, and a PDB residue's atoms must be contiguous, so any correct
+    edit renumbers (D115). The distances come out different too, because they are
+    the ones this structure actually has, which is the point - but it means such a
+    run is not comparable with one that used the recorded numbers, so
+    `coordination_source` records which happened.
+
+    Returns (restraints, detected, source) with `detected` the auto-generated
+    subset, so the results can record which restraints were a measurement and
+    which were a choice. Only a distance someone chose can launder an assumption
+    into a later run: holding a contact where it already was asserts nothing new.
     """
-    force = float((preprocess.get("inputs") or {}).get("coordination_force", COORDINATION_FORCE))
+    preprocess_inputs = preprocess.get("inputs") or {}
+    force = float(preprocess_inputs.get("coordination_force", COORDINATION_FORCE))
     asked = fill_restraints(resolve_atoms(inputs.get("restraints") or None, pdb_file) or [],
                             pdb_file, force)
     results = preprocess.get("results") or {}
-    check_coordination_present(preprocess.get("inputs") or {}, results)
-    rows = resolve_atoms(results.get("coordination"), pdb_file) or []
+    if inputs.get("coordination_redetect"):
+        if not (preprocess_inputs.get("metals") or []):
+            raise KeyError(
+                "coordination_redetect needs `preprocess.inputs.metals` to say "
+                "which elements are metals; there is nothing to detect without it.")
+        print(f"[STEP] Re-detecting metal coordination on {pdb_file} "
+              "(coordination_redetect)")
+        _, saved = find_coordinators(pdb_file, preprocess_inputs)
+        source = f"redetected on {Path(pdb_file).resolve().as_posix()}"
+    else:
+        check_coordination_present(preprocess_inputs, results)
+        saved = results.get("coordination")
+        # Rows that are still indices cannot say which structure they were
+        # measured on; check the identity they do assert before restraining them.
+        check_coordination_atoms(saved, pdb_file, preprocess_inputs)
+        source = "preprocess.results.coordination"
+    rows = resolve_atoms(saved, pdb_file) or []
     # An explicit restraint on a pair wins: the user named a distance for it.
     named = {frozenset(r[:2]) for r in asked}
     detected = fill_restraints([r for r in rows if frozenset(r[:2]) not in named], pdb_file, force)
-    return (asked + detected) or None, detected
+    return (asked + detected) or None, detected, source
 
 
 def run(args) -> Dict[str, Any]:
@@ -290,7 +319,9 @@ def run(args) -> Dict[str, Any]:
             f"({Path(args.config).resolve().parent}), not the directory the "
             "stage runs in.")
 
-    restraints, detected = md_restraints(inputs, preprocess, pdb_file)
+    restraints, detected, coordination_source = md_restraints(inputs, preprocess, pdb_file)
+    result["coordination_source"] = coordination_source
+    print(f"[INFO] Coordination restraints from: {coordination_source}")
     if restraints:
         print(f"[INFO] {len(restraints)} harmonic distance restraints "
               f"({len(detected)} detected metal coordination): {restraints}")

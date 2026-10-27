@@ -300,6 +300,58 @@ def to_selectors(entries, pdb_file: str) -> list:
     return out
 
 
+def check_coordination_atoms(coordination, pdb_file: str, inputs) -> None:
+    """Refuse coordination rows whose indices no longer name a metal and a donor.
+
+    Rows written by a current `preprocess` are selectors, which are re-resolved
+    on each structure and cannot drift. Rows in a config written before that are
+    raw indices into `preprocess.results.processed_pdb`, and nothing in them says
+    which structure that was: applied to a frame with a different atom order they
+    name whatever now sits at those positions, and the run looks normal (D115).
+
+    What can be checked without the original structure is the identity the rows
+    assert: the first atom of each pair is a metal, the second is a donor
+    element. That is what caught D115 by eye - the recorded "metal" was
+    meropenem's C1x and one "donor" was a hydrogen - so it is what is checked
+    here, per row, before anything is restrained.
+    """
+    metals = {m.upper() for m in (inputs.get("metals") or [])}
+    donors = {e.upper() for e in (inputs.get("donor_elements") or ["N", "O", "S"])}
+    indexed = [r for r in (coordination or [])
+               if not (isinstance(r[0], str) and str(r[0]).count(":") == 2)]
+    if not indexed or not metals:
+        return
+
+    atoms = list(PDBFile(pdb_file).topology.atoms())
+    wrong = []
+    for row in indexed:
+        for atom_index, expected in ((0, metals), (1, donors)):
+            i = int(row[atom_index])
+            if i >= len(atoms):
+                wrong.append("index %d is past the end of the structure (%d atoms)"
+                             % (i, len(atoms)))
+                continue
+            atom = atoms[i]
+            element = (atom.element.symbol if atom.element is not None else "?").upper()
+            if element not in expected:
+                wrong.append(
+                    "index %d should be %s (%s) but is %s %s %s:%s"
+                    % (i, "a metal" if atom_index == 0 else "a donor",
+                       "/".join(sorted(expected)), element, atom.residue.name,
+                       atom.residue.chain.id, atom.residue.id.strip()))
+    if wrong:
+        raise ValueError(
+            "preprocess.results.coordination holds atom indices that do not name "
+            "a metal and a donor in %s:\n    %s\n"
+            "Those indices were measured on another structure, so restraining "
+            "them would hold the wrong atoms and leave the metal free. Set "
+            "`coordination_redetect: true` in this stage's inputs to detect the "
+            "coordination on this structure with the same `cutoff` and "
+            "`donor_elements`, or re-run `mcube preprocess` on the structure you "
+            "mean - it records the contacts by selector now, which survives "
+            "renumbering." % (pdb_file, "\n    ".join(wrong)))
+
+
 def check_inherited_restraints(coordination, restraints, pdb_file: str, inputs) -> None:
     """Refuse to detect a pair that md pulled to a distance someone chose.
 
@@ -707,9 +759,19 @@ def find_coordinators(
                 print(f"[INFO] No restraint for {resn} {chain}:{resid} "
                       f"({aname}) (constraint_exclude_residues)")
             else:
-                # The distance it already has, so the restraint preserves the
-                # input geometry rather than imposing one. Editable per pair.
-                coordination.append([m, idx, round(dist, 3), force])
+                # By selector, not by index: an index is only valid against the
+                # atom order it was measured on, and `md` applies these rows to
+                # whatever structure it is given. A frame built by moving a
+                # proton between residues renumbers everything between them, and
+                # saved indices then name different atoms while still looking
+                # valid - D115, where the restraints meant for the zinc held a
+                # substrate carbon and the zinc ran unrestrained. Selectors are
+                # re-resolved against the structure in front of the stage.
+                #
+                # The distance is the one it already has, so the restraint
+                # preserves the input geometry rather than imposing one.
+                # Editable per pair.
+                coordination.append([row["metal"], row["donor"], round(dist, 3), force])
 
             # Excluded residues keep their restraint but are left out of the QM region
             if exclude_residues and chain in exclude_residues:

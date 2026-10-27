@@ -48,8 +48,21 @@ def resolve_qm_region(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_fi
     """
     QM atoms and boundary-excluded atoms, in order of preference:
     1. `qm_residues` given in this stage's inputs (rebuilt on pdb_file)
-    2. `qm_atoms` / `boundary_excluded` indices saved by preprocess
-    3. `qm_residues` saved by preprocess (configs from before indices were saved)
+    2. `qm_residues` saved by preprocess, rebuilt on pdb_file
+    3. `qm_atoms` / `boundary_excluded` indices saved by preprocess
+
+    The region is rebuilt from residue names wherever they are available, even
+    though preprocess also saved the indices it produced. Indices are valid only
+    against the atom order they were built on, and this stage is routinely given
+    another structure - another frame, or one edited by hand, which renumbers
+    (D115, where saved coordination indices restrained a substrate carbon as the
+    metal). Rebuilding on the structure in front of us gives the same atoms when
+    the order is the same and the right atoms when it is not, so there is nothing
+    to go stale; when the rebuild disagrees with the saved indices, that
+    disagreement is itself the news and is printed.
+
+    The saved indices are used only by a config that recorded no `qm_residues`,
+    and that is said out loud, because nothing there can be checked.
     """
     settings = qm_region_settings(preprocess.get("inputs") or {})
     results = preprocess.get("results") or {}
@@ -74,11 +87,28 @@ def resolve_qm_region(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_fi
             print(f"[INFO] Extra QM residues for this stage: chain {ch} {sorted(found.items())}")
         return build_qm_region(pdb_file, base, **settings)
 
+    if results.get("qm_residues"):
+        qm_atoms, boundary_excluded = build_qm_region(pdb_file, results["qm_residues"],
+                                                      **settings)
+        saved = results.get("qm_atoms")
+        if saved is not None and list(saved) != list(qm_atoms):
+            print(f"[INFO] The QM region rebuilt on {pdb_file} differs from the "
+                  f"{len(saved)} atom indices preprocess saved "
+                  f"({len(qm_atoms)} atoms here). The structure's atom order is "
+                  "not the one those indices were built on, so they are not used.")
+        return qm_atoms, boundary_excluded
+
     if results.get("qm_atoms") is not None:
-        print(f"[INFO] Using {len(results['qm_atoms'])} QM atoms saved by preprocess")
+        print(f"[WARNING] Using the {len(results['qm_atoms'])} QM atom indices "
+              "preprocess saved: this config records no `qm_residues`, so there "
+              "is no way to check that they still name those atoms in "
+              f"{pdb_file}. Set `qm_residues` in this stage's inputs, or re-run "
+              "`mcube preprocess`, if the atom order may have changed.")
         return results["qm_atoms"], results.get("boundary_excluded", [])
 
-    return build_qm_region(pdb_file, results["qm_residues"], **settings)
+    raise KeyError(
+        "No QM region: set `qm_residues` in this stage's inputs, or run "
+        "`mcube preprocess` so that `preprocess.results.qm_residues` exists.")
 
 
 # ==============================

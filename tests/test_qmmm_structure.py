@@ -151,3 +151,67 @@ class TestActiveRegionContainsTheQMRegion:
         monkeypatch.setattr(qmmm, "actregiondefine", lambda **k: None)
         with pytest.raises(ValueError, match="no actregion_origin"):
             qmmm.resolve_actatoms("config.yaml", {"actradius": 8}, None, None, self.QM, [])
+
+
+class TestTheQMRegionIsRebuilt:
+    """preprocess saves both `qm_residues` and the `qm_atoms` indices it built
+    from them, and this stage is routinely handed another structure. Indices are
+    valid only against the atom order they were built on, so the region is
+    rebuilt from the residue names whenever they are recorded - D115 is the same
+    hazard one key over, where saved coordination indices restrained a substrate
+    carbon as the metal."""
+
+    # A zinc and a histidine side chain; one leading atom in the shifted copy.
+    SITE = [("B", "1", "ZN", "ZN"), ("A", "88", "HIS", "NE2")]
+
+    def write(self, path, atoms):
+        with open(path, "w") as fh:
+            for n, (chain, resid, resname, name) in enumerate(atoms, 1):
+                fh.write("HETATM%5d %-4s %-3s %1s%4s    %8.3f%8.3f%8.3f\n"
+                         % (n, name, resname, chain, resid, 0.0, 0.0, float(n)))
+        return str(path)
+
+    def preprocess(self, qm_atoms=None, qm_residues=True):
+        results = {}
+        if qm_residues:
+            results["qm_residues"] = {"B": {1: "ZN"}}
+        if qm_atoms is not None:
+            results["qm_atoms"] = qm_atoms
+        return {"inputs": {}, "results": results}
+
+    def test_the_rebuild_wins_over_saved_indices(self, qmmm, tmp_path):
+        """The shifted structure puts the zinc at index 1, not 0. The saved index
+        would have named the inserted atom instead."""
+        shifted = self.write(tmp_path / "shifted.pdb",
+                             [("Z", "9", "XXX", "C")] + self.SITE)
+        qm_atoms, _ = qmmm.resolve_qm_region({}, self.preprocess(qm_atoms=[0]), shifted)
+        assert qm_atoms == [1]
+
+    def test_it_says_when_the_rebuild_disagrees_with_what_was_saved(self, qmmm, tmp_path, capsys):
+        shifted = self.write(tmp_path / "shifted.pdb",
+                             [("Z", "9", "XXX", "C")] + self.SITE)
+        qmmm.resolve_qm_region({}, self.preprocess(qm_atoms=[0]), shifted)
+        out = capsys.readouterr().out
+        assert "differs from the 1 atom indices preprocess saved" in out
+
+    def test_it_stays_quiet_when_they_agree(self, qmmm, tmp_path, capsys):
+        """The usual case - the structure preprocess ran on - is unchanged."""
+        here = self.write(tmp_path / "here.pdb", self.SITE)
+        qm_atoms, _ = qmmm.resolve_qm_region({}, self.preprocess(qm_atoms=[0]), here)
+        assert qm_atoms == [0]
+        assert "differs from" not in capsys.readouterr().out
+
+    def test_indices_alone_are_used_but_said_to_be_unchecked(self, qmmm, tmp_path, capsys):
+        """A config that recorded no residues: nothing here can be verified, so
+        the run says so rather than implying the region was derived."""
+        here = self.write(tmp_path / "here.pdb", self.SITE)
+        qm_atoms, _ = qmmm.resolve_qm_region(
+            {}, self.preprocess(qm_atoms=[0], qm_residues=False), here)
+        assert qm_atoms == [0]
+        out = capsys.readouterr().out
+        assert "[WARNING]" in out and "no way to check" in out
+
+    def test_neither_one_names_what_to_set(self, qmmm, tmp_path):
+        here = self.write(tmp_path / "here.pdb", self.SITE)
+        with pytest.raises(KeyError, match="qm_residues"):
+            qmmm.resolve_qm_region({}, self.preprocess(qm_residues=False), here)
