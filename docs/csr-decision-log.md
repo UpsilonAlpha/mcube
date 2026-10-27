@@ -2098,6 +2098,34 @@ Rewriting one of these to a bare name would change **which file the run uses**, 
 
 9 tests on the resolver and 8 on the migration; suite 353 pass, 5 skipped.
 
+**D116 - The D115 guard fired on the real run, which is the good news; it fired because `sections.py` was looking for the structure in the git checkout.** (2026-10-27, jobs 30703062 and 30705703)
+
+**Job 30703062 FAILED after 9 seconds**, costing nothing, with exactly the message the guard exists to produce:
+
+    preprocess.results.coordination holds atom indices that do not name a metal
+    and a donor in .../md_naclong_results/ohH_start.pdb:
+        index 4203 should be a metal (ZN) but is C mer C:1
+        index 4255 should be a donor (N/O/S) but is H NUW C:2
+    Those indices were measured on another structure, so restraining them would
+    hold the wrong atoms and leave the metal free.
+
+**That is D115 caught before it could do anything**, and it names the exact atom - index 4203 is meropenem's C1x on this frame - rather than leaving it to be inferred from a coordination report afterwards.
+
+**But the run should not have reached the guard.** The section was meant to carry `coordination_redetect: true`, and it did not. `sections.py` had refused to write it, with
+
+    NOT WRITING. Problems:
+      - ohHmin: pdb_file missing: md_naclong_results/ohH_start.pdb
+
+for a file that is plainly there (4,004,830 bytes). **It was resolving the structure against `site.yaml`'s directory** - `home = Path(site_file).resolve().parent` - which is the git checkout, while the structures live in the run directory. The comment two lines below it already said "Paths are read against the config's directory, as mcube reads them"; the code did not. Introduced when `start` was replaced by `inputs.pdb_file`, and invisible to the existing test because its helper writes `site.yaml` into the same directory as `config.yaml`, so the two bases coincided.
+
+**My error on top of it:** I submitted without checking that `sections.py` had succeeded. Its refusal was in the log I had just written to, and I read the tail for the `sbatch` line instead of the whole thing. The section still held the void `results` from the first attempt, which was the visible tell that nothing had been rewritten.
+
+Fixed: the base is the config's directory, `sections.py` refuses outright when there is no `config.yaml` in the working directory, and two tests keep the bases apart - a site file outside the run must still find the structure, and a decoy beside the site file must not satisfy the check. Suite 355 pass, 5 skipped.
+
+**Resubmitted as 30705703** with the section correctly written: `coordination_redetect: true`, `pdb_file: md_naclong_results/ohH_start.pdb`, `water_nuc.xml` (config-relative since D117), and no stale `results`.
+
+**Worth keeping in view:** three jobs have now been spent on this minimisation and none of it on chemistry. The first restrained a substrate carbon, the second was refused for a missing key, and the third is queued. Each failure was caught by something added after the previous one, which is the system working - but the thing still being tested is whether a water fits where the hydroxide was, and that has not been measured yet.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
