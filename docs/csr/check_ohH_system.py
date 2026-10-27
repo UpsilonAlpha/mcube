@@ -30,8 +30,7 @@ def main(argv):
         if not path.is_file():
             raise SystemExit(f"no such file: {path}")
 
-    import openmm
-    from openmm.app import ForceField, Modeller, PDBFile
+    from openmm.app import ForceField, PDBFile
 
     pdb = PDBFile(str(pdb_path))
     nuc = [r for r in pdb.topology.residues() if r.name == "NUW"]
@@ -59,61 +58,45 @@ def main(argv):
     print(f"  force fields: {', '.join(forcefields)}")
     field = ForceField(*forcefields)
 
-    # Parameterise the nucleophile ALONE. This runs on the preprocess *input*,
-    # whose protein still has no hydrogens - Modeller adds them during
-    # preprocess - so building the whole system here is impossible and would
-    # fail on the first alanine. Deleting everything else also keeps the one
-    # thing being checked from hiding behind an unrelated template error.
-    model = Modeller(pdb.topology, pdb.positions)
-    model.delete([r for r in model.topology.residues() if r.name != "NUW"])
-    kept = list(model.topology.residues())
-    if len(kept) != 1 or kept[0].name != "NUW":
-        raise SystemExit(f"isolating NUW left {[r.name for r in kept]}")
-    indices = {a.index for a in kept[0].atoms()}
-    system = field.createSystem(model.topology, rigidWater=True)
-    print(f"  NUW parameterised alone: {system.getNumParticles()} particles")
-    if system.getNumParticles() != 3:
-        raise SystemExit("the isolated nucleophile is not three particles")
+    # Checked against the parsed templates rather than by building a System.
+    # Isolating one residue and calling createSystem does not work here: the
+    # preprocess *input* has no protein hydrogens yet (Modeller adds them), and
+    # deleting everything else leaves NUW alone in the chain that held the
+    # ligand, where OpenMM starts comparing it against terminal variants. The
+    # facts that matter are properties of the XML and the PDB, and both are
+    # readable directly. `_templates` is private; this is a diagnostic.
+    templates = field._templates
+    if "NUW" not in templates:
+        raise SystemExit(f"{xml_path} did not register a NUW template")
+    nuw, hoh = templates["NUW"], templates["HOH"]
+    nuw_atoms = {a.name: a for a in nuw.atoms}
+    print(f"  NUW template: {' '.join(sorted(nuw_atoms))}, "
+          f"{len(nuw.bonds)} bonds")
+    if sorted(nuw_atoms) != ["H03", "H04", "O01"]:
+        raise SystemExit(f"NUW template holds {sorted(nuw_atoms)}")
 
-    nb = next(f for f in system.getForces()
-              if isinstance(f, openmm.NonbondedForce))
-    charges = [nb.getParticleParameters(i)[0]
-               .value_in_unit(openmm.unit.elementary_charge)
-               for i in range(system.getNumParticles())]
-    print(f"  charges: {[round(c, 3) for c in charges]} (sum "
-          f"{sum(charges):+.3f})")
-    if abs(sum(charges)) > 1e-6:
-        raise SystemExit("NUW is not neutral, so the total charge moved")
-    if sorted(round(c, 3) for c in charges) != sorted(TIP3P):
-        raise SystemExit(f"NUW's charges are not TIP3P's {TIP3P}")
+    charges = [a.parameters.get("charge") for a in nuw.atoms]
+    print(f"  charges: {charges} (sum {sum(charges):+.3f})")
+    if abs(sum(charges)) > 1e-9:
+        raise SystemExit("the NUW template is not neutral")
 
-    constrained = set()
-    for i in range(system.getNumConstraints()):
-        a, b, _ = system.getConstraintParameters(i)
-        constrained.update((a, b))
-    overlap = indices & constrained
-    print(f"  rigidWater constrains NUW: {bool(overlap)}")
-    if overlap:
+    # Parameter-identical to HOH is load-bearing: a template with its own types
+    # also matches every bulk water by bond graph, and OpenMM then refuses the
+    # whole system with "Multiple non-identical matching templates found".
+    nuw_types = sorted(a.type for a in nuw.atoms)
+    hoh_types = sorted(a.type for a in hoh.atoms)
+    print(f"  NUW types {nuw_types}")
+    print(f"  HOH types {hoh_types}")
+    if nuw_types != hoh_types:
         raise SystemExit(
-            "rigidWater constrained the nucleophile. That would freeze its "
-            "internal geometry, and the proton could not move - check whether "
-            "the residue has been renamed to something OpenMM reads as water.")
+            "NUW does not use TIP3P's own atom types, so its template is not "
+            "parameter-identical to HOH. It will match all ~15000 bulk waters "
+            "by bond graph and OpenMM will refuse the system.")
+    if sorted(charges) != sorted(a.parameters.get("charge") for a in hoh.atoms):
+        raise SystemExit("NUW's charges differ from HOH's")
 
-    angles = 0
-    for force in system.getForces():
-        if isinstance(force, openmm.HarmonicAngleForce):
-            for i in range(force.getNumAngles()):
-                p1, p2, p3, _, _ = force.getAngleParameters(i)
-                if {p1, p2, p3} <= indices:
-                    angles += 1
-    print(f"  H-O-H angle terms: {angles}")
-    if angles != 1:
-        raise SystemExit(
-            f"NUW has {angles} angle terms, expected 1. Without it the water "
-            "is floppy; with it, 2 fs is still needed because the angle is not "
-            "constrained.")
-
-    print("OK - the nucleophile is a neutral, bonded, flexible TIP3P water")
+    print("OK - bonded in the PDB; neutral, TIP3P-typed and "
+          "HOH-identical in the template")
 
 
 if __name__ == "__main__":
