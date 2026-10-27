@@ -188,3 +188,95 @@ def test_running_twice_is_refused(mod, lysH, tmp_path):
     with pytest.raises(SystemExit, match="already"):
         mod.main([str(out), str(again)])
     assert not again.exists()
+
+
+# ---- neutralising the lysine -----------------------------------------------
+
+@pytest.fixture
+def lysH_lysine(tmp_path):
+    """As `lysH`, plus a cationic Lys226 carrying all three NZ hydrogens."""
+    lines = [
+        pdb_line(1, "ZN", "ZN", "B", "1", (0.0, 0.0, 0.0)),
+        pdb_line(2, "O01", "OH", "C", "2", (1.9, 0.0, 0.0)),
+        pdb_line(3, "H03", "OH", "C", "2", (2.4, 0.83, 0.0)),
+        pdb_line(4, "NZ", "LYS", "A", "226", (12.0, 0.0, 0.0)),
+        pdb_line(5, "HZ1", "LYS", "A", "226", (12.5, 0.8, 0.0)),
+        pdb_line(6, "HZ2", "LYS", "A", "226", (12.5, -0.8, 0.0)),
+        pdb_line(7, "HZ3", "LYS", "A", "226", (11.5, 0.0, 0.9)),
+        "CONECT    2    3\n",
+        "END\n",
+    ]
+    path = tmp_path / "in.pdb"
+    path.write_text("".join(lines))
+    return path
+
+
+def test_removes_only_hz3_and_keeps_the_name_lys(mod, lysH_lysine, tmp_path):
+    """Renaming it LYN would make build_qm_region treat it as non-standard -
+    the config's amino_acids list overrides mcube's default and omits LYN - and
+    put its whole backbone into the QM region, changing it between the arms."""
+    out = tmp_path / "out.pdb"
+    mod.main([str(lysH_lysine), str(out), "--lys", "A:226"])
+    atoms = [l for l in out.read_text().splitlines()
+             if l.startswith(("ATOM", "HETATM"))]
+    names = [l[12:16].strip() for l in atoms]
+    assert "HZ3" not in names
+    assert {"NZ", "HZ1", "HZ2"} <= set(names)
+    assert all("LYN" not in l for l in atoms), "the residue was renamed"
+
+
+def test_atom_count_is_unchanged_overall(mod, lysH_lysine, tmp_path):
+    """One hydrogen leaves the lysine and one joins the nucleophile, so both
+    arms keep the same atom count and the same total charge."""
+    count = lambda p: len([l for l in p.read_text().splitlines()
+                           if l.startswith(("ATOM", "HETATM"))])
+    out = tmp_path / "out.pdb"
+    mod.main([str(lysH_lysine), str(out), "--lys", "A:226"])
+    assert count(out) == count(lysH_lysine)
+
+
+def test_serials_contiguous_after_a_deletion_and_an_insertion(
+        mod, lysH_lysine, tmp_path):
+    out = tmp_path / "out.pdb"
+    mod.main([str(lysH_lysine), str(out), "--lys", "A:226"])
+    serials = [int(l[6:11]) for l in out.read_text().splitlines()
+               if l.startswith(("ATOM", "HETATM"))]
+    assert serials == list(range(1, len(serials) + 1))
+
+
+def test_a_lysine_without_hz3_is_refused(mod, tmp_path):
+    """Already neutral, or not the residue we think - either way not ours."""
+    lines = [
+        pdb_line(1, "ZN", "ZN", "B", "1", (0.0, 0.0, 0.0)),
+        pdb_line(2, "O01", "OH", "C", "2", (1.9, 0.0, 0.0)),
+        pdb_line(3, "H03", "OH", "C", "2", (2.4, 0.83, 0.0)),
+        pdb_line(4, "NZ", "LYS", "A", "226", (12.0, 0.0, 0.0)),
+        pdb_line(5, "HZ1", "LYS", "A", "226", (12.5, 0.8, 0.0)),
+        pdb_line(6, "HZ2", "LYS", "A", "226", (12.5, -0.8, 0.0)),
+        "CONECT    2    3\n",
+        "END\n",
+    ]
+    src = tmp_path / "neutral.pdb"
+    src.write_text("".join(lines))
+    out = tmp_path / "out.pdb"
+    with pytest.raises(SystemExit, match="no HZ3"):
+        mod.main([str(src), str(out), "--lys", "A:226"])
+    assert not out.exists()
+
+
+def test_a_lys_selector_matching_nothing_is_refused(mod, lysH_lysine, tmp_path):
+    out = tmp_path / "out.pdb"
+    with pytest.raises(SystemExit, match="matched no atoms"):
+        mod.main([str(lysH_lysine), str(out), "--lys", "A:999"])
+    assert not out.exists()
+
+
+def test_a_malformed_lys_selector_is_refused(mod, lysH_lysine, tmp_path):
+    with pytest.raises(SystemExit, match="CHAIN:RESID"):
+        mod.main([str(lysH_lysine), str(tmp_path / "out.pdb"), "--lys", "226"])
+
+
+def test_without_lys_the_lysine_is_left_alone(mod, lysH_lysine, tmp_path):
+    out = tmp_path / "out.pdb"
+    mod.main([str(lysH_lysine), str(out)])
+    assert "HZ3" in out.read_text()

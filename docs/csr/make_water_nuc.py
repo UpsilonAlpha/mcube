@@ -88,7 +88,22 @@ def place_h04(zn, o01, h03):
     return tuple(o + OH_LEN * d for o, d in zip(o01, best))
 
 
+def parse_lys(spec):
+    """"A:226" -> ("A", "226")."""
+    parts = spec.split(":")
+    if len(parts) != 2 or not all(parts):
+        raise SystemExit(f"--lys wants CHAIN:RESID, not {spec!r}")
+    return parts[0], parts[1]
+
+
 def main(argv):
+    lys = None
+    if "--lys" in argv:
+        at = argv.index("--lys")
+        if at + 1 >= len(argv):
+            raise SystemExit("--lys needs a CHAIN:RESID argument")
+        lys = parse_lys(argv[at + 1])
+        argv = argv[:at] + argv[at + 2:]
     if len(argv) != 2:
         raise SystemExit(__doc__)
     src, dest = Path(argv[0]), Path(argv[1])
@@ -99,6 +114,7 @@ def main(argv):
     zn = o01 = h03 = None
     oh_index = oh_line = None
     nuc_residue = None
+    lys_atoms = {}
     coords = []
     for index, line in enumerate(lines):
         if not line.startswith(("ATOM", "HETATM")):
@@ -116,6 +132,8 @@ def main(argv):
         if resname == "NUW":
             raise SystemExit(f"{src} already holds a NUW residue; this has "
                              "been run already.")
+        if lys and (chain, resseq) == lys:
+            lys_atoms[name] = index
 
     missing = [n for n, v in (("Zn", zn), ("OH O01", o01), ("OH H03", h03))
                if v is None]
@@ -124,6 +142,29 @@ def main(argv):
             f"could not find {', '.join(missing)} in {src}. This script expects "
             "the lysH input: a residue named OH with atoms O01 and H03, and a "
             "zinc. Nothing was written.")
+
+    # The lysine's proton is the one that moved, so it has to go. Its residue
+    # keeps the name LYS: OpenMM matches the force-field template by bond
+    # graph and finds LYN anyway, whereas renaming it would make
+    # `build_qm_region` treat it as non-standard - the config's `amino_acids`
+    # list overrides mcube's default and does not include LYN - and put its
+    # whole backbone into the QM region, changing the region between the arms.
+    drop_index = None
+    if lys:
+        if not lys_atoms:
+            raise SystemExit(
+                f"--lys {lys[0]}:{lys[1]} matched no atoms in {src}. Nothing "
+                "was written.")
+        if "HZ3" not in lys_atoms:
+            have = " ".join(sorted(lys_atoms))
+            raise SystemExit(
+                f"{lys[0]}:{lys[1]} has no HZ3, so it is not a cationic "
+                f"lysine to neutralise. It holds: {have}. Nothing was written.")
+        if "HZ1" not in lys_atoms or "HZ2" not in lys_atoms:
+            raise SystemExit(
+                f"{lys[0]}:{lys[1]} is missing HZ1 or HZ2, so removing HZ3 "
+                "would not leave a neutral lysine. Nothing was written.")
+        drop_index = lys_atoms["HZ3"]
 
     h04 = place_h04(zn, o01, h03)
 
@@ -152,7 +193,11 @@ def main(argv):
                 + oh_line[54:])
 
     out = []
+    dropped_serial = None
     for index, line in enumerate(lines):
+        if index == drop_index:
+            dropped_serial = int(line[6:11])
+            continue
         if line.startswith(("ATOM", "HETATM")) and line[17:20].strip() == "OH":
             line = line[:17] + f"{'NUW':>3s}" + line[20:]
         out.append(line)
@@ -188,6 +233,8 @@ def main(argv):
         for field in fields:
             if not field:
                 continue
+            if dropped_serial is not None and int(field) == dropped_serial:
+                continue    # the lysine proton we removed
             if int(field) not in remap:
                 raise SystemExit(
                     f"CONECT refers to serial {field}, which is not an atom in "
@@ -218,6 +265,9 @@ def main(argv):
     print(f"  Zn-H04 {norm(sub(h04, zn)):.3f} A "
           f"(Zn-H03 {norm(sub(h03, zn)):.3f} A)")
     print(f"  nearest other atom: {':'.join(closest[1])} at {closest[0]:.2f} A")
+    if lys:
+        print(f"  {lys[0]}:{lys[1]} HZ3 removed (serial {dropped_serial}); the "
+              "residue keeps the name LYS and matches LYN by bond graph")
     print(f"  residue OH renamed NUW; wrote {dest} ({serial} atoms)")
 
 
