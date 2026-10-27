@@ -31,7 +31,7 @@ def main(argv):
             raise SystemExit(f"no such file: {path}")
 
     import openmm
-    from openmm.app import ForceField, PDBFile
+    from openmm.app import ForceField, Modeller, PDBFile
 
     pdb = PDBFile(str(pdb_path))
     nuc = [r for r in pdb.topology.residues() if r.name == "NUW"]
@@ -58,17 +58,28 @@ def main(argv):
                    str(xml_path)]
     print(f"  force fields: {', '.join(forcefields)}")
     field = ForceField(*forcefields)
-    # Only the nucleophile's own residue is parameterised here: the rest of the
-    # structure needs the ligand's OpenFF xml, which preprocess generates.
-    system = field.createSystem(pdb.topology, rigidWater=True,
-                                residueTemplates={})
-    print(f"  system built: {system.getNumParticles()} particles")
+
+    # Parameterise the nucleophile ALONE. This runs on the preprocess *input*,
+    # whose protein still has no hydrogens - Modeller adds them during
+    # preprocess - so building the whole system here is impossible and would
+    # fail on the first alanine. Deleting everything else also keeps the one
+    # thing being checked from hiding behind an unrelated template error.
+    model = Modeller(pdb.topology, pdb.positions)
+    model.delete([r for r in model.topology.residues() if r.name != "NUW"])
+    kept = list(model.topology.residues())
+    if len(kept) != 1 or kept[0].name != "NUW":
+        raise SystemExit(f"isolating NUW left {[r.name for r in kept]}")
+    indices = {a.index for a in kept[0].atoms()}
+    system = field.createSystem(model.topology, rigidWater=True)
+    print(f"  NUW parameterised alone: {system.getNumParticles()} particles")
+    if system.getNumParticles() != 3:
+        raise SystemExit("the isolated nucleophile is not three particles")
 
     nb = next(f for f in system.getForces()
               if isinstance(f, openmm.NonbondedForce))
     charges = [nb.getParticleParameters(i)[0]
                .value_in_unit(openmm.unit.elementary_charge)
-               for i in sorted(indices)]
+               for i in range(system.getNumParticles())]
     print(f"  charges: {[round(c, 3) for c in charges]} (sum "
           f"{sum(charges):+.3f})")
     if abs(sum(charges)) > 1e-6:
