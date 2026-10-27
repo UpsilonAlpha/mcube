@@ -1172,6 +1172,31 @@ blocks 30576666/67 held; the Ca jobs run)
     - `la_def_min_smd` 30727627 and `lu_def_min_smd` 30727628.
     - Acetate calibration `calibrate_smd` 30727629.
     - Each site directory is a copy of the converged PCM site (geometries and gas energies reused).
+- **QM/MM vertical swaps (launched 2026-10-28; `docs/channel/qmmm/`, commit ac7cccf; method and cost in its README).**
+  - Why still necessary: the pKa entry above shows the screening (Arg302/366, Arg202, His222, Na⁺, water) that sets
+    Ca vs Ln. The cluster cannot represent it; electrostatic embedding can.
+  - Quantity: ΔΔE(M1 → M2) = ⟨E(M2@site) − E(M1@site)⟩ − ⟨E(M2@water) − E(M1@water)⟩, each pair on the same
+    frame with only the ion swapped.
+    - The water term comes from bulk boxes, the same protocol, so the long-range 2+ vs 3+ terms largely cancel.
+    - Frames: 5 per source (La default-C4 and Lu Ch-BE residence runs; 4.0, 5.5, 7.0, 8.5, 10.0 ns); every ion goes
+      into every frame (two-sided).
+  - Per job: mcube preprocess → qmmm → sp.
+    - QM region: ion + coordinating Glu side chains (cut CA–CB) + first-shell waters within 3.3 Å, fixed once per
+      frame from the source ion and identical for all three ions.
+      - La frames: Glu156 + Glu240 + 7 waters.
+      - Lu frames: Glu240 (+ Glu220 from 5.5 ns) + 7–8 waters.
+    - Optimisation: r2SCAN/def2-SVP (lcecp-1-SVP), 8 Å active region. Single point: r2SCAN/def2-TZVP (lcecp-1-TZVP).
+    - MM metal set 1264; the ion is QM, so its C4 term is off.
+  - **Deliberate exception to the mcube rule "QM/MM MD before optimisation":** a separate QM/MM MD per swapped ion
+    would let the environments diverge and lose the pairing that makes ΔE meaningful. So qmmm is a local
+    optimisation from the shared MM frame (`skip_equilibrate: true`, commented in every config).
+  - Jobs:
+    - 30 site jobs (`$S/channel/qmmm/jobs_site.txt`).
+    - Water frames: bulk MM runs `bulkf_LA` 30727693 and `bulkf_LU` 30727694 (2 ns, 310 K, 1264 set, a frame every
+      50 ps), then 30 water jobs.
+    - Smoke test 30727885 (`site/LA_f0159/LU`: Lu swapped into a La frame, exercising the ECP path).
+    - The full arrays are submitted after it gives a time per optimisation step.
+    - Estimate 6,000–11,000 core-h in all (unmeasured).
 
 ## Findings
 
