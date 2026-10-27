@@ -258,7 +258,7 @@ sections:
       default_forcefields:
         - amber14/protein.ff14SB.xml
         - amber14/tip3p.xml
-        - ../water_nuc.xml          # not hydroxide.xml: the nucleophile is a water
+        - water_nuc.xml             # not hydroxide.xml: the nucleophile is a water
       restraints:
         - [C:2:O01, C:1:C4x, 3.47]
       skip_npt: true
@@ -290,8 +290,8 @@ sections:
       forcefields:
         - amber14/protein.ff14SB.xml
         - amber14/tip3p.xml
-        - ../../water_nuc.xml
-        - ../../preprocess_results/openff_MER.xml
+        - water_nuc.xml
+        - preprocess_results/openff_MER.xml
       extra_qm_residues:
         A: [229]
       charge: 3                 # unchanged: the proton moved inside the QM region
