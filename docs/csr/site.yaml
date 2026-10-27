@@ -195,6 +195,76 @@ sections:
       platform: CUDA
       properties: {Precision: mixed}
 
+  # ---- The ohH arm of the protonation test (D112, M0). ----
+  #
+  # The same site with the proton moved from Lys226 NZ onto the nucleophile, so
+  # that the test VIM-2 used can be run here: equilibrate each protonation state
+  # and keep the one that holds the active site the crystal shows (Protocols for
+  # Metallo- and Serine-beta-Lactamase Free Energy Predictions, J Phys Chem B
+  # 2024, 128:12416, PMC11664573 - they ran 100 ps of QM/MM MD per state and
+  # judged by zinc coordination against the crystal, not by an energy).
+  #
+  # The lysH arm is already run: naclong's 100 ns plus nacqm and nacarg's 100 ps
+  # of QM/MM, which lose the substrate entirely (D111). This is the other arm.
+  # It is NOT `protH_oh` below: that pins HZ1 next to O01 while the MM bond to
+  # Lys226 NZ is still there, which is fine for a constrained optimisation and
+  # useless for free dynamics - the constraint would be doing the work.
+  #
+  # Needs its own directory and preprocess (as CSR_nac did, D98). Build the
+  # input with
+  #
+  #   python make_water_nuc.py csr_crystal_start.pdb csr_crystal_start_ohH.pdb
+  #
+  # then copy CSR_nac's config and change preprocess.inputs in three places:
+  #
+  #   protein_pdb:      ./csr_crystal_start_ohH.pdb
+  #   forcefields:      ../water_nuc.xml replacing ../hydroxide.xml
+  #   residue_variants: add  226: LYN   to the existing HIS variants
+  #
+  # and nothing else. LYN is OpenMM's neutral lysine and drops HZ3, so the two
+  # systems have the same atom count, the same total charge, and the same QM
+  # charge of +3 with Arg229 - the arms differ by where one hydrogen sits.
+  # `pH` is left unset: preprocess defaults to 8.0 on the explicit-solvent path,
+  # which is the assay pH, and pH 7 and 8 are in any case identical under
+  # OpenMM's thresholds (ASP/GLU 4.4, CYS 8.5, LYS 10.0, HIS 6.5).
+  ohHmd:
+    stage: md
+    inputs:
+      restraints:
+        - [C:2:O01, C:1:C4x, 3.47]   # as naclong, so the arms start alike
+      nvt_time: 100000          # ps, matching naclong exactly
+      traj_frequency: 5000
+      timestep: 0.002           # see below
+      platform: CUDA
+      properties: {Precision: mixed}
+
+  # Why 2 fs where naclong used 4. `rigidWater` recognises residues named HOH
+  # and not NUW, so the nucleophile's H-O-H angle is flexible here while bulk
+  # water's is constrained (checked against OpenMM, not assumed). With HBonds
+  # constraining the O-H bonds the angle is the only free mode, and at ~21 fs
+  # it is too fast for a 4 fs step. Doubles the GPU time to about 13 h at the
+  # rate D100 measured, which is cheap next to getting the comparison wrong.
+  # The qmmm stage builds its MM system with rigidwater=False and
+  # autoconstraints=None, so the nucleophile is entirely free there - which is
+  # what lets the proton move during QM/MM MD.
+
+  # 50 ps first, as the user asked, then another 50 by changing `time` to 100
+  # and resubmitting this same section: `resume: true` restores ASH's state file
+  # and runs only the remainder (D109). On the first run there is nothing to
+  # resume from, so it says so and starts fresh. No `start` or `pdb_file`: the
+  # stage falls back to this config's own `md.results.lastframe`, which is what
+  # we want, and records which structure it used.
+  ohHqm:
+    stage: qmmm
+    inputs:
+      extra_qm_residues:
+        A: [229]
+      charge: 3                  # unchanged: the proton moved inside the QM region
+      skip_equilibrate: false
+      skip_optimize: true
+      time: 50
+      resume: true
+
   # D107: Arg229 is cationic and contacts the substrate in 89% of frames (D29),
   # yet sat outside the QM region - while Lys226, which is *further* from both the
   # C3 carboxylate (4.80 vs 4.38 A) and the leaving nitrogen (6.93 vs 6.61 A), was

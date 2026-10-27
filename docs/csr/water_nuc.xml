@@ -1,0 +1,45 @@
+<ForceField>
+  <!-- The nucleophile as a WATER, for the ohH arm of the protonation test
+       (D112, M0). The lysH arm uses hydroxide.xml, whose residue OH is one O
+       and one H; this is the same site with the proton put back, so the two
+       arms differ by where one hydrogen sits and in nothing else.
+
+       Residue NUW rather than HOH or OH. Not HOH, because PDBFile infers a
+       standard water's bonds from the atom names O/H1/H2 and would find none
+       for ours; not OH, because calling a water "OH" in a paper invites the
+       confusion this test exists to resolve. Atom names stay O01/H03 (plus the
+       new H04), so every selector in site.yaml and in traj_contacts.py works
+       unchanged on both arms: the comparison is atom-name-identical and needs
+       no second set of selectors. The O01-H04 bond comes from a CONECT record,
+       as the hydroxide's O01-H03 bond already does.
+
+       This file deliberately declares NOTHING but the residue. The types are
+       amber14/tip3p.xml's own, so the charges, the Lennard-Jones parameters,
+       the O-H bond and the H-O-H angle are all inherited from TIP3P rather
+       than restated here - which also means this template is *parameter
+       identical* to HOH. That matters: a template with its own types would
+       also match all ~15000 bulk waters by bond graph, and OpenMM then refuses
+       the whole system with "Multiple non-identical matching templates found".
+       Identical matches are accepted. Load this file after amber14/tip3p.xml.
+
+       One consequence to know: rigidWater does not recognise NUW, so its
+       H-O-H angle is flexible where bulk water's is constrained (verified -
+       rigidWater constrains the bulk water and not this residue). With HBonds
+       constraining the O-H bonds, the angle is the only free mode, and 4 fs is
+       too coarse for it, so the ohH equilibration runs at 2 fs. In the qmmm
+       stage mcube builds the MM system with rigidwater=False and
+       autoconstraints=None, so the nucleophile is entirely free there - which
+       is what allows the proton to move during QM/MM MD. -->
+  <Info>
+    <DateGenerated>2026-10-27</DateGenerated>
+  </Info>
+  <Residues>
+    <Residue name="NUW">
+      <Atom name="O01" type="tip3p-O" charge="-0.834"/>
+      <Atom name="H03" type="tip3p-H" charge="0.417"/>
+      <Atom name="H04" type="tip3p-H" charge="0.417"/>
+      <Bond atomName1="O01" atomName2="H03"/>
+      <Bond atomName1="O01" atomName2="H04"/>
+    </Residue>
+  </Residues>
+</ForceField>
