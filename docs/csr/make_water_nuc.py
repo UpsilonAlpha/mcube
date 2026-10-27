@@ -1,21 +1,31 @@
 #!/usr/bin/env python3
 """Build the ohH input structure: put the proton back on the nucleophile.
 
-    python make_water_nuc.py csr_crystal_start.pdb csr_crystal_start_ohH.pdb
+    python make_water_nuc.py in.pdb out.pdb [--lys A:226]
 
 The lysH arm has a hydroxide (residue OH, atoms O01 + H03) with a cationic
 Lys226. The ohH arm is the same site with that proton moved onto the
 nucleophile, so this adds one hydrogen, H04, and renames the residue OH -> NUW
-to match `water_nuc.xml`. Lys226 is turned neutral separately, by
-`residue_variants: {A: {226: LYN}}` in preprocess - OpenMM's LYN variant drops
-HZ3, so the two arms have the same atom count and the same total charge, and the
-QM charge stays +3.
+to match `water_nuc.xml`.
+
+`--lys A:226` completes the move by removing that lysine's HZ3. One hydrogen
+leaves the lysine and one joins the nucleophile, so both arms keep the same atom
+count, the same total charge, and the same QM charge of +3. The residue
+deliberately keeps the name LYS: OpenMM matches the force-field template by bond
+graph and finds LYN anyway, whereas renaming it would make `build_qm_region`
+treat it as non-standard - the config's `amino_acids` list overrides mcube's
+default and omits LYN - and put its whole backbone into the QM region, changing
+the QM region between the two arms. Use `--lys` when starting from an
+equilibrated frame, which is what the ohH run does (naclong's 100 ns MM
+lastframe, the frame nacqm started from). A run that goes through preprocess can
+set `residue_variants: {A: {226: LYN}}` instead, since Modeller adds hydrogens
+there.
 
 H04 goes where a metal-bound water's second hydrogen belongs: in the plane of
 Zn-O01-H03, at the TIP3P geometry (0.9572 A, 104.52 degrees from H03), on
 whichever side points further from the metal. That is a geometric choice, not a
 mechanistic one - it does not aim the new proton at Asp92 or at anything else,
-and the restrained MM equilibration that follows is what actually settles it.
+and the first picoseconds of QM/MM are what actually settle it.
 
 Refuses rather than guesses: missing atoms, a degenerate Zn-O01-H03 geometry, or
 a placement that lands on top of an existing atom all raise. The last matters
