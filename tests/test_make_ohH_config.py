@@ -136,6 +136,55 @@ def test_named_sections_are_dropped(mod, tmp_path):
 
 # ---- refusals --------------------------------------------------------------
 
+def test_resolved_forcefield_lists_are_dropped_from_later_stages(mod, tmp_path):
+    """The real lysH config carries an absolute forcefields list in md and
+    qmmm, pointing at CSR_nac/hydroxide.xml and its openff_MER.xml. Copying
+    those would hand the ohH run the hydroxide template and the other run's
+    ligand parameters. mm_settings falls back to md.results.forcefields, which
+    this run regenerates, so dropping the override is the fix."""
+    source = {
+        "preprocess": {"inputs": dict(LYSH["preprocess"]["inputs"])},
+        "md": {"inputs": {"temp": 300, "forcefields": [
+            "amber14/protein.ff14SB.xml",
+            "/scratch/user/uquadhik/CSR_nac/hydroxide.xml",
+            "/scratch/user/uquadhik/CSR_nac/preprocess_results/openff_MER.xml",
+        ]}},
+        "qmmm": {"inputs": {"charge": 2, "forcefields": [
+            "/scratch/user/uquadhik/CSR_nac/hydroxide.xml"]}},
+    }
+    src_dir = tmp_path / "CSR_nac"
+    src_dir.mkdir()
+    path = src_dir / "config.yaml"
+    path.write_text(yaml.safe_dump(source, sort_keys=False))
+    dest = tmp_path / "CSR_ohH" / "config.yaml"
+    mod.main([str(path), str(dest)])
+    text = dest.read_text()
+    out = yaml.safe_load(text)
+    assert "forcefields" not in out["md"]["inputs"]
+    assert "forcefields" not in out["qmmm"]["inputs"]
+    assert "hydroxide" not in text, "the lysH hydroxide template survived"
+    assert "CSR_nac" not in text
+    assert out["md"]["inputs"]["temp"] == 300, "the rest of md survived"
+
+
+def test_a_surviving_path_into_the_source_run_is_refused(mod, tmp_path):
+    """The general guard: anything still pointing at the run we derived from
+    would make a stage here read that run's files."""
+    source = {
+        "preprocess": {"inputs": dict(LYSH["preprocess"]["inputs"])},
+        "md": {"inputs": {"ligand_xml":
+                          "/scratch/user/uquadhik/CSR_nac/openff_MER.xml"}},
+    }
+    src_dir = tmp_path / "CSR_nac"
+    src_dir.mkdir()
+    path = src_dir / "config.yaml"
+    path.write_text(yaml.safe_dump(source, sort_keys=False))
+    dest = tmp_path / "CSR_ohH" / "config.yaml"
+    with pytest.raises(SystemExit, match="still refers to CSR_nac"):
+        mod.main([str(path), str(dest)])
+    assert not dest.exists()
+
+
 def test_refuses_to_overwrite(mod, src, tmp_path):
     dest = tmp_path / "exists.yaml"
     dest.write_text("x: 1")

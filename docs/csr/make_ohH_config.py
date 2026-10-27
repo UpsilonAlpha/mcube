@@ -81,6 +81,7 @@ def main(argv):
     # from site.yaml via sections.py instead, which is the single source for
     # what each calculation is.
     sections = [k for k in config if k not in BASE_STAGES]
+    dropped_ff = []
     out = strip_results({k: v for k, v in config.items() if k in BASE_STAGES})
     pre_out = out["preprocess"]["inputs"]
     pre_out["protein_pdb"] = NEW_PDB
@@ -95,8 +96,36 @@ def main(argv):
     # and documents everything).
     pre_out.setdefault("pH", 8.0)
 
+    # Downstream stages carry a RESOLVED, absolute forcefields list - the lysH
+    # arm's pointed at CSR_nac/hydroxide.xml and its openff_MER.xml. Those must
+    # not come along: the ohH system has no hydroxide, and its ligand
+    # parameters are re-derived by its own preprocess. Dropping the override is
+    # the right fix rather than rewriting the paths, because mm_settings falls
+    # back to `md.results.forcefields`, which this run regenerates.
+    for stage, body in out.items():
+        if stage == "preprocess" or not isinstance(body, dict):
+            continue
+        stage_inputs = body.get("inputs")
+        if isinstance(stage_inputs, dict) and "forcefields" in stage_inputs:
+            dropped_ff.append(f"{stage}.inputs.forcefields")
+            del stage_inputs["forcefields"]
+
+    # Nothing may still point into the config we derived from. This is the
+    # general guard: the forcefields lists above were found by reading the real
+    # file, and anything else of the same shape would be just as wrong.
+    source_dir = src.resolve().parent.name
+    text = yaml.safe_dump(out, sort_keys=False, default_flow_style=False)
+    if source_dir and source_dir in text:
+        offenders = [line.strip() for line in text.splitlines()
+                     if source_dir in line]
+        listed = "; ".join(offenders[:8])
+        raise SystemExit(
+            f"the derived config still refers to {source_dir}, the run it came "
+            f"from, so a stage here would read that run's files: {listed}. "
+            "Nothing was written.")
+
     dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(yaml.safe_dump(out, sort_keys=False, default_flow_style=False))
+    dest.write_text(text)
 
     print(f"wrote {dest}")
     print(f"  protein_pdb      {pre_out['protein_pdb']}")
@@ -105,6 +134,7 @@ def main(argv):
     print(f"  pH               {pre_out['pH']}")
     print(f"  stages kept:      {sorted(out)}")
     print(f"  sections dropped: {sorted(sections) or 'none'}")
+    print(f"  forcefields dropped: {dropped_ff or 'none'}")
     print("  next: python sections.py config.yaml ohHmd ohHqm")
 
 
