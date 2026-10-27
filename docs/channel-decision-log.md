@@ -1165,8 +1165,8 @@ blocks 30576666/67 held; the Ca jobs run)
     on the converged PCM geometries, in SMD diethyl ether / propanonitrile / water. The ion radii are set as for
     PCM, because SMD has none for La/Lu.
   - **Build works** (job 30727294): libsolvent loads, and a water molecule gives SMD energies in all three solvents.
-    PySCF's default SMD radius for La and Lu is a 3.78 Å placeholder (2 × VDW fallback), so the explicit
-    radii are needed.
+    PySCF's default SMD radius for La and Lu is the 2.0 Å fallback (printed as 3.78, which is in Bohr; an
+    earlier note here wrongly read it as Å), so the explicit radii are needed.
   - **Submitted (2026-10-28):**
     - `lu_def_ring_smd` 30727625 and `la_def_ring_smd` 30727626 (180 GB).
     - `la_def_min_smd` 30727627 and `lu_def_min_smd` 30727628.
@@ -1212,6 +1212,17 @@ blocks 30576666/67 held; the Ca jobs run)
 - **SMD calibration failed on a bug, fixed** (commit 9d35dab): a fresh report directory defaulted to "pcm" and then
   refused `--solvation smd`. Resubmitted as 30729256. The site SMD jobs (pre-set to smd) were not affected; three
   are computing single points and the two ring jobs are queued. The site array's first 10 tasks are running.
+- **SMD radii bug (2026-10-28, fixed in c34f4ea); first SMD results discarded.**
+  - `lu_def_min_smd` finished with impossible values: Ca → Lu +284, La → Lu −123 kcal/mol.
+  - The SMD solvation energies of the site clusters matched PCM within 2–10 kcal/mol. The aqua ions in SMD water,
+    however, were −391 (Ca), −967 (La) and −873 (Lu), against PCM −175 / −369 / −390.
+  - Cause: PySCF's SMD radius table is in Bohr (`smd_radii` returns Å / BOHR), and the override wrote the ion radii
+    in Å. So the ion spheres were 1.04–1.16 Å, leaving holes inside the water shells of the aqua ions that the
+    continuum filled.
+  - Fix: the ion radii are converted to Bohr, as the PCM path already did.
+  - The four running SMD jobs and the calibration were cancelled. The SMD sites' solvated entries were removed
+    (geometries and gas energies kept) and everything was resubmitted on epyc4: `lu_def_ring_smd` 30729788,
+    `la_def_ring_smd` 30729789, `la_def_min_smd` 30729790, `lu_def_min_smd` 30729791, `calibrate_smd` 30729792.
 
 ## Findings
 
