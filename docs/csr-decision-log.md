@@ -2098,6 +2098,26 @@ Rewriting one of these to a bare name would change **which file the run uses**, 
 
 9 tests on the resolver and 8 on the migration; suite 353 pass, 5 skipped.
 
+**Repointing the five cross-run configs (user, 2026-10-27: "Repoint the five cross-run configs at their own files"). Four of the thirteen entries could be; the rest could not, and the reasons matter.**
+
+`migrate_paths.py --repoint` rewrites a foreign path only when the run's own copy is **byte-identical, or differs solely in a `<DateGenerated>` line** - OpenFF stamps its output with the generation date, so two runs of the same preprocess on the same SMILES differ in that one line and nothing else. Anything further is a change to the force field wearing the clothes of a path fix, and for a finished run it makes the config stop describing what ran.
+
+    repointed  6 entries across 4 configs
+      all 8 hydroxide.xml in the archive are byte-identical (f1ec8f0e...),
+      so every hydroxide reference was a free fix
+      CSR_nac's openff_MER.xml: same but for the date
+
+    refused    CSR_unrestrained   2x openff_MER.xml - no copy of its own
+               CSR_crystal_v3     2x openff_MER.xml - no copy of its own
+               CSR_gln93          3x - no copy of either file
+               CSR_unrestrained2  1x openff_MER.xml - ITS OWN COPY DIFFERS
+
+**That last one is the finding.** `CSR_unrestrained2`'s own `openff_MER.xml` differs from the `CSR_crystal` one its config reads across **51 atom lines, with different charges** (`C1x` -0.0921 against -0.1443, and so on) - not a date stamp. So two different meropenem parameterisations exist in this project, and that run used the older one. Repointing it would silently have swapped the ligand's charges in a config describing finished work, so it was left alone.
+
+Three runs have no parameterisation of their own at all and borrow one; that is a fact about how they were set up by copying, and the only way to give them their own is to re-run `preprocess`, which would generate a third set. **Nothing was regenerated, because which parameterisation is correct is a question about the chemistry and not about paths.**
+
+13 tests on the migration tool; suite 360 pass, 5 skipped.
+
 **D116 - The D115 guard fired on the real run, which is the good news; it fired because `sections.py` was looking for the structure in the git checkout.** (2026-10-27, jobs 30703062 and 30705703)
 
 **Job 30703062 FAILED after 9 seconds**, costing nothing, with exactly the message the guard exists to produce:
