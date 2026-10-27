@@ -140,8 +140,6 @@ def reorient_water(zn, o01, h03, others, floor):
     for d1 in sphere_directions():
         p1 = tuple(o + OH_LEN * d for o, d in zip(o01, d1))
         gap1 = min((norm(sub(p1, xyz)) for _, xyz in near), default=float("inf"))
-        if gap1 < floor:
-            continue
         seed = (1.0, 0.0, 0.0) if abs(dot((1.0, 0.0, 0.0), d1)) < 0.9 else (0.0, 1.0, 0.0)
         u = unit(cross(d1, seed))
         v = unit(cross(d1, u))
@@ -154,12 +152,14 @@ def reorient_water(zn, o01, h03, others, floor):
             p2 = tuple(o + OH_LEN * d for o, d in zip(o01, d2))
             gap2 = min((norm(sub(p2, xyz)) for _, xyz in near),
                        default=float("inf"))
-            if gap2 < floor:
-                continue
             clearance = min(gap1, gap2)
-            # Stay as close to the input orientation as the clash allows, then
-            # prefer hydrogens pointing away from the metal.
-            score = (dot(d1, original), dot(d1, away) + dot(d2, away))
+            # Clearing the floor is what matters; among orientations that
+            # do, stay as near the input as possible, then prefer
+            # hydrogens pointing away from the metal. Orientations that do
+            # not clear it are still ranked, so the caller can report the
+            # best achievable rather than only that nothing worked.
+            score = (min(clearance, floor), dot(d1, original),
+                     dot(d1, away) + dot(d2, away))
             if best is None or score > best[0]:
                 best = (score, clearance, p1, p2)
     return best
@@ -288,13 +288,15 @@ def main(argv):
               "cutoff. The hydroxide is pressed against its surroundings, so "
               "reorienting the whole water with the oxygen fixed.")
         found = reorient_water(zn, o01, h03, others, CLASH)
-        if found is None:
-            raise SystemExit(
-                f"no orientation of a water at O01 clears {CLASH} A. The "
-                "nucleophile position itself has no room for two hydrogens in "
-                "this frame, so it needs relaxing before the proton is added. "
-                "Nothing was written.")
         _, clearance, h03_new, h04 = found
+        if clearance < CLASH:
+            raise SystemExit(
+                f"the best orientation of a water at O01 clears only "
+                f"{clearance:.2f} A, against a {CLASH} A cutoff. The "
+                "nucleophile position itself has no room for two "
+                "hydrogens in this frame, so it needs relaxing before the "
+                "proton is added - a minimisation, as VIM-2 ran for each "
+                "state. Nothing was written.")
         turn = math.degrees(math.acos(max(-1.0, min(1.0, dot(
             unit(sub(h03_new, o01)), unit(sub(h03, o01)))))))
         print(f"[INFO] Water reoriented: H03 turned {turn:.0f} deg, clearance "
