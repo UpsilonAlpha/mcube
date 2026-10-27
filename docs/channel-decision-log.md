@@ -1164,6 +1164,14 @@ blocks 30576666/67 held; the Ca jobs run)
   - `site_exchange.py --solvation smd` (with `SMD=1` in `site.slurm`) recomputes only the solvated single points
     on the converged PCM geometries, in SMD diethyl ether / propanonitrile / water. The ion radii are set as for
     PCM, because SMD has none for La/Lu.
+  - **Build works** (job 30727294): libsolvent loads, and a water molecule gives SMD energies in all three solvents.
+    PySCF's default SMD radius for La and Lu is a 3.78 Å placeholder (2 × VDW fallback), so the explicit
+    radii are needed.
+  - **Submitted (2026-10-28):**
+    - `lu_def_ring_smd` 30727625 and `la_def_ring_smd` 30727626 (180 GB).
+    - `la_def_min_smd` 30727627 and `lu_def_min_smd` 30727628.
+    - Acetate calibration `calibrate_smd` 30727629.
+    - Each site directory is a copy of the converged PCM site (geometries and gas energies reused).
 
 ## Findings
 
