@@ -1965,6 +1965,20 @@ Minimum-image distances in angstroms, `%` being the fraction of the 50 frames in
 
 **What it does not settle, stated plainly.** This is *not* evidence against the +2-substitution hypothesis, and it is not evidence that CSR-1 binds meropenem weakly in reality - a drifting simulation cannot support either conclusion. Three readings remain open and they need different fixes: the **reactant protonation state** may be wrong (the `protH_lys`/`protH_oh` comparison is still unrun in its fixed form, and it is now the most informative thing we could do); **GFN2-xTB** may simply not hold this complex, which the DFT retest already specified in this log would show; or the **complex needs a restraint through equilibration**, which would make the sampling an assumption rather than a result. Deciding between them is the user's call, not something to pick by default.
 
+**D112 - The system we have been simulating is in the protonation state M1 rejected.** (2026-10-26, found while bringing the plan's status up to date)
+
+**D48 (job 30053828) concluded:** "Still negative, so the resting state is Zn-OH2 with neutral Lys226. **The model genuinely has no hydroxide**" - `ohH` below `lysH` by 5.23 kcal/mol at wB97X-D3(BJ)/def2-SVP//xTB/MM.
+
+**`CSR_nac` is in the `lysH` state.** Read off the topology of the running system (`qmmm_nacarg/QM_MM_firstframe.pdb`, and the same in `nacqm`): residue `OH` resSeq 2 has atoms **O01 and H03 only**, i.e. a hydroxide, and **Lys226 NZ carries HZ1, HZ2 and HZ3**, i.e. a cationic ammonium - confirmed independently by job 30598032's own final-frame summary (`Lys226 NZ  3 H  HZ1 1.09, HZ2 1.05, HZ3 1.02`). That is `qmmm_cleanR_lysH`, the state D48 disfavoured.
+
+**How it got there: nothing decided it.** D98 built `CSR_nac` from `CSR_unrestrained2` with "the same `preprocess.inputs`", listing the docked pose, cutoff, HIS variants, `extra_qm_residues` and `constraint_exclude_residues` - and no protonation change. D48 landed on 2026-10-18; `CSR_nac` was built on 2026-10-23. **The verdict was never carried across.** So D102 (100 ns), D104, D106's NEB start frame, D107's contacts, D110 and D111 were all computed in it.
+
+**What this does and does not mean.** It does not make those runs wrong - it makes them runs of a different protonation state than the one M1 chose, and that has to be said in any write-up. It does raise M0's first reading from one of three possibilities to the leading explanation for D111's drift: if the complex is being held in a disfavoured protonation state, a substrate that will not stay bound is what you would expect.
+
+**But it is not a simple fix, because the two best arguments disagree in sign.** D48 itself called -5.2 kcal/mol "not comfortably excluded, only disfavoured" - within reach of def2-SVP error, the imposed constraints, and the absence of entropy and sampling. D107's pKa bookkeeping runs the other way: a 2+ cation 4-5 A away should raise a lysine's pKa, and Zn-water ~5.6 against Lys ~10.5 puts the transfer uphill by 6-7 kcal/mol, which would **favour** `lysH` and vindicate what has been run. GFN2-xTB cannot arbitrate: its worst benchmarked functional group is the protonated amine, MUE 5.3-7.7 kcal/mol (Arantes & Rezac 2025), which spans the whole disagreement.
+
+**So the action is the `protH_lys`/`protH_oh` comparison at DFT in the current five-coordinate geometry**, which settles M1 and M0's first reading together and is the cheapest thing on the board. Until it runs, no barrier computed from `CSR_nac` can be defended, because the resting state it starts from is contested. **Not a reason to rebuild anything yet** - if `lysH` wins, nothing needs redoing.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
