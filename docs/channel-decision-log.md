@@ -930,6 +930,31 @@ blocks 30576666/67 held; the Ca jobs run)
   - **La vs Lu within the offset** (−1.1 / −1.3), so undecided here.
 
   Lesson: a site counts only once all three ions have converged; the `_p4` value with unconverged Ca was off by ~26.
+- **`lu_chbe_min_p4c`: the Ca rerun converged; the values are unchanged** (Ca → La +2.9 / −6.6, Ca → Lu −7.5 / −16.8,
+  La → Lu −10.4 / −10.2). After the offset (n = 2): Ca over La (+11.9 / +2.4), Ca vs Lu undecided (+1.5 / −7.8),
+  Lu over La (−5.2 / −5.0).
+- **First ring site: `lu_chbe_ring_p4`** (Glu220 + Glu240 coordinating, Glu156/300 frozen, pocket −4, n = 2; all three
+  ions converged). ε 4 / ε 29:
+  - Ca → La −13.4 / −4.1
+  - Ca → Lu −31.8 / −19.9
+  - La → Lu −18.4 / −15.8
+
+  After the offset:
+  - **Ca vs La is now dielectric-dependent** (−4.4 / +4.9).
+  - **Lu over Ca** (−22.8 / −10.9), beyond the offset.
+  - **Lu over La** (−13.2 / −10.6).
+
+  **Criterion 2 against its min variant (same frame, same coordinating Glu):** the two extra, uncoordinated Glu⁻ move
+  every column toward the 3+ ions, by 16 / 7 (Ca → La), 24 / 3 (Ca → Lu) and 8 / 6 (La → Lu), as Dudev's
+  pocket-charge result predicts.
+  - Ca over La does **not** survive at ε 4.
+  - Ca vs Lu turns into Lu over Ca.
+  - Lu over La holds and grows.
+
+  So for Ca vs Ln the answer depends on how much of the second-shell Glu charge reaches the ion. That is the
+  question the QM/MM snapshot single points (embedding in the real protein) would settle.
+- **Ring status:** `la_def_ring` ended with both La and Lu unconverged at 150 steps (both need a rerun);
+  `la_chbe_ring` is on La; `lu_def_ring` has La ✗ and is on Lu.
 - **Metadynamics stage (support only):** `mcube metadynamics` (commit 6e85c16) is well-tempered MTD on
   n_COO with z held, or 2D, on `openmm.app.Metadynamics` with umbrella's CVs (ASH's wrapper uses the same
   class with a different CN function and no CV logging). `fes` reports integer-state free energies
