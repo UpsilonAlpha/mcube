@@ -963,8 +963,7 @@ blocks 30576666/67 held; the Ca jobs run)
   mode.
 - **Literature comparison (2026-10-27).**
   - **Precedent:** the protocol is the DFT/continuum "metal competition" method of Dudev and Lim: Dudev, Chang & Lim,
-    *JACS* 2005, 127, 4091 (La³⁺ for Ca²⁺/Mg²⁺), and the review Dudev & Lim, *Chem. Rev.* 2014 (cited from memory,
-    not checked). Ours follows Nikolova *et al.* *IJMS* 2023, 24, 6297 (PMC10094714) almost step by step. That paper
+    *JACS* 2005, 127, 4091 (La³⁺ for Ca²⁺/Mg²⁺), and the review Dudev & Lim, *Chem. Rev.* 2014, 114, 538–556 (refs below). Ours follows Nikolova *et al.* *IJMS* 2023, 24, 6297 (PMC10094714) almost step by step. That paper
     reports trends only, with no comparison to experiment; our acetate calibration goes further.
   - **Ca vs Ln agrees with their pocket-charge rule.**
     - Nikolova *et al.*, buried site (ε 4), Ca → La: −47.8 kcal/mol at pocket −4, −20.4 at −3, +18.0 at −1.
@@ -980,8 +979,11 @@ blocks 30576666/67 held; the Ca jobs run)
       across the series is not monotonic: Pr is the weakest competitor and Dy the strongest.
     - Ours: −6 to −12 at the min sites and −16 to −18 in `lu_chbe_ring`. After the 2.6 n offset that is still
       −5 to −13.
-    - Lanmodulin itself prefers the light Ln (Cotruvo *et al.*, *JACS* 2018, cited from memory). Its EF-hand
-      prolines tune it for early Ln (Liu, Featherston, Cotruvo & Baiz, *PCCP* 2021, classical MD + 2D IR).
+    - Lanmodulin itself prefers the light Ln. Mex-LanM "favours the larger and more abundant light REs (LREs),
+      especially LaIII–SmIII, over heavy REs" (Mattocks *et al.* 2023, citing Cotruvo *et al.* 2018). Cotruvo *et al.*
+      2018 report a picomolar response to every Ln La–Lu against near-millimolar for Ca, about 10⁸ Ln over Ca. No
+      per-element Kd table has been checked yet. Its EF-hand prolines tune it for early Ln (Liu *et al.* 2021,
+      classical MD + 2D IR).
     - Our acetate calibration already over-favoured Lu by 2.6 kcal/mol per carboxylate (exp. ≈ −0.2). The likely cause is
       IEF-PCM, electrostatics only, with hand-set ion radii (Lu 1.98, La 2.2 Å) in place of SMD. The Lu > La gap
       tracks how the cavity radii treat the smaller, harder ion.
@@ -991,6 +993,26 @@ blocks 30576666/67 held; the Ca jobs run)
       gpu4pyscf on a GPU, or ORCA/Gaussian. A few CPU-hours per site.
     - If SMD gives |La → Lu| below ~2 kcal/mol, the cluster model cannot separate La from Lu.
   - **No QM or QM/MM study of Ca vs Ln selectivity in lanmodulin or a related protein was found** (search 2026-10-27).
+  - **References for the write-up** (each checked against Crossref, PMC or the publisher record, 2026-10-27):
+    1. Dudev, T.; Chang, L.-Y.; Lim, C. Factors governing the substitution of La³⁺ for Ca²⁺ and Mg²⁺ in
+       metalloproteins: a DFT/CDM study. *J. Am. Chem. Soc.* 2005, 127, 4091–4103. doi:10.1021/ja044404t
+    2. Dudev, T.; Lim, C. Competition among metal ions for protein binding sites: determinants of metal ion
+       selectivity in proteins. *Chem. Rev.* 2014, 114 (1), 538–556. doi:10.1021/cr4004665
+    3. Nikolova, V.; Kircheva, N.; Dobrev, S.; Angelova, S.; Dudev, T. Lanthanides as calcium mimetic species in
+       calcium-signaling/buffering proteins: the effect of lanthanide type on the Ca²⁺/Ln³⁺ competition.
+       *Int. J. Mol. Sci.* 2023, 24 (7), 6297. doi:10.3390/ijms24076297
+    4. Cotruvo, J. A., Jr.; Featherston, E. R.; Mattocks, J. A.; Ho, J. V.; Laremore, T. N. Lanmodulin: a highly
+       selective lanthanide-binding protein from a lanthanide-utilizing bacterium. *J. Am. Chem. Soc.* 2018, 140 (44),
+       15056–15061. doi:10.1021/jacs.8b09842
+    5. Mattocks, J. A.; Jung, J.; Lin, C.-Y.; Dong, Z.; Yennawar, N.; Featherston, E. R.; Kang-Yun, C.;
+       Hamilton, T.; Park, D.; Boal, A. K.; Cotruvo, J. A., Jr. Enhanced rare-earth separation with a
+       metal-sensitive lanmodulin dimer. *Nature* 2023, 618, 87–93. doi:10.1038/s41586-023-05945-5
+    6. Liu, S.; Featherston, E. R.; Cotruvo, J. A., Jr.; Baiz, C. R. Lanthanide-dependent coordination interactions
+       in lanmodulin: a 2D IR and molecular dynamics simulations study. *Phys. Chem. Chem. Phys.* 2021, 23 (38),
+       21690–21700. doi:10.1039/D1CP03628A
+
+    (Ref. 5 lists only the initials PMC shows; middle initials are not checked. The 2005 JACS pages are from the
+    Academia Sinica repository record.)
 
 ## Findings
 
