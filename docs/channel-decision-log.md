@@ -1197,6 +1197,18 @@ blocks 30576666/67 held; the Ca jobs run)
     - Smoke test 30727885 (`site/LA_f0159/LU`: Lu swapped into a La frame, exercising the ECP path).
     - The full arrays are submitted after it gives a time per optimisation step.
     - Estimate 6,000–11,000 core-h in all (unmeasured).
+- **SMD jobs crashed on epyc3 nodes (2026-10-28):** all five died at once with "Illegal instruction" (RC 132). The
+  build ran on bun142 (epyc4) against that node's module tree. Resubmitted with `--constraint=epyc4` (noted in
+  site.slurm): `lu_def_ring_smd` 30728672, `la_def_ring_smd` 30728673, `la_def_min_smd` 30728674, `lu_def_min_smd`
+  30728675, `calibrate_smd` 30728676.
+- **QM/MM smoke test runs** (30727885, bun129):
+  - Preprocess passed, and the DFT/MM optimisation with the lcecp ECP works.
+  - Timing: about 4.6 min per optimisation step (SCF 49 s, gradient 62 s, the rest the QM–MM point-charge terms
+    with ~64k charges). That is within the 5-minute limit, so the 8 Å active region stays.
+  - 150 steps at most is about 11.5 h, plus the TZVP point, within 24 h.
+  - **Site array submitted:** 30728689 (29 jobs, 10 at a time; `jobs_site_rest.txt` leaves out the smoke test's
+    directory while it runs).
+  - Bulk frame runs (30727693/94) are at 0.2/2 ns, 16–18 ns/day, so they need about 3 h more.
 
 ## Findings
 

@@ -10,7 +10,9 @@
 #
 # Resubmitting continues: finished optimisations and single points are read from report.json.
 # SMD=1 runs on the SMD-enabled PySCF venv ($S/envs/smd, build_pyscf_smd.slurm); pass
-# --solvation smd in OPTS, and for calibrate CALIB_OUT=<fresh dir>.
+# --solvation smd in OPTS, and for calibrate CALIB_OUT=<fresh dir>. Submit SMD jobs with
+# --constraint=epyc4: the build ran on an epyc4 node against that node's module tree, and on
+# epyc3 nodes it dies with "Illegal instruction" (2026-10-28).
 
 S=/scratch/user/uquadhik
 module load miniforge/26.1.0-0
