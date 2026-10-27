@@ -917,6 +917,19 @@ blocks 30576666/67 held; the Ca jobs run)
     La/Lu geometries and energies: `<site>_p4c`, jobs **30680249** (`la_def_min`) and **30680250** (`lu_chbe_min`).
   - Ring sites: three have finished Ca, and `la_def_ring`/`la_chbe_ring` have La geometries ✗ (150 steps); `lu_chbe_ring`
     has La done; `lu_def_ring` is on La. Session now bun151:34126.
+- **`la_def_min_p4c`: the Ca rerun converged (40 more steps), so the swing was the unconverged Ca.** All three ions
+  converged; ε 4 / ε 29:
+  - Ca → La +8.2 / +0.0
+  - Ca → Lu +1.9 / −6.5
+  - La → Lu −6.3 / −6.5
+
+  The −26 kcal/mol swing is gone, and the values are back within ~6 of the gas-optimised ones (+7.4 / −0.4; −0.2 / −8.1).
+  After the offset (n = 2: +9.0 for Ca → Ln, +5.2 for La → Lu):
+  - **Ca over La** (+17.2 / +9.0)
+  - **Ca over Lu** at this site (+10.9 / +2.5)
+  - **La vs Lu within the offset** (−1.1 / −1.3), so undecided here.
+
+  Lesson: a site counts only once all three ions have converged; the `_p4` value with unconverged Ca was off by ~26.
 - **Metadynamics stage (support only):** `mcube metadynamics` (commit 6e85c16) is well-tempered MTD on
   n_COO with z held, or 2D, on `openmm.app.Metadynamics` with umbrella's CVs (ASH's wrapper uses the same
   class with a different CN function and no CV logging). `fes` reports integer-state free energies
