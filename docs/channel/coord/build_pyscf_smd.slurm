@@ -16,7 +16,8 @@ VER=$($ASHPY -c 'import pyscf; print(pyscf.__version__)')
 module load foss/2023a cmake/3.26.3-gcccore-12.3.0 || exit 1
 [ -x $V/bin/python ] || $ASHPY -m venv --system-site-packages $V || exit 1
 export CMAKE_CONFIGURE_ARGS="-DENABLE_SMD=ON" CMAKE_BUILD_PARALLEL_LEVEL=$SLURM_CPUS_PER_TASK
-$V/bin/pip install -v --no-deps --no-binary pyscf "pyscf==$VER" || exit 1
+# --ignore-installed: otherwise pip sees ASH's wheel through the system site packages and skips
+$V/bin/pip install -v --no-deps --ignore-installed --no-binary pyscf "pyscf==$VER" || exit 1
 cd /tmp && $V/bin/python - <<'EOF'
 import pyscf
 from pyscf import gto, dft
