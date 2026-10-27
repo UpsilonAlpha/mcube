@@ -30,6 +30,15 @@ NEW_PDB = "./csr_crystal_start_ohH.pdb"
 OLD_XML, NEW_XML = "../hydroxide.xml", "../water_nuc.xml"
 
 
+def swap_xml(node):
+    """The hydroxide template replaced by the water one, at any depth."""
+    if isinstance(node, dict):
+        return {k: swap_xml(v) for k, v in node.items()}
+    if isinstance(node, list):
+        return [swap_xml(v) for v in node]
+    return NEW_XML if node == OLD_XML else node
+
+
 def strip_results(node):
     """Every `results` and `timestamp` key, at any depth."""
     if isinstance(node, dict):
@@ -83,10 +92,13 @@ def main(argv):
     sections = [k for k in config if k not in BASE_STAGES]
     dropped_ff = []
     out = strip_results({k: v for k, v in config.items() if k in BASE_STAGES})
+    # Everywhere, not just preprocess.inputs.forcefields. The real config also
+    # lists the hydroxide under `md.inputs.default_forcefields`, which is a
+    # different key, and handing the ohH run the hydroxide template there would
+    # leave its water with no template at all.
+    out = swap_xml(out)
     pre_out = out["preprocess"]["inputs"]
     pre_out["protein_pdb"] = NEW_PDB
-    pre_out["forcefields"] = [NEW_XML if f == OLD_XML else f
-                              for f in forcefields]
     chain_a[226] = "LYN"
     pre_out["residue_variants"] = dict(variants, A=chain_a)
     # Record the pH that was previously left to preprocess's own default, so
@@ -123,6 +135,18 @@ def main(argv):
             f"the derived config still refers to {source_dir}, the run it came "
             f"from, so a stage here would read that run's files: {listed}. "
             "Nothing was written.")
+
+    # Two different keys carried the hydroxide (preprocess.inputs.forcefields
+    # and md.inputs.default_forcefields), so a third would be no surprise. The
+    # ohH arm must not mention it anywhere: its nucleophile is a water, and the
+    # hydroxide template would leave that water unparameterised.
+    if "hydroxide" in text:
+        offenders = [line.strip() for line in text.splitlines()
+                     if "hydroxide" in line]
+        raise SystemExit(
+            "the derived config still names the hydroxide template: "
+            + "; ".join(offenders[:8]) + ". The ohH arm's nucleophile is a "
+            "water. Nothing was written.")
 
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(text)

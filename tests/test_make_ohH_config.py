@@ -167,6 +167,39 @@ def test_resolved_forcefield_lists_are_dropped_from_later_stages(mod, tmp_path):
     assert out["md"]["inputs"]["temp"] == 300, "the rest of md survived"
 
 
+def test_the_hydroxide_is_swapped_under_every_key(mod, tmp_path):
+    """The real config lists it under md.inputs.default_forcefields as well as
+    preprocess.inputs.forcefields - a different key, and one that would hand
+    the md stage the hydroxide template and leave the water unparameterised."""
+    source = {
+        "preprocess": {"inputs": dict(LYSH["preprocess"]["inputs"])},
+        "md": {"inputs": {"default_forcefields": [
+            "amber14/protein.ff14SB.xml", "amber14/tip3p.xml",
+            "../hydroxide.xml"]}},
+    }
+    path = tmp_path / "config.yaml"
+    path.write_text(yaml.safe_dump(source, sort_keys=False))
+    dest = tmp_path / "out.yaml"
+    mod.main([str(path), str(dest)])
+    out = yaml.safe_load(dest.read_text())
+    assert out["md"]["inputs"]["default_forcefields"][-1] == "../water_nuc.xml"
+    assert "hydroxide" not in dest.read_text()
+
+
+def test_a_remaining_hydroxide_reference_is_refused(mod, tmp_path):
+    """The guard, for a third key nobody has found yet."""
+    source = {
+        "preprocess": {"inputs": dict(LYSH["preprocess"]["inputs"])},
+        "md": {"inputs": {"some_future_key": "/elsewhere/hydroxide_v2.xml"}},
+    }
+    path = tmp_path / "config.yaml"
+    path.write_text(yaml.safe_dump(source, sort_keys=False))
+    dest = tmp_path / "out.yaml"
+    with pytest.raises(SystemExit, match="names the hydroxide template"):
+        mod.main([str(path), str(dest)])
+    assert not dest.exists()
+
+
 def test_a_surviving_path_into_the_source_run_is_refused(mod, tmp_path):
     """The general guard: anything still pointing at the run we derived from
     would make a stage here read that run's files."""
