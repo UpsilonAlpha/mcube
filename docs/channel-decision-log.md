@@ -1223,6 +1223,51 @@ blocks 30576666/67 held; the Ca jobs run)
   - The four running SMD jobs and the calibration were cancelled. The SMD sites' solvated entries were removed
     (geometries and gas energies kept) and everything was resubmitted on epyc4: `lu_def_ring_smd` 30729788,
     `la_def_ring_smd` 30729789, `la_def_min_smd` 30729790, `lu_def_min_smd` 30729791, `calibrate_smd` 30729792.
+- **SMD results (all five finished, RC 0; same geometries and gas energies as PCM).**
+  - Sanity check passed: the aqua ions in SMD water are −181 (Ca), −382 (La) and −405 (Lu) kcal/mol, against
+    PCM −175 / −369 / −390.
+  - **Calibration (acetate, SMD water), best mode each:** La − Ca −3.3 (exp. −1.4 … −1.7; PCM −6.0); Lu − La −1.35
+    (exp. ≈ −0.2; PCM −2.8).
+    - SMD halves both biases. **SMD offset per coordinating carboxylate: +1.8 for Ca → Ln and +1.15 for La → Lu**
+      (PCM: 4.5 and 2.6).
+  - Sites, raw ε 4 / ε 29, with PCM in brackets:
+
+    | Site | n | Ca → La | Ca → Lu | La → Lu |
+    |---|---|---|---|---|
+    | `lu_def_min` | 1 | +32.6 / +9.1 (+24.9 / +0.4) | +26.5 / +1.7 (+15.0 / −10.7) | −6.1 / −7.4 (−10.0 / −11.1) |
+    | `la_def_min` | 2 | +14.6 / +6.4 (+8.2 / +0.0) | +11.7 / +3.2 (+1.9 / −6.5) | −3.0 / −3.2 (−6.3 / −6.5) |
+    | `lu_def_ring` | 1 | −14.0 / −4.3 (−19.3 / −8.3) | −12.6 / −2.9 (−21.6 / −10.2) | +1.4 / +1.3 (−2.3 / −1.9) |
+    | `la_def_ring` | 2 | −17.3 / −5.8 (−20.4 / −6.2) | −31.5 / −20.0 (−38.2 / −23.8) | −14.1 / −14.2 (−17.8 / −17.5) |
+
+    After the SMD offset (Ca → Ln + 1.8 n, La → Lu + 1.15 n):
+
+    | Site | Ca → La | Ca → Lu | La → Lu |
+    |---|---|---|---|
+    | `lu_def_min` | +34.4 / +10.9 | +28.3 / +3.5 | −5.0 / −6.3 |
+    | `la_def_min` | +18.2 / +10.0 | +15.3 / +6.8 | −0.7 / −0.9 |
+    | `lu_def_ring` | −12.2 / −2.5 | −10.8 / −1.1 | +2.6 / +2.5 |
+    | `la_def_ring` | −13.7 / −2.2 | −27.9 / −16.4 | −11.8 / −11.9 |
+
+  - **Ca vs Ln: the pocket-charge flip survives SMD.**
+    - SMD moves every Ca → Ln value 3–12 kcal/mol toward Ca, mostly through the aqua ions' cavity and dispersion
+      terms. Every sign stays the same.
+    - The min sites stay Ca-selective, beyond the error, in both dielectrics.
+    - The ring sites stay Ln-selective at ε 4. At ε 29, the exposed case the pKa/environment check supports,
+      Ca vs La is within the error at both ring sites (−2.5, −2.2).
+    - Ca vs Lu at ε 29 is within the error at `lu_def_ring` (−1.1), and Lu-leaning at `la_def_ring` (−16.4).
+  - **La vs Lu: SMD reduces the Lu preference by 3–4 kcal/mol at every site, but it does not remove it everywhere.**
+    - After the SMD offset the sites disagree in sign and size: `lu_def_ring` +2.5 (La), `la_def_min` −0.8 (none),
+      `lu_def_min` −5 … −6 (Lu), `la_def_ring` −12 (Lu).
+    - The La-frame and Lu-frame ring sites disagree (criterion 1 fails).
+    - So La vs Lu stays **unresolved**: the cluster gap depends on the site geometry. It is not a solvation
+      artefact alone, and not a robust preference either.
+    - The literature-like ≈ 0 appears at two of the four sites.
+  - **Updated answer from the clusters:**
+    - Ca vs Ln is decided by the effective pocket charge.
+    - In the exposed, partly screened ring the protein suggests (pKa entry), the site is close to neutral between Ca
+      and La, and leans to Lu over Ca at one of the two ring sites.
+    - La vs Lu cannot be separated.
+    - The QM/MM swaps test the Ca vs Ln part directly.
 
 ## Findings
 
