@@ -334,6 +334,13 @@ def main(argv):
                 + f"{'NUW':>3s}" + oh_line[20:30]
                 + f"{h04[0]:8.3f}{h04[1]:8.3f}{h04[2]:8.3f}"
                 + oh_line[54:])
+    # Columns 77-78 hold the element, and this line was built from O01's,
+    # so without this the new hydrogen is declared an oxygen. PDBFile
+    # believes that column over the atom name, so the residue becomes
+    # O-H-O, matches no water template, and OpenMM reports it as a
+    # malformed glycine.
+    h04_line = h04_line.rstrip("\n").ljust(78)
+    h04_line = h04_line[:76] + " H" + h04_line[78:] + "\n"
 
     out = []
     dropped_serial = None

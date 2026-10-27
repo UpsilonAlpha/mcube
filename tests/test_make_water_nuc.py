@@ -25,8 +25,15 @@ def mod():
 
 
 def pdb_line(serial, name, resname, chain, resseq, xyz):
-    return (f"HETATM{serial:5d} {name:<4s}{resname:>4s} {chain}{resseq:>4s}    "
-            f"{xyz[0]:8.3f}{xyz[1]:8.3f}{xyz[2]:8.3f}  1.00  0.00\n")
+    """A PDB line with the element columns (77-78) filled, as real files have.
+
+    Without them PDBFile guesses the element from the atom name, and a test
+    built on such lines cannot see an element column written wrong - which is
+    how H04 went out as an oxygen."""
+    body = (f"HETATM{serial:5d} {name:<4s}{resname:>4s} {chain}{resseq:>4s}    "
+            f"{xyz[0]:8.3f}{xyz[1]:8.3f}{xyz[2]:8.3f}  1.00  0.00")
+    element = "ZN" if name == "ZN" else name[0]
+    return body.ljust(76) + f"{element:>2s}" + "\n"
 
 
 @pytest.fixture
@@ -375,3 +382,26 @@ def test_a_floor_below_one_angstrom_is_refused(mod, lysH, tmp_path):
 def test_a_non_numeric_floor_is_refused(mod, lysH, tmp_path):
     with pytest.raises(SystemExit, match="wants a number"):
         mod.main([str(lysH), str(tmp_path / "out.pdb"), "--floor", "tight"])
+
+
+def test_h04_is_written_as_a_hydrogen(mod, lysH, tmp_path):
+    """The line is built from O01's, so it inherits the element column unless
+    that is overwritten - and PDBFile believes that column over the atom name.
+    An H04 declared as oxygen makes the residue O-H-O, which matches no water
+    template; OpenMM reports it as a malformed glycine, which says nothing
+    about the real cause."""
+    out = tmp_path / "out.pdb"
+    mod.main([str(lysH), str(out)])
+    h04 = next(l for l in out.read_text().splitlines()
+               if l.startswith(("ATOM", "HETATM")) and l[12:16].strip() == "H04")
+    assert len(h04) >= 78, "the element columns are missing entirely"
+    assert h04[76:78].strip() == "H", f"element column says {h04[76:78]!r}"
+
+
+def test_the_elements_of_the_nucleophile_are_o_h_h(mod, lysH, tmp_path):
+    out = tmp_path / "out.pdb"
+    mod.main([str(lysH), str(out)])
+    elements = sorted(l[76:78].strip() for l in out.read_text().splitlines()
+                      if l.startswith(("ATOM", "HETATM"))
+                      and l[17:20].strip() == "NUW")
+    assert elements == ["H", "H", "O"], elements
