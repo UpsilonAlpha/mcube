@@ -2000,6 +2000,41 @@ This suits us: it avoids every weakness of D48 (no imposed constraints, no 5 kca
 
 **Not submitted.** Three jobs, about 37 h to a first verdict: preprocess (minutes), `md md_ohHmd` on a GPU (~13 h), `qmmm qmmm_ohHqm` on CPU (~24 h for 50 ps at 1.72 s/step). 28 tests across the three scripts; full suite 264 passed, 5 skipped.
 
+**D114 - Imhof read at last; the crystal zinc is four-coordinate; the ohH arm redesigned to start from naclong's frame, minimisation submitted as 30698605.** (2026-10-27)
+
+**Imhof 2009 is accessible after all** (user: "Imhof not paywalled"), so the Methods this log has twice called unobtainable are now read rather than inferred:
+
+- **System:** three X-ray structures, metals and crystallographic waters placed as determined crystallographically, **hydrogens "added using stereochemical criteria"** - no pKa predictor at all. 48,825 atoms, close to our 49,424.
+- **Equilibration:** minimise to 0.01 kcal/mol/A, 20 ps heating, 300 ps equilibration, **1 ns** NPT production, H-bonds constrained, **2 fs**. Then "a snapshot from the molecular dynamics ensemble, **taken to possess average values for some important geometric parameters**".
+- **QM region:** dimethyl phosphate, both Mg, side chains of Asp90/Asp74/Glu45/**Lys92**, Ile91 backbone, active-site waters.
+- **How protonation was decided: by whether a state is a stable minimum.** "All attempts to move protons from Lys92 to the metaphosphate failed, indicating that the positive charge is better stabilized by the amino group of Lys92", and elsewhere "this protonation state is apparently not stable". Lys92 stayed cationic. **This is the same criterion as VIM-2's and the opposite of comparing single points**, which is what the user asked for in these words: "we're letting our methodology decide rather than comparing singlepoints".
+
+**The intro also settles why the Lys ambiguity is not ours alone.** Imhof: Lys92 "may help stabilize and orient a hydroxide ion for nucleophilic attack (if positively charged) or function as a catalytic base to accept a proton from the attacking water (if neutral)", and "the latter possibility is supported by the finding that the reaction chemistry proceeds optimally at a relatively high pH of 8.5". Exactly our Lys226 question, and the pH-optimum argument is one we could make too.
+
+**The finding that bears hardest on us is their semi-empirical benchmark.** Against B3LYP/6-31++G(d,p) on small models, AM1/d gets most reaction energies to ~4 kcal/mol but fails on coordination number in a way we should expect from GFN2:
+
+    4- to 5-coordinate (adding a water)        7.55 kcal/mol too FAVOURABLE at AM1/d
+    bidentate -> monodentate Asp (5 -> 4)      7 kcal/mol too COSTLY at AM1/d
+
+and "at the DFT level of theory, the monodentate complex has a structure in which a proton is transferred from one water molecule to the nonligating Asp oxygen atom. The AM1/d-optimized geometry does not show such a proton-transferred structure." **So a semi-empirical Hamiltonian over-stabilises the higher coordination number, over-penalises monodentate carboxylate, and misses a water-to-Asp proton transfer that DFT finds.** Our model is five-coordinate with Asp92 on the metal and a hydroxide; all three of those are the artefacts this benchmark predicts. Imhof also makes coordination number mechanistic: Mg goes **6 -> 5 -> 4** along the path, four-coordinate is the competent state, and ions that cannot reduce their coordination (Ca) are inactive.
+
+**The crystal zinc is four-coordinate** (user asked; confirmed from D108's own measurement of 6NC5 ZN302): HOH485 1.90, His163 NE2 2.09, HOH493 2.14, His87 NE2 2.22. Two histidines, two waters, no aspartate. **The same coordination number as CphA's zinc**, though with different ligands - CphA has Asp120/Cys221/His263 plus the nucleophile, and D60 noted its four-coordinate site likewise has no room for the substrate carbonyl. Our optimised model is five-coordinate, the extra ligand being Asp92 OD1 at 2.11.
+
+**The arm was redesigned on the user's objection: "why are you preprocessing from the start?"** Correctly. A fresh preprocess gives the two arms independent 100 ns trajectories, which is a worse control than sharing one frame, and costs 13 h of GPU for nothing. **Both arms now start from `md_naclong`'s 100 ns lastframe - the frame `nacqm` itself started from** - so they differ by where one hydrogen sits. One correction to the user's suggestion was needed: the *QM/MM* 100 ps lastframe is the drifted structure (O01-C4x 6.20 A, substrate unbound, D111), where "does this state hold the site together" is unanswerable because there is no intact site left; naclong's frame is at 3.33 A and 101 degrees.
+
+**A geometric result came out of building it: a water does not fit where the restrained MM put the hydroxide.** Holding O01 at 3.47 A from C4x pressed the hydroxide against meropenem, and that oxygen position has room for one hydrogen, not two. Measured: the best clearance on the cone of allowed H04 positions is **1.54 A** from meropenem H5x; reorienting the whole water with the oxygen fixed reaches only **1.71 A**. **So the near-attack geometry that run produced is comfortably available only to a hydroxide** - which is independent of, and consistent with, D111's drift. Hence a minimisation before the MD, which is also what VIM-2 did for each state.
+
+**Built and validated.** `make_water_nuc.py --lys A:226 --floor 1.2` writes `md_naclong_results/ohH_start.pdb`: H04 added at TIP3P geometry, residue OH renamed NUW, Lys226's HZ3 removed with the residue left named LYS so OpenMM matches LYN by bond graph (renaming it would make `build_qm_region` treat it as non-standard, because this config's `amino_acids` list overrides mcube's default and omits LYN, and put its whole backbone in the QM region). `check_ohH_frame.py` builds **both** systems in full with the real force-field list and confirms what the comparison depends on:
+
+    lysH  49424 particles, total charge +0.000
+    ohH   49424 particles, total charge +0.000
+    nucleophile  -1.000 (OH, 2 atoms)  ->  +0.000 (NUW, 3 atoms)
+    Lys A:226    +1.000 (22 atoms)     ->  +0.000 (21 atoms)
+
+**Minimisation only needs no new code:** `gentle` is off by default and `skip_npt` plus `skip_nvt` drop the rest, so the md stage runs `OpenMM_Opt` and stops, reporting the coordination sphere either side of it - which is the check we want anyway. Submitted as **job 30698605** (`md md_ohHmin`, gpu_cuda, 40 min). Then `sections.py` can add the `ohH` qmmm section, whose start structure does not exist until this finishes, which is why it refused it today.
+
+**Four things testing caught, each of which would have cost a job.** (1) The H04 line is built from O01's to inherit the formatting, and inherited its **element column** too - the new hydrogen went out as an oxygen, so the residue was O-H-O, matched no water template, and OpenMM reported it as a malformed glycine. The test fixtures could not have caught it because `pdb_line` never wrote columns 77-78 at all. (2) **`md` ignores `--pdb`** and reads `inputs.pdb_file`, so passing the frame as run.slurm's third argument would have equilibrated preprocess's own output and looked normal; it now refuses when the two disagree. (3) Paths in `inputs` resolve from the stage's output directory while `start` resolves from the config directory, so the qmmm force-field paths were a level too shallow. (4) A 3-atom water template matches every bulk water by bond graph unless it is parameter-identical to HOH, which aborts the whole system.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
