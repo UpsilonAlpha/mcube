@@ -123,3 +123,76 @@ def test_xml_outside_a_forcefield_list_is_not_touched(mod, run):
         "md:\n  inputs:\n    ligand_xml:\n    - %s\n" % (home / "hydroxide.xml"))
     mod.migrate(config, apply=True)
     assert entries_of(config) == [str(home / "hydroxide.xml")]
+
+
+class TestRepointing:
+    """--repoint sends a config at its own copy of a force field, but only
+    when that is a no-op. Five CSR configs read force fields out of another
+    run, inherited by copying; for one of them the local copy has different
+    charges, so repointing it would change the force field the run used while
+    looking like a path fix."""
+
+    def test_an_identical_local_copy_is_used(self, mod, run, tmp_path):
+        home, other = run
+        mod.REPOINT = True
+        try:
+            config = write(home, [str(other / "hydroxide.xml")])
+            mod.migrate(config, apply=True)
+            assert entries_of(config) == ["hydroxide.xml"]
+        finally:
+            mod.REPOINT = False
+
+    def test_a_copy_differing_only_by_date_is_used(self, mod, run, tmp_path):
+        """OpenFF stamps its output with the generation date, so two runs of
+        the same preprocess differ in that one line and nothing else."""
+        home, other = run
+        (home / "preprocess_results" / "openff.xml").write_text(
+            "<ForceField>\n  <DateGenerated>2026-10-21</DateGenerated>\n  <x/>\n</ForceField>")
+        (other / "openff.xml").write_text(
+            "<ForceField>\n  <DateGenerated>2026-10-15</DateGenerated>\n  <x/>\n</ForceField>")
+        mod.REPOINT = True
+        try:
+            config = write(home, [str(other / "openff.xml")])
+            mod.migrate(config, apply=True)
+            assert entries_of(config) == ["preprocess_results/openff.xml"]
+        finally:
+            mod.REPOINT = False
+
+    def test_a_copy_with_different_parameters_is_refused(self, mod, run, capsys):
+        """The case that matters: CSR_unrestrained2's own openff_MER.xml has
+        different atom charges from the CSR_crystal one it reads. Repointing
+        would change the force field, not the path."""
+        home, other = run
+        (home / "preprocess_results" / "openff.xml").write_text(
+            '<ForceField>\n  <Atom name="C1x" charge="-0.092"/>\n</ForceField>')
+        (other / "openff.xml").write_text(
+            '<ForceField>\n  <Atom name="C1x" charge="-0.144"/>\n</ForceField>')
+        mod.REPOINT = True
+        try:
+            foreign = str(other / "openff.xml")
+            config = write(home, [foreign])
+            mod.migrate(config, apply=True)
+            assert entries_of(config) == [foreign], "parameters were changed"
+            assert "DIFFERENT contents" in capsys.readouterr().out
+        finally:
+            mod.REPOINT = False
+
+    def test_a_run_without_its_own_copy_is_refused(self, mod, run, capsys):
+        home, other = run
+        (other / "openff.xml").write_text("<ForceField/>")
+        mod.REPOINT = True
+        try:
+            foreign = str(other / "openff.xml")
+            config = write(home, [foreign])
+            mod.migrate(config, apply=True)
+            assert entries_of(config) == [foreign]
+            assert "no openff.xml in this run" in capsys.readouterr().out
+        finally:
+            mod.REPOINT = False
+
+    def test_without_the_flag_nothing_is_repointed(self, mod, run):
+        home, other = run
+        foreign = str(other / "hydroxide.xml")
+        config = write(home, [foreign])
+        mod.migrate(config, apply=True)
+        assert entries_of(config) == [foreign]

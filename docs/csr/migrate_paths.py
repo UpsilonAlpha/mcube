@@ -38,7 +38,58 @@ from pathlib import Path
 
 KEYS = ("forcefields", "default_forcefields")
 ENTRY = re.compile(r"^(\s*-\s*)(\S+\.xml)\s*$")
+REPOINT = False
 KEYLINE = re.compile(r"^\s*(\w+)\s*:\s*$")
+
+
+
+def same_but_for_a_date(a: Path, b: Path) -> bool:
+    """True when two force-field files differ only in a <DateGenerated> line.
+
+    OpenFF writes the generation date into its output, so two runs of the same
+    preprocess on the same SMILES produce files that differ in one line and
+    nothing else. That is the only difference it is safe to ignore: repointing
+    a config at a file whose *parameters* differ changes the force field the
+    run used, which for a finished run means the config stops describing it.
+    """
+    try:
+        left, right = a.read_text().splitlines(), b.read_text().splitlines()
+    except OSError:
+        return False
+    if len(left) != len(right):
+        return False
+    differing = [(x, y) for x, y in zip(left, right) if x != y]
+    return all("DateGenerated" in x and "DateGenerated" in y
+               for x, y in differing)
+
+
+def repoint(value: str, home: Path):
+    """A foreign absolute path replaced by this run's own copy, if that is safe.
+
+    Returns (new value, why) or (None, why not). Five CSR configs read force
+    fields out of another run's directory, inherited by copying. Pointing one
+    at its own file is only a no-op when the file is there and holds the same
+    parameters; otherwise it is a change to the science wearing the clothes of
+    a path fix, so it is refused and reported.
+    """
+    foreign = Path(value)
+    rel = None
+    for parent in (foreign.parent, foreign.parent.parent):
+        try:
+            rel = foreign.relative_to(parent.parent)
+            break
+        except ValueError:
+            continue
+    local = home / foreign.name
+    nested = home / "preprocess_results" / foreign.name
+    own = local if local.is_file() else (nested if nested.is_file() else None)
+    if own is None:
+        return None, f"no {foreign.name} in this run"
+    if own.read_bytes() == foreign.read_bytes():
+        return own.relative_to(home).as_posix(), "identical"
+    if same_but_for_a_date(own, foreign):
+        return own.relative_to(home).as_posix(), "same but for the date"
+    return None, "its own copy has DIFFERENT contents"
 
 
 def classify(value: str, home: Path):
@@ -50,6 +101,11 @@ def classify(value: str, home: Path):
         resolved = path.resolve()
         if home in resolved.parents:
             return "rewrite", resolved.relative_to(home).as_posix(), "absolute, this run"
+        if REPOINT:
+            own, why = repoint(value, home)
+            if own:
+                return "rewrite", own, f"repointed at this run's own ({why})"
+            return "foreign", value, f"NOT repointed: {why}"
         return "foreign", value, f"absolute, ANOTHER run ({resolved.parent})"
     if value.startswith(".."):
         # `../hydroxide.xml` meant <run dir>/hydroxide.xml, because the stage
@@ -109,8 +165,10 @@ def migrate(config: Path, apply: bool) -> int:
 
 
 def main(argv):
+    global REPOINT
     apply = "--apply" in argv
-    argv = [a for a in argv if a != "--apply"]
+    REPOINT = "--repoint" in argv
+    argv = [a for a in argv if a not in ("--apply", "--repoint")]
     if not argv:
         raise SystemExit(__doc__)
     total = 0
