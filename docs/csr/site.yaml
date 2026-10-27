@@ -264,6 +264,17 @@ sections:
       skip_npt: true
       skip_nvt: true
       cores: 4                    # physical cores; -c 8 on an SMT node
+      # Required here, and the reason D115 exists. This frame's atom order
+      # differs from `processed_pdb`'s by one proton, so the indexed rows in
+      # `preprocess.results.coordination` no longer name the atoms they were
+      # measured on - applied blindly they restrained meropenem's C1x instead
+      # of the zinc, which then lost His164 through an unrestrained
+      # minimisation. This measures the coordination on this structure with
+      # the same `metals`, `cutoff`, `donor_elements` and
+      # `constraint_exclude_residues` preprocess used, so the restraints hold
+      # the distances the frame actually has. The guard refuses the run
+      # without it rather than restraining the wrong atoms again.
+      coordination_redetect: true
 
   # 50 ps, then another 50 by changing `time` to 100 and resubmitting this same
   # section: `resume: true` restores ASH's state file and runs only the
