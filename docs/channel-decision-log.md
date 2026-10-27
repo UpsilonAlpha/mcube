@@ -762,8 +762,9 @@ blocks 30576666/67 held; the Ca jobs run)
   out. Cancelled as permeation work: La soft/Ch-BE 30576904/05/08/09, Lu k = 10 blocks
   30576666/67 and Ca soft 30576906/07 (21–24/30 done; the Ca Ch-BE set and all k = 10 windows stay on
   disk). The Lu residence runs 30581008/09 continue; their frames feed the clusters.
-- **Method** (`docs/channel/coord/site_exchange.py`, `site.slurm`), after Angelova, Dudev et al.,
-  PCCP 2023 (PMC10094714). They use M06-2X/6-311++G(d,p)/SDD, SMD with ε 4 and 29 for the pocket, and
+- **Method** (`docs/channel/coord/site_exchange.py`, `site.slurm`), after Nikolova, Kircheva, Dobrev,
+  Angelova & Dudev, *Int. J. Mol. Sci.* 2023, 24, 6297 (PMC10094714; earlier cited here wrongly as
+  "PCCP 2023"). They use M06-2X/6-311++G(d,p)/SDD, SMD with ε 4 and 29 for the pocket, and
   Ca-binding EF-hand sites. Their 3-carboxylate site prefers La over Ca by 14–20 kcal/mol, the 4-carboxylate
   site by 30–48, and the 1-carboxylate site prefers Ca or neither. La vs heavier Ln moves by only ±2–7, not
   monotonically (Dy best, Lu slightly negative).
@@ -960,6 +961,36 @@ blocks 30576666/67 held; the Ca jobs run)
   class with a different CN function and no CV logging). `fes` reports integer-state free energies
   and a 50/75/100 % convergence check. 222 tests pass. It is used only if the cluster ranking depends on the binding
   mode.
+- **Literature comparison (2026-10-27).**
+  - **Precedent:** the protocol is the DFT/continuum "metal competition" method of Dudev and Lim: Dudev, Chang & Lim,
+    *JACS* 2005, 127, 4091 (La³⁺ for Ca²⁺/Mg²⁺), and the review Dudev & Lim, *Chem. Rev.* 2014 (cited from memory,
+    not checked). Ours follows Nikolova *et al.* *IJMS* 2023, 24, 6297 (PMC10094714) almost step by step. That paper
+    reports trends only, with no comparison to experiment; our acetate calibration goes further.
+  - **Ca vs Ln agrees with their pocket-charge rule.**
+    - Nikolova *et al.*, buried site (ε 4), Ca → La: −47.8 kcal/mol at pocket −4, −20.4 at −3, +18.0 at −1.
+    - Ours: the min sites (−1/−2) favour Ca, and the −4 ring swings toward Ln.
+    - Our swing is smaller (`lu_chbe_ring` Ca → La −13.4 at ε 4) because two of our four Glu⁻ are second-shell and
+      frozen, a partly charged pocket.
+    - So the open question is the **effective pocket charge** the ion feels, about −2 or about −4. Their numbers say
+      that decides Ca vs La. Settling it needs the protein environment (QM/MM snapshots).
+    - Dudev, Chang & Lim 2005 add that buried, rigid cavities and bidentate carboxylates favour La. That is where
+      binding-mode sampling (metadynamics on n_COO) could matter.
+  - **La vs Lu disagrees, by about an order of magnitude.**
+    - Nikolova *et al.*, Ln vs La: Lu −0.3 / −0.9 (ε 4 / ε 29) at their −4 site and −1.7 / −1.6 at −3. The trend
+      across the series is not monotonic: Pr is the weakest competitor and Dy the strongest.
+    - Ours: −6 to −12 at the min sites and −16 to −18 in `lu_chbe_ring`. After the 2.6 n offset that is still
+      −5 to −13.
+    - Lanmodulin itself prefers the light Ln (Cotruvo *et al.*, *JACS* 2018, cited from memory). Its EF-hand
+      prolines tune it for early Ln (Liu, Featherston, Cotruvo & Baiz, *PCCP* 2021, classical MD + 2D IR).
+    - Our acetate calibration already over-favoured Lu by 2.6 kcal/mol per carboxylate (exp. ≈ −0.2). The likely cause is
+      IEF-PCM, electrostatics only, with hand-set ion radii (Lu 1.98, La 2.2 Å) in place of SMD. The Lu > La gap
+      tracks how the cavity radii treat the smaller, harder ion.
+    - **So La vs Lu is unresolved.** "Lu over La" is withdrawn as a result until an SMD check reproduces it. The check:
+      SMD single points (gas, ε 4, ε 29 site; water for the aqua ions) on our converged geometries, for one min and
+      one ring site plus the acetate calibration. It needs an SMD-enabled code: PySCF built with -DENABLE_SMD=ON,
+      gpu4pyscf on a GPU, or ORCA/Gaussian. A few CPU-hours per site.
+    - If SMD gives |La → Lu| below ~2 kcal/mol, the cluster model cannot separate La from Lu.
+  - **No QM or QM/MM study of Ca vs Ln selectivity in lanmodulin or a related protein was found** (search 2026-10-27).
 
 ## Findings
 

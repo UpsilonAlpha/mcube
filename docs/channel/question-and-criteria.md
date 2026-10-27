@@ -25,8 +25,11 @@ Glu240) and Lu binds Glu240 (and Glu220) in the residence runs (C21).
      machinery as `coord/carboxylate_exchange.py` and `cp_tzvp.py`.
    - Report Ca→La, Ca→Lu and La→Lu for several binding modes (1/2/3 carboxylates, one or both
      O of each). The site's preference is the lowest-free-energy mode per ion.
-   - Precedent: Dudev & Lim's metal-competition DFT/continuum work (to verify that it covers Ln³⁺
-     vs Ca²⁺).
+   - Precedent (checked 2026-10-27, C22 "Literature comparison"): Dudev, Chang & Lim, *JACS* 2005, 127,
+     4091 (La³⁺ for Ca²⁺); Nikolova, Kircheva, Dobrev, Angelova & Dudev, *Int. J. Mol. Sci.* 2023, 24,
+     6297 (PMC10094714; Ca²⁺ vs La–Lu, ε 4 / 29, SMD), which our protocol follows. Their rule: the
+     pocket's net charge decides Ca vs Ln (−4/−3 favour Ln, −1 favours Ca). Their Lu vs La gap is
+     small (|ΔΔG| ≤ ~2 kcal/mol).
    - It is QM, so the 12-6-4 problem does not enter. It ignores protein flexibility and the
      barrel/membrane electrostatics beyond the cluster (partly mitigated by the continuum).
 2. **Sampling only where it changes the answer.** If the ranking depends on which binding mode the
@@ -54,6 +57,15 @@ Glu240) and Lu binds Glu240 (and Glu220) in the residence runs (C21).
    and Lu − La −2.8 (exp. ≈ −0.2). So the protocol over-favours Ln over Ca by ~4.5 kcal/mol and Lu over
    La by ~2.6 **per carboxylate**. Read site results against that offset: Ln over Ca counts only beyond
    ~4.5 × (number of coordinating carboxylates), Lu over La only beyond ~2.6 × that number.
+
+## Status of the answer (2026-10-27)
+
+- **Ca vs Ln:** depends on the effective pocket charge. The stripped sites favour Ca, and the −4 ring
+  favours Ln, which matches the literature rule. Settling it needs the protein environment (QM/MM snapshots).
+- **La vs Lu: unresolved, pending an SMD check.** Our PCM sites favour Lu by 5–13 kcal/mol even after
+  the calibration offset. That is about 10× Nikolova *et al.*, and against lanmodulin's experimental
+  light-Ln preference. It is probably an artefact of IEF-PCM with hand-set ion radii. Do not report "Lu over La"
+  until SMD single points on our geometries reproduce it (C22).
 
 ## Limits to state with any answer
 

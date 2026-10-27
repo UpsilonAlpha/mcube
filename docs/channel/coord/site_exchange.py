@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Which ion does the constriction site prefer? Ion exchange free energies at the Glu ring
-(docs/channel/question-and-criteria.md), after Angelova, Dudev et al. (PCCP 2023, PMC10094714):
+(docs/channel/question-and-criteria.md), after Nikolova, Angelova, Dudev et al. (Int. J. Mol. Sci. 2023, 24, 6297; PMC10094714):
 DFT on a cluster of the site, solvation by a continuum, and the reaction
 
     M2(H2O)n2 + [M1-site]  ->  [M2-site] + M1(H2O)n1 + (n2 - n1) H2O
