@@ -233,8 +233,13 @@ sections:
   # default and these two flags drop the rest, so the stage runs OpenMM_Opt and
   # stops, reporting the coordination sphere either side of it. That is also
   # the check we want: whether the zinc sphere survives adding the proton.
-  # Minutes on a GPU. The restraints are the same as naclong's, so the
-  # nucleophile is held in place while the clash relaxes rather than drifting.
+  # The restraints are the same as naclong's, so the nucleophile is held in
+  # place while the clash relaxes rather than drifting.
+  #
+  # On CPU, unlike every other md section here, because 500 minimisation steps
+  # take minutes either way and `gpu_cuda` quoted an 80 minute queue for them
+  # (job 30698605, cancelled). A GPU earns its wait on nanoseconds of MD, not
+  # on a minimisation.
   ohHmin:
     stage: md
     start: md_naclong_results/ohH_start.pdb
@@ -253,8 +258,7 @@ sections:
         - [C:2:O01, C:1:C4x, 3.47]
       skip_npt: true
       skip_nvt: true
-      platform: CUDA
-      properties: {Precision: mixed}
+      cores: 4                    # physical cores; -c 8 on an SMT node
 
   # 50 ps, then another 50 by changing `time` to 100 and resubmitting this same
   # section: `resume: true` restores ASH's state file and runs only the
