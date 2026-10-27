@@ -2146,6 +2146,31 @@ Fixed: the base is the config's directory, `sections.py` refuses outright when t
 
 **Worth keeping in view:** three jobs have now been spent on this minimisation and none of it on chemistry. The first restrained a substrate carbon, the second was refused for a missing key, and the third is queued. Each failure was caught by something added after the previous one, which is the system working - but the thing still being tested is whether a water fits where the hydroxide was, and that has not been measured yet.
 
+**D118 - The ohH minimisation is sound, and the 50 ps QM/MM is submitted as 30721365.** (2026-10-27, job 30705703)
+
+COMPLETED in 3 min 53 s. All four things that had to be true are:
+
+- `coordination_source: redetected on .../md_naclong_results/ohH_start.pdb` - not the saved indices.
+- The restraints name the zinc. Six detected contacts, every one on index **4202**, which is the zinc *on this frame*; the first attempt restrained 4203, which is meropenem's C1x here (D115, D116).
+- **"The coordination sphere is unchanged."** His88 NE2 and His164 NE2 both still on the metal, with O01, Asp92 OD1 and the two waters. His164 left in the first attempt, which is what voided it - and it left because the zinc was never restrained, not because of the added proton.
+- The clash relaxed.
+
+**Measured on the structures either side, in angstroms:**
+
+    H04...H5x (mer)   1.54  ->  3.15     the contact the minimisation was for
+    H03...H5x (mer)   1.65  ->  3.26
+    Zn-O01            1.86  ->  2.05     hydroxide -> water
+    O01-C4x           3.33  ->  3.49     held by the 3.47 restraint
+    Zn-mer O2x        5.16  ->  4.37
+
+**The Zn-O01 lengthening is an independent check on the structure, not just a relaxation.** 1.86 -> 2.05 A on protonating the nucleophile is the textbook hydroxide-to-water signature, and D48 measured 1.83 -> 1.99 for the same change in a different geometry with a different method. Two unrelated routes to the same ~0.17 A. So the ohH frame really is the water state, and the minimisation moved what it had to and left the rest.
+
+**Submitted: job 30721365**, `qmmm qmmm_ohH`, 50 ps at 1 fs, 137 QM atoms with Arg229, charge +3, `resume: true`, 8 CPUs, 36 h walltime. About 24 h at the 1.72 s/step measured in D110. The comparator is `nacqm` plus `qmmm_nacarg`: the same frame, one proton apart, judged by whether the active site holds - VIM-2's criterion (D113), and Imhof's (D114).
+
+**Two things to note about getting here.** `sections.py` refused twice before it wrote: first for the path bug (D116), then because a fresh code-server terminal has no conda environment, so `from mcube.preprocess import _locked` failed. Both were caught by checking the exit status, which is the lesson of D116 applied. And the force-field entries in the written section are the config-relative ones from D117 (`water_nuc.xml`, `preprocess_results/openff_MER.xml`), which the run resolved to absolute paths under `CSR_nac` - the first live exercise of that rule, and it worked.
+
+**What the run has to answer.** The lysH arm lost the substrate over 100 ps (D111): O01-C4x from 3.33 to 6.20 A, no cation holding it, the Lys226 salt bridge opening from 2.61 to 4.26 A. If ohH holds where lysH did not, the protonation state was the cause and M1 is settled. If it drifts too, the cause is elsewhere - GFN2, or the pose - and M0's other readings are live. Either outcome is informative, which is the point of running it.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
