@@ -108,6 +108,63 @@ def cone_positions(o01, h03, steps=72):
     return out
 
 
+def sphere_directions(count=240):
+    """Roughly even directions on a sphere (Fibonacci spiral)."""
+    out = []
+    golden = math.pi * (3.0 - math.sqrt(5.0))
+    for i in range(count):
+        z = 1.0 - 2.0 * i / (count - 1.0)
+        radius = math.sqrt(max(0.0, 1.0 - z * z))
+        phi = golden * i
+        out.append((math.cos(phi) * radius, math.sin(phi) * radius, z))
+    return out
+
+
+def reorient_water(zn, o01, h03, others, floor):
+    """Both hydrogens placed afresh, with the oxygen left exactly where it is.
+
+    Used when every position on the cone is blocked, which is what happens in
+    naclong's frame: the restrained equilibration pressed the hydroxide against
+    meropenem, and a second hydrogen does not fit at that orientation. H03's
+    direction is a *hydroxide's* and has no claim on a water's geometry, while
+    O01 is the nucleophile and the one coordinate the comparison rests on - so
+    the oxygen stays put and the hydrogens are free. Among orientations that
+    clear `floor`, the one keeping H03 closest to where it was wins, so the
+    structure stays as near the input as the clash allows.
+    """
+    near = [(key, xyz) for key, xyz in others if norm(sub(xyz, o01)) < 6.0]
+    original = unit(sub(h03, o01))
+    away = unit(sub(o01, zn))
+    theta = math.radians(HOH_ANGLE)
+    best = None
+    for d1 in sphere_directions():
+        p1 = tuple(o + OH_LEN * d for o, d in zip(o01, d1))
+        gap1 = min((norm(sub(p1, xyz)) for _, xyz in near), default=float("inf"))
+        if gap1 < floor:
+            continue
+        seed = (1.0, 0.0, 0.0) if abs(dot((1.0, 0.0, 0.0), d1)) < 0.9 else (0.0, 1.0, 0.0)
+        u = unit(cross(d1, seed))
+        v = unit(cross(d1, u))
+        for step in range(36):
+            phi = 2.0 * math.pi * step / 36
+            radial = tuple(math.cos(phi) * ui + math.sin(phi) * vi
+                           for ui, vi in zip(u, v))
+            d2 = tuple(math.cos(theta) * ai + math.sin(theta) * ri
+                       for ai, ri in zip(d1, radial))
+            p2 = tuple(o + OH_LEN * d for o, d in zip(o01, d2))
+            gap2 = min((norm(sub(p2, xyz)) for _, xyz in near),
+                       default=float("inf"))
+            if gap2 < floor:
+                continue
+            clearance = min(gap1, gap2)
+            # Stay as close to the input orientation as the clash allows, then
+            # prefer hydrogens pointing away from the metal.
+            score = (dot(d1, original), dot(d1, away) + dot(d2, away))
+            if best is None or score > best[0]:
+                best = (score, clearance, p1, p2)
+    return best
+
+
 def place_h04(zn, o01, h03, others=()):
     """The clearest allowed position for the water's second hydrogen.
 
@@ -224,12 +281,26 @@ def main(argv):
     if not others:
         raise SystemExit(f"{src} holds nothing but the nucleophile.")
     h04, clearance, key, phi = place_h04(zn, o01, h03, others)
+    h03_new = None
     if clearance < CLASH:
-        raise SystemExit(
-            f"the clearest position on the cone still puts H04 {clearance:.2f} "
-            f"A from {':'.join(key)}, inside the {CLASH} A cutoff. The "
-            "nucleophile has no room for a second hydrogen in this frame, so "
-            "it needs placing by hand. Nothing was written.")
+        print(f"[INFO] Every position on the cone clashes - the best is "
+              f"{clearance:.2f} A from {':'.join(key)}, inside the {CLASH} A "
+              "cutoff. The hydroxide is pressed against its surroundings, so "
+              "reorienting the whole water with the oxygen fixed.")
+        found = reorient_water(zn, o01, h03, others, CLASH)
+        if found is None:
+            raise SystemExit(
+                f"no orientation of a water at O01 clears {CLASH} A. The "
+                "nucleophile position itself has no room for two hydrogens in "
+                "this frame, so it needs relaxing before the proton is added. "
+                "Nothing was written.")
+        _, clearance, h03_new, h04 = found
+        turn = math.degrees(math.acos(max(-1.0, min(1.0, dot(
+            unit(sub(h03_new, o01)), unit(sub(h03, o01)))))))
+        print(f"[INFO] Water reoriented: H03 turned {turn:.0f} deg, clearance "
+              f"now {clearance:.2f} A. O01 is untouched, which is the only "
+              "coordinate the comparison rests on.")
+        key = min((norm(sub(h04, xyz)), k) for k, xyz in others)[1]
     closest = (clearance, key)
 
     # Build the new H04 line from the O01 line so the chain, residue number and
@@ -247,6 +318,10 @@ def main(argv):
             continue
         if line.startswith(("ATOM", "HETATM")) and line[17:20].strip() == "OH":
             line = line[:17] + f"{'NUW':>3s}" + line[20:]
+            if h03_new is not None and line[12:16].strip() == "H03":
+                line = (line[:30]
+                        + f"{h03_new[0]:8.3f}{h03_new[1]:8.3f}{h03_new[2]:8.3f}"
+                        + line[54:])
         out.append(line)
         if index == oh_index:
             out.append(h04_line)

@@ -168,20 +168,64 @@ def test_input_without_conect_is_refused(mod, tmp_path):
     assert not out.exists()
 
 
-def test_a_clash_is_refused_and_nothing_is_written(mod, tmp_path):
-    """A spectator atom sitting where H04 belongs must stop the run. The
-    placement looks fine in a PDB and only fails later, in a minimisation."""
+def test_a_blocked_cone_triggers_reorientation(mod, tmp_path, capsys):
+    """One atom sitting across the cone does not make the frame unusable: the
+    oxygen is the coordinate that matters, and the hydrogens may turn. This is
+    what naclong's frame needed - its hydroxide is pressed against meropenem."""
+    zn, o01, h03 = (0.0, 0.0, 0.0), (1.9, 0.0, 0.0), (2.4, 0.83, 0.0)
+    # Ring the whole cone, 2.6 A out along each allowed direction: near enough
+    # that every cone position is inside the cutoff, far enough that the rest
+    # of the sphere - where a reoriented water can put its hydrogens - is
+    # clear. One blocker is not enough; the cone scan simply steps around it.
+    ring = []
+    for index, (_, xyz) in enumerate(mod.cone_positions(o01, h03, steps=12)):
+        direction = mod.unit(mod.sub(xyz, o01))
+        ring.append(tuple(o + 2.6 * d for o, d in zip(o01, direction)))
     lines = [
         pdb_line(1, "ZN", "ZN", "B", "1", (0.0, 0.0, 0.0)),
         pdb_line(2, "O01", "OH", "C", "2", (1.9, 0.0, 0.0)),
         pdb_line(3, "H03", "OH", "C", "2", (2.4, 0.83, 0.0)),
-        pdb_line(4, "NE2", "HIS", "A", "88", (2.4, -0.83, 0.0)),
+    ] + [
+        pdb_line(4 + i, "C", "LIG", "X", "9", xyz)
+        for i, xyz in enumerate(ring)
+    ] + [
+        "CONECT    2    3\n",
         "END\n",
     ]
-    src = tmp_path / "clash.pdb"
+    src = tmp_path / "blocked.pdb"
     src.write_text("".join(lines))
     out = tmp_path / "out.pdb"
-    with pytest.raises(SystemExit, match="no room for a second hydrogen"):
+    mod.main([str(src), str(out)])
+    printed = capsys.readouterr().out
+    assert "reorienting the whole water" in printed
+    assert "O01 is untouched" in printed
+    # The oxygen must not have moved.
+    o01 = next(l for l in out.read_text().splitlines()
+               if l.startswith(("ATOM", "HETATM")) and l[12:16].strip() == "O01")
+    assert (float(o01[30:38]), float(o01[38:46]), float(o01[46:54])) == (1.9, 0.0, 0.0)
+
+
+def test_a_nucleophile_with_no_room_at_all_is_refused(mod, tmp_path):
+    """If no orientation of a water clears the cutoff, the oxygen position
+    itself is the problem and it needs relaxing before the proton is added."""
+    shell = [
+        pdb_line(1, "ZN", "ZN", "B", "1", (0.0, 0.0, 0.0)),
+        pdb_line(2, "O01", "OH", "C", "2", (1.9, 0.0, 0.0)),
+        pdb_line(3, "H03", "OH", "C", "2", (2.4, 0.83, 0.0)),
+    ]
+    # A cage of atoms 1.0 A around the oxygen leaves nowhere for a hydrogen.
+    serial = 4
+    for dx in (-1.0, 1.0):
+        for dy in (-1.0, 0.0, 1.0):
+            for dz in (-1.0, 0.0, 1.0):
+                shell.append(pdb_line(serial, "C", "LIG", "X", "9",
+                                      (1.9 + dx, dy, dz)))
+                serial += 1
+    shell += ["CONECT    2    3\n", "END\n"]
+    src = tmp_path / "caged.pdb"
+    src.write_text("".join(shell))
+    out = tmp_path / "out.pdb"
+    with pytest.raises(SystemExit, match="no room for two hydrogens"):
         mod.main([str(src), str(out)])
     assert not out.exists()
 
