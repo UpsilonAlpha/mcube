@@ -121,11 +121,22 @@ site:
         required_at: [start, reactant]
         source: loose; L1 7UHJ 2.63, thermolysin 2.41, CPA 2.98 (D121, D124)
 
+      # MOVED to `reactant` only. The 1.9-2.2 A window is from crystal
+      # structures, and our MM zinc does not reproduce crystal bond lengths: in
+      # the grafted frame the whole sphere is systematically off - hydroxide
+      # 1.86 A (short), His88 2.22 and His164 2.32 A (long) - and D48 and D118
+      # both measured this bond relaxing from 1.83-1.86 A to 1.99-2.05 A once
+      # QM/MM took over. Gating an MM structure on an absolute Zn-donor bond
+      # length therefore tests the force field, not the structure. The
+      # criteria that stay at `start` are the ones that DISCRIMINATE between
+      # the hypotheses - which oxygen is on the metal, and the substrate
+      # geometry - where the difference is 1.8 A and no force-field artefact
+      # accounts for it.
       - name: Zn - nucleophile O01
         atoms: [B:1:ZN, C:2:O01]
         range: [1.9, 2.2]
-        required_at: [start, reactant]
-        source: tight; thermolysin 2.01, CPA 2.19 (D124)
+        required_at: [reactant]
+        source: tight; thermolysin 2.01, CPA 2.19 (D124) - crystal values
 
       - name: Zn coordination number
         coordination: B:1:ZN
@@ -185,11 +196,22 @@ site:
         required_at: [start, reactant]
         source: the distinguishing negative; D126 measured 4.50 A
 
+      # MOVED to `reactant` only. The 1.9-2.2 A window is from crystal
+      # structures, and our MM zinc does not reproduce crystal bond lengths: in
+      # the grafted frame the whole sphere is systematically off - hydroxide
+      # 1.86 A (short), His88 2.22 and His164 2.32 A (long) - and D48 and D118
+      # both measured this bond relaxing from 1.83-1.86 A to 1.99-2.05 A once
+      # QM/MM took over. Gating an MM structure on an absolute Zn-donor bond
+      # length therefore tests the force field, not the structure. The
+      # criteria that stay at `start` are the ones that DISCRIMINATE between
+      # the hypotheses - which oxygen is on the metal, and the substrate
+      # geometry - where the difference is 1.8 A and no force-field artefact
+      # accounts for it.
       - name: Zn - nucleophile O01
         atoms: [B:1:ZN, C:2:O01]
         range: [1.9, 2.2]
-        required_at: [start, reactant]
-        source: tight; thermolysin 2.01, CPA 2.19 (D124)
+        required_at: [reactant]
+        source: tight; thermolysin 2.01, CPA 2.19 (D124) - crystal values
 
       - name: O01 - C4x (attack)
         atoms: [C:2:O01, C:1:C4x]
