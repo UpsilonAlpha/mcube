@@ -1276,6 +1276,25 @@ blocks 30576666/67 held; the Ca jobs run)
   - The smoke test is at step 110 of 150 without converging. If the 150-step limit is too tight for the 8 Å active
     region, analyse will leave such frames out; how many it drops shows when the first tasks end.
   - The code-server session moved to bun151:11922.
+- **QM/MM optimisations do not converge, and climb (2026-10-28, ~11:20). Stopped to ask the user.**
+  - **No optimisation has converged.**
+    - The two finished water jobs (`water/LA_f0024/LA`, `/LU`) hit the 150-step limit and ran their single points.
+    - Eight site tasks are at 87–148 steps and the smoke test at 119.
+  - **The energy rises for most of the run while geomeTRIC rates the steps as good** (Quality ≈ 1).
+    - `site/LA_f0219/LU`: lowest at step ~40 (−1462.2014 Eh), then +33 kcal/mol by step 145, with the max gradient
+      reaching 0.2–3.8 Eh/Bohr in the last steps.
+    - `water/LA_f0024/LA`: lowest near step 80–120 (−740.085 Eh), then +45 kcal/mol by step 150.
+    - The water logs also show repeated geomeTRIC "SVD Error" in the internal coordinates.
+  - An optimiser that accepts uphill steps with the predicted change matching the actual one points to an energy
+    and gradient that do not belong together. The water boxes have no link atoms and show it too, so it is not
+    the Glu cut. The candidates:
+    - the QM–MM point-charge gradient ("new way") against the energy;
+    - PME MM energies against bare QM–MM point charges;
+    - the active-region bookkeeping.
+  - **Consequence:** the final geometries, and so the sp energies, are not minima; they are 5–45 kcal/mol above the
+    lowest point on the path. ΔE between ions from them would be noise of that size.
+  - **Proposed:** cancel the arrays (≈20 × 32 cores running), then run a finite-difference gradient check on one
+    water frame (small, ~minutes) to find which term is inconsistent, before any rerun.
 
 ## Findings
 
