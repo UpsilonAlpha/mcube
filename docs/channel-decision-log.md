@@ -1367,6 +1367,26 @@ blocks 30576666/67 held; the Ca jobs run)
   - **Test (30809841):** the same water job with an 8 Å region, `rigid_water: false`, `opt_coordsystem: cart` and
     `opt_maxiter: 300` (Cartesian converges more slowly), in `$S/channel/qmmm/diag/water_LA_f0024_LA_flexcart`.
     It is compared with the QM-only run (44 steps, monotonic).
+- **Flexible-water Cartesian result (30809841, RC 0):**
+  - The constraint problem is solved: the energy fell at every step (never more than 0.02 kcal/mol above its running
+    minimum).
+    - Step 1: −739.7783 Eh. Step 100: −740.1288. Step 200: −740.1444. Step 300: −740.1484. The old rigid TRIC
+      run's lowest was −740.085.
+  - **Not converged at 300 steps**, though at step 300 the gradient meets geomeTRIC's thresholds (rms 1.4 × 10⁻⁴,
+    max 4.1 × 10⁻⁴ Eh/Bohr). The energy criterion fails: the step change is still 2 × 10⁻⁵ Eh, and the last 50 steps
+    lowered it by 1.2 kcal/mol (the floppy water network creeping). The TZVP point ran (−740.9759 Eh).
+  - Cost: 300 steps in 93 min, 18.6 s per step for the 4k-atom water box.
+    - The membrane site frames ran ~4.6 min per step, so 300 Cartesian steps there would be ~23 h, at the 24 h limit,
+      and still creeping.
+    - A residual creep of ~1 kcal/mol per 50 steps is noise of that size in ΔE between ions.
+  - **Recommendation: rerun the 60 jobs with `actradius 0.5` (QM atoms only).**
+    - It converged cleanly in 44 steps, and the MM environment is identical across the ions of a frame and the
+      water reference, so ΔE carries no MM relaxation noise.
+    - The 8 Å flexible-Cartesian setup stays available (`rigid_water: false`, `opt_coordsystem: cart`) as a check
+      on a few frames if the result turns on environment relaxation.
+    - Estimate: site ~45–60 steps × ~4.6 min ≈ 3.5–5 h each, plus ~30 min TZVP; water ≲ 30 min each. About
+      5,000 core-h, ~15 h wall at 10 concurrent.
+    - Waiting for the user before resubmitting.
 
 ## Findings
 
