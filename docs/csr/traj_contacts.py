@@ -80,6 +80,7 @@ def probes(top):
     """(label, indices_a, indices_b) for every contact we want."""
     mer_o = dict(resname="mer", element="O")
     carboxylate = dict(resname="mer", names={"O3x", "O4x"})
+    carbonyl = dict(resname="mer", names={"O2x"})
     guanidinium = {"NE", "NH1", "NH2"}
     nucleophile = dict(resname=nucleophile_resname(top), names={"O01"})
 
@@ -109,6 +110,31 @@ def probes(top):
          dict(resseq=229, resname="ARG", names=guanidinium), mer_o),
         ("Arg229 guanidinium - O01 nucleophile",
          dict(resseq=229, resname="ARG", names=guanidinium), nucleophile),
+        # Gln93 = BBL Q121, a Zn2-site ligand position in canonical B3 and one of
+        # the three B3-RQK substitutions. D121: a neutral amide standing in for the
+        # metal as the oxyanion hole is documented across this subclass - Gln157 in
+        # SMB-1, Asn176 in L1, Asn233 in CcrA - so the amide's reach to the
+        # beta-lactam carbonyl is the measurement that tests the same role here.
+        # Both amide heteroatoms are probed because the side-chain amide flips and
+        # the crystal's assignment of OE1 against NE2 is not reliable either.
+        ("Gln93 OE1 - mer O2x (carbonyl)",
+         dict(resseq=93, resname="GLN", names={"OE1"}), carbonyl),
+        ("Gln93 NE2 - mer O2x (carbonyl)",
+         dict(resseq=93, resname="GLN", names={"NE2"}), carbonyl),
+        ("Gln93 OE1/NE2 - mer O2x (carbonyl)",
+         dict(resseq=93, resname="GLN", names={"OE1", "NE2"}), carbonyl),
+        ("Gln93 NE2 - carboxylate O3x/O4x",
+         dict(resseq=93, resname="GLN", names={"NE2"}), carboxylate),
+        ("Gln93 NE2 - mer N1x (leaving N)",
+         dict(resseq=93, resname="GLN", names={"NE2"}), dict(resname="mer", names={"N1x"})),
+        ("Gln93 OE1/NE2 - O01 nucleophile",
+         dict(resseq=93, resname="GLN", names={"OE1", "NE2"}), nucleophile),
+        # D94 put Gln93 OE1 1.79 A from the zinc under MM, and D120 found Asp92 OD1
+        # there instead. Whichever donor is in that position is in the carbonyl's,
+        # so the amide's distance to the metal is measured beside its distance to
+        # the substrate rather than inferred from it.
+        ("Gln93 OE1 - Zn",
+         dict(resseq=93, resname="GLN", names={"OE1"}), dict(resname="ZN")),
         # Asp92 = D120, the proposed general base; monodentate to the one zinc
         ("Asp92 OD1 - O01 nucleophile",
          dict(resseq=92, resname="ASP", names={"OD1"}), nucleophile),
