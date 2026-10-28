@@ -1357,6 +1357,16 @@ blocks 30576666/67 held; the Ca jobs run)
     then `submit.sh`.
   - Estimate: about 45–60 steps per job at 1–5 min per step, roughly 3–5 h per site job and about 1 h per water job.
   - Waiting for the user before resubmitting.
+- **`rigid_water` option for the qmmm optimisation (user: "Add option first"; commit 7c57b8b).**
+  - The same key as in `ts`, default `true`, so existing runs are unchanged.
+  - With `false`, active-region MM waters are flexible on the amber14 TIP3P harmonic terms (`make_mm` already builds
+    `rigidwater=False`). With no `opt_constraints` either, `optimizer_constraints` now returns no constraints at all,
+    which `opt_coordsystem: cart` needs.
+  - Documented in the README qmmm table, with a unit test (`tests/test_optimizer_constraints.py`). Locally 360
+    passed / 6 skipped (ASH tests skipped); on Bunya's ASH env the new and related tests pass (15/15).
+  - **Test (30809841):** the same water job with an 8 Å region, `rigid_water: false`, `opt_coordsystem: cart` and
+    `opt_maxiter: 300` (Cartesian converges more slowly), in `$S/channel/qmmm/diag/water_LA_f0024_LA_flexcart`.
+    It is compared with the QM-only run (44 steps, monotonic).
 
 ## Findings
 
