@@ -27,6 +27,30 @@ from pathlib import Path
 
 CUTOFF = 3.5  # A; salt bridge / H-bond heavy-atom contact
 
+# The nucleophile is residue OH in the hydroxide state and NUW once it has been
+# protonated to water (docs/csr/make_water_nuc.py renames it, so that OpenMM
+# matches it against water_nuc.xml rather than against every bulk HOH). The two
+# arms of the protonation test therefore carry different residue names for the
+# same oxygen, and the probe set has to find either.
+NUCLEOPHILE_RESNAMES = ("OH", "NUW")
+
+
+def nucleophile_resname(top):
+    """Whichever of NUCLEOPHILE_RESNAMES this topology carries."""
+    found = [name for name in NUCLEOPHILE_RESNAMES
+             if any(res.name == name for res in top.residues)]
+    if not found:
+        raise ValueError(
+            "no nucleophile residue: expected one of "
+            f"{', '.join(NUCLEOPHILE_RESNAMES)}. Run --list to see what the "
+            "topology holds.")
+    if len(found) > 1:
+        # Both at once means two nucleophiles, so every distance below would be
+        # a minimum over them without saying so. That is a broken topology.
+        raise ValueError(
+            f"topology holds more than one nucleophile residue: {found}")
+    return found[0]
+
 
 def atoms(top, names=None, resseq=None, resname=None, element=None):
     """Atom indices matching every constraint given. Raises if none match."""
@@ -57,7 +81,7 @@ def probes(top):
     mer_o = dict(resname="mer", element="O")
     carboxylate = dict(resname="mer", names={"O3x", "O4x"})
     guanidinium = {"NE", "NH1", "NH2"}
-    nucleophile = dict(resname="OH", names={"O01"})
+    nucleophile = dict(resname=nucleophile_resname(top), names={"O01"})
 
     spec = [
         # Lys226 = BBL K263, at the vacant Zn2 ligand position (D107)
@@ -143,7 +167,8 @@ def main(argv):
 
     traj = md.load(traj_path, top=top_path)
     print(f"{traj.n_frames} frames, {traj.n_atoms} atoms, "
-          f"periodic={traj.unitcell_lengths is not None}")
+          f"periodic={traj.unitcell_lengths is not None}, "
+          f"nucleophile residue {nucleophile_resname(traj.topology)}")
     if traj.n_frames < 2:
         print("[WARN] fewer than two frames: nothing to average over")
 
