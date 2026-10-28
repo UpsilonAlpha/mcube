@@ -199,4 +199,79 @@ class TestMissingAtoms:
         site_mod.OPTS = {"at": "start"}
         with pytest.raises(SystemExit) as e:
             site_mod.mode_check(site, [write_pdb(tmp_path, "x.pdb", good_rows())])
-        assert "michaelis_criteria" in str(e.value)
+        assert "nothing to check" in str(e.value)
+
+
+class TestHypotheses:
+    """D126: a gate must not reject a rival mechanism by assuming the first one.
+
+    The same structure is accepted under one hypothesis and rejected under the
+    other, which is the whole point: `check` says whether a structure fits a
+    STATED mechanism, never whether it is "a Michaelis complex".
+    """
+
+    ALT = [
+        {"name": "closest substrate O", "closest_to": "B:1:ZN",
+         "among": ["C:1:O2x", "C:1:O1x"], "must_be": "C:1:O1x",
+         "required_at": ["start", "reactant"]},
+        {"name": "Zn - carbonyl O2x is OUT", "atoms": ["B:1:ZN", "C:1:O2x"],
+         "range": [3.5, 20.0], "required_at": ["start", "reactant"]},
+    ]
+
+    def both(self):
+        return dict(SITE, michaelis_hypotheses={
+            "carbonyl_on_metal": CRITERIA, "substituent_on_metal": self.ALT})
+
+    def flipped(self, tmp_path):
+        """O1x on the metal, carbonyl pointing away: D126's own arrangement."""
+        rows = [ZN, HIS88, HIS164,
+                ("O01", "OH", "C", 2, (-2.00, 0.0, 0.0), "O"),
+                ("O1x", "mer", "C", 1, (2.66, 0.0, 0.0), "O"),
+                ("O2x", "mer", "C", 1, (4.50, 0.0, 0.0), "O"),
+                ("C4x", "mer", "C", 1, (4.20, 1.60, 0.0), "C")]
+        return write_pdb(tmp_path, "alt.pdb", rows)
+
+    def run_h(self, site_mod, site, path, stage, hypothesis):
+        site_mod.OPTS = {"at": stage, "hypothesis": hypothesis}
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            with pytest.raises(SystemExit) as e:
+                site_mod.mode_check(site, [path])
+        return e.value.code, buf.getvalue().splitlines()
+
+    def test_rejected_under_one_accepted_under_the_other(self, site_mod, tmp_path):
+        path = self.flipped(tmp_path)
+        code, lines = self.run_h(site_mod, self.both(), path, "start",
+                                 "carbonyl_on_metal")
+        assert code == 1
+        assert "carbonyl_on_metal" in "\n".join(lines)
+        code, lines = self.run_h(site_mod, self.both(), path, "start",
+                                 "substituent_on_metal")
+        assert code == 0
+        assert "substituent_on_metal" in "\n".join(lines)
+
+    def test_the_output_always_names_the_hypothesis(self, site_mod, tmp_path):
+        _, lines = self.run_h(site_mod, self.both(),
+                              write_pdb(tmp_path, "p2.pdb", good_rows()),
+                              "start", "carbonyl_on_metal")
+        assert "hypothesis 'carbonyl_on_metal'" in lines[0]
+
+    def test_several_hypotheses_and_none_named_is_refused(self, site_mod, tmp_path):
+        """Silently defaulting to one of two mechanisms is the D125 mistake."""
+        site_mod.OPTS = {"at": "start"}
+        with pytest.raises(SystemExit) as e:
+            site_mod.mode_check(self.both(), [self.flipped(tmp_path)])
+        assert "--hypothesis=" in str(e.value)
+
+    def test_an_unknown_name_lists_what_there_is(self, site_mod, tmp_path):
+        site_mod.OPTS = {"at": "start", "hypothesis": "nope"}
+        with pytest.raises(SystemExit) as e:
+            site_mod.mode_check(self.both(), [self.flipped(tmp_path)])
+        assert "carbonyl_on_metal" in str(e.value)
+
+    def test_a_single_hypothesis_needs_no_name(self, site_mod, tmp_path):
+        site = dict(SITE, michaelis_hypotheses={"only": CRITERIA})
+        code, lines = run(site_mod, site,
+                          write_pdb(tmp_path, "p2.pdb", good_rows()), "start")
+        assert code == 0
+        assert "hypothesis 'only'" in lines[0]

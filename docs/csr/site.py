@@ -11,6 +11,7 @@
                                                 [1,3,4]  a pose into the system
                                        [--ref-frame=system]
     python site.py check        <pdb> [pdb ...] [--at=start|reactant]
+                                       [--hypothesis=<name>]
                                                     accept or reject a structure
 
 Every atom, every candidate base and every criterion comes from `site.yaml`
@@ -908,15 +909,40 @@ def mode_check(site, args):
     knowledge - every criterion was already measured and recorded. What was
     missing was a command that says yes or no, so a start structure is not
     accepted by eye. Exits non-zero if anything required at this stage fails.
+
+    `--hypothesis=<name>` picks one set from `michaelis_hypotheses`, because a
+    criterion is only ever a criterion WITHIN a mechanism. D125 wrote "the
+    closest substrate oxygen must be the beta-lactam carbonyl" as though it
+    were a fact about Michaelis complexes; it is a fact about the
+    carbonyl-on-metal mechanism, which is the thing under test, and D126 found
+    a candidate complex that violates it while satisfying the attack geometry.
+    A gate that rejects a competing hypothesis by assuming the first one is not
+    a gate, it is a way of never testing anything. So each hypothesis carries
+    its own criteria and is named in the output, and a structure is rejected
+    only against a stated mechanism.
     """
     stage = OPTS.get("at", "start")
-    criteria = site.get("michaelis_criteria") or []
+    sets = site.get("michaelis_hypotheses") or {}
+    name = OPTS.get("hypothesis")
+    if name is not None:
+        if name not in sets:
+            raise SystemExit("no hypothesis %r; the site file has: %s"
+                             % (name, ", ".join(sorted(sets)) or "none"))
+        criteria = sets[name]
+    elif sets:
+        name = sorted(sets)[0] if len(sets) == 1 else None
+        if name is None:
+            raise SystemExit("several hypotheses (%s): say which with "
+                             "--hypothesis=<name>" % ", ".join(sorted(sets)))
+        criteria = sets[name]
+    else:
+        name, criteria = "michaelis_criteria", site.get("michaelis_criteria") or []
     if not criteria:
-        raise SystemExit("no `michaelis_criteria` in the site file: nothing to check")
+        raise SystemExit("no criteria in the site file: nothing to check")
     worst = 0
     for path in args:
         at = load_pdb(path)
-        print("==", path, "   (criteria required at: %s)" % stage)
+        print("==", path, "   hypothesis '%s', required at: %s" % (name, stage))
         for c in criteria:
             verdict, measured, detail = _criterion(site, at, c, stage)
             want = c.get("range")
@@ -927,7 +953,8 @@ def mode_check(site, args):
                 print("          %s" % detail)
             if verdict == "FAIL":
                 worst = 1
-        print("   %s" % ("REJECTED" if worst else "accepted at stage '%s'" % stage))
+        print("   %s under '%s'"
+              % ("REJECTED" if worst else "accepted at stage '%s'" % stage, name))
     raise SystemExit(worst)
 
 

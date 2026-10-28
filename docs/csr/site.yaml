@@ -89,49 +89,131 @@ site:
   # the thing the simulation is meant to produce. Run the check at BOTH ends -
   # `--at=start` on the grafted structure, `--at=reactant` on the last frame -
   # because D120's five-coordinate zinc appeared during the MM, not before it.
-  michaelis_criteria:
-    - name: closest substrate O
-      closest_to: B:1:ZN
-      among: [C:1:O2x, C:1:O1x, C:1:O3x, C:1:O4x]
-      must_be: C:1:O2x
-      required_at: [start, reactant]
-      source: D123; the October pose gave O1x 3.13 and the carbonyl 5.43
+  # A criterion is only a criterion WITHIN a mechanism. D125 wrote "the closest
+  # substrate oxygen must be the beta-lactam carbonyl" as though it were a fact
+  # about Michaelis complexes. It is a fact about the carbonyl-on-metal
+  # mechanism, and that mechanism is the thing under test: D126 found a
+  # candidate complex that violates it while satisfying the attack geometry at
+  # 3.17 A and 106 degrees. A gate that rejects a competing hypothesis by
+  # assuming the first one is not a gate, it is a way of never testing
+  # anything. So each hypothesis carries its own criteria, `site.py check
+  # --hypothesis=<name>` picks one, and the output names it.
+  michaelis_hypotheses:
 
-    - name: Zn - carbonyl O2x
-      atoms: [B:1:ZN, C:1:O2x]
-      range: [2.4, 3.0]
-      required_at: [start, reactant]
-      source: loose; L1 7UHJ 2.63, thermolysin 2.41, CPA 2.98 (D121, D124)
+    # The planned mechanism: the metal holds the beta-lactam carbonyl, loosely,
+    # while a metal-bound hydroxide attacks it. Thermolysin and carboxypeptidase
+    # A both do this on one zinc (D124), and L1's time-resolved Michaelis
+    # complexes measure the carbonyl at 2.53-2.63 A from Zn1 (D121). What we do
+    # NOT have is a structure of our own in this arrangement: D126 showed no
+    # docked pose puts anything within 5 A of the metal, so a start structure
+    # for this hypothesis has to be built by restraint rather than found.
+    carbonyl_on_metal:
+      - name: closest substrate O
+        closest_to: B:1:ZN
+        among: [C:1:O2x, C:1:O1x, C:1:O3x, C:1:O4x]
+        must_be: C:1:O2x
+        required_at: [start, reactant]
+        source: D123; the October pose gave O1x 3.13 and the carbonyl 5.43
 
-    - name: Zn - nucleophile O01
-      atoms: [B:1:ZN, C:2:O01]
-      range: [1.9, 2.2]
-      required_at: [start, reactant]
-      source: tight; thermolysin 2.01, CPA 2.19 (D124)
+      - name: Zn - carbonyl O2x
+        atoms: [B:1:ZN, C:1:O2x]
+        range: [2.4, 3.0]
+        required_at: [start, reactant]
+        source: loose; L1 7UHJ 2.63, thermolysin 2.41, CPA 2.98 (D121, D124)
 
-    - name: Zn coordination number
-      coordination: B:1:ZN
-      range: [4, 4]
-      required_at: [reactant]
-      source: 2 His + hydroxide + carbonyl (D41); the crystal is 4 (D120)
+      - name: Zn - nucleophile O01
+        atoms: [B:1:ZN, C:2:O01]
+        range: [1.9, 2.2]
+        required_at: [start, reactant]
+        source: tight; thermolysin 2.01, CPA 2.19 (D124)
 
-    - name: O01 - C4x (attack)
-      atoms: [C:2:O01, C:1:C4x]
-      range: [3.0, 3.5]
-      required_at: [reactant]
-      source: near-attack convention; 4.5 A is the outer bound (burgi_dunitz)
+      - name: Zn coordination number
+        coordination: B:1:ZN
+        range: [4, 4]
+        required_at: [reactant]
+        source: 2 His + hydroxide + carbonyl (D41); the crystal is 4 (D120)
 
-    - name: O01 - C4x - O2x angle
-      atoms: [C:2:O01, C:1:C4x, C:1:O2x]
-      range: [95, 120]
-      required_at: [reactant]
-      source: Burgi-Dunitz; D34 reached 24-54 deg in 791 frames, never this
+      - name: O01 - C4x (attack)
+        atoms: [C:2:O01, C:1:C4x]
+        range: [3.0, 3.5]
+        required_at: [reactant]
+        source: near-attack convention; 4.5 A is the outer bound (burgi_dunitz)
 
-    - name: Asp92 OD1 - O01
-      atoms: [A:92:OD1, C:2:O01]
-      range: [2.5, 3.2]
-      required_at: [reactant]
-      source: H-bond not coordination; D119 measured 2.82-2.94 at 100% frames
+      - name: O01 - C4x - O2x angle
+        atoms: [C:2:O01, C:1:C4x, C:1:O2x]
+        range: [95, 120]
+        required_at: [reactant]
+        source: Burgi-Dunitz; D34 reached 24-54 deg in 791 frames, never this
+
+      - name: Asp92 OD1 - O01
+        atoms: [A:92:OD1, C:2:O01]
+        range: [2.5, 3.2]
+        required_at: [reactant]
+        source: H-bond not coordination; D119 measured 2.82-2.94 at 100% frames
+
+    # The arrangement the grafted pose-2 structure actually presents (D126).
+    # The metal holds the 6-alpha-hydroxyethyl O1x at 2.66 A, the carbonyl
+    # points away at 4.50 A, and the zinc-bound hydroxide sits on the attack
+    # line at 3.17 A and 106 degrees - inside the Burgi-Dunitz window that D34
+    # never reached in 791 frames, with Asp92 OD1 at 2.87 A as general base.
+    #
+    # It is a hybrid of the two routes D124 separated: the nucleophile is
+    # metal-bound and on the attack line, as in thermolysin and CPA, while the
+    # metal holds a substituent oxygen rather than the carbonyl, as GOB-18 does
+    # with the C-3 carboxylate. It is listed here as a hypothesis to be tested,
+    # not a preferred one: nothing says a 6-alpha-hydroxyethyl oxygen belongs on
+    # a Zn1-site metal, and the carbonyl distance range below is our own
+    # measurement plus tolerance, not a reference value. Marked as such.
+    substituent_on_metal:
+
+      - name: closest substrate O
+        closest_to: B:1:ZN
+        among: [C:1:O2x, C:1:O1x, C:1:O3x, C:1:O4x]
+        must_be: C:1:O1x
+        required_at: [start, reactant]
+        source: D126 measured 2.66 A; GOB-18 binds a substituent, its C-3 COO-
+
+      - name: Zn - O1x (6a-OH)
+        atoms: [B:1:ZN, C:1:O1x]
+        range: [2.0, 2.8]
+        required_at: [start, reactant]
+        source: NOT a reference value - D126's own 2.66 A plus tolerance
+
+      - name: Zn - carbonyl O2x is OUT
+        atoms: [B:1:ZN, C:1:O2x]
+        range: [3.5, 20.0]
+        required_at: [start, reactant]
+        source: the distinguishing negative; D126 measured 4.50 A
+
+      - name: Zn - nucleophile O01
+        atoms: [B:1:ZN, C:2:O01]
+        range: [1.9, 2.2]
+        required_at: [start, reactant]
+        source: tight; thermolysin 2.01, CPA 2.19 (D124)
+
+      - name: O01 - C4x (attack)
+        atoms: [C:2:O01, C:1:C4x]
+        range: [3.0, 3.5]
+        required_at: [start, reactant]
+        source: D126 measured 3.17 A with no restraint on this coordinate
+
+      - name: O01 - C4x - O2x angle
+        atoms: [C:2:O01, C:1:C4x, C:1:O2x]
+        range: [95, 120]
+        required_at: [start, reactant]
+        source: D126 measured 106 deg; this is why the hypothesis is listed
+
+      - name: Zn coordination number
+        coordination: B:1:ZN
+        range: [4, 4]
+        required_at: [reactant]
+        source: 2 His + hydroxide + O1x; remove HOH485 and pin Asp92 OD1 out
+
+      - name: Asp92 OD1 - O01
+        atoms: [A:92:OD1, C:2:O01]
+        range: [2.5, 3.2]
+        required_at: [reactant]
+        source: H-bond not coordination; D126 measured 2.87 A
 
 # Calculations. Each becomes a section in config.yaml. The starting structure is
 # `inputs.pdb_file` like any other input - there is no separate `start` key and

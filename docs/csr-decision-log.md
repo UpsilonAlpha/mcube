@@ -2470,6 +2470,21 @@ That is a coherent Michaelis-complex candidate, and it is a hybrid of the two ro
 
 **Nothing has been submitted.** The grafted structure is at `CSR_nac/md_naclong_results/NVTtrajectory_lastframe_pose2.pdb` and the measurement logs at `mcube/.cc/g2.log`, `g3.log`, `g4.log`. The decision in front of the user is which Michaelis complex to equilibrate: the carbonyl-on-metal arrangement the plan specifies, which now has no structural support in our own docking and must be built by restraint from 4.50 A; or the one the grafted structure already presents, where the attack geometry is satisfied and the metal holds O1x. The second needs no restraint on the carbonyl at all, which makes it the cheaper and more defensible test of the D124 question - and it is testable with `site.py joint` and `acceptors` on its trajectory exactly as planned.
 
+**D127 - The guard had the same defect as the work it was built to catch: its first criterion asserted the mechanism under test. `michaelis_criteria` becomes `michaelis_hypotheses`, two named sets, and `site.py check --hypothesis=<name>` must say which one.** (2026-10-29)
+
+D125 wrote **"the closest substrate oxygen must be the beta-lactam carbonyl"** and called it a criterion for a Michaelis complex. It is not. It is a criterion for the **carbonyl-on-metal mechanism**, and that mechanism is the thing this project exists to determine. One day later D126 produced a structure that violates it while satisfying the attack geometry at 3.17 A and 106 degrees - the best attack geometry anything in this project has shown - and the gate's verdict on it was REJECTED.
+
+**A gate that rejects a rival hypothesis by assuming the favoured one is not a gate. It is a way of never testing anything**, and it is the same class of error as D120, D123 and D126: a statement that is true in one context used as though it were true in general. The difference is that this one was built into the tool, where it would have applied silently to every structure from now on.
+
+**What changed.** Each hypothesis carries its own criteria; the output names the hypothesis on every line of the header and in the verdict; and with more than one set defined, **omitting `--hypothesis=` is refused rather than defaulted**, because silently picking one of two mechanisms is exactly the failure above. Five tests, including the one that matters: the same structure accepted under `substituent_on_metal` and rejected under `carbonyl_on_metal`.
+
+**The two hypotheses as recorded:**
+
+  - **`carbonyl_on_metal`** - the planned mechanism. Supported by thermolysin and CPA on one zinc (D124) and by L1's 2.53-2.63 A (D121). **What it does not have is a structure of our own**: no docked pose puts anything within 5 A of the metal (D126), so a start structure has to be built by restraint rather than found.
+  - **`substituent_on_metal`** - what the grafted structure actually presents. O1x on the metal at 2.66 A, carbonyl out at 4.50 A, hydroxide on the attack line at 3.17 A and 106 degrees, Asp92 OD1 at 2.87 A as general base. A hybrid of D124's two routes: metal-bound nucleophile as in thermolysin and CPA, substituent oxygen on the metal as in GOB-18 with its C-3 carboxylate.
+
+**It is listed as a hypothesis, not a preferred one, and the file says so where the numbers are.** Nothing in the literature puts a 6-alpha-hydroxyethyl oxygen on a Zn1-site metal; its `Zn - O1x` range of 2.0-2.8 A is our own measurement plus tolerance and is labelled `NOT a reference value`, unlike every range in `carbonyl_on_metal`, which carries a PDB ID. **The two hypotheses are not equally evidenced and the file must not read as though they were.** What recommends the second is that it needs no restraint on the carbonyl and already satisfies the attack geometry; what recommends the first is the only crystallographic Michaelis complex of a B3 enzyme that exists.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
