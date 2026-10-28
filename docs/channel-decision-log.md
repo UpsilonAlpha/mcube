@@ -1387,6 +1387,15 @@ blocks 30576666/67 held; the Ca jobs run)
     - Estimate: site ~45–60 steps × ~4.6 min ≈ 3.5–5 h each, plus ~30 min TZVP; water ≲ 30 min each. About
       5,000 core-h, ~15 h wall at 10 concurrent.
     - Waiting for the user before resubmitting.
+- **Rerun decided (user, 2026-10-28):** 30 site + 30 water jobs (the water reference is shared). "Leave the Na where it
+  is and let MM handle it": the MD's Na⁺/Cl⁻ stay as MM point charges in their frame positions, with no no-Na⁺ bracket.
+  - Active region QM atoms only (`exchange.py frames --actradius 0.5 --force`, rewriting all 60 configs and clearing
+    the old results), with rigid TRIC as before; with no MM waters active there are no constraints.
+  - Why this is not a repeat of the cluster: the QM part matches the cluster's coordinating core. But the
+    second-shell Glu⁻, their Arg302/366, Arg202 and His222 partners, the Na⁺ and all water and protein enter
+    explicitly, from 10 MD frames, in place of a continuum with a guessed ε. That is the effective pocket charge
+    the cluster could not settle.
+  - The environment does not relax to 2+ vs 3+, in either term, so that response largely cancels in ΔΔE.
 
 ## Findings
 
