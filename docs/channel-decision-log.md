@@ -1295,6 +1295,40 @@ blocks 30576666/67 held; the Ca jobs run)
     lowest point on the path. ΔE between ions from them would be noise of that size.
   - **Proposed:** cancel the arrays (≈20 × 32 cores running), then run a finite-difference gradient check on one
     water frame (small, ~minutes) to find which term is inconsistent, before any rerun.
+- **Arrays cancelled (user, "Cancel and diagnose").**
+  - Three water tasks and two site tasks had already finished, unconverged, and one water task had failed; none is
+    usable.
+- **Finite-difference gradient check** (`docs/channel/qmmm/gradcheck.py`, job 30763003; `water/LA_f0024/LA` at its
+  start geometry; central differences, h = 0.005 Å; the QMMMTheory built exactly as `mcube qmmm` builds it):
+
+  | Atom | max \|analytic − fd\| (Eh/Å) | in kcal/mol/Å |
+  |---|---|---|
+  | La³⁺ (QM) | 6.5 × 10⁻⁴ (x 5.7e-4, y 1.2e-4, z 6.5e-4) | 0.41 |
+  | QM water O | 1.4 × 10⁻⁴ | 0.09 |
+  | nearest MM water O | 3.2 × 10⁻⁴ | 0.20 |
+  | MM water O at 6 Å (active) | 1 × 10⁻⁵ | 0.01 |
+  | MM water O at 12 Å (outside the active region) | 5.8 × 10⁻⁴ | 0.37 |
+
+  - **The energy and gradient agree** to ≤ 0.4 kcal/mol/Å, about 1 % of each component.
+    - The QMenergy part dominates for the ion; the QM–MM point-charge gradient on MM atoms (6 Å, near) is exact
+      to 10⁻⁵.
+    - The residuals sit where expected for numerical noise: the ion's QM part, plausibly the DFT grid (PySCF's
+      gradient omits grid-weight response), and the 12 Å atom's MM part, plausibly the PME mesh.
+  - So the point-charge gradient, PME vs bare charges and the active-region bookkeeping are **ruled out** as the
+    cause of a 30–45 kcal/mol climb.
+  - Noise of this size is, however, comparable with geomeTRIC's default convergence thresholds (max gradient
+    4.5 × 10⁻⁴ Eh/Bohr ≈ 8.5 × 10⁻⁴ Eh/Å). That alone could stop formal convergence near a minimum, but it cannot
+    make the energy climb.
+  - **Remaining suspect: the optimiser's coordinate system and constraints.**
+    - The 8 Å active region holds a few hundred rigid MM waters, each with frozen O–H/H–H bonds.
+    - In TRIC (ASH's default), every water is a separate fragment with its own translation and rotation coordinates.
+    - The water logs show repeated geomeTRIC "SVD Error" in that coordinate system.
+    - mcube's `optimize` docstring already names this failure, and `opt_coordsystem` as the remedy.
+    - Enforcing drifting constraints in a degenerate coordinate system gives exactly uphill steps that the model
+      predicts well (Quality ≈ 1).
+  - **Test (submitted):** the same water job with `opt_coordsystem: cart` (30803614) and `hdlc` (30803615) in
+    `$S/channel/qmmm/diag/`, 8 h each, about 1 h of work. The test passes if the energy falls monotonically to a
+    minimum at or below the earlier run's lowest point (−740.085 Eh) and converges.
 
 ## Findings
 
