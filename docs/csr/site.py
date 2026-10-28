@@ -2,6 +2,7 @@
 
     python site.py sphere       <pdb> [pdb ...]     metal sphere and protonation
     python site.py nucleophiles <pdb> [pdb ...]     attack geometry + proton acceptors
+    python site.py shell        <traj> <topology>   metal coordination over a trajectory
     python site.py acceptors    <traj> <topology>   what CAN take the proton, counted
     python site.py joint        <traj> <topology>   attack AND donate, same molecule
     python site.py poses        <pdbqt> <receptor> [ligand.pdb]
@@ -16,6 +17,9 @@ enzyme and a new system needs a new YAML file rather than new code.
 The modes answer different questions, in rough order of cost:
 
   sphere        what is coordinated, and where are the hydrogens?
+  shell         over a trajectory, what is coordinated and how many of them, with
+                every ligand's occupancy - the question `sphere` can only
+                answer for the one frame it is given.
   nucleophiles  for one structure: which waters could attack, and for each of
                 their protons, what is within hydrogen-bond reach?
   acceptors     over a trajectory, during the frames where a water is genuinely
@@ -360,6 +364,75 @@ def mode_joint(site, traj_file, top_file):
         cnt, ri, bi = best
         print("%s%s -> %s%s -> base aligned in %d frames"
               % (res[ri].name, res[ri].resSeq, res[bi].name, res[bi].resSeq, cnt))
+
+
+def mode_shell(site, traj_file, top_file):
+    """The metal's coordination sphere over a trajectory, ligand by ligand.
+
+    `sphere` answers this for one structure, which is the wrong unit: a single
+    frame cannot tell a ligand that is bound from one that happens to be close
+    at that instant, and the coordination *number* is the quantity semiempirical
+    methods are known to get wrong (D114: AM1/d was out by 7.55 kcal/mol on a
+    4 -> 5 coordinate change). So every donor is reported with the fraction of
+    frames it spends inside the cutoff, and the per-frame coordination number is
+    reported as a distribution rather than an average alone - a site flipping
+    between 4 and 5 and a site sitting at 4.5 are different things.
+
+    Donors just outside the cutoff are listed too. A ligand at 2.7 A with a 2.6
+    cutoff is a borderline call about this site, not an absence, and hiding it
+    would make the cutoff look like a measurement.
+    """
+    import numpy as np
+    md, top, traj, one, waters, w_o, w_h = _traj_setup(site, traj_file, top_file)
+
+    cfg = site.get("shell") or {}
+    cutoff = float(cfg.get("cutoff", site["burgi_dunitz"]["metal_bound"]))
+    donors = tuple(cfg.get("donor_elements", ("O", "N", "S")))
+    margin = float(cfg.get("margin", 1.0))     # how far past the cutoff to list
+    metals = cfg.get("metals") or [site["metal"]]
+
+    for selector in metals:
+        m = one(selector)
+        print("\n== %s  (%s)" % (selector, traj_file))
+        print("%d frames, cutoff %.2f A, donors %s, +%.1f A margin shown"
+              % (traj.n_frames, cutoff, "/".join(donors), margin))
+
+        # Prefilter on the first frame so the distance matrix stays small; the
+        # window is generous because a ligand can exchange during the run.
+        cand = [a.index for a in top.atoms
+                if a.index != m and a.element.symbol in donors]
+        pre = md.compute_distances(traj[0], [[m, i] for i in cand],
+                                   periodic=True)[0] * 10.0
+        cand = [i for i, d in zip(cand, pre) if d < cutoff + margin + 4.0]
+        if not cand:
+            print("   no donor atom within reach of the metal at all")
+            continue
+
+        dist = md.compute_distances(traj, [[m, i] for i in cand],
+                                    periodic=True) * 10.0
+        occ = (dist < cutoff).mean(axis=0) * 100.0
+        shown = [k for k in range(len(cand))
+                 if dist[:, k].min() < cutoff + margin]
+        shown.sort(key=lambda k: (-occ[k], dist[:, k].mean()))
+
+        print("   %-24s  occ%%    min  mean   max" % "ligand")
+        for k in shown:
+            tag = "" if occ[k] else "   (outside the cutoff in every frame)"
+            print("   %-24s %5.1f  %5.2f %5.2f  %5.2f%s"
+                  % (label_traj(top, cand[k]), occ[k], dist[:, k].min(),
+                     dist[:, k].mean(), dist[:, k].max(), tag))
+
+        cn = (dist < cutoff).sum(axis=1)
+        counts = np.bincount(cn)
+        spread = "   ".join("%d: %d frames (%.0f%%)"
+                            % (n, c, 100.0 * c / traj.n_frames)
+                            for n, c in enumerate(counts) if c)
+        print("   coordination number: mean %.2f   %s" % (cn.mean(), spread))
+
+
+def label_traj(top, index):
+    a = top.atom(index)
+    return "%s%d:%s" % (a.residue.name, a.residue.resSeq, a.name)
 
 
 def mode_poses(site, args):
@@ -729,7 +802,7 @@ def write_grafted(system, sys_atoms, lig_rows, ref_atoms, pos_of, clashing, n):
 
 MODES = {"sphere": mode_sphere, "nucleophiles": mode_nucleophiles,
          "acceptors": mode_acceptors, "joint": mode_joint, "poses": mode_poses,
-         "graft": mode_graft}
+         "graft": mode_graft, "shell": mode_shell}
 
 if __name__ == "__main__":
     args = [a for a in sys.argv[1:] if not a.startswith("--")]

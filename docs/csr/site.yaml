@@ -53,6 +53,18 @@ site:
     hbond: 2.6                 # H...acceptor, for "is a proton pointing at it"
     metal_bound: 2.6           # Zn-O below this counts as a zinc ligand
 
+  # `site.py shell` - the coordination sphere over a trajectory. The cutoff is
+  # the same 2.6 A `burgi_dunitz.metal_bound` uses for "is this a zinc ligand",
+  # kept as its own key because this is a different question (what the whole
+  # shell is) and may want a different answer. `margin` only widens what gets
+  # printed: a donor between 2.6 and 3.6 A is listed with its occupancy so a
+  # borderline ligand is visible rather than silently absent.
+  shell:
+    cutoff: 2.6
+    margin: 1.0
+    donor_elements: [O, N, S]
+    metals: [B:1:ZN]
+
 # Calculations. Each becomes a section in config.yaml. The starting structure is
 # `inputs.pdb_file` like any other input - there is no separate `start` key and
 # no structure on the command line, so the config says what was computed - and
