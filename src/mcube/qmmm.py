@@ -544,8 +544,11 @@ def optimizer_constraints(water_pairs, user_pairs, coords):
     frozen ($freeze). With user constraints geomeTRIC's $set block needs a value for
     every bond, so the waters are held at their current lengths, and so are user pairs
     given without a value. A fresh list is returned each time because ASH converts the
-    indices to active-region indices in place.
+    indices to active-region indices in place. With neither (`rigid_water: false` and no
+    `opt_constraints`) there are no constraints at all, as Cartesian coordinates require.
     """
+    if not water_pairs and not user_pairs:
+        return None, False
     if not user_pairs:
         return {'bond': copy.deepcopy(water_pairs)}, False
     bonds = bond_constraints(water_pairs, coords) + bond_constraints(user_pairs, coords)
@@ -852,8 +855,9 @@ def run(args) -> Dict[str, Any]:
         # Optional bond constraints: [[i, j]] holds the current distance, [[i, j, d_Å]] sets it
         user_pairs = inputs.get("opt_constraints") or []
         check_in_active(user_pairs, actatoms, "opt_constraints")
-        constraints, constrainvalue = optimizer_constraints(water_constraints(mm, actatoms, qm_atoms), user_pairs,
-                                                            fragment.coords)
+        # `rigid_water: false` leaves the active-region MM waters flexible (as in ts)
+        water = water_constraints(mm, actatoms, qm_atoms) if inputs.get("rigid_water", True) else []
+        constraints, constrainvalue = optimizer_constraints(water, user_pairs, fragment.coords)
         if user_pairs:
             result["opt_constraints"] = bond_constraints(user_pairs, fragment.coords)
             print("[INFO] Bond constraints (i, j, Å): " + ", ".join(
