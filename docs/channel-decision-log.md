@@ -1396,6 +1396,8 @@ blocks 30576666/67 held; the Ca jobs run)
     explicitly, from 10 MD frames, in place of a continuum with a guessed ε. That is the effective pocket charge
     the cluster could not settle.
   - The environment does not relax to 2+ vs 3+, in either term, so that response largely cancels in ΔΔE.
+  - **Submitted:** site array **30819052** (30 tasks, 24 h) and water array **30819053** (30 tasks, 8 h), 10 at a time.
+    All configs were rewritten (actradius 0.5, skip_equilibrate true), with no old results left in them.
 
 ## Findings
 
