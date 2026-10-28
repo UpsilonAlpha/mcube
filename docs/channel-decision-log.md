@@ -1344,6 +1344,19 @@ blocks 30576666/67 held; the Ca jobs run)
   - If it converges, the alternative to compare is a general mcube option to drop the rigid-water constraints
     (TIP3P in amber14 carries harmonic O–H terms, and `make_mm` already builds `rigidwater=False`), which would allow
     an 8 Å region in Cartesian coordinates.
+- **QM-only active region works (30807374, RC 0).**
+  - **Converged in 44 steps,** with the energy falling at every step (no uphill step): −739.7847 → −739.8134 Eh
+    (SVP/MM).
+  - The TZVP single point is recorded (`sp_energy` −740.6412 Eh). This is the first job to finish the whole
+    preprocess → qmmm → sp chain cleanly.
+  - The SVP/MM energy is not comparable with the 8 Å runs (−740.085 lowest), because there the MM waters relaxed too.
+  - **Conclusion:** the failures came from the frozen-bond rigid-water constraints on the active-region MM waters,
+    under TRIC and HDLC alike (Cartesian refuses them).
+  - **Recommended rerun:** all 60 jobs with `actradius 0.5` (QM atoms only; environment identical across the ions of
+    a frame), via `exchange.py frames --actradius 0.5 --force` (rewrites the configs and clears the old results),
+    then `submit.sh`.
+  - Estimate: about 45–60 steps per job at 1–5 min per step, roughly 3–5 h per site job and about 1 h per water job.
+  - Waiting for the user before resubmitting.
 
 ## Findings
 
