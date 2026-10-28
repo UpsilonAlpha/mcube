@@ -34,6 +34,10 @@ site:
   # Reported for every structure, so the whole first shell is always visible.
   monitor:
     Zn-Asp92 OD2: [B:1:ZN, A:92:OD2]
+    # D120: every monitor, scan and constraint in this file named OD2, which is
+    # the oxygen that does NOT coordinate. OD1 was the one that migrated onto the
+    # metal, at 1.99-2.07 A, and nothing was watching it.
+    Zn-Asp92 OD1: [B:1:ZN, A:92:OD1]
     Zn-O01: [B:1:ZN, C:2:O01]
     Zn-HOH485: [B:1:ZN, D:1:O]
     Zn-His88: [B:1:ZN, A:88:NE2]
@@ -59,6 +63,11 @@ site:
   # shell is) and may want a different answer. `margin` only widens what gets
   # printed: a donor between 2.6 and 3.6 A is listed with its occupancy so a
   # borderline ligand is visible rather than silently absent.
+  # The docking receptor is a separate file, prepared before solvation, so its
+  # numbering need not match the simulated system's.
+  docking:
+    receptor_metal: B:2:ZN     # CSR_nontruncated_1metal.pdb; B:1:ZN in the system
+
   shell:
     cutoff: 2.6
     margin: 1.0

@@ -435,6 +435,16 @@ def label_traj(top, index):
     return "%s%d:%s" % (a.residue.name, a.residue.resSeq, a.name)
 
 
+def receptor_metal(site):
+    """The metal selector as the DOCKING RECEPTOR numbers it.
+
+    The receptor is a separate file prepared before solvation, so its chains and
+    residue numbers need not match the simulated system's - CSR-1's zinc is
+    B:2:ZN in `CSR_nontruncated_1metal.pdb` and B:1:ZN in `finalsystem.pdb`.
+    Falls back to `metal`, so a site whose two files agree needs no new key.
+    """
+    return (site.get("docking") or {}).get("receptor_metal") or site["metal"]
+
 def mode_poses(site, args):
     """Where do docked poses sit relative to the metal, and which one did we use?
 
@@ -463,9 +473,10 @@ def mode_poses(site, args):
         ba = sum(min(math.dist(q, p) for p in a) for q in b) / len(b)
         return (ab + ba) / 2
 
-    metal = index_of(load_pdb(receptor), site["metal"])
+    metal = index_of(load_pdb(receptor), receptor_metal(site))
     if metal is None:
-        raise SystemExit("metal %s not found in %s" % (site["metal"], receptor))
+        raise SystemExit("metal %s not found in %s"
+                         % (receptor_metal(site), receptor))
     zn = load_pdb(receptor)[metal][4]
 
     poses, scores, _ = load_pdbqt(pdbqt)
@@ -478,7 +489,7 @@ def mode_poses(site, args):
         print("reference %s: %d heavy atoms of %d, centroid to metal %.2f A"
               % (reference, len(ref_pts), len(atoms), math.dist(ref_c, zn)))
     print("metal %s at %.2f %.2f %.2f in %s"
-          % (site["metal"], zn[0], zn[1], zn[2], receptor))
+          % (receptor_metal(site), zn[0], zn[1], zn[2], receptor))
     print()
 
     print("%-6s %8s %7s %10s %11s %9s"
