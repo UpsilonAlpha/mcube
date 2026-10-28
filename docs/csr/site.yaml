@@ -343,6 +343,86 @@ sections:
       skip_equilibrate: false    # qmmm.inputs sets true; without this there is no MD
       skip_optimize: true        # MD only; optimising is a separate decision
 
+  # ---- D123. Back to Vina pose 2, with the carbonyl held on the zinc. ----
+  #
+  # Everything from `md_nac` onward ran on a pose that presents meropenem's
+  # 6-alpha-hydroxyethyl O1x to the zinc (3.13 A) and leaves the beta-lactam
+  # carbonyl at 5.43 A. `CSR_ligand`'s hand-picked pose - Vina pose 2, score
+  # -5.624, identified by `site.py graft`'s own bond-graph match - presents the
+  # carbonyl at **2.55 A**, against 2.53-2.63 A measured in L1's time-resolved
+  # Michaelis complexes (D121). That is the pose to go back to.
+  #
+  # BUILD, before either section runs. The old system cannot be reused as it
+  # stands: it has His164 4.56 A off the metal, Asp92 bidentate on it, a
+  # hydroxide carrying no hydrogen, an earlier meropenem variant with no O4x and
+  # 41,371 atoms against this system's 49,424. So take the ligand placement only:
+  #
+  #   python site.py graft /scratch/user/uquadhik/CSR_ligand/meropenem.pdbqt \
+  #          <docking-frame ligand.pdb> \
+  #          /scratch/user/uquadhik/CSR_ligand/CSR_nontruncated_1metal.pdb \
+  #          md_naclong_results/NVTtrajectory_lastframe.pdb 2
+  #
+  # which aligns on the residues within 12 A of the metal and writes pose 2 into
+  # the equilibrated system, keeping this system's protein, waters, ion count and
+  # atom naming. The reference ligand must be the docking-frame meropenem whose
+  # graph matches the PDBQT; `preprocess_results/meropenem_fixed.pdb` does not
+  # (graft refuses it rather than guessing atom identities, which is correct).
+  #
+  # Then **remove HOH485**. With the carbonyl inner-sphere the sphere is two His
+  # + hydroxide + carbonyl, which is the four-coordinate canonical-equivalent
+  # D41 defined; HOH485 would be a fifth. D34 showed that dropping its restraint
+  # is not enough - the water stayed at 1.83 A - so it has to leave the
+  # structure. It is the weakest ligand in the crystal anyway: in 6NC5 it bridges
+  # ZN302 to the artefact ZN303 (D40).
+  #
+  # Removing an atom renumbers the file, so `coordination_redetect: true` is
+  # mandatory below, for the reason D115 records.
+
+  pose2:                       # the constrained 100 ns NVT equilibration
+    stage: md
+    inputs:
+      pdb_file: md_naclong_results/pose2_start.pdb
+      coordination_redetect: true
+      restraints:
+        # The carbonyl, held at the distance pose 2 already has - which is also
+        # the literature value. This is the restraint that was dropped on my
+        # recommendation in D40 and should not have been (D123).
+        - [B:1:ZN, C:1:O2x, 2.55]
+        # Asp92 pinned in BOTH oxygens. D120: holding OD2 alone at 2.80 let OD1,
+        # which nothing watched, rotate onto the metal (3.81 -> 1.99 A) and take
+        # the coordination position the carbonyl needs. Both values are the
+        # crystal-derived start's own.
+        - [B:1:ZN, A:92:OD2, 2.80]
+        - [B:1:ZN, A:92:OD1, 3.81]
+        # The attack coordinate, held where the built structure has it. Pose 2
+        # starts at O01-C4x 3.81 A; set this to whatever `site.py sphere` reports
+        # for the grafted frame rather than to a number chosen here.
+        - [C:2:O01, C:1:C4x]
+      nvt_time: 100000          # ps; ~3 h on an H100 at the rate D100 measured
+      traj_frequency: 5000      # a frame every 20 ps, ~7 GB (see `naclong`)
+      platform: CUDA
+      properties: {Precision: mixed}
+
+  # 300 ps of QM/MM MD from that equilibration. At the 1.427 s/step D119
+  # measured, 300 ps of 1 fs steps is about 119 h of wall time, so this runs as
+  # six resumed jobs: set `time` to 50, then 100, 150 ... and resubmit the same
+  # section, which is the D109 pattern `resume: true` exists for.
+  #
+  # `charge` is NOT set here on purpose. It depends on which residues the region
+  # picks up on the new structure, and asserting the wrong value converges the
+  # SCF to the wrong species. Read it off the preprocess/QM-region report for the
+  # grafted frame and set it before the first submission.
+  pose2qm:
+    stage: qmmm
+    inputs:
+      pdb_file: md_pose2_results/NVTtrajectory_lastframe.pdb
+      extra_qm_residues:
+        A: [229]
+      skip_equilibrate: false
+      skip_optimize: true
+      time: 50                  # raise to 100, 150 ... 300 and resubmit
+      resume: true
+      cores: 4                  # xTB saturates ~4 threads; CPU only
   # ---- Which protonation state is the reactant? Blocks every barrier. ----
   #
   # D96: starting from Lys226-H+ with a Zn-bound hydroxide, a QM/MM optimisation
