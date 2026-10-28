@@ -2,6 +2,7 @@
 """Named active-site contacts over a QM/MM trajectory.
 
     python traj_contacts.py QM_MM.dcd QM_MM_firstframe.pdb
+    python traj_contacts.py --skip-missing <traj> <top>   # older ligand variants
     python traj_contacts.py --list QM_MM_firstframe.pdb
 
 D107 measured four of these by hand for the `nacqm` run; this makes the set
@@ -57,7 +58,7 @@ def atoms(top, names=None, resseq=None, resname=None, element=None):
     # Waters carry the same resSeq as protein residues here (a HOH 226 sits
     # beside Lys226) and this refuses only an *empty* selection, not an
     # over-matching one, so probes name the residue as well as the number.
-    picked = []
+    picked, matched = [], set()
     for atom in top.atoms:
         if resseq is not None and atom.residue.resSeq != resseq:
             continue
@@ -68,6 +69,16 @@ def atoms(top, names=None, resseq=None, resname=None, element=None):
         if element is not None and atom.element.symbol != element:
             continue
         picked.append(atom.index)
+        matched.add(atom.name)
+    if picked and names is not None:
+        # A group selection survives when only some of its atoms exist, and then
+        # measures a smaller group than its label claims - "carboxylate O3x/O4x"
+        # against a ligand variant that has no O4x is a different quantity, not
+        # a missing contact. Say so rather than letting the label stand for it.
+        absent = sorted(names - matched)
+        if absent:
+            print(f"[NOTE] {resname or ''}{resseq or ''}: no "
+                  f"{', '.join(absent)}; measuring the rest of {sorted(names)}")
     if not picked:
         raise ValueError(
             f"nothing matched names={names} resSeq={resseq} resname={resname} "
@@ -76,7 +87,7 @@ def atoms(top, names=None, resseq=None, resname=None, element=None):
     return picked
 
 
-def probes(top):
+def probes(top, skip_missing=False):
     """(label, indices_a, indices_b) for every contact we want."""
     mer_o = dict(resname="mer", element="O")
     carboxylate = dict(resname="mer", names={"O3x", "O4x"})
@@ -145,12 +156,35 @@ def probes(top):
          nucleophile, dict(resname="mer", names={"C4x"})),
         ("Zn - mer O2x",
          dict(resname="ZN"), dict(resname="mer", names={"O2x"})),
+        # Meropenem can sit in the site either way round, and the two docked poses
+        # this project has used do exactly that: the May pose presents the
+        # beta-lactam carbonyl O2x to the metal at 2.55 A, the October one presents
+        # the 6-alpha-hydroxyethyl O1x instead and leaves O2x at 5.43 A. Only the
+        # first is a Michaelis complex (D121), so the orientation has to be a
+        # measurement rather than something inferred from the pose's provenance.
+        ("Zn - mer O1x (6a-OH)",
+         dict(resname="ZN"), dict(resname="mer", names={"O1x"})),
+        ("Zn - any mer O (which O faces the metal)",
+         dict(resname="ZN"), mer_o),
         ("Zn - O01 nucleophile",
          dict(resname="ZN"), nucleophile),
     ]
-    out = []
+    out, skipped = [], []
     for label, a, b in spec:
-        out.append((label, atoms(top, **a), atoms(top, **b)))
+        try:
+            out.append((label, atoms(top, **a), atoms(top, **b)))
+        except ValueError:
+            # Only with --skip-missing, and only an atom the system does not have.
+            # The default stays strict because an empty selection silently reported
+            # as a missing contact is the error this guard exists to prevent; but
+            # the older systems carry earlier ligand variants (CSR_ligand's
+            # meropenem has no O4x), and refusing to measure them at all would
+            # mean comparing them by eye instead.
+            if not skip_missing:
+                raise
+            skipped.append(label)
+    if skipped:
+        print("[SKIP] not present in this topology: " + "; ".join(skipped))
     return out
 
 
@@ -175,6 +209,9 @@ def list_topology(pdb):
 
 
 def main(argv):
+    skip_missing = "--skip-missing" in argv
+    if skip_missing:
+        argv.remove("--skip-missing")
     if "--list" in argv:
         argv.remove("--list")
         if len(argv) != 1:
@@ -198,7 +235,7 @@ def main(argv):
     if traj.n_frames < 2:
         print("[WARN] fewer than two frames: nothing to average over")
 
-    rows = probes(traj.topology)
+    rows = probes(traj.topology, skip_missing=skip_missing)
     # One compute_distances call for every pair in every probe, then split it
     # back up: mdtraj's minimum-image code is the slow part, not the bookkeeping.
     pairs, spans = [], []
