@@ -2382,6 +2382,31 @@ Thermolysin's zinc is five-coordinate here - His142 1.95, Glu166 1.95, His146 2.
     closest substrate O      must be the beta-lactam carbonyl, not O1x (D123)
     Asp92 - nucleophile      ~2.8 A      H-bond, not coordination
 
+**D125 - The acceptance criteria are now a command, not a habit. `site.py check` reads `michaelis_criteria` from the site file and exits non-zero on a structure that does not qualify; the reference numbers behind every criterion are re-derivable from PDB IDs by `refstruct.py`, recorded in `docs/csr/reference-structures.md`.** (2026-10-29, user: "document this decision alongside the sources you used")
+
+**Why this exists.** Nothing that went wrong in D120 or D123 went wrong for want of a measurement. The October pose's numbers - O1x 3.13 A on the metal, the carbonyl 5.43 A away - were written into D25 on 2026-10-15 and sat there for two weeks. The five-coordinate zinc was in every frame of two 50 ps runs. Both were recorded and neither was read as a verdict, because a structure was accepted by looking at it. **The failure mode is not bad measurement, it is measurement with no gate attached**, and the fix is a command that says REJECTED.
+
+**What it checks** (`michaelis_criteria` in `site.yaml`, so another enzyme brings its own):
+
+    criterion                 range        required at        guards
+    closest substrate O       must be O2x  start, reactant    D123 (the flipped pose)
+    Zn - carbonyl O2x         2.4-3.0 A    start, reactant    D123, D124 (loose, not tight)
+    Zn - nucleophile O01      1.9-2.2 A    start, reactant    D124 (tight)
+    Zn coordination number    4            reactant           D120 (the fifth ligand)
+    O01 - C4x (attack)        3.0-3.5 A    reactant
+    O01 - C4x - O2x angle     95-120 deg   reactant           D34 (never reached it)
+    Asp92 OD1 - O01           2.5-3.2 A    reactant           H-bond, not coordination
+
+**The two stages are the substantive design decision, and they are a direct consequence of D120.** A criterion violated at `start` is a defect in a candidate structure; the same criterion at `reactant` is a defect in the frame a QM/MM run would begin from. They differ because a grafted pose has not yet been pulled onto the attack line - pose 2 arrives at 3.81 A and 51 degrees - and requiring the attack geometry of it would reject a structure for not yet being the thing the simulation is meant to produce. Equally, **the five-coordinate zinc appeared during the 100 ns MM, not before it**, so checking only the input would not have caught D120 at all. The check therefore runs at both ends: `--at=start` on the grafted structure, `--at=reactant` on the last frame, and the second one is the gate that matters before spending 119 h of QM/MM.
+
+A violation outside the requested stage prints WARN rather than passing silently, so the grafted structure's inherited sphere and its 51-degree angle are both visible on the start check without blocking it.
+
+**Ten regression tests in `tests/test_site_check.py`**, written as the two mistakes rather than as hypotheticals: the October pose with its own measured numbers must be REJECTED and must name the reason; pose 2 at 2.55 A must be accepted; a carbonyl at 2.20 A - D34's value - must be rejected too, because the criterion that survived D124 is that the carbonyl is **loosely** held; Asp92 OD1 at 1.99 A must fail the coordination number at `reactant` and only warn at `start`. Full suite 387 passed, 6 skipped.
+
+**Sources, and their reproducibility.** `docs/csr/reference-structures.md` records for each reference value the PDB ID, the ligand code, the command and the output. `refstruct.py` (promoted out of a scratch directory for this reason) measures a deposited structure with its own numbering, independent of `site.py` and of `site.yaml`, so it cannot inherit an assumption from our own system's description. Re-measured on 2026-10-29: thermolysin 1TMN `0ZN` 317 gives 2.01 / 2.41 / 119 deg / O...O 2.15; carboxypeptidase A 7CPA `FVF` 309 gives 2.19 / 2.98 / 117 deg / O...O 2.68. **D124 quoted CPA's O...O as 2.67; it is 2.68.** The conclusion is unchanged and is in fact the point of the number - it coincides with D34's 2.67-2.77, so oxygen separation does not discriminate a working arrangement from a failed one.
+
+Papers behind D124, listed with the measurements in `reference-structures.md`: CPA QM/MM (PMC2741171), designing hydrolytic zinc metalloenzymes (PMC3985962), the Nat Commun 2017 carbapenem mechanism including GOB-18 (PMC5599593), GOB as a mono-Zn enzyme (JBC 2007;282:18286), Horsfall on GOB Met221, and Das & Nair's NDM-1 QM/MM (arXiv:1702.01239), which is the citation D40 rested on and which D123 withdrew for B3.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

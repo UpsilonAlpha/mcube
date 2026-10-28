@@ -9,6 +9,8 @@
                                                     docked poses vs the metal site
     python site.py graft        <pdbqt> <ligand.pdb> <receptor.pdb> <system.pdb>
                                                 [1,3,4]  a pose into the system
+    python site.py check        <pdb> [pdb ...] [--at=start|reactant]
+                                                    accept or reject a structure
 
 Every atom, every candidate base and every criterion comes from `site.yaml`
 (override with --site), so this script carries no knowledge of a particular
@@ -31,6 +33,11 @@ The modes answer different questions, in rough order of cost:
   poses         which docked poses are there, and which one are we actually on?
   graft         put another pose into the equilibrated system, so the poses can
                 be compared in one system rather than in systems that differ.
+  check         does this structure meet the criteria for a Michaelis complex
+                at all? Cheapest of the lot, and the one to run first: it reads
+                `michaelis_criteria` from the site file and exits non-zero if a
+                criterion required at this stage is violated, so a start
+                structure is accepted by a command rather than by eye.
 """
 from __future__ import annotations
 
@@ -39,6 +46,9 @@ import math
 import sys
 
 import yaml
+
+
+OPTS = {}   # --key=value from the command line, read by the modes
 
 
 # --- structure handling ------------------------------------------------------
@@ -811,19 +821,114 @@ def write_grafted(system, sys_atoms, lig_rows, ref_atoms, pos_of, clashing, n):
 
 # --- entry point -------------------------------------------------------------
 
+def coordination(site, at, metal_i):
+    """Donors on the metal, using the same keys `shell` uses on a trajectory."""
+    sh = site.get("shell") or {}
+    cutoff = sh.get("cutoff", site["burgi_dunitz"]["metal_bound"])
+    elements = tuple(sh.get("donor_elements") or ["O", "N", "S"])
+    return sorted((dist(at, metal_i, i), i) for i, a in enumerate(at)
+                  if i != metal_i and a[2][0] in elements
+                  and dist(at, metal_i, i) <= cutoff)
+
+
+def _criterion(site, at, c, stage):
+    """(verdict, measured, detail) for one criterion against one structure.
+
+    Verdicts: PASS, FAIL, WARN. A criterion is only ever FAIL when `stage` is in
+    its `required_at`; otherwise a violation is a WARN, because a criterion that
+    describes the reactant state is not a defect in a structure that has yet to
+    be equilibrated into one.
+    """
+    required = stage in (c.get("required_at") or ["start", "reactant"])
+    bad = "FAIL" if required else "WARN"
+    lo, hi = c.get("range", (float("-inf"), float("inf")))
+
+    if c.get("closest_to"):
+        ref = index_of(at, c["closest_to"])
+        if ref is None:
+            return bad, "-", "%s not in the structure" % c["closest_to"]
+        seen = [(dist(at, ref, i), s) for s in c["among"]
+                for i in [index_of(at, s)] if i is not None]
+        if not seen:
+            return bad, "-", "none of %s present" % ", ".join(c["among"])
+        seen.sort()
+        d, nearest = seen[0]
+        detail = ", ".join("%s %.2f" % (s, x) for x, s in seen)
+        if nearest != c["must_be"]:
+            return bad, "%s %.2f" % (nearest, d),                    "must be %s; %s" % (c["must_be"], detail)
+        return "PASS", "%s %.2f" % (nearest, d), detail
+
+    if c.get("coordination"):
+        m = index_of(at, c["coordination"])
+        if m is None:
+            return bad, "-", "%s not in the structure" % c["coordination"]
+        sphere = coordination(site, at, m)
+        detail = ", ".join("%s %.2f" % (label(at, i), d) for d, i in sphere)
+        n = len(sphere)
+        return ("PASS" if lo <= n <= hi else bad), "%d" % n, detail
+
+    idx = [index_of(at, s) for s in c["atoms"]]
+    if any(i is None for i in idx):
+        absent = [s for s, i in zip(c["atoms"], idx) if i is None]
+        return bad, "-", "not in the structure: %s" % ", ".join(absent)
+    if len(idx) == 3:
+        v = angle(at, idx[0], idx[1], idx[2])
+        shown = "%.0f" % v
+    else:
+        v = dist(at, idx[0], idx[1])
+        shown = "%.2f" % v
+    return ("PASS" if lo <= v <= hi else bad), shown, ""
+
+
+def mode_check(site, args):
+    """Accept or reject a candidate structure against `michaelis_criteria`.
+
+    This mode exists because of D123: the pose everything ran on from October
+    had the substrate bound the other way round, with a substituent oxygen on
+    the metal and the carbonyl 5.43 A away, and the number sat in the decision
+    log for two weeks without being read as a defect. Nothing here is new
+    knowledge - every criterion was already measured and recorded. What was
+    missing was a command that says yes or no, so a start structure is not
+    accepted by eye. Exits non-zero if anything required at this stage fails.
+    """
+    stage = OPTS.get("at", "start")
+    criteria = site.get("michaelis_criteria") or []
+    if not criteria:
+        raise SystemExit("no `michaelis_criteria` in the site file: nothing to check")
+    worst = 0
+    for path in args:
+        at = load_pdb(path)
+        print("==", path, "   (criteria required at: %s)" % stage)
+        for c in criteria:
+            verdict, measured, detail = _criterion(site, at, c, stage)
+            want = c.get("range")
+            window = ("%g-%g" % tuple(want)) if want else c.get("must_be", "")
+            print("   %-4s %-26s %10s   want %-10s %s"
+                  % (verdict, c["name"], measured, window, c.get("source", "")))
+            if detail:
+                print("          %s" % detail)
+            if verdict == "FAIL":
+                worst = 1
+        print("   %s" % ("REJECTED" if worst else "accepted at stage '%s'" % stage))
+    raise SystemExit(worst)
+
+
 MODES = {"sphere": mode_sphere, "nucleophiles": mode_nucleophiles,
          "acceptors": mode_acceptors, "joint": mode_joint, "poses": mode_poses,
-         "graft": mode_graft, "shell": mode_shell}
+         "graft": mode_graft, "shell": mode_shell,
+         "check": mode_check}
 
 if __name__ == "__main__":
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    OPTS.update(o.lstrip("-").split("=", 1) for o in sys.argv[1:]
+                if o.startswith("--") and "=" in o)
     site_file = next((a.split("=", 1)[1] for a in sys.argv[1:]
                       if a.startswith("--site=")), "site.yaml")
     if len(args) < 2 or args[0] not in MODES:
         raise SystemExit(__doc__)
     site = yaml.safe_load(open(site_file))["site"]
     mode, rest = args[0], args[1:]
-    if mode in ("sphere", "nucleophiles", "poses", "graft"):
+    if mode in ("sphere", "nucleophiles", "poses", "graft", "check"):
         MODES[mode](site, rest)
     else:
         if len(rest) != 2:

@@ -9,6 +9,7 @@
 #   python site.py nucleophiles <pdb>                  attack geometry + proton acceptors
 #   python site.py acceptors   <traj> <top>            what can take the proton, counted
 #   python site.py joint       <traj> <top>            attack AND donate, same molecule
+#   python site.py check       <pdb> --at=start       accept or reject a structure
 
 site:
   metal: B:1:ZN
@@ -73,6 +74,64 @@ site:
     margin: 1.0
     donor_elements: [O, N, S]
     metals: [B:1:ZN]
+
+  # `site.py check` - the acceptance criteria for a Michaelis complex, which is
+  # the guard that was missing in D123. Everything here was already measured and
+  # recorded; what did not exist was a command that reads a structure and says
+  # whether it qualifies, so the October pose was accepted by eye with its
+  # carbonyl 5.43 A from the metal and ran for two weeks.
+  #
+  # `required_at` is the stage at which a violation is a FAIL rather than a
+  # WARN. `start` is a candidate structure before equilibration; `reactant` is
+  # the frame a QM/MM run would begin from. The two differ deliberately: a
+  # grafted pose has not yet been pulled onto the attack line, so requiring the
+  # attack distance and angle of it would reject a structure for not yet being
+  # the thing the simulation is meant to produce. Run the check at BOTH ends -
+  # `--at=start` on the grafted structure, `--at=reactant` on the last frame -
+  # because D120's five-coordinate zinc appeared during the MM, not before it.
+  michaelis_criteria:
+    - name: closest substrate O
+      closest_to: B:1:ZN
+      among: [C:1:O2x, C:1:O1x, C:1:O3x, C:1:O4x]
+      must_be: C:1:O2x
+      required_at: [start, reactant]
+      source: D123; the October pose gave O1x 3.13 and the carbonyl 5.43
+
+    - name: Zn - carbonyl O2x
+      atoms: [B:1:ZN, C:1:O2x]
+      range: [2.4, 3.0]
+      required_at: [start, reactant]
+      source: loose; L1 7UHJ 2.63, thermolysin 2.41, CPA 2.98 (D121, D124)
+
+    - name: Zn - nucleophile O01
+      atoms: [B:1:ZN, C:2:O01]
+      range: [1.9, 2.2]
+      required_at: [start, reactant]
+      source: tight; thermolysin 2.01, CPA 2.19 (D124)
+
+    - name: Zn coordination number
+      coordination: B:1:ZN
+      range: [4, 4]
+      required_at: [reactant]
+      source: 2 His + hydroxide + carbonyl (D41); the crystal is 4 (D120)
+
+    - name: O01 - C4x (attack)
+      atoms: [C:2:O01, C:1:C4x]
+      range: [3.0, 3.5]
+      required_at: [reactant]
+      source: near-attack convention; 4.5 A is the outer bound (burgi_dunitz)
+
+    - name: O01 - C4x - O2x angle
+      atoms: [C:2:O01, C:1:C4x, C:1:O2x]
+      range: [95, 120]
+      required_at: [reactant]
+      source: Burgi-Dunitz; D34 reached 24-54 deg in 791 frames, never this
+
+    - name: Asp92 OD1 - O01
+      atoms: [A:92:OD1, C:2:O01]
+      range: [2.5, 3.2]
+      required_at: [reactant]
+      source: H-bond not coordination; D119 measured 2.82-2.94 at 100% frames
 
 # Calculations. Each becomes a section in config.yaml. The starting structure is
 # `inputs.pdb_file` like any other input - there is no separate `start` key and
