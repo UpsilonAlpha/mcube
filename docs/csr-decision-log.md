@@ -2325,7 +2325,7 @@ The user's recollection is correct on both counts and the measurements bear it o
 
 **D40's carbonyl claim is withdrawn.** D40 said: "Inner-sphere carbonyl coordination is also not established. No crystallographic Michaelis complex shows a firm Zn-O(carbonyl) bond", citing NDM-1 QM/MM (Das & Nair, arXiv:1702.01239) for weak coordination. **That is false for B3**, and the counter-evidence was published in 2022: L1's time-resolved snapshots with intact moxalactam put the carbonyl oxygen 2.53 and 2.63 A from Zn1 (D121, PDB 7UHI/7UHJ). D41 corrected three of D40's claims; it did not reach this one, which went on to set `Zn-O2x = 2.90` in D42's sections and then, in `md_nac`, to justify leaving the carbonyl unrestrained altogether. **The user constrained it originally and was right to; I recommended dropping it on a false premise.**
 
-**On the constraint value, since it was asked:** neither number used was a literature bound. D25 restrained Zn-O2x at **2.2 A** with k = 20, from the user's stated assumption that the carbonyl coordinates at < 3 A; D42 constrained it at **2.90 A**. The restrained MM then held it at 1.79-2.19 A (mean 1.97) - *shorter than its own Zn-OH bond*, which D42 itself called unphysical. The only measured value for a B3 Michaelis complex is **2.53-2.63 A**, and pose 2 arrives at **2.55 A** on its own. The new section holds it there, rather than pulling it to a chosen number, which is also D93's rule.
+**On the constraint value, since it was asked:** neither number used was a literature bound. D25 restrained Zn-O2x at **2.2 A** with k = 20, from the user's stated assumption that the carbonyl coordinates at < 3 A; D42 constrained it at **2.90 A**. The restrained MM then held it at 1.79-2.19 A (mean 1.97) - *shorter than its own Zn-OH bond*, which D42 itself called unphysical. The only measured value for a B3 Michaelis complex is **2.53-2.63 A**, and pose 2 ~~arrives at **2.55 A** on its own~~ **[FALSE - D126]**. The new section holds it there, rather than pulling it to a chosen number, which is also D93's rule.
 
 **What is reusable, checked rather than assumed:**
 
@@ -2359,7 +2359,7 @@ Thermolysin's zinc is five-coordinate here - His142 1.95, Glu166 1.95, His146 2.
 
 **So D123's statement - "a mono-zinc site cannot hold both the carbonyl and a metal-bound nucleophile on the Burgi-Dunitz line" - is withdrawn as stated.** It generalised D34's 24-54 degrees into a geometric law, and the law is false: these enzymes do it.
 
-**What survives is sharper and is a design criterion.** In both structures one oxygen is held tightly (2.01, 2.19) and the other **loosely** (2.41, 2.98). D34's model had the carbonyl at 2.16-2.32 A - tight - in a six-coordinate sphere that also carried HOH485 and Asp92, and in that arrangement the nucleophile had nowhere to go but beside the carbonyl oxygen. **Pose 2 arrives at 2.55 A**, which is between thermolysin's 2.41 and CPA's 2.98 and is where a carbonyl that must still be attacked belongs. The planned run is therefore better supported than D123 allowed, and the restraint value is right for a different reason than the one it was chosen for.
+**What survives is sharper and is a design criterion.** In both structures one oxygen is held tightly (2.01, 2.19) and the other **loosely** (2.41, 2.98). D34's model had the carbonyl at 2.16-2.32 A - tight - in a six-coordinate sphere that also carried HOH485 and Asp92, and in that arrangement the nucleophile had nowhere to go but beside the carbonyl oxygen. **[CORRECTED 2026-10-29, see D126: pose 2 does NOT arrive at 2.55 A. Nothing in it comes within 7.2 A of the zinc; the 2.55 A is the May run's restraint output, measured in the system D123 had already rejected.]** **Pose 2 arrives at 2.55 A**, which is between thermolysin's 2.41 and CPA's 2.98 and is where a carbonyl that must still be attacked belongs. The planned run is therefore better supported than D123 allowed, and the restraint value is right for a different reason than the one it was chosen for.
 
 **A caution on how far the analogue complexes can be read.** They are post-attack geometries: the two oxygens are both bonded to the tetrahedral centre, so their 117-119 degrees is a consequence of that bonding, not a measurement of an approach angle. Note that CPA's O...O is 2.67 A - identical to D34's 2.67-2.77 - so the oxygen separation does **not** discriminate a working arrangement from a failed one. What the analogues establish is that the end state is reachable with one metal; the approach angle still has to be measured on our own trajectory, and it is the thing to watch.
 
@@ -2406,6 +2406,69 @@ A violation outside the requested stage prints WARN rather than passing silently
 **Sources, and their reproducibility.** `docs/csr/reference-structures.md` records for each reference value the PDB ID, the ligand code, the command and the output. `refstruct.py` (promoted out of a scratch directory for this reason) measures a deposited structure with its own numbering, independent of `site.py` and of `site.yaml`, so it cannot inherit an assumption from our own system's description. Re-measured on 2026-10-29: thermolysin 1TMN `0ZN` 317 gives 2.01 / 2.41 / 119 deg / O...O 2.15; carboxypeptidase A 7CPA `FVF` 309 gives 2.19 / 2.98 / 117 deg / O...O 2.68. **D124 quoted CPA's O...O as 2.67; it is 2.68.** The conclusion is unchanged and is in fact the point of the number - it coincides with D34's 2.67-2.77, so oxygen separation does not discriminate a working arrangement from a failed one.
 
 Papers behind D124, listed with the measurements in `reference-structures.md`: CPA QM/MM (PMC2741171), designing hydrolytic zinc metalloenzymes (PMC3985962), the Nat Commun 2017 carbapenem mechanism including GOB-18 (PMC5599593), GOB as a mono-Zn enzyme (JBC 2007;282:18286), Horsfall on GOB Met221, and Das & Nair's NDM-1 QM/MM (arXiv:1702.01239), which is the citation D40 rested on and which D123 withdrew for B3.
+
+**D126 - `site.py check` rejected the pose-2 start structure on its first use, and it is right to. Pose 2 as docked has NOTHING within 7.2 A of the zinc. D123's "pose 2 arrives at 2.55 A on its own" is wrong: 2.55 A is what the MAY RUN'S RESTRAINT produced, measured in a system D123 itself had already rejected. `md_pose2` must not be launched as written.** (2026-10-29, graft + check on Bunya)
+
+The guard built in D125 was run on the structure it was built for, and it failed it. That is the entry.
+
+**1. Pose 2 was never on the metal.** `site.py poses` against the docking receptor's own zinc (`CSR_nontruncated_1metal.pdb`, B:2:ZN at -14.10 16.87 -7.68) gives the closest **heavy atom of any element** in each pose:
+
+    pose   score    closest heavy atom to the metal
+    1     -5.744          5.98 A
+    2     -5.624          7.23 A   <- the hand-picked pose, the FURTHEST of the nine
+    3     -4.733          5.78 A
+    4     -4.564          5.01 A   <- the closest any pose gets
+    5     -4.180          5.67 A
+    6     -4.122          6.44 A
+    7     -4.102          6.07 A
+    8     -4.057          5.89 A
+    9     -3.760          6.97 A
+
+**No pose puts any atom within 5 A of the zinc, and pose 2 is the worst of them.** Meropenem was not docked into the metal site. Vina was evidently run without the zinc as a feature of the site, or with it masked, and every downstream statement that treats a pose as a Michaelis complex inherits that.
+
+**2. Grafting pose 2 into the equilibrated system confirms it, in four systems.** `site.py graft` needed one general change to run at all - the reference ligand has to match the system atom for atom, and CSR-1's docking predates meropenem's O4x, so the reference has to come from the system itself and `--ref-frame=system` was added for that (6337f17). Zn-carbonyl for pose 2, grafted:
+
+    system grafted into                           backbone RMSD   Zn-carbonyl
+    md_naclong_results/NVTtrajectory_lastframe        0.88 A          4.50 A
+    md_naclong_results/NVTtrajectory_firstframe       0.68 A          4.82 A
+    md_naclong_results/relaxbox_NPT_firstframe        0.22 A          4.26 A
+    preprocess_results/finalsystem                    0.00 A          4.73 A
+
+The last row is the control that removes every remaining doubt: the docking receptor aligns onto that system's backbone at **0.00 A**, and pose 2's conformer RMSD against the ligand already there is **0.00 A**. Same protein, same frame, same conformation - and the carbonyl is still 4.73 A from the metal. **This is not drift during equilibration and not a frame-alignment artefact.**
+
+**3. Where 2.55 A actually comes from.** `refstruct.py shell` on `CSR_ligand/preprocess_results/finalsystem.pdb` - the May run:
+
+    2.34  O01  OH  C2      <- the nucleophile
+    2.40  OD2  ASP A92
+    2.55  O2x  mer C1      <- THE 2.55 A
+    2.60  OD1  ASP A92      (bidentate)
+    2.77  NE2  HIS A88
+                            His164 absent: beyond 3.2 A
+
+So the number is real, and it is **the output of the carbonyl restraint the user applied in that run**, not a property of the pose. D123 read it as independent corroboration of the restraint value - "pose 2 arrives at 2.55 A on its own" - when it is the restraint's own result. Worse, it is measured in the one file D123 explicitly listed as **NOT reusable**, for this sphere: Asp92 bidentate, His88 at 2.77, His164 off the metal entirely. **The 2.55 A and the rejected metal site are the same structure.** D123's reuse verdict and its constraint-value argument contradict each other, and the verdict is the one that was right.
+
+**This is the same error as D123's and D120's, a third time: a number recorded in one context and carried into another where it means something else.** D120 restrained the oxygen that was being watched rather than the one that moved; D123 read a pose's identity off a structure two pipeline stages downstream of the pose; here a restrained distance was read as a measured one. The guard catches the consequence. It does not catch the habit.
+
+**4. What the check said, which is the first real use of D125.** On the grafted structure, `--at=start`:
+
+    FAIL closest substrate O     C:1:O1x 2.66   want C:1:O2x
+           O1x 2.66, O2x 4.50, O4x 7.36, O3x 7.58
+    FAIL Zn - carbonyl O2x              4.50   want 2.4-3.0
+    FAIL Zn - nucleophile O01           1.86   want 1.9-2.2
+    WARN Zn coordination number            5   want 4
+           O01 1.86, Asp92 OD1 1.99, HOH485 2.04, His88 2.22, His164 2.32
+    PASS O01 - C4x (attack)             3.17   want 3.0-3.5
+    PASS O01 - C4x - O2x angle           106   want 95-120
+    PASS Asp92 OD1 - O01                2.87   want 2.5-3.2
+    REJECTED  (exit 1)
+
+**5. And the three PASS lines are the finding worth having.** 3.17 A at **106 degrees** is inside the Burgi-Dunitz window, with Asp92 OD1 at 2.87 A positioned as general base. **D33/D34 never reached that window in 791 frames.** It appears here for free, with no restraint on the attack coordinate at all - and it appears *because* the carbonyl is off the metal at 4.50 A, with the 6-alpha-hydroxyethyl O1x taking the coordination site at 2.66 A instead.
+
+That is a coherent Michaelis-complex candidate, and it is a hybrid of the two routes D124 distinguished: the nucleophile is metal-bound and on the attack line (thermolysin/CPA), while the metal holds a substituent oxygen rather than the carbonyl (GOB-18, which binds the C-3 carboxylate). It is not the arrangement `md_pose2` was written to build.
+
+**6. Why `md_pose2` must not run as written.** Its restraint list opens with `[B:1:ZN, C:1:O2x, 2.55]`. On this structure that pulls the carbonyl from 4.50 A to 2.55 A over 100 ns, which (a) targets a value that is the previous restraint's output rather than a measurement of anything, (b) forces the six-coordinate, tightly-held-carbonyl arrangement D34 already ran and D124 identified as the one that fails, and (c) **destroys the 106-degree attack geometry the structure currently has for nothing**. The 2.55 A would also fail D125's own `Zn - carbonyl O2x` criterion of 2.4-3.0 only barely - it is inside it - but the criterion was written for a carbonyl that gets there, not one dragged 2 A.
+
+**Nothing has been submitted.** The grafted structure is at `CSR_nac/md_naclong_results/NVTtrajectory_lastframe_pose2.pdb` and the measurement logs at `mcube/.cc/g2.log`, `g3.log`, `g4.log`. The decision in front of the user is which Michaelis complex to equilibrate: the carbonyl-on-metal arrangement the plan specifies, which now has no structural support in our own docking and must be built by restraint from 4.50 A; or the one the grafted structure already presents, where the attack geometry is satisfied and the metal holds O1x. The second needs no restraint on the carbonyl at all, which makes it the cheaper and more defensible test of the D124 question - and it is testable with `site.py joint` and `acceptors` on its trajectory exactly as planned.
 
 ## Resources (see `running-on-bunya.md`)
 

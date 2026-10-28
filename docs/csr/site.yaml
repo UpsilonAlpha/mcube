@@ -437,15 +437,40 @@ sections:
   # Removing an atom renumbers the file, so `coordination_redetect: true` is
   # mandatory below, for the reason D115 records.
 
+  # ===========================================================================
+  # DO NOT RUN `pose2` AS WRITTEN. D126 (2026-10-29) disproved its premise.
+  #
+  # Pose 2 as docked has NOTHING within 7.2 A of the zinc - it is the furthest
+  # of the nine poses from the metal - and grafted into four different systems
+  # its carbonyl sits 4.26-4.82 A away, including one where the docking
+  # receptor aligns onto the system backbone at 0.00 A RMSD. The 2.55 A below
+  # is not a property of the pose: it is what the MAY RUN'S OWN RESTRAINT
+  # produced, measured in `CSR_ligand/preprocess_results/finalsystem.pdb`,
+  # which D123 had already rejected for its metal site (Asp92 bidentate,
+  # His164 off the metal entirely).
+  #
+  # `site.py check --at=start` REJECTS the grafted structure (exit 1) on the
+  # closest-oxygen criterion, the carbonyl distance and the nucleophile
+  # distance. It also PASSES the attack distance at 3.17 A and the angle at
+  # 106 degrees - inside the Burgi-Dunitz window D34 never reached in 791
+  # frames - which happens *because* the carbonyl is off the metal and the
+  # 6-alpha-hydroxyethyl O1x holds the site at 2.66 A instead.
+  #
+  # Pulling the carbonyl 4.50 -> 2.55 A would rebuild D34's failed geometry and
+  # destroy that 106 degrees. The section is kept unaltered as the record of
+  # what was planned; which Michaelis complex to equilibrate is the user's
+  # decision and is stated at the end of D126.
+  # ===========================================================================
+
   pose2:                       # the constrained 100 ns NVT equilibration
     stage: md
     inputs:
       pdb_file: md_naclong_results/pose2_start.pdb
       coordination_redetect: true
       restraints:
-        # The carbonyl, held at the distance pose 2 already has - which is also
-        # the literature value. This is the restraint that was dropped on my
-        # recommendation in D40 and should not have been (D123).
+        # [SUPERSEDED - D126] "the distance pose 2 already has" is false: pose 2
+        # has nothing within 7.2 A of the metal, and 2.55 A is the previous
+        # restraint's own output rather than a measurement of anything.
         - [B:1:ZN, C:1:O2x, 2.55]
         # Asp92 pinned in BOTH oxygens. D120: holding OD2 alone at 2.80 let OD1,
         # which nothing watched, rotate onto the metal (3.81 -> 1.99 A) and take
