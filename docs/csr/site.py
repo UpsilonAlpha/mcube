@@ -9,6 +9,7 @@
                                                     docked poses vs the metal site
     python site.py graft        <pdbqt> <ligand.pdb> <receptor.pdb> <system.pdb>
                                                 [1,3,4]  a pose into the system
+                                       [--ref-frame=system]
     python site.py check        <pdb> [pdb ...] [--at=start|reactant]
                                                     accept or reject a structure
 
@@ -692,19 +693,38 @@ def mode_graft(site, args):
 
         site.py graft <pdbqt> <ligand.pdb> <receptor.pdb> <system.pdb> [poses]
 
-    `ligand.pdb` and `receptor.pdb` are the docking frame -- the ligand gives
-    the atom names and hydrogens, the receptor gives the alignment onto the
-    system. With no pose list it only measures, which is the cheap triage: a
-    pose that puts nothing near the electrophile is not worth optimising.
+    `receptor.pdb` is the docking receptor and gives the alignment onto the
+    system. `ligand.pdb` gives the atom names and the hydrogens, and has to be
+    the same ligand the system holds, atom for atom. With no pose list it only
+    measures, which is the cheap triage: a pose that puts nothing near the
+    electrophile is not worth optimising.
+
+    `--ref-frame=system` says the reference ligand is already in the system's
+    frame rather than the docking frame. That is the case when the reference is
+    extracted from the system itself, which is the only reference available
+    when the docked run used an earlier variant of the ligand: CSR-1's docking
+    predates meropenem's O4x, so the docking-frame copy is one atom short of
+    the system's and cannot meet the atom-for-atom requirement from that side.
+    Default `docking`, so existing calls are unchanged.
     """
     pdbqt, ref_lig, receptor, system = args[0], args[1], args[2], args[3]
     wanted = ([int(p) for p in args[4].split(",")] if len(args) > 4 else [])
+    ref_in_system = OPTS.get("ref-frame", "docking") == "system"
 
     poses, scores, pose_el = load_pdbqt(pdbqt)
     ref_atoms = load_pdb(ref_lig)
     heavy_idx = [i for i, a in enumerate(ref_atoms) if a[2][0] != "H"]
     ref_pts = [ref_atoms[i][4] for i in heavy_idx]
     ref_el = [ref_atoms[i][2][0] for i in heavy_idx]
+
+    # Everything from here on is in the system's frame, including the ligand
+    # the names came from, so distances mean what they say. The pose-to-name
+    # match has to run in whichever frame the reference is in, because it
+    # compares geometry: a system-frame reference against docking-frame poses
+    # compares two different coordinate systems and picks a pose at random.
+    into_system = frame_transform(receptor, system, site["metal"])
+    if ref_in_system:
+        poses = [into_system(p) for p in poses]
 
     best = min(range(len(poses)),
                key=lambda i: sum(min(math.dist(p, q) for q in poses[i])
@@ -713,12 +733,10 @@ def mode_graft(site, args):
           % (best + 1))
     mapping = map_pose_to_reference(poses[best], pose_el, ref_pts, ref_el)
 
-    # Everything from here on is in the system's frame, including the ligand
-    # the names came from, so distances mean what they say.
-    into_system = frame_transform(receptor, system, site["metal"])
-    poses = [into_system(p) for p in poses]
-    ref_atoms = [a[:4] + (c,) for a, c in
-                 zip(ref_atoms, into_system([a[4] for a in ref_atoms]))]
+    if not ref_in_system:
+        poses = [into_system(p) for p in poses]
+        ref_atoms = [a[:4] + (c,) for a, c in
+                     zip(ref_atoms, into_system([a[4] for a in ref_atoms]))]
 
     # The reference ligand sits in the system, so find it there by name.
     sys_atoms = load_pdb(system)
