@@ -1329,6 +1329,21 @@ blocks 30576666/67 held; the Ca jobs run)
   - **Test (submitted):** the same water job with `opt_coordsystem: cart` (30803614) and `hdlc` (30803615) in
     `$S/channel/qmmm/diag/`, 8 h each, about 1 h of work. The test passes if the energy falls monotonically to a
     minimum at or below the earlier run's lowest point (−740.085 Eh) and converges.
+- **Coordinate-system test: both fail.**
+  - `cart` stopped at once: geomeTRIC raises "Do not use constraints with Cartesian coordinates", and the active-region
+    MM waters are always held rigid by frozen bonds (`qmmm.water_constraints`, with no option to turn it off).
+  - `hdlc`: lowest −740.0257 Eh at about step 40, then climbing to −739.9858 by step 71 (+25 kcal/mol), with the same
+    SVD errors. Cancelled.
+  - So the climb follows the rigid-water constraints, not one coordinate system.
+- **Next test (30807374): `actradius: 0.5`.** The active region is then the QM atoms only (ion + 10 waters): no MM
+  waters in it, so no constraints, with default TRIC.
+  - For vertical swaps this is arguably the cleaner design anyway. The MM environment is then identical for all
+    three ions of a frame and in the water reference, so ΔE carries no MM relaxation noise.
+  - The cost: the environment does not respond to 2+ vs 3+ beyond the QM shell. That response is the same in kind
+    at the site and in water, so it largely cancels in ΔΔE.
+  - If it converges, the alternative to compare is a general mcube option to drop the rigid-water constraints
+    (TIP3P in amber14 carries harmonic O–H terms, and `make_mm` already builds `rigidwater=False`), which would allow
+    an 8 Å region in Cartesian coordinates.
 
 ## Findings
 
