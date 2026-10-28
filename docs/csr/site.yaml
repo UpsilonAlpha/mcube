@@ -541,6 +541,73 @@ sections:
   # Removing an atom renumbers the file, so `coordination_redetect: true` is
   # mandatory below, for the reason D115 records.
 
+  # ---------------------------------------------------------------------------
+  # `subst` - the 100 ns NVT for the `substituent_on_metal` hypothesis, which is
+  # the only arrangement we have a structure for. D126/D127.
+  #
+  # Build step:
+  #   site.py graft $Q/meropenem.pdbqt ref_mer.pdb \
+  #     $Q/CSR_nontruncated_1metal.pdb \
+  #     md_naclong_results/NVTtrajectory_lastframe.pdb 2 \
+  #     --ref-frame=system
+  #   # ref_mer.pdb is chain C resid 1 of the system itself (51 atoms); the
+  #   # docking-frame copy is one atom short, which is why --ref-frame=system
+  #   # exists at all. Then remove HOH485 from the written pose-2 file and save
+  #   # it as md_naclong_results/subst_start.pdb.
+  #   site.py check md_naclong_results/subst_start.pdb --at=start \
+  #     --hypothesis=substituent_on_metal      # must exit 0 before submitting
+  #
+  # The restraint list is deliberately short, and what is NOT in it matters:
+  #
+  #   * NOTHING on the carbonyl. This is the point. In this arrangement the
+  #     carbonyl sits at 4.50 A and the attack geometry is satisfied anyway;
+  #     restraining it would be assuming the rival hypothesis.
+  #   * NOTHING on the attack coordinate. It arrives at 3.17 A and 106 degrees
+  #     with no restraint, so the run can be allowed to test whether that
+  #     survives 100 ns. A restraint here would make the trajectory unable to
+  #     answer the question it is being run to answer.
+  #
+  # What IS restrained is one documented error and one measured distance:
+  #
+  #   * Asp92 pinned in BOTH oxygens, OD2 at 2.80 and OD1 at 3.81. OD1 is on
+  #     the metal at 1.99 A in the grafted frame, which is D120's artefact, not
+  #     a feature of the enzyme: Asp92 is BBL D120, a Zn2-site ligand, and in
+  #     L1 it sits more than 4 A from Zn1 (D121). Pulling it off is correcting
+  #     a known error, not imposing a hypothesis - which is the distinction
+  #     that the carbonyl restraint in `pose2` could not claim.
+  #   * Zn-O1x held at 2.66 A, the value the structure already has, so the
+  #     coordination that defines this hypothesis is not lost to drift before
+  #     anything can be measured. Held where it is, not pulled to a chosen
+  #     number (D93).
+  #
+  # HOH485 is removed in the build step, so the sphere is 2 His + hydroxide +
+  # O1x = four. `coordination_redetect: true` is mandatory because removing a
+  # water renumbers the file (D115), and preprocess's own 3.0 A cutoff would
+  # otherwise re-detect Asp92 OD2 and restrain it alone, which is how D120
+  # happened. The explicit pair above wins over a detected one (`md_restraints`).
+  #
+  # What this run decides, which is D124's question asked of our own system:
+  # with the carbonyl off the metal and the attack line satisfied, is the
+  # nucleophile the zinc-bound hydroxide (thermolysin/CPA) or a second,
+  # non-metal-bound water (GOB-18)? `site.py joint` and `site.py acceptors` on
+  # the trajectory answer it directly and need no new code. Cost ~3 h on one
+  # H100 at the rate D100 measured. Run those BEFORE committing the 119 h of
+  # QM/MM, which is what D119 said and what was not done.
+
+  subst:
+    stage: md
+    inputs:
+      pdb_file: md_naclong_results/subst_start.pdb
+      coordination_redetect: true
+      restraints:
+        - [B:1:ZN, A:92:OD2, 2.80]
+        - [B:1:ZN, A:92:OD1, 3.81]
+        - [B:1:ZN, C:1:O1x, 2.66]
+      nvt_time: 100000          # ps; ~3 h on an H100 at the rate D100 measured
+      traj_frequency: 5000
+      platform: CUDA
+      properties: {Precision: mixed}
+
   # ===========================================================================
   # DO NOT RUN `pose2` AS WRITTEN. D126 (2026-10-29) disproved its premise.
   #
