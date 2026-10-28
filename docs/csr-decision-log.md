@@ -2505,6 +2505,22 @@ Fixed: `restraints` added to `SELECTOR_KEYS`, with three tests - a pair that res
 
 **What happens when the job lands, and the order matters.** `site.py check --at=reactant` on the last frame first: the start check passed its coordination criterion **on a count, not a composition** - the four at 2.6 A were hydroxide, Asp92 OD1, and the two histidines, with O1x at 2.66 A just outside. The restraints are what swap OD1 out for O1x over 100 ns, and only the reactant check says whether that happened. Then `site.py joint` and `site.py acceptors` on the trajectory, which answer D124's question - zinc-bound hydroxide or a second non-metal-bound water - and need no new code. **Both before the ~119 h of QM/MM**, which is what D119 said and what was not done last time.
 
+**D129 - The restraint override works, verified in a running job. But the `--at=reactant` coordination criterion cannot pass no matter what the run does: the number it counts is unreachable by construction.** (2026-10-29)
+
+Job 30923516 at 34 minutes: RUNNING on bun075, 16.66 ns of 100 ns, 300 K, energies flat, nothing in stderr but the expected `OMP_NUM_THREADS` note. The rate is **0.49 ns/min, so ~3.4 h, not `naclong`'s 6:19:45** - the 12 h limit is generous rather than tight.
+
+**The override is real, and this is the first time it has been checked in a live run rather than asserted.** Redetection at the 3.0 A cutoff found the sphere D120 left behind - hydroxide 1.86, **Asp92 OD1 1.99**, His88 2.22, His164 2.32 - and built a detected restraint for each, OD1 included at 1.99 A. The final list has OD1 at **3.81 A** and no 1.99 A entry anywhere. The explicit pair beat the detected one, which is what `md_restraints` promises and what the `subst` comment claimed on trust.
+
+Six restraints are in force, not the three in the config: the three explicit ones (OD2 2.80, OD1 3.81, O1x 2.66) plus the three surviving detected ones (hydroxide 1.86, His88 2.22, His164 2.32). Worth stating plainly because the config shows three. The three detected ones pin the MM zinc at the bond lengths D128's commit called force-field artefacts - harmless here, since they are where MM sits anyway, but it means **this run cannot relax the sphere; only QM/MM can.**
+
+**The criterion that cannot pass.** `substituent_on_metal` asks, at `reactant`, for a Zn coordination number of exactly 4, counted at `burgi_dunitz.metal_bound: 2.6 A`. The four it means are hydroxide, His88, His164 and the substrate O1x. But **O1x is restrained at 2.66 A and OD2 at 2.80 A, so at a 2.6 A cutoff the count is 3**, and at the 3.0 A cutoff mcube itself uses for detection it is 5, because OD2 comes in. **No cutoff gives 4.** A single-frame check at 2.66 +- thermal noise is a coin toss on whether O1x is inside 2.6 at all.
+
+**The restraint is not the thing to change.** 2.66 A is the distance the grafted structure already had; moving the target to 2.4 A to make the count come out is pulling to a chosen number, which D93 forbids and which is how D120 happened. The defect is in the criterion.
+
+**A coordination number cannot express this hypothesis, and D127's caution was stronger than it read.** `site.yaml` already warns, beside the `subst` section, that the start check passed coordination *on a count, not a composition* - the right four were not the four being counted. That was written as a caveat about one structure. It is actually a statement that the criterion kind is wrong for this hypothesis: what has to be true at `reactant` is that the donor set within about 2.8 A **is** {`C:2:O01`, `A:88:NE2`, `A:164:NE2`, `C:1:O1x`} and that `A:92:OD1` is **not** in it. That is a set identity, and `_criterion`'s `coordination` kind only returns a cardinality.
+
+**Open question, and nothing is being changed until it is answered:** add a `composition` criterion kind to `site.py` that names the required donor set and the donors that must be absent, and use it in place of the count at `reactant` in both hypotheses? It is a small, testable addition that costs no compute and can be built while the job runs, and without it the reactant check on this trajectory will report FAIL for a run that did exactly what it was designed to do. **The QM/MM stage has not been submitted and will not be until the reactant check means something.**
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
