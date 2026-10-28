@@ -2171,6 +2171,39 @@ COMPLETED in 3 min 53 s. All four things that had to be true are:
 
 **What the run has to answer.** The lysH arm lost the substrate over 100 ps (D111): O01-C4x from 3.33 to 6.20 A, no cation holding it, the Lys226 salt bridge opening from 2.61 to 4.26 A. If ohH holds where lysH did not, the protonation state was the cause and M1 is settled. If it drifts too, the cause is elsewhere - GFN2, or the pose - and M0's other readings are live. Either outcome is informative, which is the point of running it.
 
+**D119 - The ohH arm drifts too, so the protonation state was not what lost the substrate. M1 is answered; M0 is now the live question.** (2026-10-28, job 30721365)
+
+COMPLETED in 19:46:57, 50000 steps at 1.427 s/step, ended 17:45:31. `.err` holds nothing but the thread-binding INFO line, and the step rate was flat to three digits across the whole run (1.427 measured between step 30670 at 10:05 and step 45863 at 16:07), so xTB was doing the same work per step at 45 ps as at 30 ps - no convergence trouble anywhere in it.
+
+**Both arms measured with the same tool, 50 frames each, 1 frame/ps** (`docs/csr/traj_contacts.py`, which now resolves the nucleophile residue name so it reads OH and NUW alike - b715497):
+
+    contact                       ohH (water)        lysH (hydroxide, nacarg)
+    O01-C4x (attack)        4.55-6.20  m 5.31  0%   3.63-7.23  m 5.67    0%
+    Zn-O01                  1.80-2.14  m 1.98 100%  1.73-1.97  m 1.86  100%
+    Asp92 OD1-O01                      m 2.82 100%             m 2.94  100%
+    Lys226 NZ-O01           2.54-6.96  m 4.03  58%  6.01-7.69  m 6.72    0%
+    Lys226 NZ-mer O3x                  m 5.62   0%             m 5.02    0%
+    Arg90-any mer O         3.09-4.73  m 3.74  18%  4.03-7.41  m 5.45    0%
+    Arg229-carboxylate                 m 5.18   0%             m 5.00    0%
+    Zn-mer O2x                         m 5.85   0%             m 6.47    0%
+
+(percentages are frames inside 3.5 A; m = mean, angstroms)
+
+**The answer to D118's question is the second branch.** The ohH frame went into the run at O01-C4x = 3.49 A and never came back under 3.5 A in 50 ps - mean 5.31, max 6.20. The lysH arm did the same thing (mean 5.67, max 7.23). **Protonating the nucleophile did not hold the substrate, so the protonation state was not the cause of the loss in D111.** M1 is settled in the sense that matters: it is not the variable that decides this. The cause is elsewhere - GFN2, or the pose - and M0's other readings are live, which is exactly what D118 said this outcome would mean.
+
+**The test itself was sound, which is worth stating because a negative result invites the suspicion that the setup never worked.** Zn-O01 is 1.98 A in the water arm against 1.86 A in the hydroxide arm, held 100% of frames in both. That 0.12 A separation survives 50 ps of dynamics, and it agrees with the 1.86 -> 2.05 A measured across the minimisation (D118) and with D48's independent 1.83 -> 1.99. The two arms really are the two protonation states. They simply both lose the substrate.
+
+**The ohH arm is slightly better on every substrate-holding measure, and nowhere near enough.** Attack distance 5.31 against 5.67, Zn-mer O2x 5.85 against 6.47, and two contacts that exist only in this arm: Lys226 NZ reaches the nucleophile in 58% of frames (0% in lysH) and Arg90 reaches a substrate oxygen in 18% (0%). Note *which* partner Lys226 found - the nucleophile, not the carboxylate it was proposed to anchor (NZ-O3x stays at 5.62 A, 0%). A cation at the vacant Zn2 position engaging the nucleophile is a different role from the one D107 hypothesised for it.
+
+**What is NOT being launched.** The plan after this test was a 300 ps production run and then a DFT/MM optimisation of the complex. Both are now premature: a production run started from this pose would sample more of the same drift at ~1.4 s/step (300 ps is about 5 days of wall time), and a DFT/MM optimisation of a complex whose attack distance averages 5.3 A is not an optimisation of a reactant state. **Neither job can answer the question that is now open, so neither should be spent on it.**
+
+**What the open question is.** Two candidates, and they are distinguishable:
+
+  1. **GFN2 is wrong about this site** - the standing concern that xTB over-coordinates the zinc. Testable without new dynamics: take frames from both arms and compare GFN2 against DFT on the same geometries. Imhof's benchmark (D114) is the precedent and the warning - AM1/d had a 4->5-coordinate error of 7.55 kcal/mol there, which is larger than anything this mechanism turns on.
+  2. **The pose is wrong** - the binding mode M0 assumes. Nothing in two independent 50 ps runs holds meropenem near the metal, which is what a wrong pose looks like.
+
+A reading that distinguishes them is the next thing worth a job. Running more of the same dynamics is not.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
