@@ -2277,6 +2277,35 @@ Asked by the user after D120: is substrate carbonyl binding a step seen in other
 
 **Open, and worth measuring before the re-run is costed:** Gln93's contacts to the substrate have never been measured on any trajectory - `traj_contacts.py` has no Gln93 probe and no Zn-O2x occupancy. Both existing 50 ps trajectories can answer whether Gln93 was oriented for the oxyanion role while the substrate left, and that costs a script change and two reruns of an analysis, not a job.
 
+**D122 - Gln93 is 10 A from the substrate, and the docked pose never had a Zn-carbonyl contact at all. Measured against L1, the pose has exactly one defect and the equilibration has a second; between them M0 and the drift are both accounted for.** (2026-10-28, 59ed041)
+
+`traj_contacts.py` gained Gln93 probes and a carbonyl selector (59ed041), then was run on both 50 ps trajectories and on the two structures they came from. The reference column is **L1 7UHJ**, the 60 ms snapshot with intact moxalactam (D121), with the BBL equivalences H121 = Gln93, H263 = Lys226, D120 = Asp92:
+
+    contact                   L1 7UHJ   docked   after 100ns MM   QM/MM ohH   QM/MM lysH
+    Zn - carbonyl O2x            2.63     5.43             5.16        5.85         6.47
+    Gln93 - carbonyl O2x         5.98     6.56            10.22       10.00        10.49
+    Gln93 NE2 - carboxylate      3.86     8.94            10.60       11.79        13.70
+    Lys226 NZ - carboxylate      3.54     4.98             3.97        5.62         5.02
+    Lys226 NZ - lactam N1x       3.82     3.57             5.72        6.42         6.54
+    Arg229 - carboxylate            -     2.96             3.69        5.18         5.00
+    Asp92 - nucleophile             -  OD2 2.84         OD1 2.87    OD1 2.82     OD1 2.94
+    Zn - Asp92 OD1          (on Zn2)   2nd shell             1.99        2.03         2.07
+    O01 - C4x (attack)              -     3.47             3.33        5.31         5.67
+
+(docked = `preprocess_results/finalsystem.pdb`; after 100ns MM = `md_naclong_results/NVTtrajectory_lastframe.pdb`, the frame both arms start from; QM/MM columns are 50-frame means)
+
+**Gln93 is not the oxyanion hole in anything we have run, and the reason is not that it declines the role.** It is 10.0-10.5 A from the carbonyl in both trajectories, and 10.2 A already in the frame they started from. But in the docked structure it was 6.56 A, against 5.98 A for the equivalent atom in L1 - **the only one of these readings that was ever near its reference**. So the hypothesis D121 raised has not been tested yet: it was carried out of range by the equilibration before any QM/MM run began.
+
+**The docked pose has exactly one defect, and it is the carbonyl.** Measured against L1, `finalsystem.pdb` is defensible on every other count: the C3 carboxylate on Arg229 at 2.96 A, Lys226 NZ 3.57 A from the leaving nitrogen against L1's 3.82, Gln93 at 6.56, the attack distance at the restrained 3.47. **Zn-O2x at 5.43 A against L1's 2.63 is the one number that is wrong, and it is wrong by 2.8 A.** M0's binding mode was never a B3 Michaelis complex in the one respect D121 established as a step of the mechanism.
+
+**The 100 ns MM equilibration then destroyed the three contacts that were right.** Gln93 6.56 -> 10.22, Lys226-N1x 3.57 -> 5.72, Arg229-carboxylate 2.96 -> 3.69 and on to 5.0-5.2 under QM/MM. Meanwhile Asp92 rotated from OD2-at-the-nucleophile (2.84, which is the crystal's arrangement for a general base) to OD1-on-the-zinc (1.99), under the restraint D120 identified. **The substrate was equilibrated out of the site while a protein carboxylate was pulled into it.** Only one restraint ever acted on the substrate - `[C:2:O01, C:1:C4x, 3.47]` - and it holds the nucleophile's radial coordinate while saying nothing about the carbonyl, the carboxylate or the ring nitrogen.
+
+**So the two failures are separable and both are now named.** (i) The pose lacked the Zn-carbonyl contact from the start, which is M0. (ii) The equilibration protocol is not pose-preserving: it restrains one distance and lets everything else, including the metal's coordination sphere, go where the force field prefers. D111, D118 and D119 are downstream of both. Nothing in this requires GFN2 to be wrong, and the sequence of measurements that would have caught either was never run because `traj_contacts.py` had no Gln93 or carbonyl probe and `sphere` could not be run over a trajectory.
+
+**What a rebuilt complex has to do, now quantitatively.** Build it with Zn-O2x at 2.0-2.6 A rather than hoping MD finds it; keep Asp92 OD2 toward the nucleophile and off the metal; and judge the equilibrated frame against the L1 column above, not against its own starting value. The restraint set has to hold the substrate's three anchors - carbonyl to zinc, carboxylate to Lys226/Arg229, ring nitrogen near Lys226 - because a single O01-C4x restraint demonstrably does not. All of that is config, except the pose itself.
+
+**One caution against over-reading the L1 column.** 7UHJ is di-zinc at 2.20 A, so its carboxylate contact is to Zn2, which CSR-1 does not have, and its Zn1 carries no modelled water. The transferable numbers are the ones that do not depend on Zn2 being occupied: Zn1-carbonyl 2.63, and the Zn2-site residues' reach to the substrate, which in CSR-1 are Gln93 and Lys226 and are the whole question.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
