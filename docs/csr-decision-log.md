@@ -2485,6 +2485,26 @@ D125 wrote **"the closest substrate oxygen must be the beta-lactam carbonyl"** a
 
 **It is listed as a hypothesis, not a preferred one, and the file says so where the numbers are.** Nothing in the literature puts a 6-alpha-hydroxyethyl oxygen on a Zn1-site metal; its `Zn - O1x` range of 2.0-2.8 A is our own measurement plus tolerance and is labelled `NOT a reference value`, unlike every range in `carbonyl_on_metal`, which carries a PDB ID. **The two hypotheses are not equally evidenced and the file must not read as though they were.** What recommends the second is that it needs no restraint on the carbonyl and already satisfies the attack geometry; what recommends the first is the only crystallographic Michaelis complex of a B3 enzyme that exists.
 
+**D128 - `md_subst` submitted: job 30923516, the 100 ns NVT of the `substituent_on_metal` Michaelis complex. And `sections.py` was not checking restraint selectors at all.** (2026-10-29)
+
+The user chose `substituent_on_metal` over the planned `carbonyl_on_metal`, so the arrangement with a structure of its own is the one being equilibrated. `md_pose2` was not submitted and must not be: its restraint list opens `- [B:1:ZN, C:1:O2x, 2.55]`, and D126 disproved the premise that 2.55 A was ever measured on anything but the May run's own restraint.
+
+**The job.** `sbatch -J subst -p gpu_cuda --qos=gpu --gres=gpu:1 --cpus-per-task=4 --mem=32G -t 12:00:00 run.slurm md md_subst`, from `/scratch/user/uquadhik/CSR_nac`. The resources are `naclong`'s (job 30421166) exactly, and **that job took 6:19:45, not the ~3 h D100's rate implied** - the 12 h limit is sized from the measurement, not the estimate. Queued PENDING at submission; output goes to `protdft/subst-30923516.out`.
+
+**Gates run before submitting, in this order.** Scratch 218/300 GB and 570k/1M inodes, so no silent over-quota write. `git pull --ff-only` on the cluster to `c855f30`, so the config is written from the same `site.yaml` the tests ran against. `site.py check md_naclong_results/subst_start.pdb --at=start --hypothesis=substituent_on_metal` - **accepted, exit 0**, one WARN (Zn-O01 1.86 A, a force-field artefact, not a structural one, and `required_at: [reactant]`). Then `sections.py` to write `md_subst`, then the config section read back, then the three restraint selectors resolved by hand in the start structure before `sbatch`.
+
+**That last step should not have been by hand, and this is the finding worth keeping.** `sections.py` printed:
+
+```
+md_subst   pdb=md_naclong_results/subst_start.pdb  0 selectors checked
+```
+
+**Zero.** The section's only selectors are its three restraint pairs, and `restraints` was not in `SELECTOR_KEYS`, so none of them was resolved and the section was written anyway. The tool whose docstring says *two days of compute were lost to exactly that* was blind to the one list where a bad selector is most expensive: `md.md_restraints` passes it through `resolve_atoms`, so an unresolvable name surfaces hours into a run, not at the point the section is added. It is also the list most likely to be wrong here, because `subst_start.pdb` had HOH485 deleted and the file renumbered (D115).
+
+Fixed: `restraints` added to `SELECTOR_KEYS`, with three tests - a pair that resolves is counted, one that does not stops everything, and the distance in the third column is not mistaken for a selector. All three fail without the fix. Full suite 395 passed, 6 skipped.
+
+**What happens when the job lands, and the order matters.** `site.py check --at=reactant` on the last frame first: the start check passed its coordination criterion **on a count, not a composition** - the four at 2.6 A were hydroxide, Asp92 OD1, and the two histidines, with O1x at 2.66 A just outside. The restraints are what swap OD1 out for O1x over 100 ns, and only the reactant check says whether that happened. Then `site.py joint` and `site.py acceptors` on the trajectory, which answer D124's question - zinc-bound hydroxide or a second non-metal-bound water - and need no new code. **Both before the ~119 h of QM/MM**, which is what D119 said and what was not done last time.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

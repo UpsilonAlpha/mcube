@@ -171,3 +171,35 @@ class TestTheBaseIsTheConfigNotTheSiteFile:
         with pytest.raises(SystemExit):
             mod.main(str(path), ["znhis"])
         assert "decoy.pdb" in capsys.readouterr().out
+
+
+class TestRestraintSelectorsAreChecked:
+    """D128: `restraints` was not in SELECTOR_KEYS, so an `md` section whose only
+    selectors were restraint pairs reported `0 selectors checked` and was written
+    without any of them being resolved. `md.md_restraints` puts that same list
+    through `resolve_atoms`, so a name that does not resolve would surface hours
+    into the run instead of at the point the section is added."""
+
+    def test_a_restraint_pair_that_resolves_is_counted(self, mod, home, capsys):
+        file = site(home, {"sub": {"stage": "md", "inputs": {
+            "pdb_file": "md_results/last.pdb",
+            "restraints": [["B:1:ZN", "A:88:NE2", 2.2]]}}})
+        mod.main(file, ["sub"])
+        assert written(home, "md_sub")["restraints"] == [["B:1:ZN", "A:88:NE2", 2.2]]
+        assert "0 selectors checked" not in capsys.readouterr().out
+
+    def test_a_restraint_selector_that_is_absent_stops_everything(self, mod, home):
+        file = site(home, {"sub": {"stage": "md", "inputs": {
+            "pdb_file": "md_results/last.pdb",
+            "restraints": [["B:1:ZN", "A:226:NZ", 2.2]]}}})
+        with pytest.raises(SystemExit):
+            mod.main(file, ["sub"])
+        assert written(home, "md_sub") is None
+
+    def test_the_distance_is_not_mistaken_for_a_selector(self, mod, home, capsys):
+        """The third element is a number; only strings with two colons count."""
+        file = site(home, {"sub": {"stage": "md", "inputs": {
+            "pdb_file": "md_results/last.pdb",
+            "restraints": [["B:1:ZN", "A:88:NE2", 2.2]]}}})
+        mod.main(file, ["sub"])
+        assert "2 selectors checked" in capsys.readouterr().out

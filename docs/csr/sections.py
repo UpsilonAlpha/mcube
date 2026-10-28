@@ -29,9 +29,16 @@ import yaml
 
 from mcube.preprocess import _locked
 
+# `restraints` belongs in this list and was missing until D128: an `md` section
+# whose only selectors are in its restraint list printed `0 selectors checked`
+# and wrote the section anyway. That is the one place a bad selector is most
+# expensive - `md.md_restraints` passes the list through `resolve_atoms`, so a
+# name that does not resolve surfaces hours into a run rather than here. The
+# third element of each row is a distance, not a selector, and `walk` ignores
+# it because it only collects strings with exactly two colons.
 SELECTOR_KEYS = ("atoms", "atoms2", "opt_constraints", "constraints", "coordination",
                  "monitor", "hessian_atoms", "partial_hessian_atoms",
-                 "actregion_origin")
+                 "actregion_origin", "restraints")
 
 # Structure keys, in the order a section's selectors are checked against: for a
 # NEB the two endpoints are one system in two geometries, so the reactant's
