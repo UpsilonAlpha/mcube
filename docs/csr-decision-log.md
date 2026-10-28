@@ -2204,6 +2204,47 @@ COMPLETED in 19:46:57, 50000 steps at 1.427 s/step, ended 17:45:31. `.err` holds
 
 A reading that distinguishes them is the next thing worth a job. Running more of the same dynamics is not.
 
+**D120 - Both QM/MM arms ran on a FIVE-coordinate zinc, against the crystal's four, and a coordination restraint this pipeline generated is what put the fifth ligand there. This is upstream of the protonation test and of any GFN2 question.** (2026-10-28)
+
+Asked by the user after D119: 4- or 5-coordinate? Measured with `site.py shell`, a new mode that reports every donor's occupancy and the per-frame coordination number over a trajectory rather than in one frame (d5b9c83 - `sphere` could only answer it for the frame it was given, which is why this was never checked).
+
+**Both arms, 50 frames each, 2.6 A cutoff: coordination number 5 in 100% of frames.** Not fluctuating, not borderline - the same five ligands throughout:
+
+    ligand            ohH (water)              lysH (hydroxide, nacarg)
+    O01 nucleophile   1.80-2.14  m 1.98  100%  1.73-1.97  m 1.86  100%
+    Asp92 OD1         1.83-2.32  m 2.03  100%  1.84-2.33  m 2.07  100%
+    His88 NE2         1.84-2.25  m 2.05  100%  1.97-2.39  m 2.13  100%
+    HOH485 O          1.87-2.29  m 2.07  100%  2.02-2.52  m 2.24  100%
+    His164 NE2        1.95-2.26  m 2.09  100%  1.97-2.36  m 2.14  100%
+    ---- outside the cutoff in every frame ----
+    Asp92 OD2         3.20-4.02  m 3.60    0%  3.24-4.22  m 3.65    0%
+    HOH557 O          3.37-5.04  m 4.25    0%  2.91-4.19  m 3.60    0%
+
+**The crystal is four-coordinate** (6NC5 ZN302: HOH485 1.90, His163 NE2 2.09, HOH493 2.14, His87 NE2 2.22 - two histidines and two waters, no carboxylate). **Asp92 OD1 at 2.03 A is a ligand the crystal does not have**, and it is present in every frame of both arms.
+
+**Where it came from, structure by structure** (`site.py sphere`, 2.8 A):
+
+    structure                            ligands <2.8 A
+    preprocess csr_crystal_start.pdb     HOH485 1.90, His164 2.09, O01 2.14, His88 2.22, Asp92 OD2 2.80
+    preprocess finalsystem.pdb           identical
+    md_naclong NVT lastframe (100 ns MM) O01 1.86, Asp92 OD1 1.99, HOH485 2.04, His88 2.22, HOH557 2.27, His164 2.32
+    md_ohHmin frag-minimized.pdb         Asp92 OD1 1.99, O01 2.05, HOH485 2.06, HOH557 2.09, His88 2.19, His164 2.28
+    QM/MM MD, both arms                  five, as tabulated above
+
+The input was the crystal's four plus Asp92 OD2 at 2.80 A. **It is the 100 ns MM equilibration that changed the shell**: the carboxylate rotated so that OD1, not OD2, faces the metal (1.99 A) and a solvation water, HOH557, took a sixth position (2.27 A). Six at MM level, and xTB then kept five of them, pushing HOH557 back out to 3.6 A. Neither the QM/MM MD nor GFN2 created this; both inherited it.
+
+**The cause is a restraint this pipeline generated.** `preprocess` detects coordination with `cutoff: 3.0`, so Asp92 OD2 at 2.80 A was recorded as a zinc ligand and written into `md.inputs.coordination_restraints` as `[B:1:ZN, A:92:OD2, 2.8, 50.0]` - a 50 kcal/mol/A^2 harmonic holding that carboxylate oxygen at 2.80 A for the whole equilibration. A carboxylate pinned that close to a metal has one cheap way to relax, which is to rotate the other oxygen onto it. **The restraint whose purpose was to preserve the crystal's coordination sphere is what destroyed it**, because 2.80 A was never a coordination distance - it is a second-shell contact that a 3.0 A cutoff cannot tell from a ligand.
+
+**Why it went unseen for three weeks.** Everything that watches Asp92 watches the wrong oxygen. `site.yaml`'s monitor has `Zn-Asp92 OD2`; D53's scan pulled `[B:1:ZN, A:92:OD2]`; the D42 and D96 sections constrain `Zn-Asp92 OD2`. OD2 sits at 2.98-3.60 A in every structure above and reports as uncoordinated, which is exactly what a healthy site would look like. OD1, the actual ligand at 1.99-2.07 A, was never in any monitor, any scan or any restraint. D53 concluded Asp92 coordination was a real minimum from a scan of the free oxygen.
+
+**What this does to the drift in D111/D118/D119.** A five-coordinate zinc carrying two histidines, a carboxylate, a water and the nucleophile has no open coordination site. The substrate carbonyl cannot bind a metal that is already saturated - and Zn-mer O2x measures 5.85 A in the ohH arm and 6.47 in lysH, 0% of frames in contact. **That is a sufficient explanation of why meropenem leaves in both arms, and it does not require GFN2 to be wrong about anything.** It also explains why the protonation test came back negative: moving one proton cannot open a coordination site that a restrained carboxylate is occupying, so both arms were always going to lose the substrate.
+
+**So the GFN2-vs-DFT benchmark proposed at the end of D119 is not the next job, and the user said so before I did.** It would have benchmarked the method on geometries whose zinc shell was wrong at the MM stage, and a disagreement between GFN2 and DFT on those frames would have told us nothing about the enzyme. The method question is real (D114) but it is downstream of this, and it cannot be asked on these frames.
+
+**What has to be re-run, and what has to change first.** The restraint list is generated, so the fix belongs in the config rather than in a hand edit: the detection cutoff has to be tight enough to exclude a 2.80 A contact (a Zn-O ligand is ~1.9-2.2 A; 2.5 is defensible, 3.0 is not), and a second carboxylate oxygen should not be able to enter the list behind the first. Everything from `md_nac` onward then has to be re-run from a shell that matches the crystal: 100 ns MM, then QM/MM MD per arm. That is a large amount of re-run, which is the cost of having restrained a contact at a distance nobody checked was a bond.
+
+**Two things worth stating before that is costed.** First, Asp92 is D120 in BBL numbering - the residue that coordinates Zn2 in di-zinc B3 enzymes. In a mono-zinc B3-RQK site with Zn2 vacant, a carboxylate swinging onto Zn1 is not absurd chemistry, and the question of whether it does is a real one about this enzyme. But it is a question to ASK, not an assumption to restrain in, and the crystal's answer at 2.80 A is that it does not. Second, nothing above depends on the 2.6 A cutoff: Asp92 OD1 is at 2.03 A and no cutoff between 2.1 and 3.2 changes the count.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
