@@ -594,6 +594,14 @@ sections:
   # H100 at the rate D100 measured. Run those BEFORE committing the 119 h of
   # QM/MM, which is what D119 said and what was not done.
 
+  # One caution on the start check, which returned `accepted` and exit 0. The
+  # coordination number is 4, but it is the WRONG four: the sphere at the 2.6 A
+  # cutoff is hydroxide 1.86, Asp92 OD1 1.99, His88 2.22, His164 2.32 - and
+  # O1x, at 2.66, is just outside it. So the criterion passed on a count while
+  # the composition is still D120's. The restraints below are what swap OD1 out
+  # for O1x over the run, and the `--at=reactant` check on the last frame is
+  # what verifies that it happened. A count is not a composition; do not read
+  # the start check as saying the sphere is right.
   subst:
     stage: md
     inputs:
