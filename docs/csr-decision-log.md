@@ -2245,6 +2245,38 @@ The input was the crystal's four plus Asp92 OD2 at 2.80 A. **It is the 100 ns MM
 
 **Two things worth stating before that is costed.** First, Asp92 is D120 in BBL numbering - the residue that coordinates Zn2 in di-zinc B3 enzymes. In a mono-zinc B3-RQK site with Zn2 vacant, a carboxylate swinging onto Zn1 is not absurd chemistry, and the question of whether it does is a real one about this enzyme. But it is a question to ASK, not an assumption to restrain in, and the crystal's answer at 2.80 A is that it does not. Second, nothing above depends on the 2.6 A cutoff: Asp92 OD1 is at 2.03 A and no cutoff between 2.1 and 3.2 changes the count.
 
+**D121 - Carbonyl-to-Zn1 is an OBSERVED step in B3, measured here from the time-resolved L1 structures; and in those structures D120 is a Zn2 ligand over 4 A from Zn1. That fixes what a CSR-1 Michaelis complex has to look like, and confirms D120's restraint put Asp92 in the carbonyl's seat.** (2026-10-28)
+
+Asked by the user after D120: is substrate carbonyl binding a step seen in other MBL mechanisms? Reviews disagree, so this was settled from coordinates rather than from review text.
+
+**L1 (subclass B3) with INTACT moxalactam, two time-resolved snapshots** (Nat Commun 2022, 13:7175, doi:10.1038/s41467-022-35029-3; PDB 7UHI at 40 ms, 7UHJ at 60 ms, 2.20 A). The beta-lactam carbonyl is C1=O1 (1.21 A), identified by bond connectivity from the ring nitrogen rather than by trusting the atom name:
+
+    site        7UHI (40 ms)                                  7UHJ (60 ms)
+    Zn1         His107 ND1 2.18, His181 2.35, O1 2.53,        His107 2.18, His105 2.23,
+                His105 2.66                                   His181 2.42, O1 2.63
+    Zn2         Asp109 OD2 2.27, His110 2.27, His246 2.48,    Asp109 2.06, His110 2.23,
+                O8 2.65, N1 2.67                              His246 2.33, O7 2.54, N1 2.78
+    Zn-Zn       3.17                                          3.38
+
+**So the answer is yes: the carbonyl oxygen coordinates Zn1 at 2.5-2.6 A in a genuine B3 Michaelis complex**, with the ring nitrogen on Zn2 (2.67-2.78) and the C-carboxylate bridging to Zn2 (2.54-2.65). No water is modelled on Zn1 in either snapshot, so whether the nucleophile sits on Zn1 *simultaneously* is not resolved at 2.20 A - but the carbonyl's occupancy of a Zn1 coordination position is.
+
+**This retires the objection `site.yaml` recorded for declining to restrain Zn-carbonyl.** That comment reads: "for a mono-Zn B3 site it is not established that the carbonyl coordinates the same zinc that carries the nucleophile". It is now established for B3 that the carbonyl coordinates Zn1; the residual uncertainty is only whether a mono-zinc Zn1 holds carbonyl and hydroxide at once, which is a 4-coordinate arrangement (2 His + OH + carbonyl) and not a crowded one.
+
+**And it identifies D120's restraint as the error it looked like.** Asp109 in L1 is D120 in BBL numbering - the same residue as our **Asp92**. In both snapshots it is a **Zn2** ligand at 2.06-2.27 A and sits over 4 A from Zn1. Our crystallographic zinc is a **Zn1**-site zinc (His87/His163 = BBL H116/H196, with R118 replacing the third histidine), and the 100 ns MM run put Asp92 OD1 onto it at 1.99 A - into the coordination position the carbonyl occupies in L1. The restraint did not merely add a ligand; it added one where the substrate has to go.
+
+**The monometallic comparison, and why CphA never transferred.** CphA with biapenem (PDB 1X8I, subclass B2) is five-coordinate: Asp120 OD2 2.03, His263 NE2 2.12, Cys221 SG 2.27, plus ligand N4 2.22 and O32 2.39. **Five coordination is therefore not itself the defect** - which ligands they are is. But CphA's single zinc occupies the **Zn2** site (Asp-Cys-His), so its chemistry is Zn2 chemistry; that is the structural reason the CphA route failed twice here. The right precedents for CSR-1 are mono-zinc **B1** (BcII-type, Zn1 site) and the Zn1 half of B3.
+
+**What a reasonable CSR-1 Michaelis complex therefore is - acceptance criteria, not preferences:**
+
+  1. **Zn1 site, four-coordinate**: His88 NE2, His164 NE2, the nucleophile as a *terminal* hydroxide (there is no Zn2 to bridge), and meropenem's carbonyl O2x at 2.0-2.6 A. Five only if a second water is genuinely retained beside those.
+  2. **Asp92 off the metal**, at the crystal's 2.80 A, oriented at the nucleophile. Its proposed role is general base, which is a hydrogen bond, not a coordination. If it coordinates, it is in the carbonyl's seat.
+  3. **Attack geometry** O01-C4x at 3.0-3.5 A inside the `burgi_dunitz` window already in `site.yaml`.
+  4. **The substrate's anchors must be the RQK residues, because Zn2 is absent.** The B3-RQK substitutions are Arg90 (R118, Zn1 site), Gln93 (Q121) and Lys226 (K263). There is direct B3 precedent for a neutral amide rather than the metal polarising the carbonyl - Gln157 is the oxyanion hole in SMB-1 (QM/MM, doi:10.1007/s00894-020-4319-6), Asn176 in L1, Asn233 in CcrA - and **Gln93 is the structural analogue of exactly that role**. A credible complex should show the C3 carboxylate on Lys226 and/or Arg90 and the carbonyl held by the zinc together with Gln93.
+
+**Which reframes D94 as a pattern rather than an incident.** MM once put Gln93 OE1 at 1.79 A from the zinc (D94); it has now put Asp92 OD1 at 1.99 A (D120). The equilibration keeps filling the open Zn1 position with whichever protein donor is nearest, because the generated coordination restraints pull them in while nothing holds that position for the substrate - and the Zn-carbonyl distance was deliberately left unrestrained. Every run since `md_nac` has equilibrated the substrate *out* of a site that was being filled behind it. That is a sufficient account of D111, D118 and D119 without any appeal to GFN2.
+
+**Open, and worth measuring before the re-run is costed:** Gln93's contacts to the substrate have never been measured on any trajectory - `traj_contacts.py` has no Gln93 probe and no Zn-O2x occupancy. Both existing 50 ps trajectories can answer whether Gln93 was oriented for the oxyanion role while the substrate left, and that costs a script change and two reruns of an analysis, not a job.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
