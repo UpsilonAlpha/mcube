@@ -1465,6 +1465,50 @@ blocks 30576666/67 held; the Ca jobs run)
   same path), `Fragment-currentgeo.*` and geomeTRIC's `HT.v_*.txt` Hessian-eigenvector dumps: **26.3 GB**.
   `channel/qmmm` is now 2.7 GB; scratch 261 → 231 of 300 GB. Kept: QM-region trajectories, optimised geometries,
   `QM_MM_optimized.pdb`, `frame.pdb`, logs, configs, `pyscf.chk`, report.json, structure.json.
+- **Independent literature review of the QM/MM result (2026-10-30, a subagent; lab report
+  https://claude.ai/artifact/K8yW36BF6GRuTyWB9cQbiw).** The numbers were reproduced; the reading was not.
+  Four major points:
+  1. Ca → Ln is one-sided: every frame was sampled with a 3+ ion (no Ca run reached the ring), so ⟨ΔE⟩ carries the
+     environment's memory of La/Lu. The La- vs Lu-frame gap (−34 vs −15) shows that memory is ~20 kcal/mol.
+  2. The frames inherit the default 12-6-4's Ln–carboxylate over-binding (C20, C21); the 5 frames per source are
+     correlated (contacts never break), so per-frame sems understate the error.
+  3. "Screens less than ε 29" confuses a frozen, non-polarisable environment with a buried one; withdrawn.
+  4. A 2+ → 3+ swap picks up Δq·φ at the ion, and the embedding is non-periodic (a 124k-atom slab vs a 4k-atom
+     cube), so finite-size/surface potentials enter at 23 kcal/mol per volt (Rocklin et al., JCP 2013).
+  Also: the magnitude (15–35 kcal/mol) far exceeds lanmodulin's ~10⁸ Ln/Ca selectivity (~11 kcal/mol); the acetate
+  offset belongs to the cluster method and counted carboxylates wrongly; r2SCAN without dispersion; the site
+  preference says nothing about transport (Ln³⁺ block Ca channels).
+- **Second round, to answer it (user: "Fix the major problems and apply the checks it proposes"; tooling
+  49e933d … aa6548b; `docs/channel/qmmm/round2.sh`):**
+  - **Point 1 → linear response.** Ca swapped into a bound La frame (`CA_la`: on Glu156 + Glu240, 6 waters) and a
+    bound Lu frame (`CA_lu`: on Glu240, 8 waters), the farthest Na⁺ removed to stay neutral (`swap_seed.py`), one
+    10 ns window each at z0 0, k 2.5, first shell restrained only during the 100 ps equilibration (31052835/36,
+    GPU). Ca bulk-water frames as for La/Lu (31052837). Their swaps give the Ca endpoint; `analyse --lra` then
+    averages the two endpoint ensembles at the site and in water (Warshel's LRA), which also takes in the
+    environment's (MM) reorganisation, the substance of point 3.
+  - **Point 2.** A third site source, La under the Ch-BE C4 (`LAchbe`: La on Glu156 only, monodentate, 8 waters;
+    15 jobs, 31053028). The error of a pooled value is now the spread between sources (`sd_between_sources`).
+  - **Point 4, measured first** (`exchange.py potential`, 2026-10-30): the MM potential at the ion from whole
+    residues beyond R, mean over frames (frame-to-frame sd 0.5–1.5 V):
+
+    | Source | R > 15 Å | R > 20 Å | R > 30 Å |
+    |---|---|---|---|
+    | site, La frames | −0.85 | +0.61 | −0.48 |
+    | site, La Ch-BE frames | −1.40 | −0.29 | −1.71 |
+    | site, Lu frames | −0.57 | −0.27 | −1.23 |
+    | water, La box | −1.63 | −0.61 | 0 (box ends) |
+    | water, Lu box | −0.62 | −0.14 | 0 |
+
+    Re-referencing both systems to a common finite embedding (first order: Δq·φ_R per frame, `analyse
+    --embed-radius`) moves the pooled Ca → La ΔΔE from −24 to −54 (R 10), −34 (15), −37 (20) and −4 kcal/mol (30), and the
+    Lu-frame value through zero (+8, −16, −12, +14). La → Lu (Δq = 0) does not move. **So point 4 is decisive: the
+    Ca → Ln magnitude is set by the non-periodic embedding, not by the site.** Next: the same first-order
+    correction to the PME potential the MD ran with (`potential --pme`, `analyse --periodic`; job 31059089).
+  - **Checks.** r2SCAN-D3(BJ) on all 60 jobs (`qmmm_d3`, 31053109/10); ωB97X-V on 2 frames per source
+    (`qmmm_wb97xv`, 31053111/12; ORCA is not on Bunya, so no DLPNO-CCSD(T)). Calibration on the protocol's own
+    terms: Ca, La and Lu each on a capped Glu (Ace-Glu-NMe built from the La frame's Glu240 and its binding mode)
+    in TIP3P with a flat-bottom ion–CD wall at 3.6 Å, 2 ns each (31053172–74); the same swaps and LRA then give
+    ΔΔE for the complex, to set against acetate (La − Ca ≈ −1.5, Lu − La ≈ −0.2 kcal/mol).
 
 ## Findings
 
