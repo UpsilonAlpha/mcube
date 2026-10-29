@@ -140,7 +140,10 @@ def cv_list(inputs) -> List[str]:
         raise ValueError("metadynamics biases the CVs in `cvs` and only supports the channel "
                          f"coordinate; `coordinate: {inputs['coordinate']}` is an umbrella key. "
                          "For a distance CV use umbrella windows (`coordinate: distance`).")
-    if "z" not in cvs and inputs.get("cv0", inputs.get("z0")) is None:
+    # `z0`, not `cv0`: this stage is z-only, and `run_seed` and the restraint centre read
+    # `z0`. Accepting `cv0` here let a section pass validation and then silently hold z at
+    # 0.0 A and seed from md's lastframe, which is worse than being told to rename a key.
+    if "z" not in cvs and inputs.get("z0") is None:
         raise ValueError("metadynamics without z biased holds z at z0: give `z0`")
     for c in cvs:
         g = (inputs.get("grid") or {}).get(c) or {}

@@ -314,3 +314,22 @@ class TestEndToEnd:
         data = yaml.safe_load(open(config))
         assert data["metadynamics"]["results"]["fes"]["hills"] == 20
         assert data["metadynamics"]["inputs"]["height"] == 2.0
+
+
+class TestKeySpellings:
+    def test_cv0_does_not_stand_in_for_z0(self, mtd):
+        """umbrella reads `cv0`; metadynamics is z-only and reads `z0` in `run_seed` and
+        for the restraint centre. Accepting `cv0` here would pass validation and then
+        silently hold z at 0.0 A (ion-channel session's review of 2bfa012)."""
+        inputs = {"cvs": ["n_coo"], "cv0": 2.5,
+                  "grid": {"n_coo": {"min": 0.0, "max": 8.0}}, "sigma": {"n_coo": 0.2}}
+        with pytest.raises(ValueError, match="z0"):
+            mtd.cv_list(inputs)
+
+    def test_an_umbrella_distance_section_is_refused(self, mtd):
+        """`coordinate` is a shared input, so without this a distance section would be
+        biased along z without comment."""
+        inputs = {"cvs": ["z"], "coordinate": "distance",
+                  "grid": {"z": {"min": -5.0, "max": 5.0}}, "sigma": {"z": 0.5}}
+        with pytest.raises(ValueError, match="umbrella key"):
+            mtd.cv_list(inputs)

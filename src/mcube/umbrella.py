@@ -882,6 +882,23 @@ def run_mm_window(config, section, inputs, preprocess, md, index: int) -> Dict[s
     return entry
 
 
+def residues_of(pdb_file: str, qm_atoms) -> Dict[str, Dict[int, str]]:
+    """{chain: {resid: name}} for the residues a resolved QM region's atoms belong to.
+
+    Read off the atoms that were resolved, not off the rule that produced them. A
+    section's own `qm_residues` / `extra_qm_residues` take precedence inside
+    `resolve_qm_region`, so recording preprocess's saved list instead would write down a
+    region the run did not use - CSR-1's scans add Gln93 that way (D133).
+    """
+    from openmm.app import PDBFile
+    atoms = list(PDBFile(pdb_file).topology.atoms())
+    out: Dict[str, Dict[int, str]] = {}
+    for index in qm_atoms:
+        residue = atoms[int(index)].residue
+        out.setdefault(residue.chain.id, {})[int(residue.id)] = residue.name
+    return out
+
+
 def umbrella_qm_region(pdb_file: str, inputs, preprocess, ion: int):
     """QM atoms for a QM/MM window: the ion, `qm_waters` nearest waters (default: the
     detected shell's residues) and the fixed `qm_residues`. Returns (atoms, boundary, residues)."""
@@ -989,7 +1006,7 @@ def run_qmmm_window(config, section, inputs, preprocess, md, index: int) -> Dict
         # ion, which is not what a fixed active site wants.
         from .qmmm import resolve_qm_region
         qm_atoms, boundary = resolve_qm_region(inputs, preprocess, start)
-        residues = (preprocess.get("results") or {}).get("qm_residues") or {}
+        residues = residues_of(start, qm_atoms)
     else:
         qm_atoms, boundary, residues = umbrella_qm_region(start, inputs, preprocess, ion)
     charge, raw = qm_charge(mm.system, qm_atoms)
@@ -1063,6 +1080,19 @@ def run_energies(config, section, inputs, preprocess, md, index: int, level: str
     import mdtraj
     from openmm import unit
     from openmm.app import PDBFile
+
+    # z only, and refused early rather than failing on a missing `ion` halfway through a
+    # rescoring job. Everything below is tied to the channel coordinate: the frames are
+    # re-imaged about the reference chains, and the CV column is written as z. A distance
+    # section would need a pair instead of an ion, a chosen imaging anchor, and a
+    # `distance_A` column (which `cv_column` already reads back) - none of which has been
+    # written or tested, so it raises instead of guessing. A distance PMF from xTB/MM
+    # windows does not need this path: WHAM reads cv.csv directly.
+    if coordinate_of(inputs) != "z":
+        raise ValueError("umbrella `energies` (and so `wham --reweight` and `stitch`) is "
+                         "implemented for `coordinate: z` only. For a distance CV, run WHAM on "
+                         "the windows directly; MM->QM/MM stitching and DFT reweighting along a "
+                         "distance are not written yet.")
 
     key = window_key(index)
     entry = section_windows(config, section).get(key) or {}

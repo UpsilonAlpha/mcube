@@ -52,6 +52,8 @@ population, rather than how an ion crosses a membrane. Differences from the z ca
   simply add, and WHAM is only told about the bias, so the window's effective spring would
   not be the one in the config.
 
+**What a distance section cannot do yet:** `pull`, and the frame rescoring behind `energies`, `wham --reweight` and `stitch`. All three are tied to the channel geometry (an ion, reference chains to image about, a z column), so each raises with a message rather than guessing. A distance PMF from xTB/MM windows needs none of them: WHAM reads `cv.csv` directly.
+
 `cv.csv` holds a `distance_A` column where a z run holds `z_A` and `r_A`, and the PMF comes
 out keyed the same way. Window entries record `cv0`, `coordinate`, `spacing` and a `units`
 block; a z run also writes `z0`, so configs and results from before this existed read back

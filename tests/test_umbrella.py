@@ -626,3 +626,41 @@ class TestDistanceCoordinate:
         coords = np.array([[[0.0, 0.0, 0.0], [0.0, 0.0, 9.0]]])
         assert umbrella.distance_values(coords, (0, 1), [10.0, 10.0, 10.0])[0] == pytest.approx(1.0)
         assert umbrella.distance_values(coords, (0, 1), [100.0, 100.0, 100.0])[0] == pytest.approx(9.0)
+
+
+class TestDistanceCoordinateLimits:
+    """
+    What the distance coordinate deliberately does NOT do, and the provenance it
+    records. From the ion-channel session's review of 2bfa012.
+    """
+
+    def test_rescoring_refuses_a_distance_section(self, umbrella, tmp_path):
+        """`energies` images frames about the reference chains and writes a z column.
+
+        A distance section cannot even set `ion`, so this used to KeyError partway
+        through a rescoring job. It is refused on the config instead, before the window
+        state is looked at.
+        """
+        config = write(tmp_path, """
+            umbrella: {inputs: {coordinate: distance, atoms: [B:1:ZN, A:92:OD1]}}
+            """)
+        with pytest.raises(ValueError, match="coordinate: z"):
+            umbrella.run_energies(config, "umbrella",
+                                  {"coordinate": "distance", "atoms": ["B:1:ZN", "A:92:OD1"]},
+                                  {}, {}, 0, "mm", 1, "umbrella_qmmm")
+
+    def test_recorded_qm_residues_are_the_ones_resolved(self, umbrella, tmp_path):
+        """A section's own `extra_qm_residues` wins inside `resolve_qm_region`, so the
+        entry has to record the resolved atoms' residues, not preprocess's saved list."""
+        from openmm.app import PDBFile, Topology, element
+        top = Topology()
+        chain = top.addChain("A")
+        for resid, name, symbol in ((92, "ASP", "O"), (93, "GLN", "O")):
+            residue = top.addResidue(name, chain, id=str(resid))
+            top.addAtom("O", element.Element.getBySymbol(symbol), residue)
+        pdb = tmp_path / "region.pdb"
+        with open(pdb, "w") as fh:
+            PDBFile.writeFile(top, [openmm.Vec3(0, 0, 0), openmm.Vec3(0, 0, 0.3)] * unit.nanometer,
+                              fh, keepIds=True)
+        assert umbrella.residues_of(str(pdb), [0]) == {"A": {92: "ASP"}}
+        assert umbrella.residues_of(str(pdb), [0, 1]) == {"A": {92: "ASP", 93: "GLN"}}
