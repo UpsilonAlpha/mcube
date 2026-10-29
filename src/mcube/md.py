@@ -15,6 +15,8 @@ from ash import *
 
 from .preprocess import (
     COORDINATION_FORCE,
+    LIGAND_MAX,
+    beyond_bond_length,
     compare_coordination,
     coordination_shell,
     pair_distances,
@@ -22,6 +24,7 @@ from .preprocess import (
     resolve_cores,
     resolve_forcefields,
     to_selectors,
+    warn_beyond_bond_length,
     save_result,
     load_section,
     resolve_atoms,
@@ -266,8 +269,17 @@ def md_restraints(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file: 
 
     Returns (restraints, detected, source) with `detected` the auto-generated
     subset, so the results can record which restraints were a measurement and
-    which were a choice. Only a distance someone chose can launder an assumption
-    into a later run: holding a contact where it already was asserts nothing new.
+    which were a choice.
+
+    A note on "holding a contact where it already was asserts nothing new",
+    which this docstring used to end on. It is true of the distance and false of
+    the decision: holding it asserts that the contact is a BOND, and nothing
+    here can tell a bond from a second-shell contact. D120 is the whole cost of
+    that gap - a 2.80 A carboxylate contact, held because detection reached 3.0
+    A, rotated its other oxygen onto the metal and put two QM/MM arms on a
+    five-coordinate zinc. So every pair that will be restrained is now checked
+    against `LIGAND_MAX` and reported if it is too long to be a bond, detected
+    and configured alike.
     """
     preprocess_inputs = preprocess.get("inputs") or {}
     force = float(preprocess_inputs.get("coordination_force", COORDINATION_FORCE))
@@ -290,6 +302,16 @@ def md_restraints(inputs: Dict[str, Any], preprocess: Dict[str, Any], pdb_file: 
         # measured on; check the identity they do assert before restraining them.
         check_coordination_atoms(saved, pdb_file, preprocess_inputs)
         source = "preprocess.results.coordination"
+    # Warned on BEFORE resolution, so the message can name the atoms. Both lists
+    # are checked, because an explicitly configured pair pins a second-shell
+    # contact exactly as effectively as a detected one - D130, where
+    # `[B:1:ZN, A:92:OD2, 2.80]` was written by hand to correct D120 and
+    # reinstated its condition. A long contact is reported, never refused: the
+    # distance may be the chemistry, and only the config can say.
+    warn_above = float(preprocess_inputs.get("coordination_warn_above", LIGAND_MAX))
+    warn_beyond_bond_length(saved, warn_above, "detected coordination restraint")
+    warn_beyond_bond_length(inputs.get("restraints"), warn_above, "configured restraint")
+
     rows = resolve_atoms(saved, pdb_file) or []
     # An explicit restraint on a pair wins: the user named a distance for it.
     named = {frozenset(r[:2]) for r in asked}
@@ -331,11 +353,19 @@ def run(args) -> Dict[str, Any]:
     if restraints:
         print(f"[INFO] {len(restraints)} harmonic distance restraints "
               f"({len(detected)} detected metal coordination): {restraints}")
+    # Recorded, not just printed: stdout scrolls past and a .out file is not
+    # where a later stage looks. D120 sat unread in one for three weeks. Named by
+    # selector, because an index means nothing to whoever reads the config next.
+    preprocess_inputs = preprocess.get("inputs") or {}
+    too_long = beyond_bond_length(
+        to_selectors(restraints, pdb_file),
+        float(preprocess_inputs.get("coordination_warn_above", LIGAND_MAX)))
+    if too_long:
+        result["coordination_beyond_bond_length"] = [[d, r] for d, r in too_long]
 
     # The coordination sphere this run starts from. Reported again at the end,
     # because a contact that was not there at setup was never restrained, and a
     # non-bonded metal will happily pull one in.
-    preprocess_inputs = preprocess.get("inputs") or {}
     shell_before = coordination_shell(pdb_file, preprocess_inputs)
     report_coordination(shell_before, "before MD")
     result["coordination_start"] = shell_before

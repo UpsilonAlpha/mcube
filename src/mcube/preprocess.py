@@ -400,6 +400,66 @@ def check_inherited_restraints(coordination, restraints, pdb_file: str, inputs) 
 # 0.03 A, so no result here turns on the choice.
 COORDINATION_FORCE = 50.0  # kcal/mol/A^2
 
+# The longest distance at which restraining a metal-donor pair still restrains a
+# BOND. A first-row transition-metal-to-O/N bond is 1.9-2.2 A; beyond about 2.5 A
+# the contact is second-shell, and a harmonic at COORDINATION_FORCE then holds a
+# non-ligand against the metal for the whole run.
+#
+# This is not hypothetical. A detection cutoff of 3.0 A swept Asp92 OD2 in at
+# 2.80 A, which is where the crystal has it as a second-shell contact, and the
+# restraint held it there; a carboxylate pinned that close has one cheap way to
+# relax, so OD1 rotated onto the metal at 1.99 A and two QM/MM arms ran on a
+# five-coordinate zinc against the crystal's four. The restraint whose purpose
+# was to preserve the crystal's coordination sphere is what destroyed it.
+# `docs/csr-decision-log.md`, D120 and D130.
+#
+# Holding a contact where the structure already has it is sound - that is the
+# rule this pipeline runs on, and nothing here weakens it. What it cannot do is
+# decide whether the contact is a bond. That is what this threshold is for, and
+# why the warning fires on the FINAL restraint list rather than only on what
+# detection found: an explicitly configured pair is exactly as capable of
+# pinning a second-shell contact, and in D130 one did.
+#
+# Raise it per config with `preprocess.inputs.coordination_warn_above` where the
+# chemistry calls for it - a lanthanide-oxygen bond reaches 2.4-2.5 A, so an
+# Ln site wants ~2.7 rather than silence.
+LIGAND_MAX = 2.5  # A
+
+
+def beyond_bond_length(rows, threshold: float = LIGAND_MAX) -> list:
+    """The metal-donor pairs in `rows` that are too long to be bonds.
+
+    Accepts either `coordination_shell` dicts (`donor`/`distance`) or restraint
+    rows (`[metal, donor, distance, force]`), so the same rule applies to what
+    detection found and to what will actually be restrained. Returns
+    `[(donor, distance)]`, empty when every pair is a plausible bond.
+    """
+    out = []
+    for row in rows or []:
+        if isinstance(row, dict):
+            donor, dist = row.get("donor"), row.get("distance")
+        elif len(row) > 2:
+            donor, dist = row[1], row[2]
+        else:
+            continue
+        if isinstance(dist, (int, float)) and dist > threshold:
+            out.append((donor, float(dist)))
+    return out
+
+
+def warn_beyond_bond_length(rows, threshold: float = LIGAND_MAX, what: str = "restraint") -> list:
+    """Print a warning for every pair in `rows` too long to be a bond; return them."""
+    long = beyond_bond_length(rows, threshold)
+    for donor, dist in long:
+        print(f"[WARNING] {what} on {donor} at {dist:.2f} A is longer than "
+              f"{threshold:.2f} A, so it is not a bond: this holds a "
+              "second-shell contact against the metal for the whole run, and a "
+              "carboxylate held that close can rotate its other oxygen on "
+              "(D120). Set it deliberately or raise "
+              "`preprocess.inputs.coordination_warn_above` if the chemistry "
+              "warrants this distance.")
+    return long
+
 
 def separation(a, b, cell=None) -> float:
     """Distance between two points, minimum image applied when `cell` is given."""
@@ -787,6 +847,13 @@ def find_coordinators(
             for res in topology.residues():
                 if (res.chain.id == chain and int(res.id) == resid):
                     qm_residue_dict.setdefault(chain, {})[resid] = resn
+
+    # Every detection path ends here - preprocess and `md`'s
+    # `coordination_redetect` alike - so this is the one place that can promise
+    # a long contact is never restrained silently.
+    warn_beyond_bond_length(
+        coordination, float(inputs.get("coordination_warn_above", LIGAND_MAX)),
+        "detected coordination restraint")
 
     return qm_residue_dict, coordination
 

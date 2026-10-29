@@ -45,6 +45,52 @@ Atom names used below:
 
 ---
 
+## Standing constraints: read this before setting up any run
+
+**Why this section exists.** The log below is chronological, and a chronological
+log buries a prescription. D120 diagnosed the coordination-cutoff error on
+2026-10-28 and prescribed the fix in its own closing paragraph; one day and ten
+decisions later, D130 found the detection still running at 3.0 A and a
+fresh 100 ns job built on the shell D120 condemned. **Nothing was forgotten -
+it was written down and not carried out**, which a long log cannot distinguish
+from a fix that landed. Every constraint here names the decision it comes from,
+what enforces it, and - where nothing does - that it rests on a human reading
+this. **Update the status line in the same commit that changes the behaviour.**
+
+### The coordination sphere (D120, D121, D130)
+
+1. **A restraint only preserves a bond if the contact IS one.** `preprocess.inputs.cutoff` decides which contacts become 50 kcal/mol/A^2 restraints for the whole run. A Zn-O/N bond is 1.9-2.2 A; **2.5 is defensible, 3.0 is not.** *Enforced:* `md` warns on every pair it will restrain beyond `LIGAND_MAX` (2.5 A), detected and configured alike, and records them in `coordination_beyond_bond_length`. The library default cutoff is still 2.8, so **set `cutoff` explicitly**. Raise `coordination_warn_above` for a genuinely longer bond (Ln-O reaches 2.4-2.5 A).
+2. **The crystal sphere is four:** HOH485 1.90, His163 NE2 2.09, HOH493 2.14, His87 NE2 2.22 (6NC5 ZN302). **Asp92 is not on it** - OD2 sits at 2.80 A as a second-shell contact. *Enforced:* nothing. A run whose sphere disagrees has to be caught by reading `site.py shell`.
+3. **Do not hand-write a restraint to correct a shell that is already wrong.** D130's `[B:1:ZN, A:92:OD2, 2.80]` plus `[.., OD1, 3.81]` blocked D120's rotation and reinstated its condition, asserting the carboxylate's orientation where the original asserted only a distance. Asp92 reaching Zn1 is **a question to ask, not an assumption to restrain in**. Rebuild from a structure whose sphere is right instead. *Enforced:* the warning in 1 fires on configured pairs, which is how this one would have been seen.
+4. **Do not graft onto a frame descended from a condemned shell.** `subst_start.pdb` inherited Asp92 OD1 at 1.99 A from `md_naclong`; no cutoff undoes an artefact already in the coordinates. D120 costed the consequence: everything from `md_nac` onward re-run from a shell that matches the crystal. *Enforced:* nothing.
+
+### Measurement (D114, D120, D129)
+
+5. **One frame cannot tell a ligand from a passer-by.** Use `site.py shell` on a trajectory - per-donor **occupancy** and the coordination number as a distribution - for any claim about the sphere. `sphere` answers for the frame it is given, which is why D120 went unseen for three weeks. *Enforced:* nothing; `sphere` still runs on one structure by design.
+6. **A coordination count is not a composition.** Four donors inside a cutoff can be the wrong four, and a member sitting 0.09 A from the boundary makes a single-frame count a report on thermal noise. Read identity off occupancies. *Enforced:* nothing. A `composition`/`occupancy` criterion was proposed in D129 and is **not built**.
+7. **Never pick a cutoff after seeing where the atoms landed.** Raising `metal_bound` from 2.6 to 2.75 to make a count come out is choosing the measurement to fit the expected answer - D120's move and D123's. *Enforced:* nothing.
+
+### Restraints and selectors (D93, D115, D128)
+
+8. **Hold a contact where the structure already has it; never pull it to a chosen number** (D93). Sound, and nothing above weakens it - the failures were in deciding *what* to hold, not in the holding. *Enforced:* `fill_restraints` measures any row given without a distance.
+9. **Restraints are named by selector, never by saved index.** An index is valid only against the atom order it was measured on, and any correct edit renumbers (D115). *Enforced:* `check_coordination_atoms`, and `md` re-resolves selectors against the structure in front of the stage.
+10. **Every selector in a section is checked before it is written**, restraint pairs included (D128). *Enforced:* `sections.py` `SELECTOR_KEYS`, which refuses to write the section.
+11. **A metal system with no detected coordination is refused, not run free.** *Enforced:* `check_coordination_present`.
+
+### Hypotheses and gates (D125, D126, D127)
+
+12. **A criterion is only a criterion within a mechanism.** `site.py check` requires `--hypothesis=` when more than one is defined and refuses to default. *Enforced:* `mode_check`.
+13. **The two hypotheses are not equally evidenced and the file must not read as though they were.** Every range in `carbonyl_on_metal` carries a PDB ID; `substituent_on_metal`'s `Zn - O1x` range is our own measurement plus tolerance and is labelled `NOT a reference value`. *Enforced:* convention only.
+14. **Absolute Zn-donor bond lengths are checked at `reactant`, not at `start`.** MM zinc does not reproduce crystal bond lengths - the same sphere shows the hydroxide short and both histidines long - and D48/D118 measured 1.83-1.86 A relaxing to 1.99-2.05 A under QM/MM. Gating an MM structure on a crystal bond length tests the force field. *Enforced:* `required_at` in `site.yaml`.
+15. **`md_pose2` must not be launched as written** (D126): its restraint list opens `[B:1:ZN, C:1:O2x, 2.55]` and 2.55 A was the May run's own restraint output, not a measurement. *Enforced:* a DO NOT RUN banner in `site.yaml`.
+
+### Analysis order (D119)
+
+16. **Run the cheap trajectory analyses before committing QM/MM.** `site.py check --at=reactant`, then `joint` and `acceptors`, cost minutes against ~119 h. D119 said so and it was not done. *Enforced:* nothing.
+
+**Live run directory:** `/scratch/user/uquadhik/CSR_nac`. `CSR_ligand` defines the system and `CSR_hydrolysed` is the product source; the `CSR_crystal*` directories are superseded.
+
+---
 ## Structure and topology
 
 **D1 – The ligand is already in the starting complex, so it isn't merged again.** (2026-10-15)
@@ -2529,7 +2575,7 @@ The user's question - *holding what a crystal structure already has is the point
 
 **What D120 already established, re-read rather than re-derived.** The crystal sphere (6NC5 ZN302) is **four**: HOH485 1.90, His163 NE2 2.09, HOH493 2.14, His87 NE2 2.22. Asp92 OD2 sits at **2.80 A** and is a second-shell contact, not a ligand. `preprocess` detects at `cutoff: 3.0`, so OD2 was recorded as a ligand and written into the restraint list as `[B:1:ZN, A:92:OD2, 2.8, 50.0]`. A carboxylate pinned that close has one cheap way to relax, and it took it: OD1 rotated onto the metal at 1.99 A. D120's own sentence - **"the restraint whose purpose was to preserve the crystal's coordination sphere is what destroyed it, because 2.80 A was never a coordination distance."** So holding the crystal's sphere was right; holding a 2.80 A second-shell contact was not holding the crystal's sphere.
 
-**D120's prescribed fix, quoted: the detection cutoff "has to be tight enough to exclude a 2.80 A contact (a Zn-O ligand is ~1.9-2.2 A; 2.5 is defensible, 3.0 is not), and a second carboxylate oxygen should not be able to enter the list behind the first."** That fix was never applied. Today's job printed `Cutoff: 3.00 A` on redetection. **Twelve days and five decisions after the diagnosis, the detection is unchanged, which is the circle the user is pointing at.**
+**D120's prescribed fix, quoted: the detection cutoff "has to be tight enough to exclude a 2.80 A contact (a Zn-O ligand is ~1.9-2.2 A; 2.5 is defensible, 3.0 is not), and a second carboxylate oxygen should not be able to enter the list behind the first."** That fix was never applied. Today's job printed `Cutoff: 3.00 A` on redetection. **One day and ten decisions after the diagnosis, the detection is unchanged, which is the circle the user is pointing at** - the gap was never long, only unwatched.
 
 **And `md_subst` is worse on D120's own terms, not better.** Its restraint list holds OD2 at 2.80 **and** OD1 at 3.81. I justified the pair as correcting D120's artefact: the second spring blocks the rotation that produced it, so May's specific failure cannot recur. But two springs on a carboxylate assert its orientation relative to the metal where one asserted only its distance. **That is more assumption, not less**, and D120 says what to do with the question instead: Asp92 swinging onto a vacant Zn1 "is a question to ASK, not an assumption to restrain in, and the crystal's answer at 2.80 A is that it does not." The design that follows from D120 is to restrain **neither** Asp92 oxygen and tighten the cutoff so neither is ever detected. I restrained both.
 

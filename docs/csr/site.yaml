@@ -541,7 +541,32 @@ sections:
   # Removing an atom renumbers the file, so `coordination_redetect: true` is
   # mandatory below, for the reason D115 records.
 
-  # ---------------------------------------------------------------------------
+  # ===========================================================================
+  # DO NOT RUN `subst` AS WRITTEN. It was submitted as job 30923516 on
+  # 2026-10-29 and cancelled an hour in, for two reasons that the comment block
+  # below does not know about. D130.
+  #
+  #   1. Its start structure carries the shell D120 condemned. `subst_start.pdb`
+  #      descends from `md_naclong`'s last frame, where Asp92 OD1 sits on the
+  #      metal at 1.99 A. No detection cutoff undoes an artefact already in the
+  #      coordinates, and D120 costed the consequence: everything from `md_nac`
+  #      onward re-run from a shell that matches the crystal.
+  #
+  #   2. Its Asp92 restraints reinstate D120's condition rather than correcting
+  #      it. Holding OD2 at 2.80 A is holding a second-shell contact - the exact
+  #      pair, at the exact distance, that D120 identified as the cause - and
+  #      adding OD1 at 3.81 A to block the rotation asserts the carboxylate's
+  #      ORIENTATION where May's single restraint asserted only a distance.
+  #      That is more assumption, not less. D120's own conclusion is that
+  #      Asp92 reaching Zn1 is a question to ask, not an assumption to restrain
+  #      in, so the design that follows restrains NEITHER oxygen and sets the
+  #      detection cutoff tight enough that neither is ever picked up.
+  #
+  # What replaces it: preprocess from the crystal with `cutoff: 2.5`, no Asp92
+  # restraint, then the 100 ns MM. The reasoning below about the carbonyl and
+  # the attack coordinate still holds and is worth keeping; the restraint list
+  # is what does not.
+  # ===========================================================================
   # `subst` - the 100 ns NVT for the `substituent_on_metal` hypothesis, which is
   # the only arrangement we have a structure for. D126/D127.
   #

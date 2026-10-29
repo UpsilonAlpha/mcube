@@ -314,3 +314,49 @@ class TestCoordinationPresent:
                                 {"inputs": {"metals": ["ZN"]},
                                  "results": {"constraints": [[0, 1]]}}, pdb)
 
+
+
+class TestBeyondBondLength:
+    """D120/D130: a restraint only preserves a bond if the contact IS one.
+
+    A 2.80 A carboxylate contact was detected by a 3.0 A cutoff and held there
+    for 100 ns; the carboxylate rotated its other oxygen onto the metal and two
+    QM/MM arms ran on a five-coordinate zinc. The rule is reported, never
+    enforced: only the config can say whether a long distance is the chemistry.
+    """
+
+    def test_a_plausible_bond_is_not_flagged(self, mc):
+        assert mc.preprocess.beyond_bond_length([["B:1:ZN", "A:88:NE2", 2.1, 50.0]]) == []
+
+    def test_the_asp92_contact_is_flagged(self, mc):
+        assert mc.preprocess.beyond_bond_length(
+            [["B:1:ZN", "A:92:OD2", 2.80, 50.0]]) == [("A:92:OD2", 2.80)]
+
+    def test_shell_dicts_and_restraint_rows_are_both_accepted(self, mc):
+        """Detection returns dicts; what gets restrained is rows. Same rule."""
+        assert mc.preprocess.beyond_bond_length(
+            [{"donor": "A:92:OD2", "distance": 2.80}]) == [("A:92:OD2", 2.80)]
+
+    def test_the_threshold_can_be_raised_for_a_longer_bond(self, mc):
+        """An Ln-O bond reaches 2.4-2.5 A, so an Ln site needs its own threshold."""
+        assert mc.preprocess.beyond_bond_length(
+            [["A:1:LA", "A:2:OD1", 2.55, 50.0]], threshold=2.7) == []
+
+    def test_a_bare_pair_carries_no_distance_to_judge(self, mc):
+        assert mc.preprocess.beyond_bond_length([[0, 1]]) == []
+
+    def test_the_warning_names_the_donor_and_the_distance(self, mc, capsys):
+        mc.preprocess.warn_beyond_bond_length([["B:1:ZN", "A:92:OD2", 2.80, 50.0]])
+        out = capsys.readouterr().out
+        assert "A:92:OD2" in out and "2.80" in out and "not a bond" in out
+
+    def test_a_configured_restraint_is_warned_on_too(self, mc, pdb, capsys):
+        """D130's own mistake: the long pair was hand-written, not detected."""
+        mc.md.md_restraints({"restraints": [["B:1:ZN", "A:88:NE2", 2.80]]},
+                            {"results": {"coordination": [[0, 1, 2.1, 50.0]]}}, pdb)
+        assert "configured restraint" in capsys.readouterr().out
+
+    def test_a_short_configured_restraint_is_silent(self, mc, pdb, capsys):
+        mc.md.md_restraints({"restraints": [["B:1:ZN", "A:88:NE2", 2.10]]},
+                            {"results": {"coordination": [[0, 1, 2.1, 50.0]]}}, pdb)
+        assert "not a bond" not in capsys.readouterr().out

@@ -4,15 +4,47 @@ Everything specific to this system lives in `site.yaml`; the scripts stay
 general, so a new calculation is a YAML edit and a new system is a new YAML
 file.
 
-**The core four:**
+**The core five:**
 
 | File | What it is |
 | --- | --- |
-| `site.yaml` | the active site (atoms, candidate bases, near-attack criteria) and every calculation we run |
-| `sections.py` | adds calculations from `site.yaml` to `config.yaml`, refusing to write if a selector does not resolve |
-| `site.py` | all the geometry analysis: `sphere`, `nucleophiles`, `acceptors`, `joint`, `poses` |
+| `site.yaml` | the active site (atoms, candidate bases, near-attack criteria), the named Michaelis hypotheses, and every calculation we run |
+| `sections.py` | adds calculations from `site.yaml` to `config.yaml`, refusing to write if a selector does not resolve — restraint pairs included (D128) |
+| `site.py` | all the geometry analysis and the acceptance gate: `sphere`, `shell`, `nucleophiles`, `acceptors`, `joint`, `poses`, `graft`, `check` |
 | `run.slurm` | one job script for every mcube stage; resources come from the `sbatch` line |
 | `cleanup.sh` | reclaim space and inodes in a run directory |
+
+**Reference values:**
+
+| File | What it is |
+| --- | --- |
+| `refstruct.py` | `shell` and `centre` modes against a downloaded PDB, so every reference number in `site.yaml` is re-derivable rather than quoted (D125) |
+| `reference-structures.md` | the PDB IDs, ligand codes, exact commands and measured tables behind those numbers |
+
+## Read this before setting up a metal run
+
+**The coordination detection cutoff is the most expensive parameter in this
+project.** `preprocess.inputs.cutoff` decides which contacts become 50
+kcal/mol/Å² restraints for the whole run, and a restraint only preserves a bond
+if the contact *is* one. A Zn–O/N bond is 1.9–2.2 Å.
+
+At `cutoff: 3.0` the crystal's second-shell Asp92 OD2 contact at **2.80 Å** was
+detected as a ligand and held there; the carboxylate rotated its other oxygen
+onto the metal at 1.99 Å, and two QM/MM arms ran on a five-coordinate zinc
+against the crystal's four. **2.5 is defensible, 3.0 is not** (D120). The
+library default is 2.8, so set it explicitly.
+
+`md` reports every pair it is about to restrain that is longer than `LIGAND_MAX`
+(2.5 Å), detected *and* configured, and records them in the section's
+`coordination_beyond_bond_length`. Raise the threshold with
+`preprocess.inputs.coordination_warn_above` where the chemistry warrants it — an
+Ln–O bond reaches 2.4–2.5 Å. **Do not silence it by raising the detection
+cutoff**, and do not hand-write a long restraint to correct a shell that is
+already wrong: rebuild from a structure whose sphere is right (D130).
+
+Holding a contact where the structure already has it is the rule this pipeline
+runs on and it is sound. What it cannot do is decide whether the contact is a
+bond — that is what the threshold above is for.
 
 **Measuring what a run produced:**
 
@@ -35,11 +67,16 @@ that comparison is open; see `site.yaml`'s `ohHmin` and `ohH` sections.
 They are kept in the repo and pulled on Bunya rather than typed into the browser
 terminal, which silently truncates long payloads.
 
+**One-shot, kept only as a record:** `migrate_paths.py` rewrote every config's
+paths to be config-relative (D117) and has nothing left to migrate;
+`make_ohH_config.py` describes an abandoned route. Neither is part of a current
+workflow — do not reach for them when setting up a run.
+
 ## Running something
 
 ```bash
 cd /scratch/user/uquadhik/mcube && git pull -q
-cd /scratch/user/uquadhik/CSR_crystal_v2
+cd /scratch/user/uquadhik/CSR_nac                # the live run directory
 cp config.yaml config.yaml.bak          # the stages write results back into it
 
 D=/scratch/user/uquadhik/mcube/docs/csr
@@ -94,15 +131,26 @@ The measurements, and what dominates each stage, are in
 ```bash
 D=/scratch/user/uquadhik/mcube/docs/csr
 python $D/site.py sphere       --site=$D/site.yaml structure.pdb
+python $D/site.py shell        --site=$D/site.yaml traj.dcd topology.pdb
 python $D/site.py nucleophiles --site=$D/site.yaml structure.pdb
 python $D/site.py acceptors    --site=$D/site.yaml traj.dcd topology.pdb
 python $D/site.py joint        --site=$D/site.yaml traj.dcd topology.pdb
 python $D/site.py poses        --site=$D/site.yaml docked.pdbqt receptor.pdb [ligand.pdb]
+python $D/site.py graft        --site=$D/site.yaml docked.pdbqt ref.pdb receptor.pdb system.pdb <n> [--ref-frame=system]
+python $D/site.py check        --site=$D/site.yaml structure.pdb --at=start|reactant --hypothesis=<name>
 ```
 
 - **`sphere`** — what is coordinated to the metal, the monitored distances, and
   how many hydrogens sit on each candidate oxygen and on the lysine. The quickest
-  way to see whether a structure is what you think it is.
+  way to see whether a structure is what you think it is. **One frame, so it
+  cannot tell a ligand from a passer-by** — use `shell` on a trajectory for that.
+- **`shell`** — the coordination sphere over a trajectory, ligand by ligand:
+  each donor's **occupancy** (the fraction of frames it spends inside the
+  cutoff) and the per-frame coordination number as a *distribution*, not an
+  average, because a site flipping between 4 and 5 and a site sitting at 4.5 are
+  different things. Donors just outside the cutoff are listed too, so a
+  borderline call looks borderline instead of absent. This is the mode that
+  found D120, and it is the right instrument for any claim about the sphere.
 - **`nucleophiles`** — for one structure: every water near the electrophile, its
   attack distance and angle, whether it is metal-bound, and for each of its
   protons what lies within hydrogen-bond reach.
@@ -118,6 +166,28 @@ python $D/site.py poses        --site=$D/site.yaml docked.pdbqt receptor.pdb [li
   use — which pose that structure is. Vina scores within a couple of kcal/mol of
   each other do not pick a pose, so check what the alternatives look like before
   building a mechanism on one of them.
+- **`graft`** — puts a chosen docked pose into an equilibrated system, mapping
+  the pose onto the ligand structure already in use and dropping clashing
+  waters. `--ref-frame=system` when the reference copy lives in the system
+  rather than in the docking frame. Writes `<system>_pose<N>.pdb`; it does not
+  equilibrate anything, and the result still has to pass `check`.
+- **`check`** — the acceptance gate: accept or reject a structure against one
+  **named** Michaelis hypothesis, exiting non-zero if anything required at this
+  stage fails. `--at=start` or `--at=reactant` selects which criteria are
+  binding, because a criterion describing the reactant state is not a defect in
+  a structure that has yet to be equilibrated into one.
+
+  `--hypothesis=` is **not optional** when more than one is defined, and
+  omitting it is refused rather than defaulted. A criterion is only ever a
+  criterion *within* a mechanism: "the closest substrate oxygen must be the
+  β-lactam carbonyl" is a fact about the carbonyl-on-metal mechanism, which is
+  the thing under test, and a gate that rejects a rival hypothesis by assuming
+  the favoured one is not a gate (D127).
+
+  **A coordination criterion returns a count, and a count is not a
+  composition.** Four donors inside the cutoff can be the wrong four. Where the
+  identity of the sphere is the claim, read it off `shell`'s occupancies rather
+  than off `check`'s number (D129, D130).
 
 ## Why the selector check exists
 
@@ -126,6 +196,11 @@ section's own start structure and refuses to write if any is missing. Two days
 of compute were lost to a 2D grid whose second coordinate began 4.35 Å apart —
 which drags a group across space rather than transferring a proton. Check the
 coordinate against the structure it will actually start from.
+
+`restraints` is in that list as of D128, and it was the one place missing: a
+section whose only selectors were its restraint pairs printed `0 selectors
+checked` and was written anyway, while `md.md_restraints` resolves those same
+pairs hours into the run.
 
 ## Email notifications
 
