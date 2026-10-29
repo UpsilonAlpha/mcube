@@ -2739,6 +2739,42 @@ Each pruned directory now holds a one-line `DELETED.md` pointing here, the conve
 Both selectors were checked by `sections.py` before submission (2 each, both resolved). `aspin` stays DO NOT RUN until wt100b finishes.
 
 
+**D137 - `scan_aspout` cancelled at point 0 of 8: a relaxed scan cannot converge while mcube writes the rigid-water constraints as `$set`, and D133's hysteresis test is not answerable until that is fixed.** (2026-10-30 04:55 AEST, job 31016878, `CANCELLED` after 04:38:57)
+
+**`md_wt100b` (31016877) is still running** - 50.66 of 100 ns at 04:48 on bun073, temperature 301 K, energies flat, nothing in the `.err`. So there is no substrate-present occupancy yet and nothing to compare against D134's table; `scan_aspin` stays DO NOT RUN, both of its preconditions being unmet.
+
+**What `aspout` did in 4 h 39 m: one scan point, 120 geomeTRIC steps, no convergence by any criterion.**
+
+| quantity | at step 120 | criterion |
+| --- | --- | --- |
+| Grad_T rms / max | 1.635e-02 / 2.739e-01 | 1e-04 / 3e-04 |
+| Displace rms / max | 7.033e-03 / 1.082e-01 | 2e-03 / 4e-03 |
+| trust radius | 2.443e-03 | - |
+| energy change | **+4.503e-03** Eh | 5e-06 |
+| worst constraint violation | **0.069 A** | `convergence_cmax` 0.01 |
+
+The gradient is two to three orders of magnitude off after 120 steps, the trust radius has collapsed, and the energy is **rising**. Over steps 111-118 the total oscillates across 6e-3 Eh - **3.7 kcal/mol**, larger than the hysteresis the scan was built to resolve - so even the plateau argument that rescued D105 (and gave D106 its NEB start) does not apply here.
+
+**The scan coordinate is not the problem.** Zn-Asp92 OD1 (`distance 395 169`) sits at its 1.900 target to within 0.0016 A and has dropped off geomeTRIC's violation table entirely. What never satisfies is the **rigid-water block**: O-H distances reading 0.99686 and 1.02609 against TIP3P targets of 0.9574 and 0.9573, H-H 1.571 against 1.513.
+
+**The mechanism, and it is mcube's own.** `optimizer_constraints` (`src/mcube/qmmm.py:539`) emits the active-region MM waters as geomeTRIC `$freeze` when there is no user constraint, and switches **the whole block to `$set` with values** the moment one appears - which a scan always supplies. D105's `constraints.txt` was a `$freeze` header over 24 water distances; this run's is a `$set` header over 27 water distances plus the one scan bond. The difference is decisive, not cosmetic:
+
+- a **frozen** distance is a degree of freedom geomeTRIC projects out, so a residual on it (D105 measured 0.08-0.10 A) is ugly but costs nothing;
+- a **`$set`** distance is a convergence criterion, checked against `convergence_cmax`. At 0.069 A the run is seven times outside it and **cannot be declared converged however long it runs**.
+
+It also made the linear algebra far worse: **160 SVD failures in 120 steps**, against the fifteen per hour D105 recorded, each dumping a 32 MB `HT.v_*.txt`.
+
+**Why it was cancelled rather than left to run.** 2.3 min/step and `maxiter` 300 gives ~11.5 h per point, so nine points is **~100 h against a 72 h limit** - it would have been killed around point 6 with every point unconverged. And the dumps are a quota hazard: 151 files, **4.6 GB in one point**, which is the whole 4.8 GB the directory had reached. Nine points is over 40 GB against 41 GB free, while `md_wt100b` writes into the same filesystem and an over-quota write fails silently (rule 8). Cancelled at 04:55, dumps deleted, `scan_aspout` 4.8 GB -> 211 MB, scratch 259 -> 255 GB; `geometric_OPTtraj_optim.xyz` and `optimization_energies.log` kept as the evidence above, with a `DELETED.md` pointing here.
+
+**What this decides.** D133 test 1 is **not answerable by `scan` as mcube currently writes constraints**, and the same applies to every `qmmm` run given `opt_constraints`. The three candidate fixes, none of them run:
+
+1. **`$freeze` the waters and `$set` only the scan bond** - the correct fix, and the one that restores D105's behaviour. ASH's `Optimizer` takes a single `constrainvalue` flag for the whole dict, so it needs either an ASH change or mcube writing geomeTRIC's constraint file itself.
+2. **`rigid_water: false` in the scan section** - one config line, and then only the scan bond is in `$set`; the MM waters relax under their own bonded terms. This changes what is being optimised, so it is a methodological choice rather than a bug fix, and it is the user's call.
+3. **Shrink `actradius`** - D105's own remedy. With nine active waters at 8 A it reduces the constraint count but leaves `cmax` gating convergence, so it mitigates rather than fixes.
+
+Nothing resubmitted. The hysteresis test, and with it the standing of every single-direction scan in this log (D94's objection), waits on that choice; the distance PMF of D133 test 2 is unaffected only if it samples with MD rather than constrained optimisation.
+
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

@@ -757,6 +757,17 @@ sections:
   # rather than in preprocess because this directory does not re-run preprocess:
   # `resolve_qm_region` adds it to the saved region and rebuilds on the section's
   # own pdb_file.
+  #
+  # DO NOT RUN AS WRITTEN - job 31016878 was cancelled at point 0 of 8 after
+  # 4 h 39 m and 120 geomeTRIC steps, converged by no criterion (D137). The scan
+  # bond itself is held fine; what never satisfies is the rigid-water block,
+  # because `optimizer_constraints` switches the active-region MM waters from
+  # `$freeze` to `$set` as soon as ANY user constraint is present, and a scan
+  # always supplies one. A violated `$set` distance is checked against
+  # `convergence_cmax` (0.01) and sat at 0.069, so no point can ever converge;
+  # it also cost 160 SVD failures in 120 steps and 4.6 GB of HT.v dumps.
+  # Fix the constraint handling - or set `rigid_water: false` here, which is a
+  # methodological choice, not a bug fix - before resubmitting either arm.
   aspout:
     stage: scan
     inputs:
@@ -779,7 +790,8 @@ sections:
   # Scanning it would scan the wrong system. Give this arm a free-Asp92 start
   # that still holds the substrate - either md_wt100 re-run with naclong's
   # substrate restraint as its ONLY restraint, or naclong's last frame with
-  # Zn-OD1 pulled out to 3.60 first. aspout, which starts from naclong, is fine.
+  # Zn-OD1 pulled out to 3.60 first. aspout has its own, separate problem: see
+  # the note above it.
   aspin:
     stage: scan
     inputs:
