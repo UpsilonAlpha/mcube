@@ -501,6 +501,27 @@ def analyse(args):
                 row["dE"].setdefault(level, {})[f"{m1}->{m2}"] = round(d, 2)
                 per.setdefault((level, entry["kind"], entry["source"], f"{m1}->{m2}"), []).append(d)
         report["frames"][key] = row
+    if args.embed_radius:
+        # First-order common-radius embedding: the QM region's charge changes by exactly
+        # dq = q(M2) - q(M1), so the MM charges beyond R add dq * phi_R(frame) to that frame's dE
+        # (potential.json). Removing it puts site and water on the same finite embedding.
+        pot = json.loads((out / "potential.json").read_text())["frames"]
+        R = f"{args.embed_radius:g}"
+        missing = sorted(key for key in meta if key not in pot)
+        if missing:
+            raise SystemExit(f"potential.json lacks {len(missing)} frames (run `potential` again): {missing[:3]}")
+        report["embed_radius_A"] = args.embed_radius
+        for key, entry in meta.items():
+            phi = pot[key]["phi_V"][R]
+            for level, pairs in report["frames"][key]["dE"].items():
+                for pair, d in pairs.items():
+                    m1, m2 = pair.split("->")
+                    pairs[pair] = round(d - EV_KCAL * (IONS[m2][1] - IONS[m1][1]) * phi, 2)
+        per = {}
+        for key, entry in meta.items():
+            for level, pairs in report["frames"][key]["dE"].items():
+                for pair, d in pairs.items():
+                    per.setdefault((level, entry["kind"], entry["source"], pair), []).append(d)
     lra_sets = {}
     for item in args.lra or []:
         name, _, members = item.partition("=")
@@ -540,9 +561,10 @@ def analyse(args):
                 if all(site) and all(water):
                     lv["lra"][f"{pair} {name}"] = lra(site, water)
         report["levels"][level] = lv
-    (out / "report.json").write_text(json.dumps(report, indent=1))
+    name = f"report_R{args.embed_radius:g}.json" if args.embed_radius else "report.json"
+    (out / name).write_text(json.dumps(report, indent=1))
     print_report(report)
-    print(f"\n{out / 'report.json'}")
+    print(f"\n{out / name}")
 
 
 def water_by_ion(by_source, src_ion, ion):
@@ -907,6 +929,9 @@ def main():
     a.add_argument("--lra", action="append",
                    help="NAME=SRC1+SRC2: two site sources sampled with the two ions of an exchange "
                         "(e.g. lasite=CAla+LA); their LRA ddE is reported per exchange")
+    a.add_argument("--embed-radius", type=float,
+                   help="Å: report ddE as if both site and water embedded only MM residues within this "
+                        "radius (first order, from potential.json; writes report_R<radius>.json)")
     s = sub.add_parser("structure")
     s.add_argument("--out", required=True)
     s.add_argument("--cutoff", type=float, default=3.1, help="Å, ion-O shell")
