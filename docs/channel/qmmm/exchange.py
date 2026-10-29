@@ -41,13 +41,18 @@ configs. Coordinating amino acids are cut at CA-CB as mcube does; waters come in
       --water LA=$S/channel/bulk/LA_1264_frames --water LU=$S/channel/bulk/LU_1264_frames \
       --basis-svp $S/channel/dft/def2-svp_lcecp1.nw --basis-tzvp $S/channel/dft/def2-tzvp_lcecp1.nw
   python exchange.py analyse --out $S/channel/qmmm
+  python exchange.py structure --out $S/channel/qmmm
+  python exchange.py clean --out $S/channel/qmmm [--delete]
 
 A --site directory holds an umbrella window's start.pdb, window.dcd (and cv.csv for the frame
 spacing); a --water directory holds bulk_ion.py's system.pdb and the frames.dcd that
 `bulk_ion.py run --dcd-every` writes. `frames` writes <out>/<kind>/<SRC>_f<frame>/<ION>/ with
 frame.pdb and config.yaml, the job lists jobs_site.txt / jobs_water.txt, and frames.json.
 `analyse` reads each job's config.yaml (sp.results.sp_energy at the TZVP level, and
-qmmm.results.opt_energy at the SVP level as a check) and writes <out>/report.json.
+qmmm.results.opt_energy at the SVP level as a check) and writes <out>/report.json. `structure`
+reads each job's QM-region optimisation trajectory (steps, energy drop, QM RMSD, the ion-O shell
+before and after) into <out>/structure.json; `clean` then deletes the bulky files of final jobs
+that structure.json covers (dry run unless --delete).
 """
 
 from __future__ import annotations
@@ -512,6 +517,147 @@ def ddE(site, water):
             "n_site": site["n"], "n_water": water["n"]}
 
 
+def read_xyz_frames(path: Path):
+    """[(comment, elements, coords Å)] of a multi-frame xyz (geomeTRIC's optimisation trajectory,
+    comment "Iteration N Energy E")."""
+    lines = path.read_text().splitlines()
+    out, i = [], 0
+    while i < len(lines) and lines[i].strip():
+        n = int(lines[i].split()[0])
+        rows = [l.split() for l in lines[i + 2:i + 2 + n]]
+        out.append((lines[i + 1], [r[0] for r in rows],
+                    np.array([[float(x) for x in r[1:4]] for r in rows])))
+        i += 2 + n
+    return out
+
+
+def last_opt_energies(path: Path):
+    """QM/MM energies (Eh) of the last run in optimization_energies.log, which ASH appends to on
+    every run, each run under its own 'Iteration ...' header."""
+    vals = []
+    for l in path.read_text().splitlines():
+        t = l.split()
+        if not t:
+            continue
+        if t[0] == "Iteration":
+            vals = []
+        elif t[0].isdigit():
+            vals.append(float(t[-1]))
+    return vals
+
+
+def shell_geometry(elements, xyz, cutoff):
+    """Ion-O shell of one QM-region geometry: O within `cutoff` of the ion, split into water O
+    (two H within 1.2 Å) and other O (carboxylate, carbonyl, hydroxyl)."""
+    metal = [k for k, e in enumerate(elements) if e.capitalize() in ("Ca", "La", "Lu")]
+    if len(metal) != 1:
+        return None
+    m = xyz[metal[0]]
+    hyd = np.array([k for k, e in enumerate(elements) if e.upper() == "H"], dtype=int)
+    water, other = [], []
+    for k, e in enumerate(elements):
+        if e.upper() != "O":
+            continue
+        r = float(np.linalg.norm(xyz[k] - m))
+        if r > cutoff:
+            continue
+        nh = int((np.linalg.norm(xyz[hyd] - xyz[k], axis=1) < 1.2).sum()) if len(hyd) else 0
+        (water if nh >= 2 else other).append(r)
+    allr = water + other
+    return {"cn": len(allr), "cn_water": len(water), "cn_other": len(other),
+            "mean_MO": round(float(np.mean(allr)), 3) if allr else None,
+            "min_MO": round(float(min(allr)), 3) if allr else None}
+
+
+def structure(args):
+    """What the optimisations did to each ion's shell, from the QM-region trajectory (only QM
+    atoms move, so it holds the whole path): steps, energy drop, QM RMSD, and the ion-O shell of
+    the MM frame (first step) and of the optimised geometry (last step)."""
+    out = Path(args.out).resolve()
+    meta = json.loads((out / "frames.json").read_text())
+    rows, per = {}, {}
+    for key, entry in sorted(meta.items()):
+        for ion, p in entry["jobs"].items():
+            job = Path(p)
+            traj = job / "geometric_OPTtraj_QMregion.xyz"
+            if not traj.exists():
+                rows[f"{key}/{ion}"] = {"missing": traj.name}
+                continue
+            # The trajectory may also hold steps of an earlier, interrupted run; every run starts
+            # from the same MM frame, so the first frame is the start either way.
+            fr = read_xyz_frames(traj)
+            (_, el0, x0), (c1, el1, x1) = fr[0], fr[-1]
+            t = c1.split()
+            steps = int(t[1]) if len(t) > 1 and t[0] == "Iteration" and t[1].isdigit() else len(fr) - 1
+            e = job_energies(job) or {}
+            en = job / "optimization_energies.log"
+            vals = last_opt_energies(en) if en.exists() else []
+            drop = round((vals[-1] - vals[0]) * HARTREE_KCAL, 2) if len(vals) > 1 else None
+            r = {"kind": entry["kind"], "source": entry["source"], "ion": ion,
+                 "steps": steps, "converged": e.get("converged"), "opt_drop_kcal": drop,
+                 "qm_rmsd_A": round(float(np.sqrt(((x1 - x0) ** 2).sum(1).mean())), 3),
+                 "start": shell_geometry(el0, x0, args.cutoff),
+                 "end": shell_geometry(el1, x1, args.cutoff)}
+            rows[f"{key}/{ion}"] = r
+            if r["end"]:
+                per.setdefault((entry["kind"], entry["source"], ion), []).append(r)
+    summary = {}
+    for (kind, src, ion), rs in sorted(per.items()):
+        f = lambda sel: round(float(np.mean([sel(x) for x in rs])), 2)
+        summary[f"{kind} {src} frames {ion}"] = {
+            "n": len(rs), "steps": f(lambda x: x["steps"]), "qm_rmsd_A": f(lambda x: x["qm_rmsd_A"]),
+            "cn_start": f(lambda x: x["start"]["cn"]), "cn_end": f(lambda x: x["end"]["cn"]),
+            "cn_water_end": f(lambda x: x["end"]["cn_water"]),
+            "cn_other_end": f(lambda x: x["end"]["cn_other"]),
+            "mean_MO_end": f(lambda x: x["end"]["mean_MO"]),
+            "cn_changed": sum(x["start"]["cn"] != x["end"]["cn"] for x in rs)}
+    res = {"note": f"ion-O shell within {args.cutoff} Å; water O = O with two H within 1.2 Å",
+           "jobs": rows, "summary": summary}
+    (out / "structure.json").write_text(json.dumps(res, indent=1))
+    for k, s in summary.items():
+        print(f"{k:24s} n {s['n']}  steps {s['steps']:6.1f}  rmsd {s['qm_rmsd_A']:.2f} Å  "
+              f"CN {s['cn_start']:.2f} -> {s['cn_end']:.2f} (water {s['cn_water_end']:.2f}, "
+              f"other {s['cn_other_end']:.2f}; changed in {s['cn_changed']})  "
+              f"<M-O> {s['mean_MO_end']:.3f} Å")
+    missing = [k for k, r in rows.items() if "missing" in r]
+    if missing:
+        print("no QM-region trajectory: " + ", ".join(missing))
+    print(f"\n{out / 'structure.json'}")
+
+
+# Bulky files a finished job no longer needs: the full-system optimisation trajectory (only QM
+# atoms move, so geometric_OPTtraj_QMregion.xyz holds the same path), the last-step geometry dumps,
+# and geomeTRIC's HT.v_<eigenvalue>.txt Hessian-eigenvector dumps (one per negative eigenvalue).
+CLEAN = ("geometric_OPTtraj_Full.xyz", "Fragment-currentgeo.xyz", "Fragment-currentgeo.ygg",
+         "HT.v_*.txt")
+
+
+def clean(args):
+    """Delete CLEAN files in jobs that are final (a TZVP energy, or an optimisation that did not
+    converge) and that `structure` has already read. Dry run unless --delete."""
+    out = Path(args.out).resolve()
+    meta = json.loads((out / "frames.json").read_text())
+    sfile = out / "structure.json"
+    read = json.loads(sfile.read_text())["jobs"] if sfile.exists() else {}
+    total, kept = 0, []
+    for key, entry in sorted(meta.items()):
+        for ion, p in entry["jobs"].items():
+            job, name = Path(p), f"{key}/{ion}"
+            e = job_energies(job) or {}
+            final = e.get("sp") is not None or e.get("converged") is False
+            if not final or "steps" not in read.get(name, {}):
+                kept.append(name)
+                continue
+            for pat in CLEAN:
+                for f in job.glob(pat):
+                    total += f.stat().st_size
+                    if args.delete:
+                        f.unlink()
+    print(f"{'deleted' if args.delete else 'would delete'} {total / 1e9:.2f} GB")
+    if kept:
+        print("left alone (not final, or not in structure.json): " + ", ".join(kept))
+
+
 def print_report(report):
     for key, row in report["frames"].items():
         de = row["dE"].get("sp", {})
@@ -572,10 +718,20 @@ def main():
     a = sub.add_parser("analyse")
     a.add_argument("--out", required=True)
     a.add_argument("--include-unconverged", action="store_true")
+    s = sub.add_parser("structure")
+    s.add_argument("--out", required=True)
+    s.add_argument("--cutoff", type=float, default=3.1, help="Å, ion-O shell")
+    c = sub.add_parser("clean")
+    c.add_argument("--out", required=True)
+    c.add_argument("--delete", action="store_true", help="delete (default: dry run)")
     args = p.parse_args()
     if args.action == "frames":
         args.donors = [d.upper() for d in args.donors]
         frames(args)
+    elif args.action == "structure":
+        structure(args)
+    elif args.action == "clean":
+        clean(args)
     else:
         analyse(args)
 
