@@ -501,18 +501,23 @@ def analyse(args):
                 row["dE"].setdefault(level, {})[f"{m1}->{m2}"] = round(d, 2)
                 per.setdefault((level, entry["kind"], entry["source"], f"{m1}->{m2}"), []).append(d)
         report["frames"][key] = row
-    if args.embed_radius:
-        # First-order common-radius embedding: the QM region's charge changes by exactly
-        # dq = q(M2) - q(M1), so the MM charges beyond R add dq * phi_R(frame) to that frame's dE
-        # (potential.json). Removing it puts site and water on the same finite embedding.
+    if args.embed_radius or args.periodic:
+        # First order in the far field: the QM region's charge changes by exactly
+        # dq = q(M2) - q(M1), so a change of the MM potential at the ion by d(phi) changes that
+        # frame's dE by dq * d(phi) (potential.json).
+        #   --embed-radius R: drop the MM charges beyond R (d(phi) = -phi_R), the same finite
+        #     embedding for site and water;
+        #   --periodic: the PME potential in place of the non-periodic direct sum
+        #     (d(phi) = phi_pme - phi_direct), the electrostatics the MD ran with.
         pot = json.loads((out / "potential.json").read_text())["frames"]
-        R = f"{args.embed_radius:g}"
-        missing = sorted(key for key in meta if key not in pot)
+        R = f"{args.embed_radius:g}" if args.embed_radius else None
+        missing = sorted(key for key in meta if key not in pot or (args.periodic and "phi_pme_V" not in pot[key]))
         if missing:
             raise SystemExit(f"potential.json lacks {len(missing)} frames (run `potential` again): {missing[:3]}")
-        report["embed_radius_A"] = args.embed_radius
+        report["embed_radius_A" if R else "periodic"] = args.embed_radius or True
         for key, entry in meta.items():
-            phi = pot[key]["phi_V"][R]
+            p = pot[key]
+            phi = p["phi_V"][R] if R else p["phi_direct_V"] - p["phi_pme_V"]
             for level, pairs in report["frames"][key]["dE"].items():
                 for pair, d in pairs.items():
                     m1, m2 = pair.split("->")
@@ -561,7 +566,8 @@ def analyse(args):
                 if all(site) and all(water):
                     lv["lra"][f"{pair} {name}"] = lra(site, water)
         report["levels"][level] = lv
-    name = f"report_R{args.embed_radius:g}.json" if args.embed_radius else "report.json"
+    name = (f"report_R{args.embed_radius:g}.json" if args.embed_radius
+            else "report_periodic.json" if args.periodic else "report.json")
     (out / name).write_text(json.dumps(report, indent=1))
     print_report(report)
     print(f"\n{out / name}")
@@ -837,6 +843,9 @@ def potential(args):
                "phi_V": {f"{R:g}": phi(centre > R) for R in radii},
                "by_component_V": {c: {f"{R:g}": phi((centre > R) & (comp == c)) for R in radii}
                                   for c in sorted(set(comp))}}
+        if args.pme:
+            row["phi_direct_V"] = phi(np.ones(len(q), bool))
+            row["phi_pme_V"] = round(pme_potential(mod, cfg["qmmm"]["inputs"]["forcefields"], r_ion), 4)
         rows[key] = row
         groups.setdefault((entry["kind"], entry["source"]), []).append(row)
     summary = {}
@@ -845,6 +854,10 @@ def potential(args):
             "n": len(rs), "net_charge": rs[0]["net_charge"],
             "phi_V": {k: round(float(np.mean([x["phi_V"][k] for x in rs])), 4) for k in rs[0]["phi_V"]},
             "phi_sd_V": {k: round(float(np.std([x["phi_V"][k] for x in rs])), 4) for k in rs[0]["phi_V"]}}
+        if args.pme:
+            d = [x["phi_pme_V"] - x["phi_direct_V"] for x in rs]
+            summary[f"{kind} {src}"]["pme_minus_direct_V"] = {"mean": round(float(np.mean(d)), 4),
+                                                              "sd": round(float(np.std(d)), 4)}
     res = {"note": "phi(R): potential at the ion from MM charges beyond R (V), raw positions as "
                    "the non-periodic embedding sees them; a 1 e change of the ion's charge picks up "
                    f"{EV_KCAL:.2f} kcal/mol per V", "frames": rows, "summary": summary}
@@ -853,8 +866,37 @@ def potential(args):
     print(f"{'':16s}" + "".join(f"{'R>' + k:>16s}" for k in summary[next(iter(summary))]["phi_V"]))
     for name, s in summary.items():
         print(f"{name:16s}" + "".join(f"{v:9.3f} ({s['phi_sd_V'][k]:.3f})" for k, v in s["phi_V"].items())
-              + f"   net {s['net_charge']:+.2f} e")
+              + f"   net {s['net_charge']:+.2f} e"
+              + (f"   PME - direct {s['pme_minus_direct_V']['mean']:+.3f} ({s['pme_minus_direct_V']['sd']:.3f}) V"
+                 if "pme_minus_direct_V" in s else ""))
     print(f"\n{out / 'potential.json'}")
+
+
+def pme_potential(mod, forcefields, r_ion_A, delta=0.01):
+    """Potential (V) at r_ion from the MM charges under PME, the periodic electrostatics the MD
+    ran with: a probe particle (no LJ) at the ion's position, E(+delta) - E(-delta) over 2 delta.
+    The probe's self and image terms are even in delta and cancel."""
+    import openmm
+    from openmm import unit
+    from openmm.app import ForceField, PME
+    system = ForceField(*forcefields).createSystem(mod.topology, nonbondedMethod=PME,
+                                                   nonbondedCutoff=1.0 * unit.nanometer)
+    nb = next(f for f in system.getForces() if isinstance(f, openmm.NonbondedForce))
+    nb.setEwaldErrorTolerance(1e-5)
+    for f in list(system.getForces()):
+        f.setForceGroup(1 if f is nb else 2)
+    probe = system.addParticle(0.0)
+    nb.addParticle(0.0, 0.1, 0.0)
+    pos = list(mod.positions.value_in_unit(unit.nanometer)) + [openmm.Vec3(*(np.asarray(r_ion_A) / 10.0))]
+    ctx = openmm.Context(system, openmm.VerletIntegrator(0.001), openmm.Platform.getPlatformByName("CPU"))
+    ctx.setPositions(pos)
+    energies = []
+    for q in (delta, -delta):
+        nb.setParticleParameters(probe, q, 0.1, 0.0)
+        nb.updateParametersInContext(ctx)
+        energies.append(ctx.getState(getEnergy=True, groups={1}).getPotentialEnergy()
+                        .value_in_unit(unit.kilojoule_per_mole))
+    return (energies[0] - energies[1]) / (2 * delta) / 96.4853   # kJ/mol/e -> V
 
 
 def print_report(report):
@@ -932,6 +974,9 @@ def main():
     a.add_argument("--embed-radius", type=float,
                    help="Å: report ddE as if both site and water embedded only MM residues within this "
                         "radius (first order, from potential.json; writes report_R<radius>.json)")
+    a.add_argument("--periodic", action="store_true",
+                   help="report ddE with the PME potential at the ion in place of the non-periodic sum "
+                        "(first order; potential --pme first; writes report_periodic.json)")
     s = sub.add_parser("structure")
     s.add_argument("--out", required=True)
     s.add_argument("--cutoff", type=float, default=3.1, help="Å, ion-O shell")
@@ -944,6 +989,8 @@ def main():
     pt = sub.add_parser("potential")
     pt.add_argument("--out", required=True)
     pt.add_argument("--radii", nargs="+", default=["8", "10", "15", "20", "30"])
+    pt.add_argument("--pme", action="store_true",
+                    help="also the PME potential at the ion (OpenMM, CPU), for `analyse --periodic`")
     c = sub.add_parser("clean")
     c.add_argument("--out", required=True)
     c.add_argument("--delete", action="store_true", help="delete (default: dry run)")

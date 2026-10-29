@@ -56,7 +56,7 @@ variants)
         submit_from $S/channel/$V/jobs_water.txt 1 v_${V#qmmm_}_w 4:00:00
     done ;;
 potential)
-    $P $Q/exchange.py potential --out $OUT ;;
+    $P $Q/exchange.py potential --out $OUT --pme ;;
 complex)
     # the Glu closest to the ion in the first La site frame, in that frame's own numbering
     F=$OUT/site/LA_f0159/LA/frame.pdb
