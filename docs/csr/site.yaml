@@ -693,6 +693,75 @@ sections:
       properties: {Precision: mixed}
 
   # ===========================================================================
+  # `aspout` / `aspin` - is Asp92 on the zinc a basin, or the basin our scans
+  # started in? (D133)
+  #
+  # Where this stands: MM at 100 ns puts Asp92 OD1 on the metal with nothing
+  # restraining it (D102); 25 ps of unconstrained GFN2-xTB QM/MM MD from a free
+  # start pulls OD2 from 2.80 to 2.09 A (D51); and DFT is 1.6x steeper than xTB
+  # along that coordinate, 9.1 against 5.7 kcal/mol to reach 2.80 A, so it is
+  # not a semi-empirical artefact (D58, D60). The crystal has it off the metal
+  # at 2.80 A (6NC5 ZN302). Every level of theory we have run disagrees with the
+  # structure, and that - not the restraints - is the open problem.
+  #
+  # The one objection none of those runs answers is D94's: a relaxed scan reports
+  # the basin it started in, and `scan_znasp` and `scan_znco` both started bound.
+  # So run the same coordinate from both ends and compare the curves.
+  #
+  #   aspout   bound start,  1.90 -> 3.60 A
+  #   aspin    free start,   3.60 -> 1.90 A
+  #
+  # Curves that lie on each other mean the well near 2.0 A is real on this
+  # surface, and the question becomes why the crystal disagrees - which is what
+  # D133's hypothesis is for. Curves that separate mean the earlier scans were
+  # measuring their own start and the preference is hysteresis.
+  #
+  # **This is not a free energy, and a free energy is what would settle it.** A
+  # PMF along a two-atom distance cannot be run here: `umbrella` and
+  # `metadynamics` are both built around a channel's z coordinate and a single
+  # ion (`ion`, `reference`, `z_start`/`z_end`, `cylinder`, `z_walls`), and every
+  # stage downstream - window naming, `find_window`, the FES reconstruction - is
+  # keyed on that one number. A general `coordinate: distance` mode is being
+  # agreed with the ion-channel session so both kinds of job use one set of keys
+  # rather than two bespoke ones. A hysteresis pair is what config alone buys.
+  #
+  # `extra_qm_residues: {A: [93]}` puts Gln93 in the QM region. Arg90 and Lys226
+  # are already in it (preprocess `extra_qm_residues`), but the **Q** of RQK was
+  # not, and the hypothesis under test is that RQK's charge is what holds Asp92
+  # off the metal in place of the absent Zn2 - so all three cations and the
+  # glutamine have to be described quantum-mechanically or the test is rigged
+  # against itself. Gln is neutral, so the QM charge stays +3. It goes here
+  # rather than in preprocess because this directory does not re-run preprocess:
+  # `resolve_qm_region` adds it to the saved region and rebuilds on the section's
+  # own pdb_file.
+  aspout:
+    stage: scan
+    inputs:
+      pdb_file: ../CSR_nac/md_naclong_results/NVTtrajectory_lastframe_imaged.pdb
+      atoms: [B:1:ZN, A:92:OD1]
+      start: 1.90
+      end: 3.60
+      points: 9
+      opt_maxiter: 300
+      extra_qm_residues: {A: [93]}
+      resume: true
+
+  # Needs md_wt100 to finish first. Its last frame is the only free-side
+  # structure we have that was not equilibrated with Asp92 restrained, which is
+  # the whole reason this arm can be compared with the other one.
+  aspin:
+    stage: scan
+    inputs:
+      pdb_file: md_wt100_results/NVTtrajectory_lastframe_imaged.pdb
+      atoms: [B:1:ZN, A:92:OD1]
+      start: 3.60
+      end: 1.90
+      points: 9
+      opt_maxiter: 300
+      extra_qm_residues: {A: [93]}
+      resume: true
+
+  # ===========================================================================
   # DO NOT RUN `pose2` AS WRITTEN. D126 (2026-10-29) disproved its premise.
   #
   # Pose 2 as docked has NOTHING within 7.2 A of the zinc - it is the furthest

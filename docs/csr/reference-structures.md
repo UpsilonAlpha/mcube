@@ -33,7 +33,7 @@ python refstruct.py shell 6nc5.pdb
 | zinc | donors within 3.2 Å | what it is |
 | --- | --- | --- |
 | **ZN302** | HOH485 **1.90**, His163 NE2 **2.09**, HOH493 **2.14**, His87 NE2 **2.22** | **the site we model.** Wild-type ligands |
-| ZN301 | Asp91 OD2 1.95, His92 NE2 2.01, His225 NE2 2.04, HOH493 2.08 | the Zn2 site — **present only because of the mutations**, see below |
+| ZN301 | Asp91 OD2 1.95, His92 NE2 2.01, His225 NE2 2.04, HOH493 2.08 | the Zn2 site — **present only because of the mutations**, see below. **Asp91 here is our Asp92**: the numbering is ours minus one, so the aspartate whose coordination we keep arguing about is a **Zn2 ligand** (D133) |
 | ZN303 | HOH485 1.88, HOH516 1.96, HOH504 2.13, acetate 2.79 | adventitious (3.39 Å from ZN302) |
 | ZN304–306 | Glu115/Glu141/His111/Asp129/Glu123, phosphate | adventitious surface sites |
 
