@@ -2775,6 +2775,42 @@ It also made the linear algebra far worse: **160 SVD failures in 120 steps**, ag
 Nothing resubmitted. The hysteresis test, and with it the standing of every single-direction scan in this log (D94's objection), waits on that choice; the distance PMF of D133 test 2 is unaffected only if it samples with MD rather than constrained optimisation.
 
 
+**D138 - With the substrate held, Asp92 is bidentate on the zinc in every frame and the site is six-coordinate throughout: the metal gets worse, not better, and D120's "restraint artefact" was misattributed.** (2026-10-30, job 31016877, `md_wt100b` in `/scratch/user/uquadhik/CSR_wt`)
+
+COMPLETED in 03:12:51, ended 06:22:17 on bun073. **Five** harmonic restraints, verified line by line in the `.out` against what D136 asked for - `C:2:O01`-`C:1:C4x` at 3.47 A plus the four redetected crystal donors (HOH D:1:O 1.90, His164 NE2 2.09, O01 2.14, His88 NE2 2.22), each confirmed by OpenMM's own `Adding bond restraint` lines at 50 kcal/mol/A^2. **Nothing restrained Asp92.** The run's single `[WARNING]` is mcube's own, and it was right: *"a carboxylate held that close can rotate its other oxygen on (D120)"*.
+
+**Occupancy over the whole trajectory** (`site.py shell`, 5,000 frames at 20 ps, cutoff 2.6 A), against D134's substrate-free run:
+
+| ligand | wt100b occ% | min/mean/max | wt100 (D134) occ% | min/mean/max |
+| --- | --- | --- | --- | --- |
+| OH:O01 | 100.0 | 1.82/1.94/2.09 | 100.0 | 1.82/1.94/2.12 |
+| HOH D:1:O | 100.0 | 1.93/2.08/2.27 | 100.0 | 1.92/2.07/2.27 |
+| Asp92 OD2 | 100.0 | 1.90/2.09/2.43 | 100.0 | 1.91/2.07/2.32 |
+| His164 NE2 | 100.0 | 2.03/2.24/2.53 | 100.0 | 2.01/2.20/2.46 |
+| His88 NE2 | 100.0 | 2.01/2.24/2.53 | 100.0 | 2.05/2.24/2.51 |
+| **Asp92 OD1** | **100.0** | **1.95/2.15/2.74** | **56.7** | 1.93/2.67/3.72 |
+| mer O1x | 0.0 | 3.00/3.56/4.79 | 0.0 | 3.35/3.92/5.42 |
+| Lys226 NZ | 0.0 | 3.54/4.37/5.39 | 0.0 | 3.47/3.96/5.18 |
+
+Coordination number: **mean 6.00; six in 4,998 frames (100%), five in 2. Four-coordinate: never, in a second independent 100 ns.**
+
+**The question this run existed for, answered: yes, and worse.** Asp92 OD2 is a ligand in every frame exactly as in D134, and the one donor that differs is the one that was supposed to be reassuring - **OD1 goes from 56.7% flicker at mean 2.67 A to 100% occupancy at mean 2.15 A**. The carboxylate is not monodentate with a wobble; with the substrate tethered it is **bidentate**, and the zinc carries six ligands from the first frame to the last. Holding the substrate removed the only slack in the coordination sphere.
+
+**The mechanism is the one the warning named.** The restraint fixes the nucleophile's oxygen 3.47 A from C4x, which pins O01 against the metal and stops the small excursions that let OD1 off in D134; the carboxylate then closes on what is left. So the restraint intended to keep the Michaelis complex together is also what makes the metal over-coordinated - the two cannot be separated in this model.
+
+**The substrate stayed, and still is not a Michaelis complex.** It did not dissociate as in D134: mer O1x is nearest at 3.43 A in the last frame (mean 3.56 over the run, against D134's 3.92) but never once inside 2.6 A, and the **carbonyl O2x is 5.98 A** from the zinc - closer than D134's 7.80 A and nowhere near the 2.4-3.0 A the hypothesis wants. `site.py check --at=reactant --hypothesis=carbonyl_on_metal` is **REJECTED**, five of seven failing, with the same two passes as D134: Zn-O01 1.93 A and a 102 degree Burgi-Dunitz angle. O01-C4x reads 3.65 A against its 3.47 A target, which is ordinary thermal slack on a 50 kcal/mol/A^2 harmonic, not drift.
+
+**A correction to D120, and to rule 7.** D120 condemned `md_naclong`'s shell because Asp92 OD1 sat at 1.99 A there, and rule 7 carried that forward as an artefact inherited from the restraint that held it. This run restrains **nothing** on Asp92 and puts OD1 at mean 2.15 A in 100% of 5,000 frames. The OD1 contact is therefore **not a restraint artefact**: it is what this MM model does whenever the crystal's four donors are held and the substrate is tethered, which is every production run we have. D120's other claim is untouched - that shell does not match the crystal - but the cause was misattributed, and "re-run it from a shell that matches the crystal" has now been tried twice and does not produce one.
+
+**What it does not decide, and what that costs.** Two independent 100 ns trajectories that never once leave the bound state either put the open population below roughly 0.02% at MM level or show that this MM model cannot leave it, and nothing in a trajectory separates those two - D134 said this and a second trajectory does not change it. Only the PMF (D133, test 2) does. **With D137 blocking both scan arms, the PMF is now the only instrument left for the Asp92 question**, so it moves from "costed once the hysteresis curves say whether 15-20 windows are worth it" to the next thing needing a decision.
+
+**Rate, confirming D134 rather than correcting it.** Production was 11,361.9 s for 100 ns: **0.528 ns/min, 760 ns/day** on a full H100, against D134's 11,517.7 s, 0.52 ns/min and 750 ns/day. Within 1.4% on the same system and the same card, so that figure is now measured twice and `running-on-bunya.md` needs no change. NPT converged at 10 ps.
+
+**Pruned** per D135's rule, bytes measured first: `NVTtrajectory.dcd` 2,965,840,276 (unimaged duplicate), `relaxbox_NPT{,_imaged}.dcd` 2 x 593,168,276, `OpenMMOpt_traj.xyz` 49,819,608 - **4.20 GB**. Kept `NVTtrajectory_imaged.dcd` (the table above is measured on it), every first and last frame, both checkpoints, the final state and both sim CSVs; `md_wt100b_results` 7.1 -> 2.9 GB, scratch 259 -> 255 GB, with a `DELETED.md` pointing here.
+
+**Nothing submitted.** `scan_aspin` fails both of its own preconditions anyway - the last frame is REJECTED for the substrate pose and Zn-OD1 is 2.12 A, not the 3.3 A-plus a free-Asp92 start needs - and D137's constraint problem blocks it regardless.
+
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
