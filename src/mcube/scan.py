@@ -28,6 +28,13 @@ anything not given there is taken from `scan.inputs`):
         end2: 1.0
         points2: 6
         constraints: []       # extra bonds held during the scan, [[i, j]] or [[i, j, d]]
+        rigid_water: false    # hold the active-region MM waters rigid as well. Off by
+                              # default: every scan point sets the scan bond, so the
+                              # whole constraint block is geomeTRIC `$set` and each held
+                              # water distance becomes a convergence criterion that
+                              # rigid TIP3P cannot satisfy - no point can then converge
+                              # (D137). The MM system is built with `rigidwater=False`,
+                              # so the waters relax on their own harmonic terms.
         monitor: []           # distances [[i, j], ...] reported at every point
         opt_maxiter: 200
         resume: true          # continue from scan_energies.csv if it exists
@@ -62,7 +69,7 @@ from .qmmm import (
     resolve_start_structure,
     distance,
     check_in_active,
-    water_constraints,
+    rigid_water_pairs,
     bond_constraints,
     clean_geometric_files,
     write_pdb,
@@ -214,9 +221,13 @@ def run(args) -> Dict[str, Any]:
              f"({len(order)} grid points)" if two_d else "")
           + f"; active region {len(actatoms)} atoms")
 
-    # Held at their starting values throughout (MM waters rigid, extra pairs as given)
-    held = bond_constraints(water_constraints(mm, actatoms, qm_atoms), fragment.coords) + \
+    # Held at their starting values throughout (extra pairs, and the active-region MM
+    # waters only if `rigid_water` is on - see rigid_water_pairs and D137)
+    held = bond_constraints(rigid_water_pairs(mm, actatoms, inputs, qm_atoms), fragment.coords) + \
         bond_constraints(extra, fragment.coords)
+    if held:
+        print(f"[INFO] {len(held)} distance(s) held at every point"
+              + (" (including the active-region MM waters)" if inputs.get("rigid_water") else ""))
 
     result: Dict[str, Any] = {
         "pdb_file": Path(pdb_file).resolve().as_posix(),

@@ -35,8 +35,10 @@ taken from `ts.inputs`):
         irc_method: mode
         irc_step: 0.15
         opt_maxiter: 300
-        rigid_water: true            # hold MM active-region waters rigid, as in qmmm
-                                     # minimisations (QM waters are always left free)
+        rigid_water: false           # off by default: a held water distance becomes a
+                                     # geomeTRIC `$set` convergence criterion that rigid
+                                     # TIP3P cannot satisfy (D137). QM waters are never
+                                     # constrained either way.
 
 Charge, multiplicity, force fields, xTB settings, cores and the active region
 come from qmmm.inputs; set `actatoms_file` to the reactant's active_atoms.
@@ -64,7 +66,7 @@ from .qmmm import (
     resolve_start_structure,
     distance,
     check_in_active,
-    water_constraints,
+    rigid_water_pairs,
     optimizer_constraints,
     clean_geometric_files,
     write_pdb,
@@ -153,7 +155,7 @@ def run(args) -> Dict[str, Any]:
     print(f"[INFO] Active region {len(actatoms)} atoms; Hessian over {len(hessatoms)} atoms "
           f"(~{3 * len(hessatoms) * int(inputs.get('freq_npoint', 2))} gradients per frequency job)")
 
-    water = water_constraints(mm, actatoms, qm_atoms) if inputs.get("rigid_water", True) else []
+    water = rigid_water_pairs(mm, actatoms, inputs, qm_atoms)
 
     def constraints():
         # Fresh lists each call: ASH rewrites the indices to active-region indices in place

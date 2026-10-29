@@ -535,6 +535,24 @@ def water_constraints(mm, actatoms, qm_atoms=()) -> List[list]:
             getwaterconstraintslist(openmmtheoryobject=mm, atomlist=actatoms, watermodel='tip3p')
             if int(p[0]) not in qm and int(p[1]) not in qm]
 
+def rigid_water_pairs(mm, actatoms, inputs, qm_atoms=()) -> List[list]:
+    """
+    Water pairs to hold during a gradient stage, honouring `rigid_water` (default **off**).
+
+    Rigidity is a liability in a QM/MM optimisation rather than a convenience. With any
+    user constraint present - which a scan always has - geomeTRIC's whole constraint
+    block becomes `$set`, and a `$set` water distance is a *convergence criterion*
+    checked against `convergence_cmax`; rigid TIP3P geometry cannot satisfy it, so no
+    scan point or constrained optimisation can ever be declared converged (D137). The
+    MM system is built with `rigidwater=False`, so with this off the active-region
+    waters simply relax on the force field's own harmonic terms. `rigid_water: true`
+    restores the frozen O-H/H-H pairs. The `md` stage's OpenMM `rigidWater` is a
+    different setting on a different system and is unaffected.
+    """
+    if not inputs.get("rigid_water", False):
+        return []
+    return water_constraints(mm, actatoms, qm_atoms)
+
 
 def optimizer_constraints(water_pairs, user_pairs, coords):
     """
@@ -544,8 +562,9 @@ def optimizer_constraints(water_pairs, user_pairs, coords):
     frozen ($freeze). With user constraints geomeTRIC's $set block needs a value for
     every bond, so the waters are held at their current lengths, and so are user pairs
     given without a value. A fresh list is returned each time because ASH converts the
-    indices to active-region indices in place. With neither (`rigid_water: false` and no
-    `opt_constraints`) there are no constraints at all, as Cartesian coordinates require.
+    indices to active-region indices in place. With neither (`rigid_water` off, its
+    default, and no `opt_constraints`) there are no constraints at all, as Cartesian
+    coordinates require.
     """
     if not water_pairs and not user_pairs:
         return None, False
@@ -855,8 +874,8 @@ def run(args) -> Dict[str, Any]:
         # Optional bond constraints: [[i, j]] holds the current distance, [[i, j, d_Å]] sets it
         user_pairs = inputs.get("opt_constraints") or []
         check_in_active(user_pairs, actatoms, "opt_constraints")
-        # `rigid_water: false` leaves the active-region MM waters flexible (as in ts)
-        water = water_constraints(mm, actatoms, qm_atoms) if inputs.get("rigid_water", True) else []
+        # Off by default: a $set water distance gates convergence and cannot be met (D137)
+        water = rigid_water_pairs(mm, actatoms, inputs, qm_atoms)
         constraints, constrainvalue = optimizer_constraints(water, user_pairs, fragment.coords)
         if user_pairs:
             result["opt_constraints"] = bond_constraints(user_pairs, fragment.coords)

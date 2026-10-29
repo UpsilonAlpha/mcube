@@ -188,8 +188,15 @@ unbound — binding the whole process would pin PySCF's BLAS threads to one core
 
 ## Waters in the QM region
 
-While optimising, MM waters in the active region are held rigid, but **waters in
-the QM region are left free**, so a QM water can donate or accept a proton. If
-you are studying a nucleophilic water or a proton relay, put those waters in the
-QM region (`extra_qm_residues`) and they will be able to move their hydrogens.
-`rigid_water: false` in the `ts` stage frees the MM ones too.
+While optimising, **waters in the QM region are never constrained**, so a QM
+water can donate or accept a proton. If you are studying a nucleophilic water or
+a proton relay, put those waters in the QM region (`extra_qm_residues`) and they
+will be able to move their hydrogens.
+
+The active-region **MM** waters are free as well, since `rigid_water` defaults to
+off in `qmmm`, `scan` and `ts`. Holding them rigid is a trap wherever the run also
+has a constraint of its own - a scan bond, `opt_constraints` - because geomeTRIC
+then writes the whole block as `$set` and each water distance becomes a
+convergence criterion that rigid TIP3P cannot satisfy (D137). The `md` stage's
+OpenMM `rigidWater` is a different setting and is unaffected: there the waters
+are genuinely constrained, which is what buys the long timestep.

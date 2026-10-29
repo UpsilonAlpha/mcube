@@ -758,16 +758,17 @@ sections:
   # `resolve_qm_region` adds it to the saved region and rebuilds on the section's
   # own pdb_file.
   #
-  # DO NOT RUN AS WRITTEN - job 31016878 was cancelled at point 0 of 8 after
-  # 4 h 39 m and 120 geomeTRIC steps, converged by no criterion (D137). The scan
-  # bond itself is held fine; what never satisfies is the rigid-water block,
-  # because `optimizer_constraints` switches the active-region MM waters from
-  # `$freeze` to `$set` as soon as ANY user constraint is present, and a scan
-  # always supplies one. A violated `$set` distance is checked against
-  # `convergence_cmax` (0.01) and sat at 0.069, so no point can ever converge;
-  # it also cost 160 SVD failures in 120 steps and 4.6 GB of HT.v dumps.
-  # Fix the constraint handling - or set `rigid_water: false` here, which is a
-  # methodological choice, not a bug fix - before resubmitting either arm.
+  # The first attempt at this arm (job 31016878) was cancelled at point 0 of 8
+  # after 4 h 39 m and 120 geomeTRIC steps, converged by no criterion (D137).
+  # The scan bond was held fine; what never satisfied was the rigid-water block,
+  # because `scan` held the active-region MM waters unconditionally and a scan
+  # always sets its own bond, so geomeTRIC got the whole block as `$set` - and a
+  # `$set` water distance is a convergence criterion that rigid TIP3P cannot
+  # meet (0.069 A against `convergence_cmax` 0.01). Fixed in the library rather
+  # than here: `rigid_water` now defaults to **off** for `qmmm`, `scan` and `ts`,
+  # which is what it should always have been for a QM/MM gradient stage, and
+  # `scan` honours it at all (it had no such option). The `md` stage's OpenMM
+  # `rigidWater` is untouched - that is what buys the long NVT timestep.
   aspout:
     stage: scan
     inputs:
@@ -780,22 +781,23 @@ sections:
       extra_qm_residues: {A: [93]}
       resume: true
 
-  # Needs md_wt100 to finish first. Its last frame is the only free-side
-  # structure we have that was not equilibrated with Asp92 restrained, which is
-  # the whole reason this arm can be compared with the other one.
+  # The reverse arm. **Run it only after `aspout` finishes**, because its start
+  # is aspout's own last point: Zn-OD1 at 3.60 A in the same box, same waters,
+  # same substrate. That is the hysteresis test proper - the same path walked
+  # back - and it is also the only free-Asp92 start that exists. The two MD
+  # candidates are both out: md_wt100's last frame has no substrate in the site
+  # (D134, O1x outside 2.6 A in every frame, carbonyl 7.80 A out, `site.py
+  # check` rejects it), and md_wt100b kept the substrate but closed Asp92 right
+  # down - OD1 at 2.15 A in 100% of 5,000 frames, bidentate, six-coordinate
+  # throughout (D138) - so neither offers an Asp92 that is off the metal.
   #
-  # DO NOT RUN AS WRITTEN - md_wt100 finished and its last frame has no
-  # substrate in the site (D134): mer O1x left the 2.6 A sphere in every frame
-  # and the carbonyl ends 7.80 A from the zinc, so `site.py check` rejects it.
-  # Scanning it would scan the wrong system. Give this arm a free-Asp92 start
-  # that still holds the substrate - either md_wt100 re-run with naclong's
-  # substrate restraint as its ONLY restraint, or naclong's last frame with
-  # Zn-OD1 pulled out to 3.60 first. aspout has its own, separate problem: see
-  # the note above it.
+  # If the two curves lie on each other the well near 2.0 A is real on this
+  # surface; if they separate, every single-direction scan in the log was
+  # reporting its start (D94) and only a free energy can settle it.
   aspin:
     stage: scan
     inputs:
-      pdb_file: md_wt100_results/NVTtrajectory_lastframe_imaged.pdb
+      pdb_file: protdft/scan_aspout/scan_08.pdb
       atoms: [B:1:ZN, A:92:OD1]
       start: 3.60
       end: 1.90
