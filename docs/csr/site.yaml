@@ -693,6 +693,29 @@ sections:
       properties: {Precision: mixed}
 
   # ===========================================================================
+  # ---- wt100b: the same run with the substrate held (D134). ----
+  #
+  # wt100 restrained nothing but the four detected zinc donors, and the
+  # substrate left: mer O1x outside 2.6 A in every one of 5,000 frames, the
+  # carbonyl 7.80 A out by the end. So wt100's occupancy is of a site with no
+  # substrate in it, and `aspin` has no Michaelis start to scan.
+  #
+  # This adds naclong's substrate restraint - the one Gervasoni keep through
+  # 100 ns (D92) - and nothing else. Asp92 is still free, which is the whole
+  # point of the wt100 rebuild, so the comparison with wt100 is clean: one
+  # restraint differs, and it is not on the zinc.
+  wt100b:
+    stage: md
+    inputs:
+      pdb_file: preprocess_results/finalsystem.pdb
+      coordination_redetect: true
+      restraints:
+        - [C:2:O01, C:1:C4x, 3.47]
+      nvt_time: 100000          # ps; 3 h 12 m on a full H100 (D134)
+      traj_frequency: 5000      # a frame every 20 ps; ~3 GB imaged
+      platform: CUDA
+      properties: {Precision: mixed}
+
   # `aspout` / `aspin` - is Asp92 on the zinc a basin, or the basin our scans
   # started in? (D133)
   #

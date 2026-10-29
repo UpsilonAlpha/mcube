@@ -2708,6 +2708,28 @@ Coordination number: **mean 5.57; five in 2,164 frames (43%), six in 2,836 (57%)
 **Rate, and a correction to `running-on-bunya.md`.** Production was 11,517.7 s for 100 ns: **0.52 ns/min, 750 ns/day**, on a full H100 (bun074). The 379 ns/day recorded there for `naclong` was **not measured on an H100**: job 30421166's `AllocTRES` reads `gres/gpu:nvidia_a100_80gb_pcie_4g.40gb=1`, a MIG slice of an A100 on bun004, billed 26 against this job's 100. Same system, same `traj_frequency`, twice the throughput for four times the billing - so the earlier "halve a benchmark figure" advice was fitted to a slice, not to a card.
 
 
+**D135 - Scratch pruned: 9.1 GB of redundant trajectories deleted, every last frame kept.** (2026-10-30, user: "keep an eye on the scratch allocation and delete redundant trajectories (keeping perhaps only the last frame)")
+
+Scratch was 261/300 GB with other projects writing into it, and an over-quota write fails silently (rule 8). Deleted, with the byte counts measured before removal:
+
+| file | bytes | why redundant |
+| --- | --- | --- |
+| `CSR_wt/md_wt100_results/NVTtrajectory.dcd` | 2,965,840,276 | unimaged duplicate of `NVTtrajectory_imaged.dcd`, which is what `site.py` reads |
+| `CSR_wt/md_wt100_results/relaxbox_NPT{,_imaged}.dcd` | 2 x 593,168,276 | box equilibration; only its final state feeds the NVT |
+| `CSR_wt/md_wt100_results/OpenMMOpt_traj.xyz` | 44,284,096 | minimisation path |
+| `CSR_nac/md_subst_results/NVTtrajectory.dcd` | 2,040,693,236 | job 30923516, **cancelled** (D131); `md_subst` is DO NOT RUN (D126) |
+| `CSR_nac/md_subst_results/relaxbox_NPT{,_imaged}.dcd` | 2 x 592,880,276 | same cancelled run |
+| `CSR_nac/md_nacgpu_results/NVTtrajectory{,_imaged}.dcd` | 2 x 296,584,276 | the 1 ns GPU benchmark (D100), superseded by `naclong` |
+| `CSR_nac/md_nacgpu_results/relaxbox_NPT{,_imaged}.dcd` | 2 x 593,168,276 | box equilibration |
+| `CSR_nac/md_nac_results/relaxbox_NPT.dcd` | 571,814,228 | box equilibration |
+
+**Kept:** every `*_lastframe*.pdb`/`.cif`, every checkpoint and final state, both `nvtsim.csv`/`nptsim.csv`, and **`CSR_wt/md_wt100_results/NVTtrajectory_imaged.dcd`** - D134's occupancy is measured on it, so it stays until that number is in the paper. The three `QM_MM.dcd` files (30 MB each) stay. `CSR_wt` went 6.8 -> 2.9 GB, `CSR_nac` 8.0 -> 2.8 GB; scratch reads 252 GB.
+
+Each pruned directory now holds a one-line `DELETED.md` pointing here, the convention `naclong` started on 25 Oct (D105).
+
+**Not touched, and worth a decision rather than a deletion.** The CSR work is 6 GB of a 252 GB allocation. The rest is: `channel/` 45 GB (the ion-channel session's live umbrella windows - not ours to prune), `glp1r_md/` 41 GB, `AANCA/` 26 GB, `boltzgen/` 17 GB, and **two copies of the same ESMFold2 weights**, `hf/hub/models--biohub--ESMFold2` and `.cache/huggingface/hub/models--biohub--ESMFold2`, matching blob-for-blob at about 12 GB each. Pointing `HF_HOME` at one of them would free more than everything in this entry combined.
+
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
