@@ -2589,6 +2589,37 @@ The user's question - *holding what a crystal structure already has is the point
 
 **The decision in front of the user:** kill 30923516 and rebuild from the crystal as D120 prescribed - preprocess with `cutoff: 2.5`, no Asp92 restraint, then 100 ns MM - or let it finish and take only the nucleophile reading from it, with the sphere left to the rebuilt chain. Nothing has been killed, nothing resubmitted, and no QM/MM proposed.
 
+**D131 - Job 30923516 cancelled. The audit the user asked for before rebuilding found the plan still calling the wrong zinc sphere "established", 6NC5 missing from the reference file, and the monitor gap D120 named still open. One new result: the SEQADV records prove Zn2 is vacant in the wild type.** (2026-10-29, user: "review and consolidate all your scripts and md files ... so this doesn't happen again")
+
+`scancel 30923516` at 10:31 AEST, 1 h 40 m in. Nothing resubmitted.
+
+**Why a chronological log was not enough, stated as a mechanism.** D120 wrote its own fix into its closing paragraph. One day and ten decisions later the detection was still at 3.0 A and a fresh 100 ns job was running on the shell it condemned. **A long log cannot distinguish a fix that was prescribed from one that landed**, and five entries written in between all cited D120 approvingly without checking it. So the log now opens with **`## Standing constraints`**: 18 rules, each naming its decision, what enforces it, and - for most of the measurement rules - that nothing does and it rests on someone reading them. The status line is to be updated in the same commit that changes the behaviour.
+
+**The guard, so the specific failure cannot recur silently.** `LIGAND_MAX = 2.5 A` is the longest distance at which restraining a metal-donor pair still restrains a bond. `md` now warns on every pair it is about to restrain beyond it and records them in the section's `coordination_beyond_bond_length` - **in the config, because stdout scrolls past and D120 sat unread in a `.out` for three weeks.** Configured pairs are checked as well as detected ones, because D130's own error was a hand-written 2.80 A restraint and a guard on detection alone would have missed it. Reported, never refused: a long bond may be the chemistry, and `coordination_warn_above` raises the threshold for an Ln site. Eight tests; four fail if the threshold is lifted.
+
+**What the audit found in the prose, which is the part that matters for the paper.**
+
+  - **`csr-neb-plan.md` listed the five-coordinate zinc under "what is established and not in doubt", described as "referenced to the crystal rather than to any simulation length".** It was never checked against the deposited file. That bullet is struck through in place and the Status section carries a superseding note, because the plan is the document that says what to do next and it was pointing at the artefact. Also corrected: a passage proposing as future work the crystal comparison D120 had already made.
+  - **The bullet above it is not safe either.** "The hydroxide stays on the zinc and Asp92 OD1 holds it, 2.63-3.20 A, 100% of frames" was measured with Asp92 restrained against the metal. It is the one part of the mechanism every calculation agreed on, and it has to be re-established on a correct shell before it can be cited.
+  - **`reference-structures.md` did not contain 6NC5 at all.** The file exists so every reference number is re-derivable rather than quoted, and the structure every other number is referenced against was recorded only inside a decision entry - part of why D120 took three weeks. Added first, and re-derived rather than copied: `refstruct.py shell` on a fresh download reproduces ZN302 at HOH485 1.90, His163 NE2 2.09, HOH493 2.14, His87 NE2 2.22, exactly as D120 reported.
+  - **`traj_contacts.py` still had the gap D120 named.** Gln93 OE1 carried a `- Zn` line; Asp92 carried none. OD2 at 2.98-3.60 A reports as uncoordinated, which is what a healthy site looks like, so nothing watched the oxygen that was actually on the metal. Both oxygens now have one.
+  - Smaller: `site.py`'s usage text still said it reads `michaelis_criteria` (D127 replaced it); `README.md` advertised four of `site.py`'s eight modes and omitted **`shell` and `check`** - the occupancy tool and the acceptance gate - which is why D129 proposed building a measurement that has existed since D120.
+
+**The new result, and it is a better argument than the one we were using.** Re-deriving 6NC5 showed **six** zincs, and ZN301 sits in the Zn2 pocket on Asp91 OD2 1.95, His92 NE2 2.01, His225 NE2 2.04 and the bridging HOH493, 3.43 A from ZN302. That looks like a di-zinc site. The `SEQADV` records say why it is not:
+
+```
+SEQADV 6NC5 HIS A   92  UNP  A0A384EQ6 GLN   136 ENGINEERED MUTATION
+SEQADV 6NC5 HIS A  225  UNP  A0A384EQ6 LYS   269 ENGINEERED MUTATION
+```
+
+Those are **our Gln93 and Lys226** - the Q and the K of RQK - mutated to histidine, restoring a canonical Asp-His-His Zn2 set. The construct is titled the *HARLDQ motif*. **The only way anyone has put a metal into CSR-1's Zn2 site was to engineer two of its ligands back**, and ZN302's own ligands are untouched by either mutation. That is positive structural evidence for a vacant Zn2, which is stronger than the absence of density we had been resting on, and it confirms the user's correction that ZN302 is the crystallographic position with wild-type ligands. ZN303-306 are adventitious surface sites. All six are tabulated now so the next reader measures the right one.
+
+**Also recorded in the ledger, from the user's own corrections:** CSR-1's Zn1 site is **H-R-H with two coordinating residues, not three** - Arg90 (BBL R118) stands where the third histidine would be - so the canonical-equivalent four-coordinate sphere is two His + hydroxide + one water, and an extra solvent ligand is not over-coordination until it is counted against two protein ligands. This had been corrected twice in conversation and was in the log's corrections section, but not anywhere a setup step would meet it.
+
+**One measurement worth keeping from the cancelled run:** it covered 16.66 ns in 34 minutes on `bun075`, **0.49 ns/min, against `naclong`'s 379 ns/day on the same system**. Nearly a factor of two, so a 100 ns NVT is ~3.4 h on a fast node rather than 6.3 h. Partial, from a cancelled job, so not written into `running-on-bunya.md` yet.
+
+Commits: a193b80 (guard, ledger, README), 1243df4 (plan, reference file, monitors). Suite 403 passed, 6 skipped. **The rebuild has not started.**
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
