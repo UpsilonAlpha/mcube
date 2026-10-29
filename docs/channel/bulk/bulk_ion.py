@@ -173,6 +173,61 @@ def build_box(ion: str, box_nm: float, waters=None):
     return modeller, ff
 
 
+PROTEIN_FF = ["amber14/protein.ff14SB.xml", "amber14/tip3p.xml"]
+
+
+def build_complex(ion: str, box_nm: float, frame_pdb: str, resid: str):
+    """The ion bound to a capped Glu (Ace-Glu-NMe) in a TIP3P box: the Glu, its neighbours'
+    backbone atoms (as the ACE and NME caps) and the ion's position all taken from one frame of
+    the site, so the complex starts in the site's own binding mode. The calibration of the QM/MM
+    exchange energies (docs/channel/qmmm/README.md) runs the same swaps on these boxes."""
+    import openmm
+    from openmm import unit
+    from openmm.app import ForceField, Modeller, PDBFile, Topology, element
+    pdb = PDBFile(frame_pdb)
+    chain_id, _, num = resid.partition(":")
+    res = {(r.chain.id, int(r.id)): r for r in pdb.topology.residues()}
+    glu = res[(chain_id, int(num))]
+    prev, nxt = res[(chain_id, int(num) - 1)], res[(chain_id, int(num) + 1)]
+    pos = pdb.getPositions(asNumpy=True).value_in_unit(unit.nanometer)
+    metal = next(a for a in pdb.topology.atoms() if a.residue.name in ION and len(list(a.residue.atoms())) == 1)
+    top = Topology()
+    xyz = []
+    c_ion = top.addChain("A")
+    top.addAtom(ion, element.Element.getBySymbol(ION[ion][0]), top.addResidue(ion, c_ion))
+    xyz.append(pos[metal.index])
+    c_lig = top.addChain("B")
+    # ACE <- C, O, CA of the residue before; NME <- N, H, CA of the residue after
+    for name, src, atoms in (("ACE", prev, {"C": "C", "O": "O", "CA": "CH3"}),
+                             ("GLU", glu, None),
+                             ("NME", nxt, {"N": "N", "H": "H", "CA": "C"})):
+        r = top.addResidue(name, c_lig)
+        for a in src.atoms():
+            if atoms is None or a.name in atoms:
+                top.addAtom(a.name if atoms is None else atoms[a.name], a.element, r)
+                xyz.append(pos[a.index])
+    top.createStandardBonds()
+    xyz = np.array(xyz) - np.array(xyz[0]) + box_nm / 2
+    ff = ForceField(*PROTEIN_FF)
+    modeller = Modeller(top, xyz * unit.nanometer)
+    modeller.addHydrogens(ff)
+    modeller.addSolvent(ff, model="tip3p", boxSize=openmm.Vec3(box_nm, box_nm, box_nm) * unit.nanometer,
+                        positiveIon="Na+", negativeIon="Cl-", neutralize=True)
+    return modeller, ff
+
+
+def ligand_restraint(top, ion: int, r0_A: float, k_kcal: float):
+    """Flat-bottom ion-CD restraint (zero inside r0, harmonic outside): keeps the complex bound
+    for every ion, Ca included (Ca-acetate binds weakly), without shaping the bound state."""
+    import openmm
+    cd = next(a.index for a in top.atoms() if a.residue.name == "GLU" and a.name == "CD")
+    f = openmm.CustomBondForce("step(r - r0) * k * (r - r0)^2")
+    f.addPerBondParameter("r0")
+    f.addPerBondParameter("k")
+    f.addBond(ion, cd, [r0_A / 10.0, k_kcal * 418.4])        # nm, kJ/mol/nm^2
+    return f
+
+
 def centred_positions(topology, pos_nm, box_nm, ion: int):
     """Positions with the ion at the box centre and every residue wrapped whole into the box."""
     pos = np.array(pos_nm) - np.array(pos_nm[ion]) + box_nm / 2
@@ -191,14 +246,22 @@ def run(args):
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    modeller, ff = build_box(args.ion, args.box, args.waters)
+    if args.ligand_from:
+        modeller, ff = build_complex(args.ion, args.box, args.ligand_from, args.ligand_resid)
+        forcefields = PROTEIN_FF
+    else:
+        modeller, ff = build_box(args.ion, args.box, args.waters)
+        forcefields = ["amber14/tip3p.xml"]
     top = modeller.topology
     system = ff.createSystem(top, nonbondedMethod=PME, nonbondedCutoff=1.0 * unit.nanometer,
                              constraints=HBonds, rigidWater=True)
     system.addForce(openmm.MonteCarloBarostat(1.0 * unit.bar, args.temp * unit.kelvin))
-    changed = ions.apply_metal_parameters(system, top, [args.ion], args.set,
-                                          forcefields=["amber14/tip3p.xml"])
+    changed = ions.apply_metal_parameters(system, top, [args.ion], args.set, forcefields=forcefields)
     ion = changed[0]
+    if args.ligand_from:
+        system.addForce(ligand_restraint(top, ion, args.ligand_r0, 10.0))
+        print(f"[INFO] {args.ion} + Ace-Glu-NMe from {args.ligand_from} {args.ligand_resid}; "
+              f"ion-CD flat bottom at {args.ligand_r0} A", flush=True)
     nb = next(f for f in system.getForces() if isinstance(f, openmm.NonbondedForce))
     q, sigma, eps = nb.getParticleParameters(ion)
 
@@ -351,6 +414,10 @@ def main():
     r.add_argument("--waters", type=int, help="solvate with this many waters instead of --box")
     r.add_argument("--dcd-every", type=float, help="ps between full-system frames in frames.dcd "
                    "(for docs/channel/qmmm/exchange.py); none by default")
+    r.add_argument("--ligand-from", help="a site frame PDB (with the ion): build the ion + Ace-Glu-NMe "
+                                          "complex from its Glu --ligand-resid instead of a bare ion")
+    r.add_argument("--ligand-resid", help="CHAIN:RESID of that Glu in the frame")
+    r.add_argument("--ligand-r0", type=float, default=3.6, help="A, ion-CD flat-bottom wall")
     r.add_argument("--out", required=True)
     a = sub.add_parser("analyse")
     a.add_argument("--top", required=True)

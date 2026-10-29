@@ -160,6 +160,44 @@ bash $Q/submit.sh $S/channel/qmmm both 10
 $CONDA_PREFIX/bin/python $Q/exchange.py analyse --out $S/channel/qmmm     # writes $S/channel/qmmm/report.json
 ```
 
+## Second round: answering the literature review (2026-10-30, decision log C22)
+
+The first round sampled only La- and Lu-bound frames, so Ca → Ln was one-sided. These runs make
+it two-sided, test the force-field memory of the frames, and check the method:
+
+```bash
+# 1. Ca endpoint at the site: Ca swapped into a bound La and a bound Lu frame, one 10 ns window each (GPU)
+P=$CONDA_PREFIX/bin/python; SY=$S/mcube/docs/channel/system
+$P $SY/swap_seed.py --window $S/channel/system/LA/umbrella_res_035 --frame 159 --ion CA \
+    --base $S/channel/system/CA/config.yaml --out $S/channel/system/CA_la --set k=2.5 time=10000 'frames_at=[0.0]' traj_frequency=6250
+$P $SY/swap_seed.py --window $S/channel/system/LU/umbrella_res_chbe_035 --frame 159 --ion CA \
+    --base $S/channel/system/CA/config.yaml --out $S/channel/system/CA_lu --set k=2.5 time=10000 'frames_at=[0.0]' traj_frequency=6250
+(cd $S/channel/system/CA_la && sbatch -J res_CA_la --export=ALL,FIRST=35,LAST=35,SECTION=umbrella_res $SY/umbrella_windows.slurm)
+(cd $S/channel/system/CA_lu && sbatch -J res_CA_lu --export=ALL,FIRST=35,LAST=35,SECTION=umbrella_res $SY/umbrella_windows.slurm)
+# 2. Ca bulk-water frames, as for La and Lu
+sbatch -J bulkf_CA --export=ALL,RUN=$S/channel/bulk/CA_1264_frames,NS=2,SKIP_QM=1,MMOPTS="--temp 310 --dcd-every 50" \
+    $S/mcube/docs/channel/bulk/bulk.slurm CA 1264
+# 3. A third site source with the softer La C4 (La on Glu156 only): the frames' force-field memory
+$P $Q/exchange.py frames --out $S/channel/qmmm --site LA@LAchbe=$S/channel/system/LA/umbrella_res_chbe_035 \
+    --actradius 0.5 --basis-svp ... --basis-tzvp ...
+# 4. When 1 and 2 are done: --site CA@CAla=$S/channel/system/CA_la/umbrella_res_035 --site CA@CAlu=... --water CA=$S/channel/bulk/CA_1264_frames
+# 5. Analysis with linear response (mean of the two endpoint ensembles, site and water alike):
+$P $Q/exchange.py analyse --out $S/channel/qmmm --lra lasite=CAla+LA --lra lusite=CAlu+LU --lra lachbe=CAla+LAchbe
+```
+
+Checks on the method, on copies of finished jobs (`exchange.py variant` copies the optimised geometry and
+config with new `sp` inputs; `exchange.slurm` then runs only the single point):
+
+- `variant --dest $S/channel/qmmm_d3 --set sp_dispersion=d3bj`: r2SCAN-D3(BJ) on every job.
+- `variant --dest $S/channel/qmmm_wb97xv --set sp_functional=wb97x-v --frames-per-source 2`: a range-separated hybrid
+  (no ORCA on Bunya, so no DLPNO-CCSD(T)).
+- `potential --out $S/channel/qmmm`: the far-field MM potential at the ion (site vs water, R > 8 … 30 Å), which a
+  2+ → 3+ swap picks up at 23 kcal/mol per volt in a non-periodic embedding.
+- Calibration on the protocol's own terms: `bulk_ion.py run --ligand-from <site frame.pdb> --ligand-resid A:<Glu156>`
+  puts each ion on a capped Glu (Ace-Glu-NMe, the site's own Glu and binding mode) in a TIP3P box with a flat-bottom
+  ion–CD wall; `exchange.py frames --complex ION@acION=<box>` and the same swaps give ddE for the complex, to
+  compare with the acetate experiment (La − Ca ≈ −1.5, Lu − La ≈ −0.2 kcal/mol; c4-tuning.md).
+
 ## Not verified off Bunya
 
 `frames` and `analyse` were run locally on a synthetic system: villin with La³⁺ on a Glu, every

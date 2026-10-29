@@ -308,12 +308,17 @@ HEADER = """\
 
 
 def parse_sources(items, what):
+    """{label: (ion, DIR)} from ION=DIR or ION@LABEL=DIR. The label names the source in frame
+    keys and in the analysis, so two runs with the same ion (another C4 set, a Ca seeded at a
+    La site) stay apart; it defaults to the ion."""
     out = {}
     for item in items or []:
         key, _, path = item.partition("=")
-        if key not in IONS or not path:
-            raise SystemExit(f"--{what} wants ION=DIR with ION in {sorted(IONS)}, got {item!r}")
-        out[key] = Path(path)
+        ion, _, label = key.partition("@")
+        if ion not in IONS or not path or (label and not label.isalnum()):
+            raise SystemExit(f"--{what} wants ION=DIR or ION@LABEL=DIR with ION in {sorted(IONS)} "
+                             f"and an alphanumeric LABEL, got {item!r}")
+        out[label or ion] = (ion, Path(path))
     return out
 
 
@@ -322,28 +327,33 @@ def frames(args):
     out = Path(args.out).resolve()
     out.mkdir(parents=True, exist_ok=True)
     have = {"svp": basis_elements(args.basis_svp), "tzvp": basis_elements(args.basis_tzvp)}
-    bonds = parse_sources(args.bonds_from, "bonds-from")
+    bonds = {k: p for k, (_, p) in parse_sources(args.bonds_from, "bonds-from").items()}
     plan = []
     for kind, sources, top_name, dcd_name, n, spacing, start, ff, anchor in (
             ("site", parse_sources(args.site, "site"), "start.pdb", "window.dcd", args.n,
              args.spacing_ns, args.start, args.site_forcefields or SITE_FF, "protein"),
+            # a bulk box holding a ligand bound to the ion (bulk_ion.py --ligand-from): read like a
+            # water box, analysed as a site (the calibration of docs/channel/qmmm/README.md)
+            ("site", parse_sources(args.complex, "complex"), "system.pdb", args.water_dcd,
+             args.water_n, args.water_spacing_ns, args.water_start,
+             args.site_forcefields or SITE_FF, "ion"),
             ("water", parse_sources(args.water, "water"), "system.pdb", args.water_dcd,
              args.water_n, args.water_spacing_ns, args.water_start,
              args.water_forcefields or WATER_FF, "ion")):
-        for src, path in sources.items():
-            plan.append((kind, src, path, top_name, dcd_name, n, spacing, start, ff, anchor))
+        for src, (src_ion, path) in sources.items():
+            plan.append((kind, src, src_ion, path, top_name, dcd_name, n, spacing, start, ff, anchor))
     if not plan:
-        raise SystemExit("nothing to do: give --site and/or --water")
+        raise SystemExit("nothing to do: give --site, --complex and/or --water")
 
     meta = json.loads((out / "frames.json").read_text()) if (out / "frames.json").exists() else {}
     lists = {"site": [], "water": []}
-    for kind, src, path, top_name, dcd_name, n, spacing, start, ff, anchor in plan:
+    for kind, src, src_ion, path, top_name, dcd_name, n, spacing, start, ff, anchor in plan:
         from mdtraj.formats import DCDTrajectoryFile
         dcd = path / dcd_name
         topology = load_topology(path / top_name, bonds.get(src) if kind == "site" else None)
         ion = find_ion(topology)
-        if ion.residue.name != src:
-            raise SystemExit(f"{path} carries {ion.residue.name}, not {src}")
+        if ion.residue.name != src_ion:
+            raise SystemExit(f"{path} carries {ion.residue.name}, not {src_ion}")
         with DCDTrajectoryFile(str(dcd)) as fh:
             n_total = len(fh)
         dt = frame_spacing_ps(path, kind, n_total,
@@ -369,7 +379,8 @@ def frames(args):
                     raise SystemExit(f"{kind} {src} frame {index}: QM elements {sorted(elems - got)} "
                                      f"have no basis in the {label} file")
             frame_key = f"{src}_f{index:04d}"
-            entry = {"kind": kind, "source": src, "source_dir": str(path.resolve()),
+            entry = {"kind": kind, "source": src, "source_ion": src_ion,
+                     "source_dir": str(path.resolve()),
                      "frame": index, "time_ns": round((index + 1) * dt / 1000, 3),
                      "qm_residues": residues, "coordination": coord, "notes": notes,
                      "residue_charge": res_charge, "qm_elements": sorted(elems), "jobs": {}}
@@ -442,8 +453,8 @@ def job_energies(job: Path):
     if detected is not None:
         norm = lambda d: {str(c): sorted(int(r) for r in v) for c, v in d.items() if v}
         same = norm(detected) == norm(given)
-    return {"sp": s.get("sp_energy"), "opt": q.get("opt_energy"), "converged": q.get("converged"),
-            "preprocess_agrees": same}
+    return {"sp": s.get("sp_energy"), "sp_disp": s.get("sp_energy_disp"), "opt": q.get("opt_energy"),
+            "converged": q.get("converged"), "preprocess_agrees": same}
 
 
 def stats(values):
@@ -463,15 +474,22 @@ def analyse(args):
                    "opt": "QM/MM optimisation energy (opt level, def2-SVP by default)"}
     report = {"note": "kcal/mol; dE = E(M2) - E(M1) on one frame; ddE = <dE>_site - <dE>_water; "
                       "negative = the site prefers M2. Gas-phase QM with electrostatic embedding; "
-                      "no thermal terms.", "frames": {}, "levels": {}}
+                      "no thermal terms. lra = linear response, the mean of <dE> sampled with M1 "
+                      "and with M2 (site and water alike).", "frames": {}, "levels": {}}
     per = {}       # (level, kind, source, pair) -> [dE]
+    src_ion = {}   # (kind, source) -> the ion the source was sampled with
+    levels = [l for l in ("sp", "sp_disp", "opt")
+              if any((job_energies(Path(p)) or {}).get(l) is not None
+                     for entry in meta.values() for p in entry["jobs"].values())]
+    level_names["sp_disp"] = level_names["sp"] + " + D3(BJ) on the QM region"
     for key, entry in sorted(meta.items()):
+        src_ion[(entry["kind"], entry["source"])] = entry.get("source_ion", entry["source"])
         e = {ion: job_energies(Path(p)) for ion, p in entry["jobs"].items()}
         row = {"time_ns": entry["time_ns"], "qm_residues": entry["qm_residues"],
                "converged": {i: (v or {}).get("converged") for i, v in e.items()},
                "preprocess_agrees": {i: (v or {}).get("preprocess_agrees") for i, v in e.items()},
                "dE": {}}
-        for level in ("sp", "opt"):
+        for level in levels:
             for m1, m2 in EXCHANGES:
                 a, b = e.get(m1), e.get(m2)
                 ok = a and b and a[level] is not None and b[level] is not None
@@ -483,8 +501,12 @@ def analyse(args):
                 row["dE"].setdefault(level, {})[f"{m1}->{m2}"] = round(d, 2)
                 per.setdefault((level, entry["kind"], entry["source"], f"{m1}->{m2}"), []).append(d)
         report["frames"][key] = row
-    for level in ("sp", "opt"):
-        lv = {"what": level_names[level], "site": {}, "water": {}, "ddE": {}}
+    lra_sets = {}
+    for item in args.lra or []:
+        name, _, members = item.partition("=")
+        lra_sets[name] = members.split("+")
+    for level in levels:
+        lv = {"what": level_names[level], "site": {}, "water": {}, "ddE": {}, "lra": {}}
         for m1, m2 in EXCHANGES:
             pair = f"{m1}->{m2}"
             pooled = {}
@@ -494,19 +516,57 @@ def analyse(args):
                 allv = [d for (l, k, src, p), v in per.items()
                         if l == level and k == kind and p == pair for d in v]
                 pooled[kind] = stats(allv)
-                lv[kind][pair] = {"by_source": rows, "all": pooled[kind]}
+                # frames of one source are correlated (contacts that never break), so the spread
+                # of the per-source means is the honest error of the pooled mean
+                means = [st["mean"] for st in rows.values() if st]
+                lv[kind][pair] = {"by_source": rows, "all": pooled[kind],
+                                  "sd_between_sources": round(float(np.std(means, ddof=1)), 2)
+                                  if len(means) > 1 else None}
             dd = {}
             if pooled["site"] and pooled["water"]:
                 dd["all"] = ddE(pooled["site"], pooled["water"])
                 for src, st in lv["site"][pair]["by_source"].items():
-                    wst = lv["water"][pair]["by_source"].get(src)
-                    if st and wst:
-                        dd[f"{src} frames"] = ddE(st, wst)
+                    # a site source is referenced to the water sampled with the same ion
+                    w = water_by_ion(lv["water"][pair]["by_source"], src_ion, src_ion.get(("site", src)))
+                    if st and w:
+                        dd[f"{src} frames"] = ddE(st, w)
             lv["ddE"][pair] = dd
+            for name, members in lra_sets.items():
+                ions = [src_ion.get(("site", s)) for s in members]
+                if sorted(ions) != sorted([m1, m2]):
+                    continue
+                site = [lv["site"][pair]["by_source"].get(s) for s in members]
+                water = [water_by_ion(lv["water"][pair]["by_source"], src_ion, i) for i in ions]
+                if all(site) and all(water):
+                    lv["lra"][f"{pair} {name}"] = lra(site, water)
         report["levels"][level] = lv
     (out / "report.json").write_text(json.dumps(report, indent=1))
     print_report(report)
     print(f"\n{out / 'report.json'}")
+
+
+def water_by_ion(by_source, src_ion, ion):
+    """The water statistics of the sources sampled with `ion`, pooled (weighted by n)."""
+    rows = [st for src, st in by_source.items() if st and src_ion.get(("water", src)) == ion]
+    if not rows:
+        return None
+    if len(rows) == 1:
+        return rows[0]
+    n = sum(r["n"] for r in rows)
+    mean = sum(r["mean"] * r["n"] for r in rows) / n
+    sem = math.sqrt(sum((r["sem"] or 0) ** 2 * r["n"] ** 2 for r in rows)) / n
+    return {"n": n, "mean": round(mean, 2), "sd": None, "sem": round(sem, 2)}
+
+
+def lra(site, water):
+    """Linear-response exchange energy: the mean of the two endpoint ensembles' <dE>, at the
+    site and in water, so the environment's reorganisation to each ion enters (Warshel's LRA)."""
+    half = lambda a, b: (0.5 * (a["mean"] + b["mean"]),
+                         0.5 * math.hypot(a["sem"] or 0, b["sem"] or 0))
+    (s, se), (w, we) = half(*site), half(*water)
+    return {"ddE": round(s - w, 2), "err": round(math.hypot(se, we), 2),
+            "site_endpoints": [x["mean"] for x in site], "water_endpoints": [x["mean"] for x in water],
+            "site": round(s, 2), "water": round(w, 2)}
 
 
 def ddE(site, water):
@@ -658,6 +718,117 @@ def clean(args):
         print("left alone (not final, or not in structure.json): " + ", ".join(kept))
 
 
+def variant(args):
+    """Copy finished jobs (optimised geometry and config) to --dest with new `sp` inputs, so a
+    different single point (another functional, D3) runs on the same geometries without touching
+    the originals. Writes dest/frames.json and dest/jobs_<kind>.txt; exchange.slurm then runs only
+    the sp stage (preprocess and qmmm results are in the copied config)."""
+    import shutil
+    import yaml
+    out, dest = Path(args.out).resolve(), Path(args.dest).resolve()
+    meta = json.loads((out / "frames.json").read_text())
+    sets = {}
+    for item in args.set or []:
+        k, _, v = item.partition("=")
+        sets[k] = yaml.safe_load(v)
+    keep = set(args.sources or [])
+    taken, new_meta, lists = {}, {}, {"site": [], "water": []}
+    for key, entry in sorted(meta.items()):
+        if keep and entry["source"] not in keep:
+            continue
+        group = (entry["kind"], entry["source"])
+        if args.frames_per_source and taken.get(group, 0) >= args.frames_per_source:
+            continue
+        jobs = {}
+        for ion, p in entry["jobs"].items():
+            src = Path(p)
+            e = job_energies(src) or {}
+            if e.get("sp") is None:
+                continue
+            job = dest / entry["kind"] / Path(key).name / ion
+            job.mkdir(parents=True, exist_ok=True)
+            for name in ("QM_MM_optimized.pdb", "frame.pdb"):
+                shutil.copy2(src / name, job / name)
+            cfg = yaml.safe_load((src / "config.yaml").read_text())
+            cfg["sp"]["inputs"].update(sets)
+            cfg["sp"].pop("results", None)
+            (job / "config.yaml").write_text(yaml.safe_dump(cfg, sort_keys=False))
+            jobs[ion] = job.as_posix()
+            lists[entry["kind"]].append(job.as_posix())
+        if len(jobs) == len(entry["jobs"]):
+            taken[group] = taken.get(group, 0) + 1
+            new_meta[key] = {**entry, "jobs": jobs}
+    (dest / "frames.json").write_text(json.dumps(new_meta, indent=1))
+    for kind, jobs in lists.items():
+        if jobs:
+            (dest / f"jobs_{kind}.txt").write_text("\n".join(jobs) + "\n")
+            print(f"{dest / f'jobs_{kind}.txt'}: {len(jobs)} jobs")
+    print(f"sp inputs set: {sets}; {len(new_meta)} frames")
+
+
+COULOMB_V_A = 14.399645       # V Å per e: the potential of 1 e at 1 Å
+EV_KCAL = 23.060548           # kcal/mol per (e x V)
+
+
+def potential(args):
+    """Far-field MM potential at the ion, as the non-periodic embedding sees it (raw positions,
+    every MM point charge, no images): phi(R) = sum over MM atoms beyond R of q / r. The QM atoms
+    all sit within ~6 Å, so beyond R >= 8 Å this is exactly what ASH embeds. A 2+ -> 3+ swap
+    picks up Δq·phi, so a site-vs-water difference of the far field that is not the protein's
+    own (membrane dipole, slab and cube surfaces, net charge of the embedded set) enters ddE at
+    23 kcal/mol per volt (Rocklin et al., J. Chem. Phys. 2013, 139, 184103)."""
+    import yaml
+    from openmm import NonbondedForce, unit
+    from openmm.app import ForceField, Modeller, NoCutoff, PDBFile
+    out = Path(args.out).resolve()
+    meta = json.loads((out / "frames.json").read_text())
+    radii = [float(r) for r in args.radii]
+    rows, groups = {}, {}
+    for key, entry in sorted(meta.items()):
+        ion = entry.get("source_ion", entry["source"])
+        job = Path(entry["jobs"].get(ion) or next(iter(entry["jobs"].values())))
+        cfg = yaml.safe_load((job / "config.yaml").read_text())
+        pdb = PDBFile(str(job / "frame.pdb"))
+        target = find_ion(pdb.topology)
+        r_ion = np.array(pdb.positions[target.index].value_in_unit(unit.angstrom))
+        mod = Modeller(pdb.topology, pdb.positions)
+        mod.delete([target.residue])
+        system = ForceField(*cfg["qmmm"]["inputs"]["forcefields"]).createSystem(
+            mod.topology, nonbondedMethod=NoCutoff)
+        nb = next(f for f in system.getForces() if isinstance(f, NonbondedForce))
+        q = np.array([nb.getParticleParameters(i)[0].value_in_unit(unit.elementary_charge)
+                      for i in range(nb.getNumParticles())])
+        xyz = np.array(mod.positions.value_in_unit(unit.angstrom))
+        r = np.linalg.norm(xyz - r_ion, axis=1)
+        comp = np.array([("water" if a.residue.name in WATER else "lipid" if a.residue.name in LIPIDS
+                          else "protein" if a.residue.name in AMINO_ACIDS else "ions")
+                         for a in mod.topology.atoms()])
+        row = {"kind": entry["kind"], "source": entry["source"], "net_charge": round(float(q.sum()), 3),
+               "r_max_A": round(float(r.max()), 1),
+               "phi_V": {f"{R:g}": round(float(COULOMB_V_A * (q[r > R] / r[r > R]).sum()), 4) for R in radii},
+               "by_component_V": {c: {f"{R:g}": round(float(COULOMB_V_A * (q[(r > R) & (comp == c)]
+                                                                         / r[(r > R) & (comp == c)]).sum()), 4)
+                                      for R in radii} for c in sorted(set(comp))}}
+        rows[key] = row
+        groups.setdefault((entry["kind"], entry["source"]), []).append(row)
+    summary = {}
+    for (kind, src), rs in sorted(groups.items()):
+        summary[f"{kind} {src}"] = {
+            "n": len(rs), "net_charge": rs[0]["net_charge"],
+            "phi_V": {k: round(float(np.mean([x["phi_V"][k] for x in rs])), 4) for k in rs[0]["phi_V"]},
+            "phi_sd_V": {k: round(float(np.std([x["phi_V"][k] for x in rs])), 4) for k in rs[0]["phi_V"]}}
+    res = {"note": "phi(R): potential at the ion from MM charges beyond R (V), raw positions as "
+                   "the non-periodic embedding sees them; a 1 e change of the ion's charge picks up "
+                   f"{EV_KCAL:.2f} kcal/mol per V", "frames": rows, "summary": summary}
+    (out / "potential.json").write_text(json.dumps(res, indent=1))
+    print("phi(R) at the ion, V (mean over frames; sd)")
+    print(f"{'':16s}" + "".join(f"{'R>' + k:>16s}" for k in summary[next(iter(summary))]["phi_V"]))
+    for name, s in summary.items():
+        print(f"{name:16s}" + "".join(f"{v:9.3f} ({s['phi_sd_V'][k]:.3f})" for k, v in s["phi_V"].items())
+              + f"   net {s['net_charge']:+.2f} e")
+    print(f"\n{out / 'potential.json'}")
+
+
 def print_report(report):
     for key, row in report["frames"].items():
         de = row["dE"].get("sp", {})
@@ -674,7 +845,13 @@ def print_report(report):
             line = f"{pair:8s} site {fmt(s)}  water {fmt(w)}"
             if dd:
                 line += "  ddE " + "; ".join(f"{k} {v['ddE']:+.2f} +- {v['err']}" for k, v in dd.items())
+            sb = lv["site"][pair].get("sd_between_sources")
+            if sb is not None:
+                line += f"  (site sd between sources {sb})"
             print(line)
+        for name, v in lv.get("lra", {}).items():
+            print(f"  LRA {name}: ddE {v['ddE']:+.2f} +- {v['err']}  (site endpoints "
+                  f"{v['site_endpoints']}, water endpoints {v['water_endpoints']})")
 
 
 def main():
@@ -684,6 +861,9 @@ def main():
     f.add_argument("--out", required=True)
     f.add_argument("--site", action="append", help="ION=umbrella window dir (start.pdb, window.dcd)")
     f.add_argument("--water", action="append", help="ION=bulk run dir (system.pdb, --water-dcd)")
+    f.add_argument("--complex", action="append",
+                   help="ION@LABEL=bulk run dir with a bound ligand (bulk_ion.py --ligand-from), "
+                        "read like --water and analysed as a site")
     f.add_argument("--bonds-from", action="append",
                    help="ION=processed_pdb whose bonds a site start.pdb lacks (F10)")
     f.add_argument("--ions", nargs="+", default=list(IONS), choices=sorted(IONS))
@@ -718,9 +898,21 @@ def main():
     a = sub.add_parser("analyse")
     a.add_argument("--out", required=True)
     a.add_argument("--include-unconverged", action="store_true")
+    a.add_argument("--lra", action="append",
+                   help="NAME=SRC1+SRC2: two site sources sampled with the two ions of an exchange "
+                        "(e.g. lasite=CAla+LA); their LRA ddE is reported per exchange")
     s = sub.add_parser("structure")
     s.add_argument("--out", required=True)
     s.add_argument("--cutoff", type=float, default=3.1, help="Å, ion-O shell")
+    v = sub.add_parser("variant")
+    v.add_argument("--out", required=True)
+    v.add_argument("--dest", required=True)
+    v.add_argument("--set", action="append", help="KEY=VALUE for sp.inputs (YAML value)")
+    v.add_argument("--sources", nargs="+", help="only these source labels")
+    v.add_argument("--frames-per-source", type=int, help="only the first N frames of each source")
+    pt = sub.add_parser("potential")
+    pt.add_argument("--out", required=True)
+    pt.add_argument("--radii", nargs="+", default=["8", "10", "15", "20", "30"])
     c = sub.add_parser("clean")
     c.add_argument("--out", required=True)
     c.add_argument("--delete", action="store_true", help="delete (default: dry run)")
@@ -732,6 +924,10 @@ def main():
         structure(args)
     elif args.action == "clean":
         clean(args)
+    elif args.action == "variant":
+        variant(args)
+    elif args.action == "potential":
+        potential(args)
     else:
         analyse(args)
 
