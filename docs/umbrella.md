@@ -17,6 +17,46 @@ point of F(z) relative to bulk water is the barrier to permeation.
 `z` is always the ion's height relative to the centre of mass of the atoms you name as the
 `reference` (normally the channel's Cα atoms), along the membrane normal (the z axis).
 
+## Two coordinates: a channel's z, or a distance between two atoms
+
+Everything below is written for the channel case, which is what this stage was built for and
+what `coordinate: z` (the default) does. The same windows, bias, seeding and WHAM also run
+along the **separation of two named atoms**:
+
+```yaml
+umbrella_asp:
+  stage: umbrella
+  inputs:
+    coordinate: distance
+    atoms: [B:1:ZN, A:92:OD1]    # exactly two, mcube's usual selectors
+    cv_start: 1.9                 # A; `z_start`/`z_end` still work for a z section
+    cv_end: 3.6
+    spacing: 0.1
+    k: 50                         # kcal/mol/A^2
+    engine: qmmm
+```
+
+That is what a metal-ligand PMF needs: whether a carboxylate sits on a zinc, and with what
+population, rather than how an ion crosses a membrane. Differences from the z case:
+
+- **No `ion`, `reference`, `cylinder` or `z_walls`.** They describe a channel geometry, and
+  setting one alongside a distance CV raises rather than being ignored - a leftover
+  `reference` would otherwise mean the config says one thing and the run biases another.
+- **No `pull`.** A steered pull makes sense along a channel axis; for a distance, give each
+  window a `seed` structure already at its centre (a `scan` section's optimised points are
+  ideal) and run the windows directly.
+- **The QM region is mcube's ordinary one** - `qm_residues` / `extra_qm_residues`, resolved
+  exactly as the `qmmm` and `scan` stages resolve it - rather than the nearest waters around
+  a moving ion. So a QM/MM window uses the same active site as the rest of the project.
+- **A biased pair is dropped from the coordination restraints.** Those two forces would
+  simply add, and WHAM is only told about the bias, so the window's effective spring would
+  not be the one in the config.
+
+`cv.csv` holds a `distance_A` column where a z run holds `z_A` and `r_A`, and the PMF comes
+out keyed the same way. Window entries record `cv0`, `coordinate`, `spacing` and a `units`
+block; a z run also writes `z0`, so configs and results from before this existed read back
+unchanged. Mixing coordinates in one section is refused: a PMF is along one CV.
+
 ## The two levels of theory
 
 | leg | model | where | cost | config section |

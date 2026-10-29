@@ -70,6 +70,16 @@ BIAS_GROUP = 31
 BIAS_NAME = "mcube_umbrella"
 COORDINATION_NAME = "mcube_coordination"
 
+# The collective variable a section biases. `z` is the channel case this stage was
+# written for: the ion's displacement along z from a reference group's centre.
+# `distance` is the separation of two named atoms, which is what a metal-ligand PMF
+# needs (CSR-1's Zn-Asp92 OD1, D133) - the same windows, bias, seeding and WHAM, one
+# different CV. Everything that used to be named after z reads and writes `cv0` now,
+# with `z0`/`z_start`/`z_end` kept as aliases so existing channel configs and their
+# saved windows keep working untouched.
+COORDINATES = ("z", "distance")
+Z_ONLY = ("ion", "reference", "cylinder", "z_walls")
+
 DEFAULTS = {
     "k": 10.0,                # kcal/mol/A^2
     "engine": "mm",
@@ -104,11 +114,44 @@ def temperature_of(inputs: Dict[str, Any], md: Dict[str, Any]) -> float:
     return float(inputs.get("temp", (md.get("inputs") or {}).get("temp", 300.0)))
 
 
+def coordinate_of(inputs: Dict[str, Any]) -> str:
+    """Which collective variable this section biases: `z` (the default) or `distance`."""
+    name = str(inputs.get("coordinate", "z")).lower()
+    if name not in COORDINATES:
+        raise ValueError(f"umbrella `coordinate` must be one of {list(COORDINATES)}, got {name!r}")
+    return name
+
+
+def to_openmm(k: float, cv0: float):
+    """(k, cv0) in config units -> OpenMM's: kcal/mol/A^2 -> kJ/mol/nm^2, A -> nm.
+
+    Both coordinates convert here and nowhere else, so the z and distance paths
+    cannot drift apart on units - a silent factor of 10 in cv0, or of 418.4 in k,
+    would be invisible in the output and wrong in the PMF.
+    """
+    return float(k) * TO_KJ_NM2, float(cv0) / 10.0
+
+
+def cv_bounds(inputs: Dict[str, Any]):
+    """(start, end) of the window range in A, from `cv_start`/`cv_end`, or the
+    `z_start`/`z_end` a channel config already uses. One spelling or the other."""
+    out = []
+    for neutral, alias in (("cv_start", "z_start"), ("cv_end", "z_end")):
+        if inputs.get(neutral) is not None and inputs.get(alias) is not None:
+            raise ValueError(f"umbrella: give `{neutral}` or `{alias}`, not both")
+        value = inputs.get(neutral, inputs.get(alias))
+        if value is None:
+            raise KeyError(f"umbrella needs `{neutral}` (or `{alias}`)")
+        out.append(float(value))
+    return out[0], out[1]
+
+
 def window_centres(inputs: Dict[str, Any]) -> List[float]:
-    """Window centres in A, from z_start to z_end inclusive, `spacing` apart."""
-    start, end, spacing = (float(inputs[k]) for k in ("z_start", "z_end", "spacing"))
+    """Window centres in A, from cv_start to cv_end inclusive, `spacing` apart."""
+    start, end = cv_bounds(inputs)
+    spacing = float(inputs["spacing"])
     if spacing <= 0 or end <= start:
-        raise ValueError("umbrella needs z_start < z_end and spacing > 0")
+        raise ValueError("umbrella needs cv_start < cv_end and spacing > 0")
     n = int(round((end - start) / spacing)) + 1
     return [round(start + i * spacing, 6) for i in range(n)]
 
@@ -121,10 +164,17 @@ def section_windows(config: str, section: str) -> Dict[str, Dict[str, Any]]:
     return ((load_section(config, section).get("results") or {}).get("windows")) or {}
 
 
-def find_window(config: str, section: str, z0: float) -> Optional[Dict[str, Any]]:
-    """The window entry of `section` centred on z0, if there is one."""
+def entry_cv0(entry: Dict[str, Any]) -> Optional[float]:
+    """A saved window's centre: `cv0`, else the `z0` older channel runs wrote."""
+    value = entry.get("cv0", entry.get("z0"))
+    return None if value is None else float(value)
+
+
+def find_window(config: str, section: str, cv0: float) -> Optional[Dict[str, Any]]:
+    """The window entry of `section` centred on cv0, if there is one."""
     for entry in section_windows(config, section).values():
-        if entry.get("z0") is not None and abs(float(entry["z0"]) - z0) < 1e-6:
+        saved = entry_cv0(entry)
+        if saved is not None and abs(saved - cv0) < 1e-6:
             return entry
     return None
 
@@ -287,9 +337,56 @@ def cn_cv(ion: int, atoms, cutoff: float = 3.0):
     return cn
 
 
-def bias_force(ion: int, reference, k: float, z0: float, cylinder=None, masses=None,
-               cn_groups=None, cn_cutoff: float = 3.0):
-    """The umbrella: 0.5 k (z - z0)^2 + 0.5 k_cyl max(0, r - R)^2 (k in kcal/mol/A^2, A).
+def cv_pair(topology, inputs: Dict[str, Any]) -> List[int]:
+    """The two atoms of a `distance` CV, from `atoms: [chain:resid:atom, ...]`.
+
+    Exactly two, and none of the z-only keys may be set with them: a `cylinder` or a
+    `reference` left in the config alongside a distance CV means the config was
+    half-converted, and silently ignoring it would bias a coordinate nobody asked for.
+    """
+    atoms = inputs.get("atoms")
+    if not atoms or len(list(atoms)) != 2:
+        raise ValueError("umbrella `coordinate: distance` needs `atoms` with exactly two "
+                         f"selectors, got {atoms!r}")
+    also = [key for key in Z_ONLY if inputs.get(key) is not None]
+    if also:
+        raise ValueError(f"umbrella `coordinate: distance` cannot use {also}: those describe a "
+                         "channel's z coordinate (an ion, a reference group, a cylinder or "
+                         "walls). Remove them, or use `coordinate: z`.")
+    return [int(a) for a in resolve_atoms(list(atoms), topology)]
+
+
+def distance_cv(pair):
+    """|r_i - r_j| in nm, as a CV for the bias; one instance per use."""
+    import openmm
+    force = openmm.CustomBondForce("r")
+    force.addBond(int(pair[0]), int(pair[1]), [])
+    force.setUsesPeriodicBoundaryConditions(True)
+    return force
+
+
+def distance_values(coords, pair, box) -> np.ndarray:
+    """|r_i - r_j| in A per frame, minimum image on an orthorhombic box.
+
+    `coords` is (frames, atoms, 3) or (atoms, 3) in A, as `displacement` takes it.
+    """
+    coords = np.asarray(coords, dtype=float)
+    if coords.ndim == 2:
+        coords = coords[None]
+    box = np.broadcast_to(np.asarray(box, dtype=float), (coords.shape[0], 3))
+    d = coords[:, int(pair[0]), :] - coords[:, int(pair[1]), :]
+    d = d - box * np.round(d / box)
+    return np.linalg.norm(d, axis=1)
+
+
+def bias_force(ion: int, reference, k: float, cv0: float, cylinder=None, masses=None,
+               cn_groups=None, cn_cutoff: float = 3.0, coordinate: str = "z", pair=None):
+    """The umbrella: 0.5 k (CV - cv0)^2 (k in kcal/mol/A^2, cv0 in A).
+
+    `coordinate: "z"` is the channel form, 0.5 k (z - cv0)^2 + 0.5 k_cyl max(0, r - R)^2,
+    where z and r come from the ion and the reference centre. `coordinate: "distance"`
+    biases |r_i - r_j| for the two atoms in `pair` and takes no cylinder: there is no
+    axis for one, and the pair is two named atoms rather than an ion in a solvent.
 
     The reference centre is weighted by element masses (`masses`, per atom), not by
     the System's, which carry repartitioned hydrogen masses: the analysis computes
@@ -301,27 +398,47 @@ def bias_force(ion: int, reference, k: float, z0: float, cylinder=None, masses=N
     log its hydration state as cheaply as it logs z, and could be biased later.
     """
     import openmm
-    cyl = cylinder or {}
-    force = openmm.CustomCVForce("0.5*mcube_us_k*(zcv-mcube_us_z0)^2"
-                                 " + 0.5*mcube_cyl_k*max(0, rcv-mcube_cyl_r)^2")
-    force.addCollectiveVariable("zcv", centroid_cv("z2-z1", ion, reference, masses))
-    force.addCollectiveVariable("rcv", centroid_cv("sqrt((x2-x1)^2+(y2-y1)^2)", ion, reference, masses))
+    k_kj, cv0_nm = to_openmm(k, cv0)
+    if coordinate == "distance":
+        if cylinder:
+            raise ValueError("umbrella `cylinder` is for the z coordinate only; a distance CV "
+                             "has no axis to confine around")
+        force = openmm.CustomCVForce("0.5*mcube_us_k*(dcv-mcube_us_cv0)^2")
+        force.addCollectiveVariable("dcv", distance_cv(pair))
+    else:
+        cyl = cylinder or {}
+        force = openmm.CustomCVForce("0.5*mcube_us_k*(zcv-mcube_us_cv0)^2"
+                                     " + 0.5*mcube_cyl_k*max(0, rcv-mcube_cyl_r)^2")
+        force.addCollectiveVariable("zcv", centroid_cv("z2-z1", ion, reference, masses))
+        force.addCollectiveVariable("rcv",
+                                    centroid_cv("sqrt((x2-x1)^2+(y2-y1)^2)", ion, reference, masses))
+        force.addGlobalParameter("mcube_cyl_k", float(cyl.get("k", 0.0)) * TO_KJ_NM2)
+        force.addGlobalParameter("mcube_cyl_r", float(cyl.get("radius", 1000.0)) / 10.0)
     for name, atoms in (cn_groups or {}).items():
         force.addCollectiveVariable(f"cn_{name}", cn_cv(ion, atoms, cn_cutoff))
-    force.addGlobalParameter("mcube_us_k", float(k) * TO_KJ_NM2)
-    force.addGlobalParameter("mcube_us_z0", float(z0) / 10.0)
-    force.addGlobalParameter("mcube_cyl_k", float(cyl.get("k", 0.0)) * TO_KJ_NM2)
-    force.addGlobalParameter("mcube_cyl_r", float(cyl.get("radius", 1000.0)) / 10.0)
+    force.addGlobalParameter("mcube_us_k", k_kj)
+    force.addGlobalParameter("mcube_us_cv0", cv0_nm)
     force.setName(BIAS_NAME)
     force.setForceGroup(BIAS_GROUP)
     return force
 
 
-def coordination_force(pdb_file: str, preprocess_inputs: Dict[str, Any]):
+def coordination_force(pdb_file: str, preprocess_inputs: Dict[str, Any], exclude_pair=None):
     """Harmonic restraints on the shell preprocess would detect in this frame, at the
-    distances it has. Returns (force, shell)."""
+    distances it has. Returns (force, shell).
+
+    `exclude_pair` drops the pair the umbrella is biasing. A coordination restraint and
+    the bias on the same metal-donor pair simply add, so the window would equilibrate
+    towards the detected distance while WHAM is told only about the bias - the window's
+    effective force constant would not be the one in the config, and the error would be
+    invisible in the output.
+    """
     import openmm
     shell = coordination_shell(pdb_file, preprocess_inputs)
+    skip = {frozenset(int(a) for a in exclude_pair)} if exclude_pair else set()
+    if skip:
+        shell = [row for row in shell
+                 if frozenset((int(row["metal_index"]), int(row["donor_index"]))) not in skip]
     force = openmm.CustomBondForce("0.5*k_coord*(r-r0_coord)^2")
     force.addPerBondParameter("k_coord")
     force.addPerBondParameter("r0_coord")
@@ -500,9 +617,16 @@ def write_coords_pdb(topology, coords_A, filename: str) -> str:
 
 
 def cv_now(force, context):
-    """(z, r) in A, then the coordination numbers in the order the groups were given."""
+    """The bias's collective variables, lengths in A, in the order they were added.
+
+    (z, r) for the channel coordinate or a single distance for `coordinate: distance`,
+    then one coordination number per `cn_` group. Which values are lengths is read off
+    the CV names rather than assumed by position, so the two coordinates - and any
+    later CV - cannot be scaled by the wrong factor.
+    """
     values = force.getCollectiveVariableValues(context)
-    return (10.0 * values[0], 10.0 * values[1], *values[2:])
+    names = [force.getCollectiveVariableName(i) for i in range(force.getNumCollectiveVariables())]
+    return tuple(v if n.startswith("cn_") else 10.0 * v for n, v in zip(names, values))
 
 
 WATER_NAMES = ("HOH", "WAT", "TIP3")
@@ -564,8 +688,19 @@ def frames_wanted(config: str, section: str, inputs, z0: float) -> bool:
 # ==============================
 
 def run_pull(config: str, section: str, inputs, preprocess, md) -> Dict[str, Any]:
-    """Steered MM run along z that saves a seed structure as z0 passes each centre."""
+    """Steered MM run along z that saves a seed structure as z0 passes each centre.
+
+    z only. A distance CV gets its window seeds from structures that already sit at the
+    right separation - a `scan` section's optimised points, say - given as `seed` in each
+    window's results entry (`window_seed`). Pulling a bonded pair apart through a
+    non-bonded metal would be a worse start than those, so this raises rather than
+    quietly steering a coordinate it was not written for.
+    """
     from openmm.app import PDBFile
+    if coordinate_of(inputs) != "z":
+        raise ValueError("umbrella `pull` is for `coordinate: z` only. For a distance CV, give "
+                         "each window a `seed` structure at its own centre (e.g. the optimised "
+                         "points of a `scan` section) and run the windows directly.")
     pdb_file = inputs.get("pdb_file") or (md.get("results") or {}).get("lastframe")
     if not pdb_file:
         raise ValueError("pull needs a starting structure: umbrella.inputs.pdb_file or md.results.lastframe")
@@ -612,7 +747,7 @@ def run_pull(config: str, section: str, inputs, preprocess, md) -> Dict[str, Any
             for i in range(1, n + 1):
                 previous = z0
                 z0 = a + direction * min(i * step_dz, abs(b - a))
-                simulation.context.setParameter("mcube_us_z0", z0 / 10.0)
+                simulation.context.setParameter("mcube_us_cv0", z0 / 10.0)
                 simulation.step(chunk)
                 t += chunk * dt
                 z, r, *cn = cv_now(bias, simulation.context)
@@ -623,7 +758,8 @@ def run_pull(config: str, section: str, inputs, preprocess, md) -> Dict[str, Any
                     key = window_key(index)
                     if key not in seeds and lo - 1e-9 <= c <= hi + 1e-9:
                         seed = write_state_pdb(simulation, pdb.topology, f"seed_{key}.pdb")
-                        seeds[key] = {"z0": c, "seed": seed, "seed_cv": round(z, 3)}
+                        seeds[key] = {"cv0": c, "z0": c, "seed": seed,
+                                      "seed_cv": round(z, 3)}
                         print(f"[INFO] seed {key}: z0 {c:.2f} A, CV {z:.2f} A")
 
     result = {"start": Path(pdb_file).resolve().as_posix(), "z_start": round(z_start, 3),
@@ -660,21 +796,28 @@ def run_mm_window(config, section, inputs, preprocess, md, index: int) -> Dict[s
     work.mkdir(exist_ok=True)
     os.chdir(work)
 
+    coordinate = coordinate_of(inputs)
     pdb = load_structure(seed, preprocess)
     box = pdb_box(pdb)
-    ion = ion_atom(pdb.topology, inputs["ion"])
-    reference = reference_atoms(pdb.topology, inputs["reference"])
     masses = atom_masses(pdb.topology)
-    coords = image_ion(np.array(pdb.getPositions()._value) * 10.0, ion, reference, masses, box)
+    coords = np.array(pdb.getPositions()._value) * 10.0
+    ion, reference, pair, groups = None, None, None, {}
+    if coordinate == "distance":
+        pair = cv_pair(pdb.topology, inputs)
+    else:
+        ion = ion_atom(pdb.topology, inputs["ion"])
+        reference = reference_atoms(pdb.topology, inputs["reference"])
+        groups = cn_atom_groups(pdb.topology, ion)
+        coords = image_ion(coords, ion, reference, masses, box)
     start = write_coords_pdb(pdb.topology, coords, "start.pdb")
 
     system, _ = mm_system(pdb, inputs, preprocess, md)
-    groups = cn_atom_groups(pdb.topology, ion)
     bias = bias_force(ion, reference, float(inputs["k"]), z0, inputs.get("cylinder"), masses,
-                      groups, cn_cutoff(inputs, preprocess))
+                      groups, cn_cutoff(inputs, preprocess), coordinate, pair)
     system.addForce(bias)
     prep_in = preprocess.get("inputs") or {}
-    restraint, shell = (coordination_force(start, prep_in) if prep_in.get("metals") else (None, []))
+    restraint, shell = (coordination_force(start, prep_in, pair) if prep_in.get("metals")
+                        else (None, []))
     if restraint is not None:
         system.addForce(restraint)
     simulation, temp = make_simulation(pdb, system, coords, inputs, md)
@@ -702,20 +845,26 @@ def run_mm_window(config, section, inputs, preprocess, md, index: int) -> Dict[s
     print(f"[STEP] Sampling, {inputs['time']} ps, CV every {chunk} steps, "
           f"{'frames every ' + str(freq) + ' steps' if frames else 'no full-system frames'}...")
     cns = []
+    # The bias reports its CVs in the order they were added: (z, r) for the channel
+    # coordinate, a single distance for `coordinate: distance`, then one per cn group.
+    cv_names = ["distance_A"] if coordinate == "distance" else ["z_A", "r_A"]
     with open("cv.csv", "w", newline="") as fh:
         out = csv.writer(fh)
-        out.writerow(["time_ps", "z_A", "r_A"] + [f"cn_{g}" for g in groups])
+        out.writerow(["time_ps"] + cv_names + [f"cn_{g}" for g in groups])
         for i in range(n_prod // chunk):
             simulation.step(chunk)
-            z, r, *cn = cv_now(bias, simulation.context)
+            values = list(cv_now(bias, simulation.context))
+            head, cn = values[:len(cv_names)], values[len(cv_names):]
             cns.append(cn)
-            out.writerow([round((i + 1) * chunk * dt, 4), round(z, 4), round(r, 4)]
+            out.writerow([round((i + 1) * chunk * dt, 4)] + [round(v, 4) for v in head]
                          + [round(c, 3) for c in cn])
     last = write_state_pdb(simulation, pdb.topology, "lastframe.pdb")
 
     after = coordination_shell(last, prep_in) if prep_in.get("metals") else []
     cns = np.array(cns) if cns else np.zeros((0, len(groups)))
-    entry = {"z0": z0, "k": float(inputs["k"]), "engine": "mm", "seed": seed, "start": start,
+    entry = {"cv0": z0, "coordinate": coordinate, "spacing": float(inputs["spacing"]),
+             "units": {"cv": "A", "k": "kcal/mol/A^2"},
+             "k": float(inputs["k"]), "engine": "mm", "seed": seed, "start": start,
              "cv": Path("cv.csv").resolve().as_posix(),
              "frames": frames, "dcd": Path("window.dcd").resolve().as_posix() if frames else None,
              "lastframe": last, "equilibrate_ps": float(inputs["equilibrate"]),
@@ -727,6 +876,8 @@ def run_mm_window(config, section, inputs, preprocess, md, index: int) -> Dict[s
                         "std": round(float(cns[:, k].std()), 3) if len(cns) else None}
                     for k, g in enumerate(groups)},
              "done": True}
+    if coordinate == "z":
+        entry["z0"] = z0        # dual-written, so channel tooling still reads these entries
     save_nested(config, section, ["windows", key], entry)
     return entry
 
@@ -811,21 +962,36 @@ def run_qmmm_window(config, section, inputs, preprocess, md, index: int) -> Dict
     work.mkdir(exist_ok=True)
     os.chdir(work)
 
+    coordinate = coordinate_of(inputs)
     pdb = load_structure(seed, preprocess)
     box = pdb_box(pdb)
-    ion = ion_atom(pdb.topology, inputs["ion"])
-    reference = reference_atoms(pdb.topology, inputs["reference"])
     masses = atom_masses(pdb.topology)
-    start = write_coords_pdb(pdb.topology,
-                             image_ion(np.array(pdb.getPositions()._value) * 10.0, ion, reference,
-                                       masses, box), "start.pdb")
+    coords = np.array(pdb.getPositions()._value) * 10.0
+    ion, reference, pair = None, None, None
+    if coordinate == "distance":
+        pair = cv_pair(pdb.topology, inputs)
+    else:
+        ion = ion_atom(pdb.topology, inputs["ion"])
+        reference = reference_atoms(pdb.topology, inputs["reference"])
+        coords = image_ion(coords, ion, reference, masses, box)
+    start = write_coords_pdb(pdb.topology, coords, "start.pdb")
 
     qin = qmmm_level_inputs(config, inputs)
     forcefields, implicit = mm_settings(qin, md, config)
     cores = resolve_cores(qin.get("cores"))
     mm = make_mm(forcefields, start, implicit, cores, inputs.get("platform", "CPU"),
                  inputs.get("properties"))
-    qm_atoms, boundary, residues = umbrella_qm_region(start, inputs, preprocess, ion)
+    if coordinate == "distance":
+        # The metal-site case: use mcube's ordinary QM region resolution, the same
+        # `qm_residues` / `extra_qm_residues` keys every other QM/MM stage takes, so a
+        # window's QM region is the one the `qmmm` and `scan` sections of the same
+        # project already use. `umbrella_qm_region` picks waters around a permeating
+        # ion, which is not what a fixed active site wants.
+        from .qmmm import resolve_qm_region
+        qm_atoms, boundary = resolve_qm_region(inputs, preprocess, start)
+        residues = (preprocess.get("results") or {}).get("qm_residues") or {}
+    else:
+        qm_atoms, boundary, residues = umbrella_qm_region(start, inputs, preprocess, ion)
     charge, raw = qm_charge(mm.system, qm_atoms)
     if "charge" in inputs:
         charge = int(inputs["charge"])
@@ -837,9 +1003,9 @@ def run_qmmm_window(config, section, inputs, preprocess, md, index: int) -> Dict
     theory = make_qmmm(qin, mm, fragment, qm_atoms, boundary, cores)
     # After the QMMMTheory: its setup edits the forces already in the system
     mm.system.addForce(bias_force(ion, reference, float(inputs["k"]), z0, inputs.get("cylinder"),
-                                  masses))
+                                  masses, None, 3.0, coordinate, pair))
 
-    special = [ion] + list(reference)
+    special = list(pair) if coordinate == "distance" else [ion] + list(reference)
     dt, chunk = float(inputs["timestep"]), int(inputs["cv_frequency"])
     Path("wrapped_special_traj.xyz").unlink(missing_ok=True)
     # One OpenMM_MD call: each call on a QMMMTheory adds another external force to the
@@ -851,14 +1017,22 @@ def run_qmmm_window(config, section, inputs, preprocess, md, index: int) -> Dict
               charge=charge, mult=qin.get("mult"),
               specialatoms=special, specialtraj_frequency=chunk)
 
+    # The special trajectory holds only `special`, in that order, so the CV is computed
+    # on its own indices: 0 and 1 for a pair, ion-then-reference for the channel CV.
     frames = read_special_xyz("wrapped_special_traj.xyz")
-    sub_masses = np.concatenate([[masses[ion]], masses[reference]])
-    z, r = cv_values(frames, 0, list(range(1, len(special))), sub_masses, box)
+    if coordinate == "distance":
+        series = [(float(d),) for d in distance_values(frames, (0, 1), box)]
+        cv_names = ["distance_A"]
+    else:
+        sub_masses = np.concatenate([[masses[ion]], masses[reference]])
+        z, r = cv_values(frames, 0, list(range(1, len(special))), sub_masses, box)
+        series = list(zip((float(v) for v in z), (float(v) for v in r)))
+        cv_names = ["z_A", "r_A"]
     with open("cv.csv", "w", newline="") as fh:
         out = csv.writer(fh)
-        out.writerow(["time_ps", "z_A", "r_A"])
-        for i, (zi, ri) in enumerate(zip(z, r)):
-            out.writerow([round(i * chunk * dt, 4), round(float(zi), 4), round(float(ri), 4)])
+        out.writerow(["time_ps"] + cv_names)
+        for i, row in enumerate(series):
+            out.writerow([round(i * chunk * dt, 4)] + [round(v, 4) for v in row])
 
     last = Path("window_lastframe.pdb")
     lastframe = last.resolve().as_posix() if last.exists() else None
@@ -866,13 +1040,17 @@ def run_qmmm_window(config, section, inputs, preprocess, md, index: int) -> Dict
     changes = (compare_coordination(coordination_shell(start, prep_in),
                                     coordination_shell(lastframe, prep_in))
                if lastframe and prep_in.get("metals") else [])
-    entry = {"z0": z0, "k": float(inputs["k"]), "engine": "qmmm", "seed": seed, "start": start,
+    entry = {"cv0": z0, "coordinate": coordinate, "spacing": float(inputs["spacing"]),
+             "units": {"cv": "A", "k": "kcal/mol/A^2"},
+             "k": float(inputs["k"]), "engine": "qmmm", "seed": seed, "start": start,
              "cv": Path("cv.csv").resolve().as_posix(),
              "dcd": Path("window.dcd").resolve().as_posix(), "lastframe": lastframe,
              "equilibrate_ps": float(inputs["equilibrate"]), "time_ps": float(inputs["time"]),
              "timestep": dt, "traj_frequency": int(inputs["traj_frequency"]),
              "qm_atoms": len(qm_atoms), "qm_residues": residues, "charge": charge,
              "mult": qin.get("mult"), "shell_changes": changes, "done": True}
+    if coordinate == "z":
+        entry["z0"] = z0        # dual-written, as in run_mm_window
     save_nested(config, section, ["windows", key], entry)
     return entry
 
@@ -1069,21 +1247,35 @@ def read_csv(path: str) -> Dict[str, np.ndarray]:
     return {k: np.array([float(r[k]) for r in rows]) for k in rows[0]} if rows else {}
 
 
+def cv_column(table: Dict[str, np.ndarray], entry=None) -> np.ndarray:
+    """The biased CV's column of a cv.csv / energies CSV, whichever coordinate wrote it.
+
+    `z_A` for the channel coordinate and `distance_A` for a distance CV; the column is
+    found by name rather than by position so a file written by either path reads back
+    without the reader having to know which.
+    """
+    for name in ("z_A", "distance_A"):
+        if name in table:
+            return table[name]
+    where = f" in window {entry_cv0(entry)}" if entry else ""
+    raise KeyError(f"no CV column{where}: expected `z_A` or `distance_A`, found {list(table)}")
+
+
 def window_samples(entry, reweight: Optional[str], temperature: float):
     """(samples, weights) for WHAM from one window entry."""
     if reweight:
         hi, lo = read_csv(entry[f"energies_{reweight}"]), read_csv(entry["energies_xtb"])
         if not np.array_equal(hi["frame"], lo["frame"]):
-            raise ValueError(f"window z0 {entry['z0']}: energies_{reweight} and energies_xtb "
-                             "are not on the same frames")
+            raise ValueError(f"window cv0 {entry_cv0(entry)}: energies_{reweight} and "
+                             "energies_xtb are not on the same frames")
         keep = hi["time_ps"] >= (entry.get("equilibrate_ps", 0.0) if entry.get("engine") == "qmmm" else 0.0)
         de = (hi["energy_kcal"] - lo["energy_kcal"])[keep]
         beta = 1.0 / (KB * temperature)
-        return hi["z_A"][keep], np.exp(-beta * (de - de.min()))
+        return cv_column(hi, entry)[keep], np.exp(-beta * (de - de.min()))
     cv = read_csv(entry["cv"])
     skip = entry.get("equilibrate_ps", 0.0) if entry.get("engine") == "qmmm" else 0.0
     keep = cv["time_ps"] >= skip
-    return cv["z_A"][keep], None
+    return cv_column(cv, entry)[keep], None
 
 
 def bimodal(values, min_fraction: float = 0.15) -> bool:
@@ -1123,18 +1315,18 @@ def hydration_profile(config: str, section: str) -> Optional[Dict[str, Any]]:
         names = names or cols
         skip = entry.get("equilibrate_ps", 0.0) if entry.get("engine") == "qmmm" else 0.0
         keep = cv["time_ps"] >= skip
-        row = {"z0": float(entry["z0"])}
+        row = {"cv0": float(entry_cv0(entry))}
         for c in cols:
             row[f"{c}_mean"] = round(float(cv[c][keep].mean()), 3)
             row[f"{c}_std"] = round(float(cv[c][keep].std()), 3)
         # 0/1 rather than True/False, so the CSV stays all-numeric for read_csv
         row["water_bimodal"] = int(bimodal(cv["cn_water"][keep])) if "cn_water" in cv else 0
         if row["water_bimodal"]:
-            flagged.append(row["z0"])
+            flagged.append(row["cv0"])
         rows.append(row)
     if not rows:
         return None
-    rows.sort(key=lambda r: r["z0"])
+    rows.sort(key=lambda r: r["cv0"])
     name = f"{section}_hydration.csv"
     with open(name, "w", newline="") as fh:
         out = csv.DictWriter(fh, fieldnames=list(rows[0]))
@@ -1150,27 +1342,36 @@ def hydration_profile(config: str, section: str) -> Optional[Dict[str, Any]]:
 def run_wham(config, section, inputs, md, reweight: Optional[str], n_boot: int) -> Dict[str, Any]:
     temperature = temperature_of(inputs, md)
     bin_width = float(inputs.get("bin_width", float(inputs["spacing"]) / 5.0))
-    windows = []
+    windows, kinds = [], set()
     for key, entry in sorted(section_windows(config, section).items()):
         if not entry.get("done"):
             continue
         z, w = window_samples(entry, reweight, temperature)
         if len(z):
-            windows.append((float(entry["z0"]), float(entry["k"]), z, w))
+            kinds.add(str(entry.get("coordinate", "z")))
+            windows.append((float(entry_cv0(entry)), float(entry["k"]), z, w))
     if len(windows) < 2:
         raise ValueError(f"{section}: fewer than two finished windows")
+    # Two coordinates in one section would be two different reaction coordinates binned
+    # onto one axis, which WHAM cannot see and would report as a profile anyway.
+    if len(kinds) > 1:
+        raise ValueError(f"{section}: windows mix coordinates {sorted(kinds)}; a PMF is along "
+                         "one CV. Put each coordinate in its own section.")
     centres, F, err = block_bootstrap(windows, temperature, bin_width, n_boot=n_boot)
     ov = overlaps(windows, bin_width)
     poor = [round(float(sorted(w[0] for w in windows)[i]), 3) for i, o in enumerate(ov) if o < 0.05]
     if poor:
-        print(f"[WARNING] window overlap below 0.05 after z0 = {poor}: add windows or soften k there")
+        print(f"[WARNING] window overlap below 0.05 after cv0 = {poor}: add windows or soften k there")
+    coordinate = kinds.pop() if kinds else "z"
     name = f"{section}_pmf{'_' + reweight if reweight else ''}.csv"
     with open(name, "w", newline="") as fh:
         out = csv.writer(fh)
-        out.writerow(["z_A", "F_kcal", "err_kcal"])
+        out.writerow(["distance_A" if coordinate == "distance" else "z_A", "F_kcal", "err_kcal"])
         for row in zip(centres, F, err):
             out.writerow([round(float(v), 5) for v in row])
     result = {"csv": Path(name).resolve().as_posix(), "windows": len(windows),
+              "coordinate": coordinate, "spacing": float(inputs["spacing"]),
+              "units": {"cv": "A", "k": "kcal/mol/A^2", "F": "kcal/mol"},
               "temperature": temperature, "bin_width": bin_width, "bootstrap": n_boot,
               "reweight": reweight, "min_overlap": round(min(ov), 4) if ov else None,
               "poor_overlap_after": poor}
@@ -1187,8 +1388,8 @@ def stitch_offset(mm_entry, qm_entry, temperature: float) -> Dict[str, Any]:
     qm_mm, qm_qm = read_csv(qm_entry["energies_mm"]), read_csv(qm_entry["energies_xtb"])
     wf = mm_qm["energy_kcal"] - mm_mm["energy_kcal"]
     wr = qm_mm["energy_kcal"] - qm_qm["energy_kcal"]
-    return {"z0": float(mm_entry["z0"]), "dA_kcal": bar(wf, wr, temperature),
-            "n_mm": len(wf), "n_qmmm": len(wr)}
+    return {"cv0": float(entry_cv0(mm_entry)), "z0": float(entry_cv0(mm_entry)),
+            "dA_kcal": bar(wf, wr, temperature), "n_mm": len(wf), "n_qmmm": len(wr)}
 
 
 def combine_pmfs(z_mm, F_mm, z_qm, F_qm, z_lo: float, z_hi: float, dA_lo: float, dA_hi: float):
@@ -1246,8 +1447,8 @@ def run_stitch(config, qm_section: str, inputs_mm, inputs_qm, md) -> Dict[str, A
             out.writerow([round(float(z), 5), round(float(f), 5)])
     result = {"csv": Path(name).resolve().as_posix(), "ends": ends,
               "closure_kcal": round(closure, 3)}
-    print(f"[INFO] MM -> xTB/MM: dA {ends[0]['dA_kcal']:.2f} (z {ends[0]['z0']}) and "
-          f"{ends[1]['dA_kcal']:.2f} kcal/mol (z {ends[1]['z0']}); cycle closure {closure:.2f} kcal/mol")
+    print(f"[INFO] MM -> xTB/MM: dA {ends[0]['dA_kcal']:.2f} (cv {ends[0]['cv0']}) and "
+          f"{ends[1]['dA_kcal']:.2f} kcal/mol (cv {ends[1]['cv0']}); cycle closure {closure:.2f} kcal/mol")
     save_nested(config, qm_section, ["stitch"], result)
     return result
 

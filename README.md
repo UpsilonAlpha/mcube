@@ -339,7 +339,9 @@ for a first run: what each step does, what to check, and common mistakes.
 | --- | --- | --- |
 | `ion` | required | The atom pulled, `chain:resid:atom` |
 | `reference` | required | Channel atoms whose centre is z = 0: an mdtraj selection (PDB numbers are `resSeq`) or a list of atoms |
-| `z_start`, `z_end`, `spacing` | required | Window centres in Å, both ends included |
+| `cv_start`, `cv_end`, `spacing` | required | Window centres in Å, both ends included (`z_start`/`z_end` are accepted aliases; giving both spellings raises) |
+| `coordinate` | `z` | The biased CV: `z` (ion vs `reference` centre, the channel case) or `distance` (two atoms). A `distance` section needs `atoms` and refuses `ion`, `reference`, `cylinder`, `z_walls` and `pull`; see [docs/umbrella.md](docs/umbrella.md) |
+| `atoms` | required for `coordinate: distance` | Exactly two `chain:resid:atom` selectors |
 | `k` | 10.0 | Umbrella force constant, kcal/mol/Å² |
 | `cylinder` | none | `{radius: Å, k: kcal/mol/Å²}` |
 | `engine` | `mm` | `mm`: OpenMM directly, with the md stage's system (membrane barostat, HBond constraints, 1.5 amu H). `qmmm`: ASH xTB/MM (`qmmm.inputs` supplies mult, xTB settings, cores) |

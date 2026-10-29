@@ -175,9 +175,9 @@ class TestBias:
         assert self.energy(ctx) == pytest.approx(0.5 * 5.0 * 2.0 ** 2, rel=1e-6)
 
     def test_window_centre_is_a_parameter(self, umbrella):
-        """The pull moves z0 through the context without rebuilding anything."""
+        """The pull moves the centre through the context without rebuilding anything."""
         ctx, _ = self.context(umbrella, [[0, 0, 0], [0, 0, 2.0], [0, 0, 4.0]], z0=1.0)
-        ctx.setParameter("mcube_us_z0", 0.3)
+        ctx.setParameter("mcube_us_cv0", 0.3)
         assert self.energy(ctx) == pytest.approx(0.0, abs=1e-9)
 
     def test_explicit_weights_override_system_masses(self, umbrella):
@@ -521,3 +521,108 @@ class TestTallReference:
         box = np.array([120.0, 120.0, 83.0])
         zcv, _ = umbrella.cv_values(coords, len(ref), list(range(len(ref))), masses, box)
         assert zcv[0] == pytest.approx(30.0 - ref[:, 2].mean())
+
+
+class TestDistanceCoordinate:
+    """
+    `coordinate: distance` - one umbrella stage for a channel's z and for a
+    metal-ligand separation (CSR-1's Zn-Asp92 OD1, D133). z stays the default, so
+    every existing channel config is unaffected. What is covered here is what a
+    wrong unit or a half-converted config would otherwise break silently.
+    """
+
+    def test_z_is_the_default(self, umbrella):
+        assert umbrella.coordinate_of({}) == "z"
+        assert umbrella.coordinate_of({"coordinate": "DISTANCE"}) == "distance"
+
+    def test_an_unknown_coordinate_is_refused(self, umbrella):
+        with pytest.raises(ValueError, match="coordinate"):
+            umbrella.coordinate_of({"coordinate": "angle"})
+
+    def test_one_place_converts_units(self, umbrella):
+        """k in kcal/mol/A^2 -> kJ/mol/nm^2 and the centre in A -> nm, together.
+
+        A factor of 10 missing on the centre, or 418.4 on k, gives a PMF that looks
+        plausible and is wrong, so both conversions live in one helper.
+        """
+        k, cv0 = umbrella.to_openmm(10.0, 2.5)
+        assert k == pytest.approx(10.0 * 4.184 * 100.0)
+        assert cv0 == pytest.approx(0.25)
+
+    def bias_context(self, umbrella, positions, cv0, k=10.0, pair=(0, 2), **kw):
+        system = openmm.System()
+        for _ in positions:
+            system.addParticle(12.0)
+        force = umbrella.bias_force(None, None, k, cv0, coordinate="distance", pair=list(pair), **kw)
+        system.addForce(force)
+        ctx = openmm.Context(system, openmm.VerletIntegrator(0.001),
+                             openmm.Platform.getPlatformByName("Reference"))
+        ctx.setPositions(np.asarray(positions, dtype=float) / 10.0 * unit.nanometer)
+        return ctx, force
+
+    def energy(self, ctx):
+        return ctx.getState(getEnergy=True, groups={31}).getPotentialEnergy().value_in_unit(
+            unit.kilocalorie_per_mole)
+
+    def test_harmonic_in_the_pair_separation(self, umbrella):
+        """0.5 k (r - cv0)^2 on the two named atoms, and nothing else."""
+        ctx, force = self.bias_context(
+            umbrella, [[0, 0, 0], [0, 0, 9.0], [0, 0, 4.0]], cv0=2.0)
+        assert self.energy(ctx) == pytest.approx(0.5 * 10.0 * 2.0 ** 2, rel=1e-6)
+        assert umbrella.cv_now(force, ctx)[0] == pytest.approx(4.0)
+
+    def test_zero_at_the_window_centre(self, umbrella):
+        ctx, _ = self.bias_context(umbrella, [[0, 0, 0], [0, 0, 9.0], [3.0, 0, 0]], cv0=3.0)
+        assert self.energy(ctx) == pytest.approx(0.0, abs=1e-9)
+
+    def test_the_centre_is_a_settable_parameter(self, umbrella):
+        ctx, _ = self.bias_context(umbrella, [[0, 0, 0], [0, 0, 9.0], [0, 0, 4.0]], cv0=2.0)
+        ctx.setParameter("mcube_us_cv0", 0.4)
+        assert self.energy(ctx) == pytest.approx(0.0, abs=1e-9)
+
+    def test_a_cylinder_is_refused(self, umbrella):
+        """There is no axis to confine around, so a leftover cylinder is an error."""
+        with pytest.raises(ValueError, match="cylinder"):
+            self.bias_context(umbrella, [[0, 0, 0], [0, 0, 9.0], [0, 0, 4.0]], cv0=2.0,
+                              cylinder={"radius": 4.0, "k": 5.0})
+
+    def test_the_pair_must_be_exactly_two_atoms(self, umbrella):
+        with pytest.raises(ValueError, match="exactly two"):
+            umbrella.cv_pair(None, {"atoms": ["B:1:ZN"]})
+        with pytest.raises(ValueError, match="exactly two"):
+            umbrella.cv_pair(None, {"atoms": ["B:1:ZN", "A:92:OD1", "A:92:OD2"]})
+
+    def test_channel_keys_left_in_the_config_are_refused(self, umbrella):
+        """A half-converted config: ignoring `reference` would bias the wrong thing."""
+        with pytest.raises(ValueError, match="reference"):
+            umbrella.cv_pair(None, {"atoms": ["B:1:ZN", "A:92:OD1"],
+                                    "reference": "chain A and name CA"})
+
+    def test_window_bounds_take_either_spelling(self, umbrella):
+        neutral = {"cv_start": 1.9, "cv_end": 3.6, "spacing": 0.1}
+        channel = {"z_start": 1.9, "z_end": 3.6, "spacing": 0.1}
+        assert umbrella.window_centres(neutral) == umbrella.window_centres(channel)
+        assert umbrella.window_centres(neutral)[0] == 1.9
+        assert umbrella.window_centres(neutral)[-1] == 3.6
+
+    def test_both_spellings_at_once_is_refused(self, umbrella):
+        with pytest.raises(ValueError, match="not both"):
+            umbrella.window_centres({"cv_start": 1.9, "z_start": 2.0, "cv_end": 3.6,
+                                     "spacing": 0.1})
+
+    def test_saved_windows_are_read_by_either_key(self, umbrella):
+        """`cv0` now, `z0` in the channel runs already on disk."""
+        assert umbrella.entry_cv0({"cv0": 2.5}) == 2.5
+        assert umbrella.entry_cv0({"z0": -4.0}) == -4.0
+        assert umbrella.entry_cv0({}) is None
+
+    def test_the_cv_column_is_found_by_name(self, umbrella):
+        assert umbrella.cv_column({"time_ps": 1, "distance_A": 2}) == 2
+        assert umbrella.cv_column({"time_ps": 1, "z_A": 3, "r_A": 4}) == 3
+        with pytest.raises(KeyError):
+            umbrella.cv_column({"time_ps": 1})
+
+    def test_distance_values_use_the_minimum_image(self, umbrella):
+        coords = np.array([[[0.0, 0.0, 0.0], [0.0, 0.0, 9.0]]])
+        assert umbrella.distance_values(coords, (0, 1), [10.0, 10.0, 10.0])[0] == pytest.approx(1.0)
+        assert umbrella.distance_values(coords, (0, 1), [100.0, 100.0, 100.0])[0] == pytest.approx(9.0)

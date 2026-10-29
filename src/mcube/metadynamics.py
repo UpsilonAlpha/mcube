@@ -134,7 +134,13 @@ def cv_list(inputs) -> List[str]:
     cvs = [str(c).lower() for c in inputs["cvs"]]
     if not cvs or len(set(cvs)) != len(cvs) or any(c not in CVS for c in cvs):
         raise ValueError(f"metadynamics cvs must be distinct names from {list(CVS)}, got {inputs['cvs']}")
-    if "z" not in cvs and inputs.get("z0") is None:
+    # `coordinate` is umbrella's key and it is a shared input, so a section that sets it
+    # to `distance` would otherwise reach here and be biased along z without comment.
+    if str(inputs.get("coordinate", "z")).lower() != "z":
+        raise ValueError("metadynamics biases the CVs in `cvs` and only supports the channel "
+                         f"coordinate; `coordinate: {inputs['coordinate']}` is an umbrella key. "
+                         "For a distance CV use umbrella windows (`coordinate: distance`).")
+    if "z" not in cvs and inputs.get("cv0", inputs.get("z0")) is None:
         raise ValueError("metadynamics without z biased holds z at z0: give `z0`")
     for c in cvs:
         g = (inputs.get("grid") or {}).get(c) or {}
