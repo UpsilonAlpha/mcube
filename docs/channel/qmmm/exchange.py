@@ -800,15 +800,21 @@ def potential(args):
                       for i in range(nb.getNumParticles())])
         xyz = np.array(mod.positions.value_in_unit(unit.angstrom))
         r = np.linalg.norm(xyz - r_ion, axis=1)
+        # Whole residues in or out, by their centre: an atom-based cut splits waters at the
+        # boundary into bare partial charges and swings phi by volts from frame to frame
+        centre = np.empty(len(q))
+        for res in mod.topology.residues():
+            idx = [a.index for a in res.atoms()]
+            centre[idx] = np.linalg.norm(xyz[idx].mean(axis=0) - r_ion)
         comp = np.array([("water" if a.residue.name in WATER else "lipid" if a.residue.name in LIPIDS
                           else "protein" if a.residue.name in AMINO_ACIDS else "ions")
                          for a in mod.topology.atoms()])
+        phi = lambda sel: round(float(COULOMB_V_A * (q[sel] / r[sel]).sum()), 4)
         row = {"kind": entry["kind"], "source": entry["source"], "net_charge": round(float(q.sum()), 3),
                "r_max_A": round(float(r.max()), 1),
-               "phi_V": {f"{R:g}": round(float(COULOMB_V_A * (q[r > R] / r[r > R]).sum()), 4) for R in radii},
-               "by_component_V": {c: {f"{R:g}": round(float(COULOMB_V_A * (q[(r > R) & (comp == c)]
-                                                                         / r[(r > R) & (comp == c)]).sum()), 4)
-                                      for R in radii} for c in sorted(set(comp))}}
+               "phi_V": {f"{R:g}": phi(centre > R) for R in radii},
+               "by_component_V": {c: {f"{R:g}": phi((centre > R) & (comp == c)) for R in radii}
+                                  for c in sorted(set(comp))}}
         rows[key] = row
         groups.setdefault((entry["kind"], entry["source"]), []).append(row)
     summary = {}
