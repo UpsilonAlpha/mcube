@@ -749,6 +749,14 @@ sections:
   # Needs md_wt100 to finish first. Its last frame is the only free-side
   # structure we have that was not equilibrated with Asp92 restrained, which is
   # the whole reason this arm can be compared with the other one.
+  #
+  # DO NOT RUN AS WRITTEN - md_wt100 finished and its last frame has no
+  # substrate in the site (D134): mer O1x left the 2.6 A sphere in every frame
+  # and the carbonyl ends 7.80 A from the zinc, so `site.py check` rejects it.
+  # Scanning it would scan the wrong system. Give this arm a free-Asp92 start
+  # that still holds the substrate - either md_wt100 re-run with naclong's
+  # substrate restraint as its ONLY restraint, or naclong's last frame with
+  # Zn-OD1 pulled out to 3.60 first. aspout, which starts from naclong, is fine.
   aspin:
     stage: scan
     inputs:

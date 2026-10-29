@@ -2676,6 +2676,38 @@ Config: `md_wt100` in `docs/csr/site.yaml` (b9b3513), written into the run confi
 **Also fixed in the setup, from the user's instruction to keep RQK in the scan.** The QM region already held **Arg90 and Lys226** (preprocess `extra_qm_residues`) and Asp92 (via the 3.0 A detection). **Gln93 was not in it** - it only ever entered when it came inside the detection cutoff. Both scan sections now carry `extra_qm_residues: {A: [93]}`; Gln is neutral, so the QM charge stays +3. Note for anyone re-running preprocess in `CSR_wt`: its `inputs.cutoff` is now 2.5 while its saved `results.qm_residues` were built at 3.0, so **Asp92 is in the QM region only because the saved region was inherited.** A fresh preprocess at 2.5 would drop the residue this whole question is about. Put 92 and 93 in `extra_qm_residues` before ever re-running it.
 
 
+**D134 - 100 ns with nothing holding Asp92: it is on the zinc in every one of 5,000 frames, the zinc is five- or six-coordinate in every frame, and the substrate pose is gone.** (2026-10-30, job 30966977, `md_wt100` in `/scratch/user/uquadhik/CSR_wt`)
+
+The run D132 set up finished COMPLETED in 3 h 15 m. Four restraints only, redetected at 2.5 A on the pre-MM `finalsystem.pdb` - HOH D:1:O 1.90, His164 NE2 2.09, O01 2.14, His88 NE2 2.22, verified in the `.out` with no warning of any kind. **Nothing restrained Asp92 and nothing restrained the substrate.**
+
+**Occupancy over the whole trajectory** (`site.py shell`, 5,000 frames at 20 ps, cutoff 2.6 A):
+
+| ligand | occ% | min | mean | max |
+| --- | --- | --- | --- | --- |
+| OH:O01 (nucleophile) | 100.0 | 1.82 | 1.94 | 2.12 |
+| **Asp92 OD2** | **100.0** | 1.91 | 2.07 | 2.32 |
+| HOH D:1:O | 100.0 | 1.92 | 2.07 | 2.27 |
+| His164 NE2 | 100.0 | 2.01 | 2.20 | 2.46 |
+| His88 NE2 | 100.0 | 2.05 | 2.24 | 2.51 |
+| Asp92 OD1 | 56.7 | 1.93 | 2.67 | 3.72 |
+| mer O1x | 0.0 | 3.35 | 3.92 | 5.42 |
+| Lys226 NZ | 0.0 | 3.47 | 3.96 | 5.18 |
+
+Coordination number: **mean 5.57; five in 2,164 frames (43%), six in 2,836 (57%). Four-coordinate: never, in 100 ns.**
+
+**What it says.**
+
+- **Asp92 OD2 is bound in every frame, and it was already at 1.91 A by the first written frame.** It does not creep in over 100 ns; from a 2.80 A start it closes inside the first 20 ps with nothing holding it. This is the fourth measurement to do it (D102 MM restrained, D51 xTB, D58/D60 DFT) and the cleanest, because here the carboxylate is free and the rest of the sphere is held at crystal distances. Rule 3 now has a restraint-free number behind it.
+- **OD1 at 56.7%** (mean 2.67, 1.93-3.72) is bidentate flicker. It looks like D133's equilibrium but is on the wrong coordinate: the population D133 needs is OD2 on and off, and OD2 never leaves. The six-coordinate frames are OD1, or a second water - the last frame has E:6862 HOH at 2.14 A.
+- **The substrate left.** mer O1x is outside the cutoff in every frame; in the last frame the carbonyl O2x is **7.80 A** from the zinc and O01-C4x is 5.56 A. `site.py check --at=reactant --hypothesis=carbonyl_on_metal` is **REJECTED**, five of seven criteria failing (only Zn-O01 1.90 and the 119 degree Burgi-Dunitz angle pass). `naclong` kept Gervasoni's substrate restraint through its 100 ns for exactly this reason (D92); `wt100` kept none, and the pose did not survive.
+
+**What it decides, and what it does not.** Removing the restraints does not produce the crystal's four-coordinate zinc - it produces a worse-coordinated one. That is the question D132 was built to answer, and it is answered. It does **not** decide whether Asp92 is in equilibrium: a trajectory that never once leaves the bound state either puts the open population below roughly 0.02% at MM level or shows that this MM model cannot leave it, and nothing in a single trajectory separates those two. Only the PMF (D133, test 2) does.
+
+**Consequence for the scans.** `scan_aspin` reads `md_wt100_results/NVTtrajectory_lastframe_imaged.pdb`, and that frame has no substrate in the site - it would scan the wrong system. It needs a different start: either `wt100` re-run with `naclong`'s substrate restraint kept (the only restraint, leaving Asp92 free), or `aspin` started from `naclong`'s last frame with the Zn-OD1 distance pulled out to 3.60 A first. Left unchanged in `site.yaml` pending that choice. `scan_aspout`, which starts from `naclong`, is unaffected.
+
+**Rate, and a correction to `running-on-bunya.md`.** Production was 11,517.7 s for 100 ns: **0.52 ns/min, 750 ns/day**, on a full H100 (bun074). The 379 ns/day recorded there for `naclong` was **not measured on an H100**: job 30421166's `AllocTRES` reads `gres/gpu:nvidia_a100_80gb_pcie_4g.40gb=1`, a MIG slice of an A100 on bun004, billed 26 against this job's 100. Same system, same `traj_frequency`, twice the throughput for four times the billing - so the earlier "halve a benchmark figure" advice was fitted to a slice, not to a card.
+
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

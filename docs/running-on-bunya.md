@@ -277,7 +277,11 @@ The ASH env has OpenMM 8.4 built against CUDA 13.1. Its platforms are Reference,
 ```
 
 - **Classical stages on the GPU:** `md.inputs.platform: CUDA` (with `properties: {Precision: mixed}`) runs the md stage there.
-- **Measured, classical md on an H100** (job 30421166: 100 ns NVT, 41,377 atoms, 4 fs, restrained): **379 ns/day** in production, 100 ns in 6 h 20 m - against **845 ns/day** from a 1 ns benchmark on the same card. A short benchmark's cost per ns excludes what a long run pays for, trajectory and state writing above all, so halve a benchmark figure before costing a production run. CPU for the same system was 2.3 ns/day, so the GPU is still worth ~165x.
+- **Measured, classical md, 100 ns NVT of the same 41,377-atom system at 4 fs** - and **ask which card you actually got**, because `-p gpu_cuda --gres=gpu:1` will hand you a MIG slice:
+  - **Full H100** (job 30966977, `md_wt100`, bun074, `gres/gpu:h100=1`, billing 100): **750 ns/day**, 0.52 ns/min, 100 ns in 3 h 12 m of production (D134).
+  - **MIG slice of an A100** (job 30421166, `md_naclong`, bun004, `gres/gpu:nvidia_a100_80gb_pcie_4g.40gb=1`, billing 26): **379 ns/day**, 100 ns in 6 h 20 m. This is the figure this file used to attribute to an H100; it is four sevenths of an A100.
+  - A **1 ns benchmark** on the same slice reported 845 ns/day. A short benchmark's cost per ns excludes what a long run pays for, trajectory and state writing above all, so halve a benchmark figure before costing a production run. CPU for the same system was 2.3 ns/day.
+  - `sacct -j <id> -X -o JobID,NodeList,AllocTRES%60` is how to tell after the fact; `--gres=gpu:h100:1` is how to ask for the card up front.
 - **QM/MM stays on the CPU:** xTB has no GPU code, so keep QM/MM jobs on `general`.
 - **Checking the context:** OpenMM failing to open a CUDA context means the node's driver is older than the installed CUDA needs; test it before queueing a long run.
 
