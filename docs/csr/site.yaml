@@ -642,6 +642,57 @@ sections:
       properties: {Precision: mixed}
 
   # ===========================================================================
+  # `wt100` - the rebuild. D120 diagnosed the wrong zinc sphere, prescribed the
+  # fix in its closing paragraph, and the fix was never applied (D130); every
+  # md section above this line was built on a start structure or a restraint set
+  # that carries the artefact. This is the first run that does not.
+  #
+  # Three changes, and nothing else differs from `naclong`:
+  #
+  #   1. **It starts from the pre-MM structure, not from an MM frame.**
+  #      `preprocess_results/finalsystem.pdb` measures HOH 1.90, His164 2.09,
+  #      hydroxide O01 2.14, His88 2.22, Asp92 OD2 2.80, mer O1x 3.13 - which
+  #      is 6NC5's ZN302 sphere with Asp92 correctly in the second shell. Every
+  #      later frame has OD1 at 1.99-2.07 A, and no detection cutoff undoes an
+  #      artefact already in the coordinates.
+  #   2. **The detection cutoff is 2.5 A, set in `preprocess.inputs.cutoff` in
+  #      the run directory's config.yaml.** At 3.0 (the default this project
+  #      ran at) Asp92 OD2 is inside the sphere and gets a restraint, which is
+  #      exactly how D120 happened. 2.5 is the longest Zn-O distance that is
+  #      still a bond (`LIGAND_MAX`); it keeps the crystal's four and excludes
+  #      the 2.80 contact. This is not a cutoff chosen to produce an answer -
+  #      it is the same number `preprocess.py` now warns against exceeding.
+  #   3. **No configured restraints at all.** Not on Asp92, which is the error;
+  #      and not on the substrate either, because the carbonyl restraint was
+  #      what held meropenem against a saturated metal. The restraints that do
+  #      act are the ones redetection builds from the structure itself - two
+  #      histidines, the hydroxide and HOH485 - which is mcube holding what the
+  #      crystal already has, and is the whole design.
+  #
+  # `coordination_redetect: true` is what makes 1 and 2 take effect: it applies
+  # the preprocess rule to the file in front of the stage rather than replaying
+  # the numbers recorded in October. `coordination_source` in the results records
+  # that it happened.
+  #
+  # What it decides: whether the crystal's four-coordinate shell is stable over
+  # 100 ns of MM, which is the premise every mechanism in the plan rests on and
+  # which has never been tested on a correct sphere. Read it with
+  # `site.py shell` for occupancy - a count is not a composition (D129) - and
+  # `site.py check --at=reactant` on the last frame. Cost ~3.4 h on one fast
+  # GPU node at the 0.49 ns/min D131 measured. The substrate is unrestrained,
+  # so expect it to drift off the attack line as it did in D93; that is a
+  # separate question and this run is not the test of it.
+  wt100:
+    stage: md
+    inputs:
+      pdb_file: preprocess_results/finalsystem.pdb
+      coordination_redetect: true
+      nvt_time: 100000          # ps
+      traj_frequency: 5000      # a frame every 20 ps; ~7 GB, see `naclong`
+      platform: CUDA
+      properties: {Precision: mixed}
+
+  # ===========================================================================
   # DO NOT RUN `pose2` AS WRITTEN. D126 (2026-10-29) disproved its premise.
   #
   # Pose 2 as docked has NOTHING within 7.2 A of the zinc - it is the furthest
