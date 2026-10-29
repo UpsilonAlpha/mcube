@@ -2811,6 +2811,34 @@ Coordination number: **mean 6.00; six in 4,998 frames (100%), five in 2. Four-co
 **Nothing submitted.** `scan_aspin` fails both of its own preconditions anyway - the last frame is REJECTED for the substrate pose and Zn-OD1 is 2.12 A, not the 3.3 A-plus a free-Asp92 start needs - and D137's constraint problem blocks it regardless.
 
 
+**D139 - `rigid_water` is now off by default for every QM/MM gradient stage, and `scan` honours it at all; `aspout` resubmitted as 31051634 and already holding one constraint instead of twenty-eight.** (2026-10-30, user: "rigidwater should always be off for QM/MM work - the only reason that's there is for NVT")
+
+**The fix is in the library, not in the config** (commit cf4ad8d). Three things were wrong, and the third is why D137's own suggested workaround would have done nothing:
+
+1. `qmmm` defaulted `rigid_water` to `true`, and `ts` with it.
+2. **`scan` had no `rigid_water` option.** It called `water_constraints` unconditionally (`src/mcube/scan.py:218`), so `rigid_water: false` in a scan section - D137's option 2, and the one the note in `site.yaml` told a future reader to use - would have been read, ignored, and the job would have failed the same way. That is now fixed too.
+3. The default itself was the wrong way round for anything that takes a gradient. Rigidity is a convenience in MM MD and a liability here: with any user constraint present - and a scan sets its bond at every point - geomeTRIC writes the whole block as `$set`, and a `$set` water distance is a *convergence criterion* checked against `convergence_cmax`. Rigid TIP3P cannot satisfy it, so no point converges however long it runs (D137: 0.069 A against 0.01, 120 steps, 4 h 39 m, one point of nine).
+
+So `rigid_water` defaults to **false** in `qmmm`, `scan` and `ts`, with the default in one shared helper, `rigid_water_pairs` (`src/mcube/qmmm.py:538`), rather than three separate `inputs.get(..., True)` calls. `rigid_water: true` restores the old behaviour for anyone who wants it. **The `md` stage's OpenMM `rigidWater` is untouched** - there the waters are genuinely constrained and that is what buys the 4 fs timestep. Four tests added; the suite is 421 passed, 6 skipped locally (the ASH-gated ones, including these, run on Bunya).
+
+**Why this was the right fix rather than `rigid_water: false` in the two scan sections.** D137 called option 2 "a methodological choice, not a bug fix, and the user's call" - and the user's answer was that it is not a choice at all: the MM system in the gradient stages is already built with `rigidwater=False` and `autoconstraints=None`, so holding the waters was adding constraints the model does not have, in a stage that cannot afford them. One default in the library beats the same line copied into every future scan, NEB and TS section, which is what mcube being a general package is for.
+
+**`aspout` resubmitted: job 31051634**, `--cpus-per-task=8 --mem=64G -t 3-00:00:00`, running on bun133 from 08:46 AEST, same section and same start frame as 31016878 (`../CSR_nac/md_naclong_results/NVTtrajectory_lastframe_imaged.pdb`, Zn-Asp92 OD1 1.90 -> 3.60 A in nine points, Gln93 in the QM region). The cancelled run's directory is kept as `protdft/scan_aspout_d137`.
+
+**The fix is confirmed in the running job, not just in the tests.** geomeTRIC's `constraints.txt` for point 0 now reads, in full:
+
+```
+$set
+distance 395 169 1.9
+```
+
+against 31016878's `$set` header over 27 water distances **plus** that same bond. One constraint, and it is the scan coordinate. The QM/MM energy is falling over the first steps (-446.63 -> -446.99 -> -447.05 Eh).
+
+**What is still open.** Convergence per point is now *possible*; whether it happens, and at what cost, is what this job measures. 160 SVD failures in 120 steps (D137) were plausibly the frozen bonds being enforced in a degenerating TRIC coordinate system (D105's diagnosis, channel log C22), so they should abate with the constraints gone - if they do not, `opt_coordsystem` is unavailable while the scan bond is `$set`, and shrinking `actradius` is what is left. Scratch is 231/300 GB, so there is room for the dumps if they come back, but it needs watching rather than assuming.
+
+**`aspin` now has a start that exists.** It runs after `aspout` and begins from `protdft/scan_aspout/scan_08.pdb` - aspout's own last point at 3.60 A, the same box, waters and substrate, walked back. Neither MD run can supply a free-Asp92 start: `md_wt100`'s last frame has no substrate in the site (D134) and `md_wt100b`'s has Asp92 bidentate at 2.15 A in 100% of frames (D138). A reverse arm from the forward end point is the hysteresis test proper, and it is also the only one available. The PMF (D133 test 2) is held until the two curves are in hand, per the user: "do the scans, then we can do the pmf if necessary".
+
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
