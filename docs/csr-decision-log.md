@@ -2730,6 +2730,15 @@ Each pruned directory now holds a one-line `DELETED.md` pointing here, the conve
 **Not touched, and worth a decision rather than a deletion.** The CSR work is 6 GB of a 252 GB allocation. The rest is: `channel/` 45 GB (the ion-channel session's live umbrella windows - not ours to prune), `glp1r_md/` 41 GB, `AANCA/` 26 GB, `boltzgen/` 17 GB, and **two copies of the same ESMFold2 weights**, `hf/hub/models--biohub--ESMFold2` and `.cache/huggingface/hub/models--biohub--ESMFold2`, matching blob-for-blob at about 12 GB each. Pointing `HF_HOME` at one of them would free more than everything in this entry combined.
 
 
+**D136 - Two jobs submitted: `md_wt100b` (31016877) and `scan_aspout` (31016878).** (2026-10-30, user: "make sure the next job gets batched today, no need to wait for my say so, use your judgement to figure out what the next step should be")
+
+**`md_wt100b`, job 31016877** - `-p gpu_cuda --qos=gpu --gres=gpu:h100:1 --cpus-per-task=4 --mem=32G -t 12:00:00`. 100 ns NVT, the four redetected zinc restraints plus `naclong`'s substrate restraint `[C:2:O01, C:1:C4x, 3.47]`, nothing on Asp92. **Why this and not `aspin`:** D134 found wt100's substrate left the site, so its occupancy is of a site with no substrate in it and its last frame is not a Michaelis complex. This is the one run that gives a free-Asp92 occupancy **with the substrate present** - which is the number the paper needs - and a usable start for `aspin`. Cost: 3 h 12 m of production at D134's rate, one GPU. `--gres=gpu:h100:1` is explicit, per D134's MIG-slice finding.
+
+**`scan_aspout`, job 31016878** - `--cpus-per-task=8 --mem=64G -t 3-00:00:00`, CPU, from `naclong`'s last frame. D133 test 1, the outward arm of the hysteresis pair: Zn-Asp92 OD1 from 1.90 to 3.60 A in nine relaxed points, Arg90, Lys226 and now Gln93 in the QM region. It needs nothing from wt100b, so it runs in parallel. Memory is 64G rather than the script's 32G because D97's Gln93 scan died of memory, not slowness. **What it decides:** whether a relaxed scan reports the basin it started in (D94's objection) - if `aspout` and `aspin` separate, every single-direction scan in this log is reporting its start, and the PMF becomes the only instrument left.
+
+Both selectors were checked by `sections.py` before submission (2 each, both resolved). `aspin` stays DO NOT RUN until wt100b finishes.
+
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
