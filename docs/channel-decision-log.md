@@ -1398,6 +1398,73 @@ blocks 30576666/67 held; the Ca jobs run)
   - The environment does not relax to 2+ vs 3+, in either term, so that response largely cancels in ΔΔE.
   - **Submitted:** site array **30819052** (30 tasks, 24 h) and water array **30819053** (30 tasks, 8 h), 10 at a time.
     All configs were rewritten (actradius 0.5, skip_equilibrate true), with no old results left in them.
+- **Node fault on bun156 (2026-10-29):** two site tasks died there within a second of each other. Task 23
+  (`LU_f0279/LA`) converged, then died of SIGBUS (exit 7:0) at the start of its single point, with no traceback and
+  5 GB MaxRSS. Task 30 (`LU_f0399/LU`) was killed by a signal 4 s after starting, before writing a log. Resubmitted
+  once as **30980424** (`--array=23,30 --exclude=bun156`). Both re-ran the optimisation (converged again) and
+  finished RC 0 (task 30 at 00:50, task 23 at 04:19 Oct 30).
+  - ASH spends 4.5–6 h single-threaded after convergence (writing `QM_MM_optimized.pdb` for 124k atoms) before the
+    ~3 min TZVP point. It is not a hang.
+- **QM/MM vertical-swap result (2026-10-30; `exchange.py analyse`, report.json).** All 60 optimisations (30 site,
+  30 water) converged; **none left out**. ΔΔE in kcal/mol, r2SCAN/def2-TZVP (lcecp-1) QM/MM single points on the
+  SVP/MM-optimised geometries, errors = sems of site and water combined (n = 5 frames per source); negative = the
+  site prefers the second ion. Energies only: no thermal or entropic terms, no calibration offset applied.
+
+  | Exchange | La frames | Lu frames | Pooled (n 10 + 10) | SVP/MM, pooled |
+  |---|---|---|---|---|
+  | Ca → La | −33.6 ± 3.2 | −14.6 ± 4.6 | −24.1 ± 4.0 | −25.1 ± 4.3 |
+  | Ca → Lu | −34.6 ± 3.5 | −16.8 ± 4.6 | −25.7 ± 3.5 | −26.6 ± 3.4 |
+  | La → Lu | −1.1 ± 3.2 | −2.2 ± 1.3 | −1.6 ± 2.9 | −1.5 ± 3.1 |
+
+  - The SVP/MM optimisation energies give the same ΔΔE within 1–2 kcal/mol, so the basis does not decide it.
+  - **Ca vs Ln: the Glu ring prefers both lanthanides over Ca, from both sides.** Every per-source value is beyond
+    3× its error.
+    - The size depends on the source: about −34 in the La frames and −15 to −17 in the Lu frames, a 17–19 kcal/mol
+      gap, larger than the errors (criterion 1 holds for the sign, not the size). The pooled sem understates this,
+      so read Ca → Ln as **−15 to −35**, not −25 ± 4.
+    - The structure explains the gap (`exchange.py structure`, structure.json; ion–O within 3.1 Å): in the La
+      frames the ion has 10 O, 4 of them protein carboxylate/carbonyl; in the Lu frames 9 O with only 1.8 protein.
+      More protein O, stronger Ln preference: the pocket-charge picture of the clusters, now with explicit
+      environment.
+  - **La vs Lu: no preference that this method can resolve.** Both sources agree, within error, on a small Lu lean
+    (−1.1, −2.2). The cluster calibration puts r2SCAN's La → Lu bias at +1.15 per carboxylate (SMD; +2.6 PCM)
+    toward Lu, the size of the whole signal.
+  - **Against the clusters:**
+    - The ring sites were Ln-selective at ε 4 (after the SMD offset: Ca → La −12 / −14, Ca → Lu −11 / −28), and
+      at ε 29 Ca vs La was within error (−2.5, −2.2). The QM/MM values, with the real protein, POPE, water and Na⁺
+      as point charges, sit at or beyond the ε 4 values. The explicit environment screens the ring much less than
+      ε 29, so the "exposed ring ≈ neutral between Ca and La" reading is not supported.
+    - The calibration offset for Ca → Ln is +1.8 per coordinating carboxylate (SMD; +4.5 PCM). With 1.8–4 protein O
+      at the ion, that is 1–4 carboxylates, so at most about +2 to +18. The Ln preference survives in the La frames
+      at any offset, and becomes marginal in the Lu frames only at the largest (PCM-sized, four-carboxylate) one.
+    - La vs Lu is unresolved in both methods; the QM/MM gives the two-sided agreement the clusters lacked, at
+      ≈ 0 ± 3.
+  - **Structure (structure.json; mean over 5 frames).**
+
+    | Box, frames | Ion | Steps | QM RMSD (Å) | CN start → end | water / other O at end | ⟨M–O⟩ (Å) |
+    |---|---|---|---|---|---|---|
+    | site, La | Ca | 57 | 0.39 | 10 → 9.6 | 6 / 3.6 | 2.55 |
+    | site, La | La | 37 | 0.27 | 10 → 10 | 6 / 4 | 2.62 |
+    | site, La | Lu | 37 | 0.32 | 10 → 9.8 | 6 / 3.8 | 2.47 |
+    | site, Lu | Ca | 55 | 0.37 | 9 → 8.8 | 7 / 1.8 | 2.48 |
+    | site, Lu | La | 36 | 0.37 | 9 → 9 | 7.2 / 1.8 | 2.55 |
+    | site, Lu | Lu | 39 | 0.32 | 9 → 8.8 | 7 / 1.8 | 2.38 |
+    | water, La | Ca | 100 | 0.64 | 9.8 → 8.8 | 8.8 / 0 | 2.51 |
+    | water, La | La | 36 | 0.34 | 9.8 → 9.8 | 9.8 / 0 | 2.62 |
+    | water, La | Lu | 54 | 0.51 | 9.8 → 9.2 | 9.2 / 0 | 2.43 |
+    | water, Lu | Ca/La/Lu | 27–44 | 0.30–0.35 | 9 → 9 | 9 / 0 | 2.40–2.55 |
+
+    - At the site every swapped ion keeps the shell of the ion the frame was sampled with (CN changes by ≤ 0.4,
+      QM RMSD ≤ 0.4 Å). The vertical swap stays vertical.
+    - In water, Ca loses a water in 4 of 5 La-box frames (9.8 → 8.8, 100 steps), and Lu in 3 of 5 (→ 9.2). Ca and Lu
+      relax more in the water reference than at the site, which favours them in water. This is part of why the
+      La-frame ΔΔE is larger.
+- **Scratch cleanup (2026-10-30, user: "analyse all relevant information before deleting the trajectories").**
+  `exchange.py structure` read every job's QM-region trajectory first; then `exchange.py clean --delete` removed, in
+  the 60 final jobs only, `geometric_OPTtraj_Full.xyz` (only QM atoms move, so the QM-region trajectory holds the
+  same path), `Fragment-currentgeo.*` and geomeTRIC's `HT.v_*.txt` Hessian-eigenvector dumps: **26.3 GB**.
+  `channel/qmmm` is now 2.7 GB; scratch 261 → 231 of 300 GB. Kept: QM-region trajectories, optimised geometries,
+  `QM_MM_optimized.pdb`, `frame.pdb`, logs, configs, `pyscf.chk`, report.json, structure.json.
 
 ## Findings
 
