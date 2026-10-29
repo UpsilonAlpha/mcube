@@ -37,9 +37,15 @@ The modes answer different questions, in rough order of cost:
                 be compared in one system rather than in systems that differ.
   check         does this structure meet the criteria for a Michaelis complex
                 at all? Cheapest of the lot, and the one to run first: it reads
-                `michaelis_criteria` from the site file and exits non-zero if a
-                criterion required at this stage is violated, so a start
+                one named set from `michaelis_hypotheses` and exits non-zero if
+                a criterion required at this stage is violated, so a start
                 structure is accepted by a command rather than by eye.
+                `--hypothesis=` is required when more than one set is defined,
+                because a criterion is only a criterion within a mechanism
+                (D127). Its coordination criterion returns a COUNT, and four
+                donors inside a cutoff can be the wrong four - where the
+                identity of the sphere is the claim, read it off `shell`'s
+                occupancies instead (D129, D130).
 """
 from __future__ import annotations
 
@@ -900,7 +906,7 @@ def _criterion(site, at, c, stage):
 
 
 def mode_check(site, args):
-    """Accept or reject a candidate structure against `michaelis_criteria`.
+    """Accept or reject a candidate structure against one named hypothesis.
 
     This mode exists because of D123: the pose everything ran on from October
     had the substrate bound the other way round, with a substituent oxygen on

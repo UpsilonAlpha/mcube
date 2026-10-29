@@ -168,6 +168,12 @@ file before being quoted.** Our optimised model currently has a five-coordinate
 zinc (O01 1.88, His88 2.13, His164 2.14, HOH 2.17, Asp92 OD1 2.19), and whether
 that matches the crystallographic sphere is exactly the comparison to make.
 
+**That comparison was made in D120 and the answer is no.** Measured from 6NC5
+(ZN302), the crystal sphere is four — HOH485 1.90, His163 NE2 2.09, HOH493 2.14,
+His87 NE2 2.22 — with **no carboxylate**. Asp92 OD1 at 2.19 Å above is the fifth
+ligand the crystal does not have, and a restraint this pipeline generated put it
+there.
+
 **Could not be read:** Imhof 2009 Methods (ACS paywall - so "minimised structures"
 is still unverified), Xu-Xie-Guo *JBC* 2006 (not OA; its QM/MM MD length is
 unknown, and the 500 ps figure that search surfaces belongs to the separate 2005
@@ -244,7 +250,37 @@ Then:
 - second-shell water / nucleophile candidate analysis (`contact_report.py` and `site_report.py` cover most of it);
 - network bookkeeping (one config section per step; a small script to assemble barriers).
 
-## Status (2026-10-26)
+## Status (2026-10-29)
+
+> **Superseding note, 2026-10-29.** Everything in the 2026-10-26 status below
+> was written before D120, and one of its bullets is now known false: the zinc
+> sphere was listed as **five-coordinate and crystal-referenced, "established
+> and not in doubt"**. The crystal sphere is **four** — HOH485 1.90, His163 NE2
+> 2.09, HOH493 2.14, His87 NE2 2.22 (6NC5 ZN302) — **and Asp92 is not on it.**
+> The fifth ligand was put there by a coordination restraint this pipeline
+> generated from a 3.0 Å detection cutoff, which held Asp92 OD2 at its 2.80 Å
+> second-shell distance until the carboxylate rotated OD1 onto the metal (D120,
+> D121).
+>
+> **What that costs the rest of the bullet list.** Every trajectory measurement
+> below was made on that five-coordinate zinc, so the ones that involve Asp92 or
+> the metal are not independent of the artefact. In particular, *"the hydroxide
+> stays on the zinc and Asp92 OD1 holds it, 100% of frames"* was measured with
+> Asp92 restrained against the metal — it has to be re-established on a shell
+> that matches the crystal before it can be cited. The cation positions (Arg90,
+> Lys226, Arg229) are not affected.
+>
+> **Two further blockers found since.** The pose everything ran on from October
+> was the wrong one, and 2.55 Å was its restraint's own output rather than a
+> measurement (D123, D126); and the start structures built in D126/D128 graft
+> onto `md_naclong`'s frame, which carries the condemned shell forward, so
+> `md_subst` (job 30923516) was cancelled an hour in (D130).
+>
+> **The current blocker is therefore the shell, not the pose**, and D120 already
+> costed the route through it: preprocess from the crystal with `cutoff: 2.5`,
+> no Asp92 restraint, then re-run everything from `md_nac` onward. Read
+> `## Standing constraints` at the top of the decision log before setting any of
+> it up. M0 below is still the right shape; its starting structure is not.
 
 **The blocker is the substrate pose, and it sits upstream of everything else in
 the M-series.** Two poses are now excluded. The pinned one - every structure
@@ -263,10 +299,14 @@ which is what M0 below is for.
   the zinc (1.73-1.97 A, 100% of frames) and Asp92 OD1 holds it (2.63-3.20 A,
   mean 2.94, 100%) - D111. Asp92's proton-accepting geometry is the one part of
   the mechanism every calculation here agrees on.
-- **The zinc sphere**, five-coordinate under GFN2 and referenced to the crystal
-  rather than to any simulation length (D108; user, 2026-10-25): O01 1.90,
-  His164 NE2 2.10, Asp92 OD1 2.11, HOH 2.16, His88 NE2 2.18. Asp92 is
-  **monodentate** (OD2 4.22), so it bridges nothing.
+- ~~**The zinc sphere**, five-coordinate under GFN2 and referenced to the
+  crystal rather than to any simulation length (D108; user, 2026-10-25): O01
+  1.90, His164 NE2 2.10, Asp92 OD1 2.11, HOH 2.16, His88 NE2 2.18. Asp92 is
+  **monodentate** (OD2 4.22), so it bridges nothing.~~
+  **[FALSE — D120.]** The crystal sphere is **four** and carries no carboxylate;
+  "referenced to the crystal" was never checked against the deposited file.
+  Asp92 OD1 at 2.11 Å is a restraint artefact, not a ligand. Nothing that
+  depends on this bullet survives it.
 - **Both cations are where the hypothesis needs them**, and cationic throughout:
   Arg90 at a Zn1 ligand position, Lys226 at the Zn2 position (D107, D110). The
   +2-substitution hypothesis stands as a hypothesis; what it does not have is
@@ -309,8 +349,10 @@ between the two systems.
 | Active region | 8 Å around the Zn (atom 4203). One `active_atoms` list per snapshot, reused by every later step for that snapshot. |
 
 **`CSR_nac`, as actually run** (D102–D111): 49,424 atoms; zinc five-coordinate on
-His88 NE2, His164 NE2, Asp92 OD1, OH⁻ (O01) and one water, with the substrate
-carbonyl **not** coordinated (Zn–O2x never closer than 4.77 Å); QM region 119
+His88 NE2, His164 NE2, Asp92 OD1, OH⁻ (O01) and one water — **the wrong sphere,
+and the reason this run has to be redone: the crystal has four and no
+carboxylate (D120)** — with the substrate carbonyl **not** coordinated (Zn–O2x
+never closer than 4.77 Å, which a saturated metal cannot avoid); QM region 119
 atoms at charge +2, or **137 atoms at charge +3** with Arg229's side chain added
 (`qmmm_nacarg`, D110); active region 5 Å around the Zn, unioned with the QM atoms.
 Since D105 `resolve_actatoms` unions the QM atoms in unconditionally and reports

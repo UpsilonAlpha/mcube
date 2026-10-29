@@ -1,6 +1,6 @@
-# Reference structures, and how each number in `michaelis_criteria` was got
+# Reference structures, and how each number in `michaelis_hypotheses` was got
 
-Every range in `site.yaml`'s `michaelis_criteria` comes from a deposited
+Every range in `site.yaml`'s `michaelis_hypotheses` comes from a deposited
 structure measured here, not from a review's prose. This file records the PDB
 ID, the ligand code, the exact command and the output, so a reviewer — or we,
 in six months — can re-derive the number rather than take it.
@@ -16,6 +16,69 @@ python refstruct.py centre 1tmn.pdb 0ZN 317
 `refstruct.py` reads only blank and `A` alternate conformations, and reports
 donors within 3.2 Å of every zinc — wider than our own 2.6 Å cutoff on purpose,
 so a borderline contact is visible instead of hidden by the cutoff.
+
+## CSR-1 itself — the sphere every other number is referenced against
+
+This belongs first and was missing from this file until 2026-10-29, which is
+part of why D120 took three weeks to find: the number that decides whether a
+model's metal site is right was recorded only in a decision entry.
+
+```bash
+curl -o 6nc5.pdb https://files.rcsb.org/download/6NC5.pdb
+python refstruct.py shell 6nc5.pdb
+```
+
+6NC5 holds **six** zincs. Only one of them is the site we model.
+
+| zinc | donors within 3.2 Å | what it is |
+| --- | --- | --- |
+| **ZN302** | HOH485 **1.90**, His163 NE2 **2.09**, HOH493 **2.14**, His87 NE2 **2.22** | **the site we model.** Wild-type ligands |
+| ZN301 | Asp91 OD2 1.95, His92 NE2 2.01, His225 NE2 2.04, HOH493 2.08 | the Zn2 site — **present only because of the mutations**, see below |
+| ZN303 | HOH485 1.88, HOH516 1.96, HOH504 2.13, acetate 2.79 | adventitious (3.39 Å from ZN302) |
+| ZN304–306 | Glu115/Glu141/His111/Asp129/Glu123, phosphate | adventitious surface sites |
+
+**ZN302 has four donors: two histidines and two waters. No carboxylate.** Asp92
+(BBL D120) sits at **2.80 Å** on OD2 — a second-shell contact, not a ligand.
+
+**Why ZN301 does not contradict "CSR-1 is mononuclear", and in fact proves it.**
+6NC5 is an engineered construct, titled the *HARLDQ motif*, and its `SEQADV`
+records say what was engineered:
+
+```
+SEQADV 6NC5 HIS A   92  UNP  A0A384EQ6 GLN   136 ENGINEERED MUTATION
+SEQADV 6NC5 HIS A  225  UNP  A0A384EQ6 LYS   269 ENGINEERED MUTATION
+```
+
+Those are **our Gln93 and Lys226** (BBL Q121 and K263) — the Q and the K of the
+RQK motif — mutated to histidine. That restores a canonical Asp-His-His Zn2
+ligand set, and a zinc duly binds it 3.43 Å from ZN302, sharing a bridging water
+(HOH493). In the wild-type enzyme those positions are a glutamine and a lysine,
+**which cannot ligate a zinc at all.** So the only way anyone has put a metal in
+CSR-1's Zn2 site was to engineer two of its ligands back, and ZN302's own
+ligands are untouched by either mutation.
+
+**Counting coordination for this enzyme.** CSR-1's Zn1 site is **H-R-H, with two
+coordinating residues, not the canonical three**: Arg90 (BBL R118) stands where
+the third histidine would be. So the canonical-equivalent four-coordinate sphere
+here is **two histidines + hydroxide + one water**, and an extra solvent ligand
+must be counted against two protein ligands rather than three before it is
+called over-coordination.
+
+Three consequences, all of them load-bearing:
+
+1. **Any model whose zinc carries five ligands, or a carboxylate, is wrong.** A
+   saturated metal has no site for the substrate carbonyl, which is a sufficient
+   explanation of substrate loss without blaming the QM method (D120).
+2. **2.80 Å is where Asp92 belongs, and it is not a bond.** Restraining it there
+   is what rotated OD1 onto the metal. See `## Standing constraints` in the
+   decision log and `LIGAND_MAX` in `preprocess.py`.
+3. **CSR-1 is a Zn1-site enzyme, and every mononuclear MBL in the literature is
+   Zn2-site** (GOB-18, Sfh-I, CphA), so none of those analogies transfers
+   cleanly — which is why the thermolysin and carboxypeptidase A rows below,
+   mononuclear hydrolases with one zinc doing both jobs, carry the criteria
+   instead (D124).
+
+`6DN4` is the apo/second CSR-1 entry used as a cross-check in D120.
 
 ## The two mononuclear zinc hydrolases with transition-state analogues bound
 

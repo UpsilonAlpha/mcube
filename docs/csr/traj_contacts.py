@@ -146,11 +146,23 @@ def probes(top, skip_missing=False):
         # the substrate rather than inferred from it.
         ("Gln93 OE1 - Zn",
          dict(resseq=93, resname="GLN", names={"OE1"}), dict(resname="ZN")),
-        # Asp92 = D120, the proposed general base; monodentate to the one zinc
+        # Asp92 = BBL D120, the proposed general base. Whether it is ON the metal
+        # is a question, not a given: the crystal has it at 2.80 A on OD2 with no
+        # carboxylate in the sphere, and the 1.99 A OD1 contact every arm ran on
+        # came from a restraint (D120, D130).
         ("Asp92 OD1 - O01 nucleophile",
          dict(resseq=92, resname="ASP", names={"OD1"}), nucleophile),
         ("Asp92 OD1/OD2 - O01 nucleophile",
          dict(resseq=92, resname="ASP", names={"OD1", "OD2"}), nucleophile),
+        # Both oxygens against the metal, separately. D120 went unseen for three
+        # weeks because everything watched OD2 - which sits at 2.98-3.60 A and so
+        # reports as uncoordinated, exactly what a healthy site looks like - while
+        # OD1, the actual ligand at 1.99-2.07 A, was in no monitor, no scan and no
+        # restraint. Gln93 OE1 had a Zn line here and Asp92 had none.
+        ("Asp92 OD1 - Zn",
+         dict(resseq=92, resname="ASP", names={"OD1"}), dict(resname="ZN")),
+        ("Asp92 OD2 - Zn",
+         dict(resseq=92, resname="ASP", names={"OD2"}), dict(resname="ZN")),
         # The attack coordinate and the metal, to sit beside the log's table
         ("O01 - mer C4x (attack)",
          nucleophile, dict(resname="mer", names={"C4x"})),
