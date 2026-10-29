@@ -90,7 +90,7 @@ this. **Update the status line in the same commit that changes the behaviour.**
 
 18. **Run the cheap trajectory analyses before committing QM/MM.** `site.py check --at=reactant`, then `joint` and `acceptors`, cost minutes against ~119 h. D119 said so and it was not done. *Enforced:* nothing.
 
-**Live run directory:** `/scratch/user/uquadhik/CSR_nac`. `CSR_ligand` defines the system and `CSR_hydrolysed` is the product source; the `CSR_crystal*` directories are superseded.
+**Live run directory:** `/scratch/user/uquadhik/CSR_wt` (D132), which holds a copy of `CSR_nac`'s preprocess output and the same config with `preprocess.inputs.cutoff` at 2.5. `CSR_nac` is the history up to D131 and every md section in it starts from the wrong zinc sphere; `CSR_ligand` defines the system and `CSR_hydrolysed` is the product source; the `CSR_crystal*` directories are superseded.
 
 ---
 ## Structure and topology
@@ -2619,6 +2619,32 @@ Those are **our Gln93 and Lys226** - the Q and the K of RQK - mutated to histidi
 **One measurement worth keeping from the cancelled run:** it covered 16.66 ns in 34 minutes on `bun075`, **0.49 ns/min, against `naclong`'s 379 ns/day on the same system**. Nearly a factor of two, so a 100 ns NVT is ~3.4 h on a fast node rather than 6.3 h. Partial, from a cancelled job, so not written into `running-on-bunya.md` yet.
 
 Commits: a193b80 (guard, ledger, README), 1243df4 (plan, reference file, monitors). Suite 403 passed, 6 skipped. **The rebuild has not started.**
+
+**D132 - The rebuild is running. `md_wt100`, job 30966977: 100 ns of NVT whose zinc carries the crystal's four ligands and nothing else, with no restraint anyone chose.** (2026-10-29, user: "Kill and rebuild" / "Yes, new directory")
+
+Run directory `/scratch/user/uquadhik/CSR_wt`, built as a copy of `CSR_nac`'s preprocess output rather than a fresh preprocess. **Correcting what I told the user before this:** `csr_crystal_start.pdb` and `mer_crystal.pdb` are NOT missing - both are in `CSR_nac/preprocess_results/`, dated 23 Oct, and preprocess could have been re-run. Re-running it would have re-solvated the box, which changes every water position for no gain, so starting from the existing `finalsystem.pdb` is the better choice on its merits and not a workaround. The directory is self-contained: it carries the two crystal inputs, the force fields and the OpenFF ligand XML, so the run is reproducible from it alone.
+
+**What is different from every md section before it, and it is only three things.**
+
+  1. The start structure is `preprocess_results/finalsystem.pdb`, the pre-MM system, not an MM frame. The artefact D120 found appears *during* the MM, so any later frame carries Asp92 OD1 on the metal at 1.99-2.07 A and no cutoff undoes coordinates.
+  2. `preprocess.inputs.cutoff` is **2.5**, not 3.0. This is the change D120 prescribed and D130 found had never been made.
+  3. **No configured restraints at all** - not on Asp92, and not on the substrate either. Every restraint in force is one redetection measured on the structure itself.
+
+**The detected sphere, checked before submitting, which is the whole point of the run:**
+
+```
+Metal Zn at B:1   Cutoff: 2.50 A
+HOH D:1   (O  ) 1.90    HIS A:164 (NE2) 2.09
+OH  C:2   (O01) 2.14    HIS A:88  (NE2) 2.22
+```
+
+Four restraints at 50 kcal/mol/A^2, and they are 6NC5 ZN302's four donors: two histidines, the hydroxide and the second water. **Asp92 is not among them** - at 2.80 A it falls outside 2.5 and is left as the second-shell contact the crystal says it is. No `[WARNING] ... is not a bond` fired, because nothing being restrained is longer than `LIGAND_MAX`. This is the sphere the paper's mechanism has to start from, and it is the first time a run of ours has had it.
+
+**What it decides.** Whether that sphere is stable over 100 ns of MM. Every mechanism in `csr-neb-plan.md` assumes it and none has tested it: the one previous 100 ns (`naclong`) held Asp92 on the metal by restraint throughout. Read it with `site.py shell` for occupancy per donor - a count is not a composition (D129) - and `site.py check --at=reactant` on the last frame. Cost ~3.4 h on a fast GPU node at D131's 0.49 ns/min, 7 GB of trajectory at `traj_frequency: 5000`; scratch is at 229/300 GB.
+
+**What it deliberately does not decide.** The substrate is unrestrained, so meropenem is expected to leave the attack line as it did in D93 (3.47 -> 5.41 A over 500 ps). That is not a failure of this run and not evidence against any hypothesis: this run establishes the resting site. Whether a Michaelis complex can be built on a correct sphere is the next question, and it must be asked of this trajectory's shell, not of `subst_start.pdb`.
+
+Config: `md_wt100` in `docs/csr/site.yaml` (b9b3513), written into the run config with `sections.py`, which reported `0 selectors checked` - correct here, because the section has no selectors at all.
 
 ## Resources (see `running-on-bunya.md`)
 

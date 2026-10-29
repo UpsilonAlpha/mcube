@@ -281,6 +281,15 @@ Then:
 > no Asp92 restraint, then re-run everything from `md_nac` onward. Read
 > `## Standing constraints` at the top of the decision log before setting any of
 > it up. M0 below is still the right shape; its starting structure is not.
+>
+> **That route is now running, 2026-10-29: `md_wt100`, job 30966977 in
+> `/scratch/user/uquadhik/CSR_wt`.** 100 ns of NVT from the pre-MM structure
+> with detection at 2.5 A and no configured restraints; the four restraints in
+> force are redetected ones and they are 6NC5 ZN302's own donors (HOH 1.90,
+> His164 2.09, hydroxide 2.14, His88 2.22), Asp92 excluded. **Nothing below
+> this note should be rebuilt until its shell is read** - `site.py shell` for
+> occupancy, `site.py check --at=reactant` on the last frame. It does not fix
+> the pose: the substrate is unrestrained and expected to drift (D93, D132).
 
 **The blocker is the substrate pose, and it sits upstream of everything else in
 the M-series.** Two poses are now excluded. The pinned one - every structure
