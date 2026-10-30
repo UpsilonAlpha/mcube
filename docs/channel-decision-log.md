@@ -1502,8 +1502,32 @@ blocks 30576666/67 held; the Ca jobs run)
     Re-referencing both systems to a common finite embedding (first order: Δq·φ_R per frame, `analyse
     --embed-radius`) moves the pooled Ca → La ΔΔE from −24 to −54 (R 10), −34 (15), −37 (20) and −4 kcal/mol (30), and the
     Lu-frame value through zero (+8, −16, −12, +14). La → Lu (Δq = 0) does not move. **So point 4 is decisive: the
-    Ca → Ln magnitude is set by the non-periodic embedding, not by the site.** Next: the same first-order
-    correction to the PME potential the MD ran with (`potential --pme`, `analyse --periodic`; job 31059089).
+    Ca → Ln magnitude is set by the non-periodic embedding, not by the site.**
+    - The same first-order correction to the PME potential the MD ran with (`potential --pme`, `analyse
+      --periodic`). The first job (31059089) read φ_PME = 0 on every frame (`getState(groups=…)` returned 0 on
+      Bunya's OpenMM; fixed in abfc721, rerun 31143268). PME − direct at the ion: site +1.25 V (sd < 0.08, all
+      three sources), water +3.9 V. Pooled ΔΔE with it: Ca → La −86, Ca → Lu −87 kcal/mol (La frames −95, Lu
+      frames −76); La → Lu −1.6, unchanged.
+    - That shift is mostly an artefact too: the environment without the ion is −3 e, and under PME its neutralising
+      background puts ≈ ξ·3e/L at the ion. That is 3.5 V in the 34.7 Å water cube and ≈ 1.2 V in the
+      122 × 117 × 83 Å slab (cubic ξ, so approximate). Removing it leaves residuals of ≈ 0.4 V (water: the TIP3P
+      Ewald-convention offset; 0.74 V at a cavity point in a test box) and ≈ 0.1 V (site), so Ca → La ≈ −31. Those
+      residuals are the convention terms Rocklin et al. correct separately, and they are again a few tenths of a
+      volt, i.e. ±10 kcal/mol.
+    - **Reading: no first-order re-referencing pins down Ca → Ln.** Depending on how the far field is referenced,
+      the pooled Ca → La ΔΔE is anywhere from −4 to −95 kcal/mol. All of these are Ln-favouring except the Lu frames
+      at R 10 and R 30. A number needs a protocol that never changes the net charge (a co-alchemical counter-ion,
+      or MM alchemical Ca → Ln under PME with Rocklin's corrections, and QM only as a same-charge correction).
+      La → Lu needs none of this.
+  - **Checks, landed 2026-10-30.**
+    - D3(BJ) on all 60 jobs moves every ΔΔE by < 0.1 kcal/mol (`qmmm_d3`). Dispersion is not a factor.
+    - ωB97X-V vs r2SCAN, both TZVP, on the same 4 site and 4 water frames per exchange: the hybrid shifts site and
+      water ΔE alike (Ca → La −15.1 / −15.2, Ca → Lu −10.8 / −10.6, La → Lu +4.3 / +4.6). So ΔΔE changes by
+      ≤ 0.3 kcal/mol. The functional is not a factor. (`analyse` labels the qmmm_wb97xv sp level "r2SCAN";
+      that label is wrong, the energies are ωB97X-V.)
+    - Calibration boxes (31053172–74) done. Every ion stays monodentate on the capped Glu with 7–9 waters, as at
+      the site. 45 swaps submitted (31143422, `qmmm_cal`; water reference shared with `qmmm`). The `frames
+      --complex` step needed bulk_ion's frame time (7eb7ef9).
   - **Checks.** r2SCAN-D3(BJ) on all 60 jobs (`qmmm_d3`, 31053109/10); ωB97X-V on 2 frames per source
     (`qmmm_wb97xv`, 31053111/12; ORCA is not on Bunya, so no DLPNO-CCSD(T)). Calibration on the protocol's own
     terms: Ca, La and Lu each on a capped Glu (Ace-Glu-NMe built from the La frame's Glu240 and its binding mode)
