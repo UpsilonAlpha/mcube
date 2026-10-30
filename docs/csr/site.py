@@ -15,6 +15,8 @@
     python site.py check        <pdb> [pdb ...] [--at=start|reactant]
                                        [--hypothesis=<name>]
                                                     accept or reject a structure
+    python site.py protonate    <pdb> <chain:resid> --to=ASH [--out=<path>]
+                                                    build the protonated variant
 
 Every atom, every candidate base and every criterion comes from `site.yaml`
 (override with --site), so this script carries no knowledge of a particular
@@ -56,11 +58,16 @@ The modes answer different questions, in rough order of cost:
                 donors inside a cutoff can be the wrong four - where the
                 identity of the sphere is the claim, read it off `shell`'s
                 occupancies instead (D129, D130).
+  protonate     not a measurement: the one mode that writes a structure. It
+                renames a residue to its protonated Amber variant and builds
+                the proton, so the alternative protonation state can be run at
+                all. See `mode_protonate`.
 """
 from __future__ import annotations
 
 import collections
 import math
+import os
 import sys
 
 import yaml
@@ -973,6 +980,308 @@ def write_grafted(system, sys_atoms, lig_rows, ref_atoms, pos_of, clashing, n):
     return out.rsplit("/", 1)[-1]
 
 
+# --- protonate ---------------------------------------------------------------
+#
+# The protonated Amber variants, as ff14SB actually defines them. Each entry was
+# read off the force field rather than from a paper:
+#
+#   ForceField("amber14/protein.ff14SB.xml")._templates["ASH"]
+#
+#     ASH  N H CA HA CB HB2 HB3 CG OD1 OD2 HD2 C O      = ASP + HD2 on OD2
+#     GLH  N H CA HA CB HB2 HB3 CG HG2 HG3 CD OE1 OE2 HE2 C O
+#                                                       = GLU + HE2 on OE2
+#     LYN  N H CA HA CB HB2 HB3 CG HG2 HG3 CD HD2 HD3 CE HE2 HE3 NZ HZ2 HZ3 C O
+#                                                       = LYS - HZ1
+#
+# ASH and GLH are the same operation on different atom names, so both are built;
+# LYN is not, and the reason is in OpenMM's data files rather than in the force
+# field. Renaming a residue only works if something still knows how to bond it:
+#
+#   data/pdbNames.xml   <Residue name="ASP" alt1="ASH">
+#                       <Residue name="GLU" alt1="GLH">   (no LYN entry)
+#   data/residues.xml   ASP carries <Bond from="HD2" to="OD2"/>
+#                       GLU carries <Bond from="HE2" to="OE2"/>
+#                       ASH, GLH and LYN have no entry at all
+#
+# So an ASH in a file is renamed back to ASP on load and then bonded by ASP's
+# definitions, which already include the HD2 the charged residue never has -
+# the proton is bonded, by name, and the ASH *template* is matched afterwards by
+# graph isomorphism. GLH goes the same way through GLU. A residue renamed LYN,
+# though, is renamed by nothing and bonded by nothing: it has no residues.xml
+# entry, so `createStandardBonds` gives it not one bond, and twenty-one loose
+# atoms match no template. Neutralising a lysine therefore has to be done by
+# leaving the residue named LYS and letting the graph match LYN, which is what
+# `make_water_nuc.py --lys` does. It is a different operation, not this one, so
+# `--to=LYN` refuses and says so rather than writing a structure that dies at
+# `createSystem`.
+#
+# `parent` is the charged residue the input must currently be: refusing anything
+# else is the point, because a residue that is already ASH, or is an ASN that
+# someone mistyped the selector for, would otherwise be silently mangled.
+PROTON_VARIANTS = {
+    "ASH": {"parent": "ASP", "add": "HD2", "oxygen": "OD2", "carbon": "CG",
+            "other": "OD1"},
+    "GLH": {"parent": "GLU", "add": "HE2", "oxygen": "OE2", "carbon": "CD",
+            "other": "OE1"},
+    "LYN": {"parent": "LYS", "unsupported":
+            "a neutral lysine cannot be built by renaming the residue. OpenMM "
+            "has no LYN entry in residues.xml and no LYN alternative name in "
+            "pdbNames.xml, so a residue renamed LYN keeps that name and comes "
+            "out of createStandardBonds with no bonds at all - twenty-one "
+            "loose atoms, matching no template. Remove HZ1 (ff14SB's LYN is "
+            "LYS without HZ1) and leave the residue named LYS instead: OpenMM "
+            "matches the template by bond graph and finds LYN anyway. "
+            "`make_water_nuc.py --lys CHAIN:RESID` already does exactly that."},
+}
+
+OH_LENGTH = 0.98        # A. A carboxylic O-H; ff14SB's OH/HO pair sits here.
+COH_ANGLE = 113.0       # degrees, C-O-H. The sp2 oxygen's angle, not 109.5.
+
+
+def _sub(a, b):
+    return tuple(x - y for x, y in zip(a, b))
+
+
+def _dot(a, b):
+    return sum(x * y for x, y in zip(a, b))
+
+
+def _cross(a, b):
+    return (a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2],
+            a[0] * b[1] - a[1] * b[0])
+
+
+def _norm(a):
+    return math.sqrt(_dot(a, a))
+
+
+def _unit(a):
+    length = _norm(a)
+    if length < 1e-8:
+        raise ValueError("cannot normalise a zero-length vector")
+    return tuple(x / length for x in a)
+
+
+def place_carboxyl_proton(carbon, other_o, oxygen,
+                          length=OH_LENGTH, angle_deg=COH_ANGLE):
+    """The proton on `oxygen`: in the carboxylate plane, anti to `other_o`.
+
+    Everything comes from the three heavy atoms, so the result follows the
+    residue wherever it sits in the box and whatever it has rotated to - no
+    coordinate here is written down.
+
+    `e1` runs from the hydroxyl oxygen to the carbon, `n` is the normal of the
+    C/O/O plane, and `e2` is the in-plane direction perpendicular to `e1`, signed
+    so that it points towards the *other* oxygen. Rotating `e1` by the C-O-H
+    angle away from `e2` therefore lands the proton in the plane, at that angle,
+    and on the far side of the C-O axis from the carbonyl oxygen: the anti
+    conformer. Rotating towards `e2` would give syn, which is a real conformer
+    but the less common one, and at a 1,3 separation across the carboxylate it
+    puts the proton about 2.2 A from the carbonyl oxygen instead of 3.2 - a
+    contact a minimisation has to undo before anything else happens.
+
+    Raises on a degenerate (collinear) carboxylate, where the plane - and so the
+    whole construction - is not defined.
+    """
+    e1 = _unit(_sub(carbon, oxygen))
+    to_other = _sub(other_o, oxygen)
+    n = _cross(e1, to_other)
+    if _norm(n) < 1e-6:
+        raise ValueError(
+            "the three heavy atoms are collinear, so the carboxylate plane is "
+            "undefined and there is no in-plane direction to build along")
+    e2 = _unit(_cross(_unit(n), e1))
+    if _dot(e2, to_other) < 0.0:
+        e2 = tuple(-x for x in e2)
+    theta = math.radians(angle_deg)
+    direction = tuple(math.cos(theta) * a - math.sin(theta) * b
+                      for a, b in zip(e1, e2))
+    return tuple(o + length * d for o, d in zip(oxygen, direction))
+
+
+def _pdb_atoms(lines):
+    """[(index, name, resname, chain, resseq, (x, y, z)), ...] over ATOM lines."""
+    out = []
+    for index, line in enumerate(lines):
+        if line.startswith(("ATOM", "HETATM")):
+            out.append((index, line[12:16].strip(), line[17:20].strip(),
+                        line[21], line[22:26].strip(),
+                        (float(line[30:38]), float(line[38:46]),
+                         float(line[46:54]))))
+    return out
+
+
+def _rename(line, variant):
+    """The residue name field replaced, the rest of the line untouched."""
+    return line[:17] + "%3s" % variant + line[20:]
+
+
+def _hydrogen_line(model, name, xyz):
+    """A new hydrogen's ATOM line, built from a line of the same residue.
+
+    Inheriting chain, residue number, insertion code, occupancy and B-factor
+    from a sibling rather than reconstructing them is what keeps the new atom in
+    the same residue. The element columns (77-78) are then overwritten: the
+    model is a heavy atom, and `PDBFile` believes that column over the atom
+    name, so leaving it would declare the proton an oxygen - the mistake that
+    once turned a water into an O-H-O that matched no template.
+    """
+    line = (model[:12] + "%-4s" % name + model[16]
+            + model[17:30]
+            + "%8.3f%8.3f%8.3f" % xyz
+            + model[54:]).rstrip("\n").ljust(78)
+    return line[:76] + " H" + line[78:] + "\n"
+
+
+def mode_protonate(site, args):
+    """Write the structure again with one residue in its protonated form.
+
+        python site.py protonate in.pdb A:92 --to=ASH [--out=out.pdb]
+
+    The structure is copied through line by line and only the named residue is
+    touched: every other atom, the ordering, CRYST1, the waters, the metal and
+    the CONECT records all arrive unchanged, because the question being asked is
+    what one proton does and anything else that moved would be a confound.
+
+    The proton's serial is one past the file's highest, so no existing line is
+    renumbered and no existing CONECT has to be rewritten. `PDBFile` keys CONECT
+    on serial numbers rather than on file order, so a serial out of sequence is
+    read correctly; a duplicate one would not be. The proton is written
+    immediately after its oxygen, inside the residue, because `PDBFile` groups
+    atoms into residues by file order and an atom appended after the chain would
+    become a residue of its own.
+
+    The new bond is also written as a CONECT record. OpenMM does not need it -
+    `residues.xml` gives ASP an HD2-OD2 bond and GLU an HE2-OE2 bond already, so
+    the proton is bonded by name once the residue has been renamed back to ASP
+    or GLU on load - but it costs one line, duplicate bonds are discarded, and
+    it means the file states its own bond rather than relying on a data file
+    elsewhere happening to carry an atom the charged residue never has. The
+    failure it guards against is silent in the PDB and loud hours later: an
+    unbonded proton matches no template and dies in `createSystem`.
+    """
+    if len(args) != 2:
+        raise SystemExit("protonate needs <pdb> <chain:resid> --to=ASH")
+    src, selector = args
+    variant = (OPTS.get("to") or "").upper()
+    if variant not in PROTON_VARIANTS:
+        raise SystemExit(
+            "--to= wants one of %s, not %r"
+            % (", ".join(sorted(PROTON_VARIANTS)), OPTS.get("to")))
+    spec = PROTON_VARIANTS[variant]
+    if "unsupported" in spec:
+        raise SystemExit("--to=%s is not implemented: %s"
+                         % (variant, spec["unsupported"]))
+    parts = selector.split(":")
+    if len(parts) != 2 or not all(parts):
+        raise SystemExit("the residue wants CHAIN:RESID, not %r" % selector)
+    chain, resid = parts
+
+    out = OPTS.get("out") or "%s_%s%s_%s.pdb" % (
+        src.rsplit(".", 1)[0], chain, resid, variant)
+    if os.path.abspath(out) == os.path.abspath(src):
+        raise SystemExit(
+            "--out is the input file. `protonate` writes a second structure so "
+            "the two protonation states can be compared; it does not edit one "
+            "in place. Nothing was written.")
+
+    lines = open(src).read().splitlines(keepends=True)
+    atoms = _pdb_atoms(lines)
+    if not atoms:
+        raise SystemExit("%s holds no ATOM or HETATM records" % src)
+    residue = [a for a in atoms if a[3] == chain and a[4] == resid]
+    if not residue:
+        raise SystemExit(
+            "no residue %s:%s in %s. Nothing was written." % (chain, resid, src))
+    names = {a[1]: a for a in residue}
+    resnames = {a[2] for a in residue}
+    if resnames != {spec["parent"]}:
+        raise SystemExit(
+            "%s:%s is %s, and %s is built from %s. Nothing was written."
+            % (chain, resid, "/".join(sorted(resnames)), variant,
+               spec["parent"]))
+
+    proton = spec["add"]
+    if proton in names:
+        raise SystemExit(
+            "%s:%s already carries %s, so it is already the protonated form. "
+            "Nothing was written." % (chain, resid, proton))
+    needed = [spec["carbon"], spec["other"], spec["oxygen"]]
+    absent = [n for n in needed if n not in names]
+    if absent:
+        raise SystemExit(
+            "%s:%s is missing %s, which %s is built from. It holds: %s. "
+            "Nothing was written."
+            % (chain, resid, ", ".join(absent), proton, " ".join(sorted(names))))
+    try:
+        xyz = place_carboxyl_proton(*[names[n][5] for n in needed])
+    except ValueError as exc:
+        raise SystemExit("cannot place %s on %s:%s: %s. Nothing was written."
+                         % (proton, chain, resid, exc))
+    anchor = names[spec["oxygen"]]
+
+    serials = [int(lines[a[0]][6:11]) for a in atoms
+               if lines[a[0]][6:11].strip()]
+    serial = max(serials or [len(atoms)]) + 1
+    if serial > 99999:
+        raise SystemExit(
+            "the highest serial in %s is %d, so a new atom cannot be numbered "
+            "inside the five columns a PDB gives it. This structure needs a "
+            "format that can hold it (mmCIF) rather than a proton squeezed "
+            "into a field that has run out. Nothing was written."
+            % (src, serial - 1))
+
+    body = []
+    residue_rows = {a[0] for a in residue}
+    for index, line in enumerate(lines):
+        if index in residue_rows:
+            line = _rename(line, variant)
+        body.append(line)
+        if index == anchor[0]:
+            new = _hydrogen_line(line, proton, xyz)
+            body.append(new[:6] + "%5d" % serial + new[11:])
+    # Before END: readers stop there, so a CONECT appended after it is dropped
+    # without complaint.
+    anchor_serial = int(lines[anchor[0]][6:11])
+    end = next((i for i, l in enumerate(body) if l.startswith("END")),
+               len(body))
+    body[end:end] = ["CONECT%5d%5d\n" % (anchor_serial, serial)]
+
+    with open(out, "w") as fh:
+        fh.write("".join(body))
+
+    print("%s:%s %s -> %s, written to %s"
+          % (chain, resid, spec["parent"], variant, out))
+    o, c, other = (names[spec["oxygen"]][5], names[spec["carbon"]][5],
+                   names[spec["other"]][5])
+    n = _unit(_cross(_sub(c, o), _sub(other, o)))
+    print("  %s at %.3f %.3f %.3f, serial %d, CONECT to %s"
+          % (proton, xyz[0], xyz[1], xyz[2], serial, spec["oxygen"]))
+    print("  %s-%s %.4f A, %s-%s-%s %.2f deg, out of plane %.4f A"
+          % (spec["oxygen"], proton, _norm(_sub(xyz, o)),
+             spec["carbon"], spec["oxygen"], proton,
+             math.degrees(math.acos(max(-1.0, min(1.0, _dot(
+                 _unit(_sub(c, o)), _unit(_sub(xyz, o))))))),
+             abs(_dot(_sub(xyz, o), n))))
+    print("  %s-%s %.3f A, anti (syn would be %.3f A)"
+          % (proton, spec["other"], _norm(_sub(xyz, other)),
+             _norm(_sub(_syn(c, other, o), other))))
+    print("  the residue's atom set is now exactly ff14SB's %s template; the "
+          "residue is neutral where %s was -1, so the system's total charge "
+          "rises by 1" % (variant, spec["parent"]))
+
+
+def _syn(carbon, other_o, oxygen):
+    """The syn position, for reporting only: the proton turned to face `other_o`.
+
+    `protonate` never writes this. It is printed beside the anti distance so the
+    line says which conformer was built in a way that can be checked, rather
+    than asserting it.
+    """
+    return place_carboxyl_proton(carbon, other_o, oxygen,
+                                 angle_deg=-COH_ANGLE)
+
+
 # --- entry point -------------------------------------------------------------
 
 def coordination(site, at, metal_i):
@@ -1096,7 +1405,8 @@ def mode_check(site, args):
 MODES = {"sphere": mode_sphere, "nucleophiles": mode_nucleophiles,
          "acceptors": mode_acceptors, "joint": mode_joint, "poses": mode_poses,
          "graft": mode_graft, "shell": mode_shell,
-         "contacts": mode_contacts, "check": mode_check}
+         "contacts": mode_contacts, "check": mode_check,
+         "protonate": mode_protonate}
 
 if __name__ == "__main__":
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
@@ -1108,7 +1418,8 @@ if __name__ == "__main__":
         raise SystemExit(__doc__)
     site = yaml.safe_load(open(site_file))["site"]
     mode, rest = args[0], args[1:]
-    if mode in ("sphere", "nucleophiles", "poses", "graft", "check"):
+    if mode in ("sphere", "nucleophiles", "poses", "graft", "check",
+                "protonate"):
         MODES[mode](site, rest)
     else:
         if len(rest) != 2:
