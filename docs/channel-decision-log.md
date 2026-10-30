@@ -1528,6 +1528,24 @@ blocks 30576666/67 held; the Ca jobs run)
     - Calibration boxes (31053172–74) done. Every ion stays monodentate on the capped Glu with 7–9 waters, as at
       the site. 45 swaps submitted (31143422, `qmmm_cal`; water reference shared with `qmmm`). The `frames
       --complex` step needed bulk_ion's frame time (7eb7ef9).
+  - **Ca vs Ln is the main test (user, 2026-10-30), so the reference moves into the membrane box.** No
+    post-hoc correction fixes a 2+ → 3+ swap compared across two differently embedded systems. Comparing the site
+    against the ion in the bulk water layer of the same periodic box makes the net-charge and Ewald-convention
+    terms common to both. The `--periodic` re-referencing is then first-order consistent, and the stability of
+    ΔΔE across direct, `--periodic` and `--embed-radius` becomes the pass/fail test.
+    - Reused unchanged: the 45 site jobs (La, Lu and La Ch-BE frames), the two Ca site windows (31052835/36, still
+      the Ca endpoint for linear response), all of La → Lu, the D3/ωB97X-V conclusions and the calibration. Only
+      the water-cube jobs drop out of Ca → Ln (they stay the La → Lu reference).
+    - `exchange.py bulk-survey` on the PMFs' outer windows: no window ever leaves the barrel mouth. The ion is 2.3–8 Å
+      from protein atoms for La (z −25 … +29), 2.3–9.6 Å for Ca (±35) and 2.3–4.4 Å for Lu. So no existing frame
+      is a bulk reference.
+    - New: `swap_seed.py --move-z 38` moves the ion from the bound La frame 159 into the water layer, 38 Å above
+      the chain A CA centre (mid-layer ≈ 41.6 Å) and 67 Å from the nearest protein heavy atom. It trades places
+      with a water, so the atom count is unchanged; for Ca one Na⁺ is removed. One 2 ns window each with a
+      z-only restraint (k 2.5, no cylinder), frames every 25 ps: `LA_bulk` 31151615, `CA_bulk` 31151617 (GPU,
+      queued). `round2.sh inbox` then takes 5 frames each from the second half (`exchange.py frames --bulk`,
+      refusing any frame under 8 Å from the protein), swaps Ca and La (20 jobs, `qmmm_inbox`) and links in the
+      site entries of `qmmm`. Tooling bf9e48b … b908226.
   - **Checks.** r2SCAN-D3(BJ) on all 60 jobs (`qmmm_d3`, 31053109/10); ωB97X-V on 2 frames per source
     (`qmmm_wb97xv`, 31053111/12; ORCA is not on Bunya, so no DLPNO-CCSD(T)). Calibration on the protocol's own
     terms: Ca, La and Lu each on a capped Glu (Ace-Glu-NMe built from the La frame's Glu240 and its binding mode)
