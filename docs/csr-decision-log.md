@@ -3188,6 +3188,43 @@ And the same pairs in three optimised QM/MM structures, which do not share the t
 **`michaelis2d` (31155441) finished while this ran: 45 of 45 points, all converged.** The full row-by-row table is the next entry.
 
 
+**D149 - The grid is complete, 45 of 45 converged, and the carbonyl costs 25-34 kcal/mol in every row: the trend is not monotonic in Asp92, and whenever Asp92 is on the metal the carbonyl expels His88 outright. The job still reported FAILED - a 2D-scan bug in mcube that killed it after the last point.** (2026-10-30, job 31155441, 03:26:23)
+
+**All 45 points converged**; 206 min of ASH walltime, ~4.6 min a point. **The job exited non-zero anyway**, and the traceback is mcube's own: `write_ash_surface` asked for the first coordinate as `target`/`target_A`, which is the **1D** spelling, while a 2D point carries `target1_A`. So every 2D scan this library has ever run has completed its chemistry and then died writing its summary - losing `surface_results.txt` and the `results` block, with the full CSV already on disk. Fixed with four tests (commit e4c2d64); the science here is untouched, since every number below comes from `scan_energies.csv`.
+
+**The cost of pulling Zn-O2x from 4.70 to 2.10 A, now for all five rows**, each against its own 4.70 A point:
+
+| Asp92 held at (A) | carbonyl 4.70 -> 2.10 | that row's 4.70 A point, vs row 0 |
+| --- | --- | --- |
+| 3.60 (four-coordinate) | **+25.17** | 0.00 |
+| 3.175 | +28.16 | -5.12 |
+| 2.75 | **+33.96** | **-9.03** |
+| 2.325 | +26.67 | -7.76 |
+| 1.90 | +27.56 | -6.95 |
+
+**The trend D147 reported does not survive the last two rows.** It is not "further out is cheaper": the cost **peaks at Asp92 2.75 A** and falls again as the carboxylate closes further. The honest statement is narrower and still decisive - **the carbonyl costs 25-34 kcal/mol at every Asp92 position we sampled, and no position makes it affordable.** The spread across the whole Asp92 range is 8.8 kcal/mol, about a third of the cheapest barrier to binding.
+
+**A caveat this grid raises against D143.** The right-hand column is the Asp92 coordinate with the carbonyl held out, and its minimum is at **2.75 A**, with 2.325 and 1.90 above it. D143's two arms put the minimum at **2.11 A**. Both say Asp92 sits on the metal, but the two instruments disagree about where by ~0.6 A, on different structures and active regions. Any number quoted for the Asp92 well should carry that spread.
+
+**His88 is expelled whenever Asp92 is on the metal and the carbonyl is forced on.** `site.py sphere` at the three most forced points:
+
+| | row 0 (Asp92 3.60) | row 3 (2.325) | row 4 (1.90) |
+| --- | --- | --- | --- |
+| Zn-His88 NE2 | 2.43 (from 2.03) | **3.59** | **3.63** |
+| Zn-His164 NE2 | 1.96 | 2.12 | 2.11 |
+| Zn-HOH485 | 2.21 | 2.06 | 2.18 |
+| O01-C4x | 2.94 | 2.62 | **2.57** |
+| **Burgi-Dunitz angle** | **58** | **69** | **71** |
+
+With Asp92 off the metal the carbonyl merely stretches His88; with Asp92 on, there is no room for both and **the histidine leaves**. The attack distance gets shorter as the angle gets worse - 2.57 A at 71 degrees in the last row - which is the opposite of a productive approach, and the same pattern across all three.
+
+**The RQK triad through the whole perturbation** (same points, from `monitor`): Gln93 NE2 is 8.5-11.1 A from the carbonyl at every one, Arg229 NH2 holds the C3 carboxylate at 3.61-3.64 A throughout, and Arg90 NH1 stays 3.34-3.82 A from HOH485. **Dragging the carbonyl onto the metal does not recruit any of R, Q or K**, which is the strongest form of D148's result: the triad is unmoved by a 25 kcal/mol perturbation of the substrate it supposedly recognises.
+
+**`subst` (31167021) was cancelled, not run** - D148 found Lys226 NZ **0.58 A** from the substrate's O4x in its start structure. The restraint block this entry was meant to verify therefore has nothing to verify; the structure needs re-grafting with a clash check first.
+
+**Nothing pruned.** `protdft/scan_michaelis2d` is 334 MB in 72 files - 45 point PDBs and one set of geomeTRIC files - with nothing redundant in it, and scratch is 243/300 GB.
+
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
