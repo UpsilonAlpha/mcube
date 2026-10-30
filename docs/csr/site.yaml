@@ -845,25 +845,37 @@ sections:
   # Either way both NEB endpoints come out of one surface, which is what
   # `step1` needs and does not have - neither of its endpoint files exists.
   #
-  # Starts from aspout's own optimised 1.90 A point: substrate present, waters
-  # already relaxed under the flexible-water model (D142), Zn-O2x 5.01 A.
+  # **Starts from the FOUR-coordinate structure, not the Asp92-bound one**
+  # (user, 2026-10-30: "there's no point starting from a structure where Asp92
+  # is overcoordinated, as that defeats the point we're trying to measure").
+  # `scan_aspin/scan_00.pdb` is aspout's 3.60 A end point re-optimised: two
+  # histidines, hydroxide 1.84 and HOH485 2.01, Asp92 at 3.60/4.47, substrate
+  # present with O1x 3.89 and the carbonyl 4.69. Waters already relaxed under
+  # the flexible-water model (D142), so no rigid-start strain either.
+  #
+  # Rows therefore run OUTWARD-IN, 3.60 -> 1.90: the first row is the
+  # four-coordinate site with a free face, and Asp92 is only brought back onto
+  # the metal in later rows. The previous submission (31154229) was cancelled
+  # for starting at 1.90 A instead.
   michaelis2d:
     stage: scan
     inputs:
-      pdb_file: protdft/scan_aspout/scan_00.pdb
+      pdb_file: protdft/scan_aspin/scan_00.pdb
       atoms: [B:1:ZN, C:1:O2x]      # the carbonyl, onto the metal
-      start: 5.00
+      start: 4.70
       end: 2.10
       points: 9
       atoms2: [B:1:ZN, A:92:OD1]    # Asp92's own distance, as the rows
-      start2: 1.90
-      end2: 3.60
+      start2: 3.60
+      end2: 1.90
       points2: 5
       opt_maxiter: 300
       extra_qm_residues: {A: [93]}  # as in aspout/aspin, so the surfaces match
       monitor:
         - [B:1:ZN, A:92:OD2]        # does the carboxylate go bidentate
         - [B:1:ZN, C:1:O1x]         # the hydroxyethyl O, the other candidate
+                                    # ligand - 3.89 A here, and the closest
+                                    # substrate atom in every run (D144)
         - [B:1:ZN, D:1:O]           # does the water leave to make room
         - [C:2:O01, C:1:C4x]        # the attack distance
       resume: true
