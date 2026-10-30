@@ -2889,6 +2889,39 @@ Two histidines, hydroxide and one water, with Asp92 off the metal entirely - the
 **`aspin` submitted: job 31143211** (PD at 14:07), `--cpus-per-task=8 --mem=64G -t 12:00:00`, starting from `protdft/scan_aspout/scan_08.pdb` - this run's own last point, the four-coordinate structure above - and walking 3.60 -> 1.90 A in the same nine steps. At 8.5 min a point it should take about 1 h 20 m. Nothing else was submitted; scratch is 237/300 GB and nothing needed pruning (the whole scan is 101 MB, and `protdft/scan_aspout_d137` is kept as D137's evidence at 211 MB).
 
 
+**D141 - Audit of what the rigid-water default cost: every QM/MM gradient run in this project carried it, but only `aspout` was destroyed by it; the rest converged, and what is unquantified is whether their energies moved.** (2026-10-30, user: "Has the rigidwater thing affected any previous results?")
+
+**Scope: all of it.** `grep -rn rigid_water */config.yaml */*/config.yaml */*/*/config.yaml` across `/scratch/user/uquadhik` returns **nothing**. No run in this project ever set the key, so every `qmmm` optimisation, every `scan`, every `neb` and every `ts` ran with the active-region MM waters held - the CSR work and the ion-channel work alike.
+
+**It mattered in one of two ways, and the difference is whether the run had a constraint of its own.**
+
+- **No user constraint** (plain `qmmm` optimisations, `ts`, `neb`): the waters reached geomeTRIC as `$freeze`, degrees of freedom projected out of the optimisation space. A frozen coordinate cannot block convergence, and the internal geometry it froze is TIP3P's own rigid geometry (`b0` 0.9572 A), which is what that water model is parameterised as. **Those results stand as computed.** What they are is optimisations in which the active-region waters could translate and rotate but not stretch or bend - a defensible model, just not the one anyone chose.
+- **With a user constraint** (every `scan`, and constrained `qmmm` optimisations such as D81's sphere-constrained reactant/product pair): the whole block became `$set`, and each water distance became a convergence criterion (D137).
+
+**What `$set` actually did to the runs, from the CSVs rather than from theory:**
+
+| run | points | converged |
+| --- | --- | --- |
+| `CSR_crystal_v2/scans/scan_H1_f00497` | 25 | **25** |
+| `CSR_crystal_v2/scans/scan_H2_f00395` | 24 | 21, **3 not** |
+| `CSR_crystal_v2/protdft/zncheck/scan` | 9 | 9 |
+| `CSR_crystal_v2/protdft/coscan` | 9 | 9 |
+| `CSR_gln93/protdft/scan_zngln` | 3 | 3 |
+| `CSR_crystal/scan_attack_f400` | **0 rows** | - |
+| `CSR_wt/protdft/scan_aspout` (31016878) | 0 of 9 | **none, cancelled** |
+| `CSR_wt/protdft/scan_aspout` (31051634, fixed) | 9 | 9 |
+
+So **the sweeping version of D137's claim is wrong**: `$set` water constraints are not unsatisfiable in general. Sixty-seven scan points across four earlier scans converged with them, including scans started straight from MD frames (`nac_frame00497.pdb`, `nac_frame00395.pdb`) as `aspout` was. The honest statement is that a `$set` water distance *can* gate convergence, that it did so completely in `aspout`, and that why that system's waters strained to 0.997-1.026 A against their 0.957 A start when other systems' did not is **not established**. What the fix removes is the possibility, not a universal error.
+
+**What it does change in the record.** Three results that were unexplained now have a named candidate cause rather than nothing: `scan_H2_f00395`'s three unconverged points, the frame-499 optimisation that hit the 300-step limit (D-log, 2026-10-16), and D105's stall at maximum gradient 1.9e-01 with the energy already flat - "a relaxed geometry, not a stationary point", which D106 then used as a NEB endpoint. None of these is overturned; each is now worth re-running cheaply rather than reasoning about.
+
+**What is not known, and the one test that would settle it.** Whether holding the waters shifted the *energies* of the runs that did converge. One job answers it: re-optimise `aspout`'s own `scan_04.pdb` at the same 2.75 A constraint with `rigid_water: true`, against the converged flexible result already in hand. Same structure, same active region, one variable, about 10 minutes on 8 cores. If the two energies agree to a few tenths of a kcal/mol, every converged number in this log stands as computed and this entry closes; if they do not, the comparison gives the size of the correction. **Not submitted** - it is the user's call, and `aspin` is using the queue.
+
+**Restraints in QM/MM, separately** (user: "we shouldn't need any restraints for QM/MM jobs either"). Checked rather than assumed: harmonic distance restraints exist only in `md` (`md_restraints`, `src/mcube/md.py:242`) and in `umbrella`, which already switches the coordination restraints off for sampling (`src/mcube/umbrella.py:454`). The `qmmm`, `scan`, `neb` and `ts` stages add **none**, and after D139 the only thing they hand geomeTRIC is what the job explicitly asks for - a scan's own bond, or `opt_constraints`. So the position is already the one wanted. The place restraints still reach QM/MM is through the *geometry*: every start structure comes from restrained MD, which is exactly D138's finding and is not fixed by anything in the QM/MM stages.
+
+**A caveat for the hysteresis comparison, noticed while auditing.** `aspin`'s point 0 and `aspout`'s point 8 are the same structure at the same 3.60 A, but their energies are -447.31984 and -447.31201 Eh - 4.9 kcal/mol apart. They are different runs, so `resolve_actatoms` re-derived the active region from a different `pdb_file` and the two will not contain exactly the same water set. **Absolute energies are not comparable between the arms**; each curve must be read relative to its own first point, which is how both CSVs already report them.
+
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
