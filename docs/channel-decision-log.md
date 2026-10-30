@@ -1539,6 +1539,16 @@ blocks 30576666/67 held; the Ca jobs run)
         sources 57), so the pooled +24 mixes endpoints and means nothing. A one-sided value on the Ln endpoint is a
         lower bound on the linear-response ΔG, so −13 does not contradict −1.5. Closing it needs the Ca water swaps
         (`CA_1264_frames`, MM done 2026-10-30 12:33).
+    - **La Ch-BE site swaps (31053028, all 15 converged, 2026-10-31).** La → Lu on LAchbe frames +3.7 ± 3.2
+      (La frames −1.1 ± 3.2, Lu frames −2.2 ± 1.3); pooled over the three sources +1.7 ± 2.8, site sd between
+      sources 7.9. No La/Lu preference at the site beyond the ±3 kcal/mol the calibration supports. (Ca → Ln
+      against the water cube, now −24 pooled, is not a result: see above.)
+    - **All four GPU windows failed at setup (2026-10-31 06:11, 16 s each).** `umbrella.mm_system`'s fallback for
+      a config without `md.results` named an undefined `config`, and would also have left out `lipid17.xml`.
+      Every PMF window's config carries `md.results.forcefields`, so neither path had run before; the swap_seed
+      run dirs carry `md.inputs` only. Fixed in c9ccebf (test added; a dry build on Bunya gives the original
+      run's force fields and the metal term). Resubmitted once: `LA_bulk` 31185320, `CA_bulk` 31185321,
+      `CA_la` 31185322, `CA_lu` 31185323.
   - **Ca vs Ln is the main test (user, 2026-10-30), so the reference moves into the membrane box.** No
     post-hoc correction fixes a 2+ → 3+ swap compared across two differently embedded systems. Comparing the site
     against the ion in the bulk water layer of the same periodic box makes the net-charge and Ewald-convention
