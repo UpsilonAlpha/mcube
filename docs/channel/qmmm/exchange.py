@@ -1070,8 +1070,18 @@ def main():
     c = sub.add_parser("clean")
     c.add_argument("--out", required=True)
     c.add_argument("--delete", action="store_true", help="delete (default: dry run)")
+    bs = sub.add_parser("bulk-survey", help="environment of umbrella windows' last frames, to pick --bulk ones")
+    bs.add_argument("windows", nargs="+")
     args = p.parse_args()
-    if args.action == "frames":
+    if args.action == "bulk-survey":
+        topology = load_topology(Path(args.windows[0]) / "start.pdb")
+        mdtop, anchors = imaging(topology, "ion")
+        ion = find_ion(topology)
+        for w in map(Path, args.windows):
+            xyz, _ = read_pdb_frame(w / "lastframe.pdb", mdtop, anchors)
+            env = environment(topology, xyz, ion)
+            print(f"{w.parent.name}/{w.name} " + " ".join(f"{k} {v}" for k, v in env.items()), flush=True)
+    elif args.action == "frames":
         args.donors = [d.upper() for d in args.donors]
         frames(args)
     elif args.action == "structure":
