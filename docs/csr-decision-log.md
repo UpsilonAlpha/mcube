@@ -2945,9 +2945,41 @@ Compare 31016878, which started from an MD last frame: OpenMM ran that MD with `
 - **Closed - results stand as computed:** anything optimised or scanned from a structure that had already been through a flexible-water QM/MM optimisation. That is `CSR_crystal_v2/protdft/zncheck/scan` and `protdft/coscan` (both from `QM_MM_optimized.pdb`), and every `qmmm` optimisation with no `opt_constraints`, where the waters were `$freeze`d and so projected out rather than scored.
 - **Still open - and now with a measurable mechanism rather than a worry:** runs started directly from an MD frame, where the water constraints were pinned 0.02 A below the flexible minimum. That is `scan_H1_f00497` and `scan_H2_f00395` (from `nac_frame00497.pdb` / `nac_frame00395.pdb`, 46 points, 3 of them unconverged), D81's sphere-constrained reactant/product pair, and D105's stalled optimisation that D106 then used as a NEB endpoint.
 
-**The job that would close the rest**, not submitted: the same `rwoff`/`rwon` pair from `../CSR_nac/md_naclong_results/NVTtrajectory_lastframe_imaged.pdb` - 31016878's own start - with Zn-OD1 held at its current value rather than 2.75. `rwon` there should reproduce the D137 failure and `rwoff` should converge, and the energy each reaches is the size of the correction for the MD-frame runs. About 20 minutes on 8 cores, and it is the user's call.
+**The job that would close the rest**, not submitted: the same `rwoff`/`rwon` pair from `../CSR_nac/md_naclong_results/NVTtrajectory_lastframe_imaged.pdb` - 31016878's own start - with Zn-OD1 held at its current value rather than 2.75. `rwon` there should reproduce the D137 failure and `rwoff` should converge, and the energy each reaches is the size of the correction for the MD-frame runs. About 20 minutes on 8 cores. **Declined** (user, 2026-10-30: "Not needed"), so the MD-frame runs stay flagged rather than measured: `scan_H1_f00497`, `scan_H2_f00395`, D81's pair and D105's endpoint are to be re-run if anything depends on their energies, not trusted to a tolerance nobody has established.
 
 **`aspin` (31143211) finished while this ran: nine of nine points, all converged.** The point-by-point comparison against D140 is the next entry; the headline is that the reverse arm reaches -13.95 kcal/mol at 1.90 A against the outward arm's +13.84 at 3.60 A, and both put their minimum at 2.11 A.
+
+
+**D143 - The hysteresis test, answered: the two arms agree at the ends and at the minimum but separate by up to 3.8 kcal/mol in the middle, and the outward arm is the one with the defect. D94's objection is upheld for the middle of a relaxed scan and refuted for its conclusions.** (2026-10-30, job 31143211 `aspin`, COMPLETED 00:53:22, nine of nine converged, zero SVD failures, 112 MB)
+
+Both arms on the same scale, each relative to **its own 1.90 A point** (absolute energies are not comparable between runs - the active region is re-derived per run, D141):
+
+| Zn-OD1 (A) | `aspout` out (kcal/mol) | `aspin` back (kcal/mol) | out - back |
+| --- | --- | --- | --- |
+| 1.900 | 0.00 | 0.00 | 0.00 |
+| 2.113 | **-0.86** | **-0.98** | +0.12 |
+| 2.325 | +1.02 | +2.25 | -1.22 |
+| 2.538 | +3.99 | +3.45 | +0.54 |
+| 2.750 | +7.20 | +5.03 | **+2.17** |
+| 2.963 | +10.56 | +6.78 | **+3.78** |
+| 3.175 | +8.77 | +8.87 | -0.09 |
+| 3.388 | +11.13 | +11.26 | -0.14 |
+| 3.600 | +13.84 | +13.95 | -0.11 |
+
+**What agrees, to about a tenth of a kcal/mol:** both ends (0.00 by construction; 13.84 against 13.95 at 3.60), the position of the minimum (**2.11 A in both**, not the 1.90 A either run started from and not the crystal's 2.80 A), its depth (-0.86 against -0.98), and the whole 3.18-3.60 A stretch.
+
+**What does not:** 2.54-2.96 A, where the outward arm runs up to **3.78 kcal/mol high**. And the outward arm's non-monotonic step at 3.175 A (D140) is **not reproduced** - `aspin` is smooth from 3.60 all the way down to its minimum. The separation is one-sided: the reverse arm is lower wherever they differ, and its point 0 re-optimised `aspout`'s own last point to a lower energy. That is the signature of the outward arm lagging its relaxation - carrying a strained arrangement from point to point and releasing it at 3.175 - rather than of two genuine branches.
+
+**So the answer to D94 is split, and both halves matter.**
+
+- **A single-direction relaxed scan is not trustworthy point by point on this coordinate.** Errors of 2-4 kcal/mol in the middle of the range are the size of the effects this project argues about, so no barrier or difference read off one arm of a scan should be quoted to better than a few kcal/mol. That applies to `scan_znasp`, `scan_znco` and every other single-direction scan in this log.
+- **But the conclusions those scans were used for survive**, because they rest on the ends and the minimum, which both arms reproduce. Asp92's preferred Zn distance on this surface is **2.11 A**, twice measured from opposite directions; pulling it to 3.60 A costs **13.8-14.0 kcal/mol**; and the crystal's 2.80 A sits **5.4-7.9 kcal/mol up** this curve - a range, not a number, and the honest figure to quote. It is not a thermal distance at either end of that range.
+
+**The cycle closes structurally too.** `site.py sphere` on `aspin`'s 1.90 A endpoint gives five ligands - OD1 1.90, O01 1.94, His88 2.04, HOH485 2.19, His164 2.19 - with OD2 at 3.43 A and O01-C4x at 3.48, against `aspout`'s starting 3.83 and 3.58. Asp92 comes back monodentate onto the metal and the nucleophile stays where it was; the scan did not wander into a different basin and come back to a different structure.
+
+**What this does and does not settle for the paper.** The question D133 set - is the preference for Asp92 on the metal real, or an artefact of where the scans started? - is answered: **real on this surface, from both directions.** What a scan still cannot give is a free energy: the 13.9 kcal/mol is a potential-energy difference along one coordinate with everything else relaxed, with no entropy and no sampling of the waters that reorganise when the carboxylate leaves. The disagreement with the crystal (D120, 2.80 A) therefore stands as the open problem, now with both a number and a bracket on it. **The PMF (D133 test 2) is the instrument that would convert this into a free energy, and after "do the scans, then we can do the pmf if necessary" it is the user's call whether 5.4-7.9 kcal/mol of potential energy is enough to argue from.**
+
+Nothing submitted. Scratch 239/300 GB; `scan_aspin` is 112 MB and nothing needed pruning.
 
 
 ## Resources (see `running-on-bunya.md`)
