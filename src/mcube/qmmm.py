@@ -13,6 +13,14 @@ Pipeline:
 The DFT single point that used to end this stage is now `mcube sp` (sp.py): it
 scales across cores and wants tens of gigabytes, while the xTB work here
 saturates about four threads, so the two are sized and submitted separately.
+
+`zero_charges: [A:229, A:226]` sets every MM point charge of those residues to
+zero before the QMMMTheory is built, leaving the geometry, the van der Waals and
+the bonded terms alone. Two single points on the same structure, one with the
+key and one without, differ by the electrostatic contribution of those residues
+(Mulholland-style per-residue decomposition). Off unless the key is there, and
+what it zeroed is recorded in `results.zeroed_charges`, because an energy from a
+modified Hamiltonian has to say so itself.
 """
 
 from __future__ import annotations
@@ -38,6 +46,7 @@ from .preprocess import (
     build_qm_region,
     qm_region_settings,
     resolve_atom_inputs,
+    resolve_residues,
     config_relative,
     atom_fingerprint,
 )
@@ -242,6 +251,103 @@ def apply_stage_metal_parameters(inputs: Dict[str, Any], preprocess: Dict[str, A
                                 qm_atoms=qm_atoms, polarizabilities=polarizabilities,
                                 c4_pairs=ions.c4_overrides(inputs, md.get("inputs")))
     return which
+
+
+def charge_deletion(charges, residue_atoms: Dict[str, List[int]], qm_atoms) -> Dict[str, Any]:
+    """
+    What a `zero_charges` request zeroes, and how much charge that removes.
+
+    Pure, and separate from the OpenMM system it is applied to: `charges` is
+    every atom's MM charge (e, in atom order), `residue_atoms` is
+    {"chain:resid": [atom index, ...]} as `resolve_residues` returns it, and
+    `qm_atoms` is the QM region. Returns the record that goes into the stage's
+    results, plus the atom indices to zero.
+
+    A residue in the QM region raises. Under electrostatic embedding ASH has
+    already removed its MM charges when it builds the QMMMTheory, so zeroing
+    them would change nothing - and the difference between the two single points
+    would still be written down as that residue's electrostatic contribution,
+    which is the one way this measurement can be wrong without looking wrong.
+    """
+    qm = {int(a) for a in (qm_atoms or ())}
+    in_qm = [res for res, atoms in residue_atoms.items()
+             if qm.intersection(int(a) for a in atoms)]
+    if in_qm:
+        raise ValueError(
+            f"zero_charges: {', '.join(in_qm)} "
+            f"{'is' if len(in_qm) == 1 else 'are'} in the QM region, whose MM "
+            "charges electrostatic embedding has already removed. Deleting them "
+            "again cannot change the energy, so the difference would be noise "
+            f"reported as the electrostatic contribution of {', '.join(in_qm)}. "
+            "Drop the residue from `zero_charges`, or take it out of the QM "
+            "region if its electrostatic contribution is what you want.")
+    atoms = sorted({int(a) for selected in residue_atoms.values() for a in selected})
+    removed = sum(float(charges[i]) for i in atoms)
+    return {
+        "residues": list(residue_atoms),
+        "atoms": len(atoms),
+        "charge_removed": round(removed, 6),
+        "atom_indices": atoms,
+    }
+
+
+def apply_zero_charges(inputs: Dict[str, Any], mm, qm_atoms) -> Optional[Dict[str, Any]]:
+    """
+    Zero the MM point charges of the `zero_charges` residues. The record, or None.
+
+    Called where `apply_stage_metal_parameters` is, after the QM region is known
+    and before the QMMMTheory is built, and in the same way: by reaching into
+    the MM system that is about to be handed over. Nothing else moves - same
+    geometry, same Lennard-Jones terms, same bonded terms, same QM region - so
+    the difference between this energy and the same structure's energy without
+    the key is the electrostatic contribution of those residues.
+
+    Two things this does not remove, both of which cancel in that difference
+    because they are identical in the two runs: the residue's 1-4 (exception)
+    electrostatics, which OpenMM stores as charge *products* rather than
+    per-particle charges, and so survive; and, periodically, the neutralising
+    background PME applies to a system whose net charge has just changed. The
+    first means the number is the residue's non-bonded electrostatic
+    contribution to everything it is not 1-4 bonded to.
+    """
+    selectors = inputs.get("zero_charges")
+    if not selectors:
+        return None
+
+    import openmm
+
+    residue_atoms = resolve_residues(selectors, mm.topology)
+    nonbonded = next((f for f in mm.system.getForces()
+                      if isinstance(f, openmm.NonbondedForce)), None)
+    if nonbonded is None:
+        raise ValueError("zero_charges: this MM system has no NonbondedForce, so it "
+                         "has no point charges to delete")
+    charges = [nonbonded.getParticleParameters(i)[0].value_in_unit(unit.elementary_charge)
+               for i in range(nonbonded.getNumParticles())]
+    record = charge_deletion(charges, residue_atoms, qm_atoms)
+    atoms = record.pop("atom_indices")
+
+    for index in atoms:
+        _, sigma, epsilon = nonbonded.getParticleParameters(index)
+        nonbonded.setParticleParameters(index, 0.0, sigma, epsilon)
+    # ASH's OpenMMTheory also keeps its own list of the charges, read off the
+    # system when it was built, and that list is what QMMMTheory hands the QM
+    # code as point charges - so the system alone is not enough.
+    for name in ("charges", "charges_original"):
+        cached = getattr(mm, name, None)
+        if cached is not None and len(cached) == len(charges):
+            for index in atoms:
+                cached[index] = 0.0
+    # An OpenMM Context keeps the parameters it was created with.
+    context = getattr(getattr(mm, "simulation", None), "context", None)
+    if context is not None:
+        nonbonded.updateParametersInContext(context)
+
+    print(f"[INFO] MM charges zeroed on {', '.join(record['residues'])}: "
+          f"{record['atoms']} atoms, {record['charge_removed']:+.4f} e removed. "
+          "The energy of this stage is not comparable with one run without "
+          "`zero_charges` except as that difference")
+    return record
 
 
 def level_option(inputs: Dict[str, Any], prefix: str, name: str, default=None):
@@ -813,6 +919,9 @@ def run(args) -> Dict[str, Any]:
     result["qm_level"] = qm_level_label(inputs)
     result["metal_parameters"] = apply_stage_metal_parameters(inputs, preprocess, md, mm,
                                                               forcefields, qm_atoms)
+    zeroed = apply_zero_charges(inputs, mm, qm_atoms)
+    if zeroed is not None:
+        result["zeroed_charges"] = zeroed
     save_result(result, filename=args.config, section=section)
 
     qmmm_theory = make_qmmm(inputs, mm, fragment, qm_atoms, boundary_excluded, cores)
@@ -862,6 +971,8 @@ def run(args) -> Dict[str, Any]:
             print("[STEP] Rebuilding the QM/MM system from the QM/MM MD end point for the optimisation...")
             mm = make_mm(forcefields, "QM_MM_lastframe.pdb", implicit, cores, platform, properties)
             apply_stage_metal_parameters(inputs, preprocess, md, mm, forcefields, qm_atoms)
+            # The rebuilt MM system is a fresh one: the charge deletion has to be redone
+            apply_zero_charges(inputs, mm, qm_atoms)
             qmmm_theory = make_qmmm(inputs, mm, fragment, qm_atoms, boundary_excluded, cores)
 
         # An active_atoms file reuses another run's active region (e.g. the reactant's for the product)

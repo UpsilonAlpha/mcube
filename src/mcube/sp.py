@@ -39,6 +39,7 @@ from typing import Any, Dict, Optional
 from .preprocess import load_section, resolve_cores, save_result
 from .qmmm import (
     apply_stage_metal_parameters,
+    apply_zero_charges,
     d3_energy,
     make_dft,
     make_mm,
@@ -113,11 +114,16 @@ def run(args) -> Dict[str, Any]:
     qm_atoms, boundary_excluded = resolve_qm_region(inputs, preprocess, pdb_file)
     # The same metal parameters as md, before the QMMMTheory is built
     apply_stage_metal_parameters(inputs, preprocess, md, mm, forcefields, qm_atoms)
+    # `zero_charges` (from qmmm.inputs or this section) deletes a residue's MM point
+    # charges, so a pair of these single points gives its electrostatic contribution
+    zeroed = apply_zero_charges(inputs, mm, qm_atoms)
     result: Dict[str, Any] = {
         "pdb_file": Path(pdb_file).resolve().as_posix(),
         "qm_atoms": qm_atoms,
         "boundary_excluded": boundary_excluded,
     }
+    if zeroed is not None:
+        result["zeroed_charges"] = zeroed
     save_result(result, filename=args.config, section=section)
 
     # No continuum solvation: ASH's PySCF interface ignores it when point charges

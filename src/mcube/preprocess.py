@@ -648,6 +648,52 @@ def _has_selector(value) -> bool:
     return False
 
 
+def resolve_residues(selectors, topology) -> Dict[str, List[int]]:
+    """
+    Residue selectors -> {"chain:resid": [atom index, ...]}, in atom order.
+
+    An atom is "chain:resid:atom"; a residue is the same selector one field
+    shorter, e.g. "A:229" (what `zero_charges` takes). Matched against
+    `topology`, an OpenMM Topology or a PDB file, like `resolve_atoms` above -
+    one parser for selectors, so a config means the same thing everywhere.
+
+    Resolved on the structure the stage runs on, never carried in as indices: an
+    index list stays valid-looking while the atom order under it changes (D115).
+    """
+    if isinstance(topology, (str, Path)):
+        topology = PDBFile(str(topology)).topology
+    residues: Dict[Tuple[str, str], List[List[int]]] = {}
+    for res in topology.residues():
+        residues.setdefault((res.chain.id, res.id.strip()), []).append(
+            [atom.index for atom in res.atoms()])
+
+    out: Dict[str, List[int]] = {}
+    for selector in selectors or []:
+        if not isinstance(selector, str):
+            raise ValueError(
+                f"Residue selector {selector!r} must be 'chain:resid', e.g. 'A:229'; "
+                "an index is not accepted, because indices are only valid against "
+                "the atom order they were derived from")
+        parts = [p.strip() for p in selector.split(":")]
+        if len(parts) != 2 or not all(parts):
+            raise ValueError(f"Residue selector {selector!r} must be 'chain:resid', e.g. 'A:229'")
+        key = (parts[0], parts[1])
+        if key not in residues:
+            raise ValueError(f"No residue {selector!r} (chain {parts[0]}, residue {parts[1]}) "
+                             "in the structure")
+        if len(residues[key]) > 1:
+            # Two residues of that number in that chain: a selector cannot say
+            # which, and silently taking both would act on atoms nobody named
+            raise ValueError(
+                f"Residue selector {selector!r} matches {len(residues[key])} residues "
+                f"in the structure (chain {parts[0]} has residue {parts[1]} more than "
+                "once), so it does not say which one")
+        out[":".join(parts)] = sorted(residues[key][0])
+    print(f"[INFO] Residue selectors resolved: {list(selectors)} -> "
+          + ", ".join(f"{res} ({len(atoms)} atoms)" for res, atoms in out.items()))
+    return out
+
+
 def resolve_atom_inputs(inputs: Dict[str, Any], topology, keys) -> Dict[str, Any]:
     """Copy of `inputs` with the atom selectors under `keys` replaced by indices."""
     out = dict(inputs)
