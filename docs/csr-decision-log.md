@@ -3225,6 +3225,44 @@ With Asp92 off the metal the carbonyl merely stretches His88; with Asp92 on, the
 **Nothing pruned.** `protdft/scan_michaelis2d` is 334 MB in 72 files - 45 point PDBs and one set of geomeTRIC files - with nothing redundant in it, and scratch is 243/300 GB.
 
 
+**D150 - The no-new-simulation list finished: Gln93 stays 9.7-11.1 A from the carbonyl across all 45 grid points while the carbonyl moves 2.6 A, and the substrate's carboxylate anchor - Arg229 at 3.62 A, Lys226 at 3.90 - does not move at all. Both 100 ns runs now measured.** (2026-10-30, user: "I thought this was the new set of deliverables")
+
+Four things were listed as answerable from data already on disk. D148 did the first. These are the rest.
+
+**Deliverable 2: the occupancies on `md_wt100` as well** (5,000 frames, no substrate in the site, Asp92 free), beside D148's `md_wt100b`:
+
+| pair | wt100 occ% | min/mean/max | wt100b occ% | min/mean/max |
+| --- | --- | --- | --- | --- |
+| Zn-Asp92 OD1 | 92.3 | 1.93/2.67/3.72 | 100.0 | 1.95/2.15/2.74 |
+| **Lys226 NZ - O01** | **74.3** | 2.52/3.16/5.11 | 18.0 | 2.46/4.02/5.38 |
+| **Asn225 ND2 - O01** | **43.9** | 2.60/3.80/5.90 | 0.0 | 4.42/5.61/6.88 |
+| Arg229 NH1 - mer O3x | 35.1 | 2.55/4.05/10.14 | 0.0 | 3.43/6.13/8.43 |
+| Arg229 NH2 - mer O4x | 5.1 | 2.67/5.16/9.91 | **64.2** | 2.64/3.65/7.02 |
+| Gln93 NE2 - mer O2x | 0.0 | **8.24**/9.97/12.44 | 0.0 | **7.86**/9.66/11.06 |
+| Arg90 NH1 - mer O1x | 0.0 | 5.79/8.01/9.21 | 0.0 | 4.65/6.08/7.51 |
+
+**Gln93 is 0% in both runs, 10,000 frames, and never once inside 7.86 A of the carbonyl.** Arg90 is 0% in both. What differs between the runs is the hydroxide's company: with the substrate loose (wt100) **Lys226 and Asn225 take the hydroxide** - 74% and 44% - and when the substrate is held against it (wt100b) they are displaced to 18% and 0%. Arg229 holds the substrate carboxylate in both, through a different NH each time.
+
+**Deliverable 4: R, Q and K across all 45 grid points**, where the carbonyl is dragged 4.70 -> 2.10 A and Asp92 is swept 3.60 -> 1.90:
+
+| pair | min | mean | max | range over 45 points |
+| --- | --- | --- | --- | --- |
+| Zn-mer O2x (the driven coordinate) | 2.10 | 3.40 | 4.70 | 2.60 |
+| Zn-His88 | 2.02 | 2.36 | **3.63** | 1.61 |
+| **Gln93 NE2 - mer O2x** | **9.73** | 10.37 | 11.13 | 1.40 |
+| Arg90 NH1 - HOH485 | 3.15 | 3.45 | 3.82 | 0.67 |
+| **Arg229 NH2 - mer O4x** | 3.58 | **3.62** | 3.66 | **0.08** |
+| **Lys226 NZ - mer O3x** | 3.86 | **3.90** | 3.96 | **0.10** |
+
+**This is the oxyanion-hole test on a surface already paid for, and it is a clean negative.** Drag the carbonyl 2.6 A onto the metal, at a cost of up to 34 kcal/mol, and **Gln93 never comes closer than 9.73 A** - it moves less than the thing it is supposed to be stabilising by a factor of two, and always away. Nothing in RQK follows the oxyanion.
+
+**What does hold the substrate is rigid and is not the K of RQK alone.** Arg229 NH2 sits at 3.58-3.66 A from the C3 carboxylate across every one of the 45 structures - a range of **0.08 A** while the substrate's other end swings 2.6 A - and Lys226 NZ at 3.86-3.96 A from the other carboxylate oxygen. The two cations form a fixed clamp on the carboxylate, with **Arg229 the closer of the two in every structure**, and the β-lactam end pivots in it. That is a concrete model of substrate recognition in CSR-1, measured rather than inferred, and it is the first thing in this project that behaves like a real anchor.
+
+**Deliverable 3 is a decision, not a measurement, and it is the user's.** Arg229 is the closest cation to the substrate carboxylate in all 45 optimised structures and in both trajectories, and it is **still in the MM region**, treated as fixed point charges while Lys226 - further away in every structure - is quantum. Moving it into the QM region changes the QM charge from +3 to +4 and makes no run after it comparable with any run before it, which is why it is not done here.
+
+**One operational note that cost a run tonight.** `conda activate ASH` can leave `CONDA_DEFAULT_ENV=ASH` while `which python` still points at the miniforge base, and then `site.py` dies on `ModuleNotFoundError: mdtraj`. The reliable form is the interpreter's absolute path, `/home/uquadhik/.conda/envs/ASH/bin/python`, which is what every analysis command here used after the first failure.
+
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
