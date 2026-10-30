@@ -40,6 +40,7 @@ from .preprocess import load_section, resolve_cores, save_result
 from .qmmm import (
     apply_stage_metal_parameters,
     apply_zero_charges,
+    apply_zero_charges_qm_only,
     d3_energy,
     make_dft,
     make_mm,
@@ -48,6 +49,7 @@ from .qmmm import (
     resolve_qm_region,
     resolve_stage_atoms,
     resolve_start_structure,
+    zero_charges_verified,
 )
 
 from ash import *
@@ -115,7 +117,9 @@ def run(args) -> Dict[str, Any]:
     # The same metal parameters as md, before the QMMMTheory is built
     apply_stage_metal_parameters(inputs, preprocess, md, mm, forcefields, qm_atoms)
     # `zero_charges` (from qmmm.inputs or this section) deletes a residue's MM point
-    # charges, so a pair of these single points gives its electrostatic contribution
+    # charges from the MM system, so a pair of these single points gives its whole
+    # electrostatic contribution, QM-MM and MM-MM. `zero_charges_qm_only`, below, is
+    # the QM-MM-only form and acts on the theory once it is built.
     zeroed = apply_zero_charges(inputs, mm, qm_atoms)
     result: Dict[str, Any] = {
         "pdb_file": Path(pdb_file).resolve().as_posix(),
@@ -141,11 +145,22 @@ def run(args) -> Dict[str, Any]:
         embedding="electrostatic",
         printlevel=1,
     )
+    # `zero_charges_qm_only` acts on the built theory: only the point charges the QM
+    # code sees, so the MM environment keeps its own electrostatics and the pair of
+    # single points differs by the QM-MM interaction energy alone
+    qm_only, zeroed_lists = apply_zero_charges_qm_only(inputs, theory, mm, qm_atoms)
+    if qm_only is not None:
+        result["zeroed_charges"] = qm_only
+        save_result(result, filename=args.config, section=section)
 
     print("[STEP] Running PySCF QM/MM single point...")
     sp = Singlepoint(theory=theory, fragment=fragment, charge=inputs.get("charge"), mult=mult)
     result["sp_energy"] = float(sp.energy)
     result["sp_level"] = f"{inputs.get('sp_functional', 'wb97x-v')}/{inputs.get('sp_basis', 'def2-svp')}"
+
+    # The zeros have to still be in place: if ASH re-read the charges off the OpenMM
+    # system during the SCF, this energy is not a charge-deleted one and says so
+    zero_charges_verified(result.get("zeroed_charges"), zeroed_lists)
 
     if inputs.get("sp_dispersion"):
         # Post-SCF D3 on the QM region (link atoms included) exactly as PySCF saw it

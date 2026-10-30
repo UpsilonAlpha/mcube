@@ -14,13 +14,23 @@ The DFT single point that used to end this stage is now `mcube sp` (sp.py): it
 scales across cores and wants tens of gigabytes, while the xTB work here
 saturates about four threads, so the two are sized and submitted separately.
 
-`zero_charges: [A:229, A:226]` sets every MM point charge of those residues to
-zero before the QMMMTheory is built, leaving the geometry, the van der Waals and
-the bonded terms alone. Two single points on the same structure, one with the
-key and one without, differ by the electrostatic contribution of those residues
-(Mulholland-style per-residue decomposition). Off unless the key is there, and
-what it zeroed is recorded in `results.zeroed_charges`, because an energy from a
-modified Hamiltonian has to say so itself.
+Two keys delete a residue's MM charges for a Mulholland-style per-residue
+electrostatic decomposition, leaving the geometry, the van der Waals and the
+bonded terms alone. They differ in what the resulting energy is:
+
+- `zero_charges_qm_only: [A:229, A:226]` zeroes only the point charges the QM
+  code is handed, so a pair of single points differs by the **QM/MM interaction
+  energy** with those residues. The MM environment keeps its own electrostatics,
+  which is what makes this number safe to difference between two structures
+  along a reaction coordinate - the MM-MM term would otherwise change with
+  every MM atom that moved, for reasons that are not about the chemistry.
+- `zero_charges: [A:229, A:226]` takes the charges out of the MM system
+  altogether, so the difference is the residue's whole electrostatic
+  contribution, QM-MM *and* MM-MM.
+
+Setting both raises. Off unless one is there, and what was zeroed - including
+which of the two it was - is recorded in `results.zeroed_charges`, because an
+energy from a modified Hamiltonian has to say so itself.
 """
 
 from __future__ import annotations
@@ -253,7 +263,55 @@ def apply_stage_metal_parameters(inputs: Dict[str, Any], preprocess: Dict[str, A
     return which
 
 
-def charge_deletion(charges, residue_atoms: Dict[str, List[int]], qm_atoms) -> Dict[str, Any]:
+# The two charge-deletion keys, and what each one deletes. `zero_charges` takes the
+# charges out of the MM system, so the residue stops interacting electrostatically
+# with the QM region *and* with the rest of the MM environment; `zero_charges_qm_only`
+# takes them only out of the point charges handed to the QM code, so the MM system's
+# own electrostatics are untouched and the difference is the change in the QM/MM
+# interaction energy alone - Mulholland's quantity, and the one that survives being
+# differenced between structures along a reaction coordinate, where the MM
+# environment has moved and its MM-MM term has changed for reasons unrelated to the
+# chemistry.
+ZERO_CHARGE_SCOPES = {
+    "zero_charges": "qm_mm_and_mm_mm",
+    "zero_charges_qm_only": "qm_mm",
+}
+
+
+def zero_charge_request(inputs: Dict[str, Any]):
+    """Which charge-deletion key this config asks for, and its residues.
+
+    (None, []) when neither is set. Both at once raises: they are two different
+    energies, and a config that asked for both would get one of them under a
+    name that could be read as the other.
+    """
+    asked = [key for key in ZERO_CHARGE_SCOPES if inputs.get(key)]
+    if len(asked) > 1:
+        raise ValueError(
+            f"{' and '.join(asked)} are both set, and they are not the same "
+            "measurement: `zero_charges` removes the residue's electrostatics "
+            "from the whole MM system (QM-MM and MM-MM), `zero_charges_qm_only` "
+            "removes only the point charges the QM code sees (QM-MM). Set one.")
+    if not asked:
+        return None, []
+    return asked[0], list(inputs[asked[0]])
+
+
+def mm_point_charges(mm) -> List[float]:
+    """Every atom's MM charge (e, in atom order), read off the NonbondedForce."""
+    import openmm
+
+    nonbonded = next((f for f in mm.system.getForces()
+                      if isinstance(f, openmm.NonbondedForce)), None)
+    if nonbonded is None:
+        raise ValueError("this MM system has no NonbondedForce, so it has no point "
+                         "charges to delete")
+    return [nonbonded.getParticleParameters(i)[0].value_in_unit(unit.elementary_charge)
+            for i in range(nonbonded.getNumParticles())]
+
+
+def charge_deletion(charges, residue_atoms: Dict[str, List[int]], qm_atoms,
+                    key: str = "zero_charges") -> Dict[str, Any]:
     """
     What a `zero_charges` request zeroes, and how much charge that removes.
 
@@ -274,16 +332,18 @@ def charge_deletion(charges, residue_atoms: Dict[str, List[int]], qm_atoms) -> D
              if qm.intersection(int(a) for a in atoms)]
     if in_qm:
         raise ValueError(
-            f"zero_charges: {', '.join(in_qm)} "
+            f"{key}: {', '.join(in_qm)} "
             f"{'is' if len(in_qm) == 1 else 'are'} in the QM region, whose MM "
             "charges electrostatic embedding has already removed. Deleting them "
             "again cannot change the energy, so the difference would be noise "
             f"reported as the electrostatic contribution of {', '.join(in_qm)}. "
-            "Drop the residue from `zero_charges`, or take it out of the QM "
+            f"Drop the residue from `{key}`, or take it out of the QM "
             "region if its electrostatic contribution is what you want.")
     atoms = sorted({int(a) for selected in residue_atoms.values() for a in selected})
     removed = sum(float(charges[i]) for i in atoms)
     return {
+        "key": key,
+        "scope": ZERO_CHARGE_SCOPES[key],
         "residues": list(residue_atoms),
         "atoms": len(atoms),
         "charge_removed": round(removed, 6),
@@ -309,12 +369,16 @@ def apply_zero_charges(inputs: Dict[str, Any], mm, qm_atoms) -> Optional[Dict[st
     background PME applies to a system whose net charge has just changed. The
     first means the number is the residue's non-bonded electrostatic
     contribution to everything it is not 1-4 bonded to.
-    """
-    selectors = inputs.get("zero_charges")
-    if not selectors:
-        return None
 
+    For the change in the QM/MM interaction energy alone - the quantity to
+    difference between structures along a reaction coordinate - use
+    `zero_charges_qm_only` and `apply_zero_charges_qm_only` below.
+    """
     import openmm
+
+    key, selectors = zero_charge_request(inputs)
+    if key != "zero_charges":
+        return None
 
     residue_atoms = resolve_residues(selectors, mm.topology)
     nonbonded = next((f for f in mm.system.getForces()
@@ -322,9 +386,8 @@ def apply_zero_charges(inputs: Dict[str, Any], mm, qm_atoms) -> Optional[Dict[st
     if nonbonded is None:
         raise ValueError("zero_charges: this MM system has no NonbondedForce, so it "
                          "has no point charges to delete")
-    charges = [nonbonded.getParticleParameters(i)[0].value_in_unit(unit.elementary_charge)
-               for i in range(nonbonded.getNumParticles())]
-    record = charge_deletion(charges, residue_atoms, qm_atoms)
+    charges = mm_point_charges(mm)
+    record = charge_deletion(charges, residue_atoms, qm_atoms, key)
     atoms = record.pop("atom_indices")
 
     for index in atoms:
@@ -347,6 +410,181 @@ def apply_zero_charges(inputs: Dict[str, Any], mm, qm_atoms) -> Optional[Dict[st
           f"{record['atoms']} atoms, {record['charge_removed']:+.4f} e removed. "
           "The energy of this stage is not comparable with one run without "
           "`zero_charges` except as that difference")
+    return record
+
+
+def _numeric_sequence(value) -> bool:
+    """A writable 1-D sequence of numbers - what a per-atom charge list looks like."""
+    if isinstance(value, np.ndarray):
+        return value.ndim == 1 and np.issubdtype(value.dtype, np.floating)
+    if not isinstance(value, list) or not value:
+        return False
+    return all(isinstance(v, (int, float, np.integer, np.floating))
+               and not isinstance(v, bool) for v in value)
+
+
+def _attributes(*owners):
+    """(name, value) for every instance attribute of each owner, named by owner."""
+    for label, owner in owners:
+        if owner is None:
+            continue
+        for name, value in list(vars(owner).items()):
+            yield f"{label}.{name}", value
+
+
+def charge_sequences(theory, mm, charges, atoms, qm_atoms, tolerance: float = 1e-6):
+    """
+    Every per-atom charge list on `theory` (or its MM theory) that the QM code is
+    handed, found by looking at what the objects hold rather than by trusting an
+    attribute name.
+
+    A candidate is any writable 1-D float sequence whose length is the number of
+    atoms, or the number of MM atoms (matched through an index list on the same
+    object whose contents are exactly the non-QM atoms). It is accepted only if
+    its values *agree with the MM charges* at reference atoms - atoms outside
+    the request and outside the QM region, whose charges no embedding scheme
+    touches. That test is what makes this detection rather than a guess: a list
+    of masses, a coordinate array or a list ASH keeps for another purpose does
+    not agree, and ASH renaming `charges` does not matter.
+
+    Returns [(name, sequence, {position in sequence: atom index})], so a caller
+    can zero those positions and read them back afterwards.
+    """
+    natoms = len(charges)
+    wanted = {int(a) for a in atoms}
+    qm = {int(a) for a in (qm_atoms or ())}
+    reference = [i for i in range(natoms) if i not in wanted and i not in qm
+                 and abs(charges[i]) > tolerance]
+    # Spread across the system, so a list that happens to agree at one end is not
+    # taken for a charge list; a handful is enough to tell charges from masses.
+    step = max(1, len(reference) // 32)
+    reference = reference[::step][:32]
+    # A system small enough to be all QM region and request (test systems, not
+    # proteins) leaves nothing to compare against: match on the atoms asked for.
+    if not reference:
+        reference = sorted(wanted)
+
+    mm_indices = [value for _, value in _attributes(("theory", theory), ("mm", mm))
+                  if isinstance(value, list) and value
+                  and all(isinstance(v, (int, np.integer)) and not isinstance(v, bool)
+                          for v in value)
+                  and {int(v) for v in value} == set(range(natoms)) - qm]
+    mm_map = [int(v) for v in mm_indices[0]] if mm_indices else None
+
+    found, seen = [], set()
+    for name, value in _attributes(("theory", theory), ("mm", mm)):
+        if not _numeric_sequence(value) or id(value) in seen:
+            continue
+        if len(value) == natoms:
+            positions = {i: i for i in sorted(wanted)}
+            refs = {i: i for i in reference}
+        elif mm_map is not None and len(value) == len(mm_map):
+            positions = {pos: atom for pos, atom in enumerate(mm_map) if atom in wanted}
+            refs = {pos: atom for pos, atom in enumerate(mm_map) if atom in set(reference)}
+        else:
+            continue
+        if not refs or not positions:
+            continue
+        if any(abs(float(value[pos]) - charges[atom]) > tolerance for pos, atom in refs.items()):
+            continue
+        seen.add(id(value))
+        found.append((name, value, positions))
+    return found
+
+
+def apply_zero_charges_qm_only(inputs: Dict[str, Any], theory, mm, qm_atoms):
+    """
+    Zero only the point charges the QM code sees. (record, the lists zeroed).
+
+    `zero_charges_qm_only`, and the companion of `apply_zero_charges` above:
+    called just *after* the QMMMTheory is built, because the lists it hands the
+    QM code as point charges are the thing being changed. The OpenMM system is
+    not touched, so the MM environment keeps its own electrostatics and what the
+    energy loses is the QM region's interaction with that residue - the change
+    in the QM/MM electrostatic interaction energy, which is what survives being
+    differenced between two structures whose MM environments have moved.
+
+    Which lists those are is *detected* rather than assumed (see
+    `charge_sequences`): a list is only written to if its values already agree
+    with the MM charges at atoms nobody asked about. Finding none raises, because
+    a charge deletion that silently did nothing would be reported as an
+    electrostatic contribution of zero; and every position written is read back,
+    so a sequence that refused the write (a read-only array, a copy) raises too.
+
+    What this cannot settle from here: whether ASH re-derives the point charges
+    from the OpenMM system again *during* the run, which would restore the
+    charges after this. `confirm_zero_charges` checks for exactly that once the
+    energy is in, and the stage records the answer.
+    """
+    key, selectors = zero_charge_request(inputs)
+    if key != "zero_charges_qm_only":
+        return None, []
+
+    residue_atoms = resolve_residues(selectors, mm.topology)
+    charges = mm_point_charges(mm)
+    record = charge_deletion(charges, residue_atoms, qm_atoms, key)
+    atoms = record.pop("atom_indices")
+
+    found = charge_sequences(theory, mm, charges, atoms, qm_atoms)
+    if not found:
+        raise ValueError(
+            "zero_charges_qm_only: none of this QMMMTheory's attributes is the "
+            "list of MM charges the QM code is handed - nothing carries this "
+            "structure's charges at full length (or at MM-subset length). "
+            "Deleting nothing would be reported as an electrostatic "
+            "contribution of zero, so this stops here. Check what the ASH "
+            "version in the environment keeps the point charges in; "
+            "`zero_charges` (the whole MM system) does not depend on that list.")
+
+    for _, sequence, positions in found:
+        for position in positions:
+            sequence[position] = 0.0
+    refused = [name for name, sequence, positions in found
+               if any(float(sequence[position]) != 0.0 for position in positions)]
+    if refused:
+        raise ValueError(
+            f"zero_charges_qm_only: {', '.join(refused)} did not take the zeros "
+            "(a read-only or copying sequence), so the point charges the QM code "
+            "sees are not the ones this stage reports")
+
+    record["pointcharge_lists"] = [name for name, _, _ in found]
+    print(f"[INFO] QM-visible point charges zeroed on {', '.join(record['residues'])}: "
+          f"{record['atoms']} atoms, {record['charge_removed']:+.4f} e removed from "
+          f"{', '.join(record['pointcharge_lists'])}. The MM system keeps its own "
+          "electrostatics, so this energy differs from one run without "
+          "`zero_charges_qm_only` by the QM-MM interaction with those residues alone")
+    return record, found
+
+
+def confirm_zero_charges(found) -> List[str]:
+    """The lists `apply_zero_charges_qm_only` zeroed that are no longer zero.
+
+    Called once the energy is in. A non-empty answer means something - ASH
+    re-reading the charges off the OpenMM system mid-run, or restoring them
+    afterwards - put them back, and the energy is then not the charge-deleted
+    one. It is reported rather than raised: a restore *after* the energy was
+    computed looks identical from here to one before it, and the two cannot be
+    told apart without ASH in front of us, so the number is recorded as
+    unverified instead of a finished run being thrown away.
+    """
+    return [name for name, sequence, positions in found
+            if any(float(sequence[position]) != 0.0 for position in positions)]
+
+
+def zero_charges_verified(record: Optional[Dict[str, Any]], found) -> Optional[Dict[str, Any]]:
+    """Record whether the zeros were still in place when the energy came out."""
+    if not record or not found:
+        return record
+    restored = confirm_zero_charges(found)
+    record["verified_after_run"] = not restored
+    if restored:
+        record["restored_lists"] = restored
+        print(f"[WARNING] {', '.join(restored)} no longer hold the zeros this stage "
+              "wrote: the point charges were put back while the energy was being "
+              "computed, so this energy is probably not a charge-deleted one and "
+              "the difference it is part of means nothing. `verified_after_run: "
+              "false` is recorded with it. Re-run the pair with `zero_charges` "
+              "(the whole MM system), which does not depend on an ASH-side list.")
     return record
 
 
@@ -925,6 +1163,12 @@ def run(args) -> Dict[str, Any]:
     save_result(result, filename=args.config, section=section)
 
     qmmm_theory = make_qmmm(inputs, mm, fragment, qm_atoms, boundary_excluded, cores)
+    # `zero_charges_qm_only` acts on the built theory: it is the point charges the
+    # QM code sees that it deletes, not the MM system's own electrostatics
+    qm_only, zeroed_lists = apply_zero_charges_qm_only(inputs, qmmm_theory, mm, qm_atoms)
+    if qm_only is not None:
+        result["zeroed_charges"] = qm_only
+        save_result(result, filename=args.config, section=section)
 
     if not inputs.get("skip_equilibrate"):
         statefile, run_time = resolve_resume(inputs, pdb_file)
@@ -974,6 +1218,9 @@ def run(args) -> Dict[str, Any]:
             # The rebuilt MM system is a fresh one: the charge deletion has to be redone
             apply_zero_charges(inputs, mm, qm_atoms)
             qmmm_theory = make_qmmm(inputs, mm, fragment, qm_atoms, boundary_excluded, cores)
+            qm_only, zeroed_lists = apply_zero_charges_qm_only(inputs, qmmm_theory, mm, qm_atoms)
+            if qm_only is not None:
+                result["zeroed_charges"] = qm_only
 
         # An active_atoms file reuses another run's active region (e.g. the reactant's for the product)
         actatoms = resolve_actatoms(args.config, inputs, mm, fragment,
@@ -1007,6 +1254,11 @@ def run(args) -> Dict[str, Any]:
         result["converged"] = converged
         if energy is not None:
             result["opt_energy"] = energy
+        save_result(result, filename=args.config, section=section)
+
+    # Were the QM-visible zeros still in place when the energies came out?
+    if zeroed_lists:
+        zero_charges_verified(result.get("zeroed_charges"), zeroed_lists)
         save_result(result, filename=args.config, section=section)
 
     # The DFT single point is its own stage (`mcube sp`): it scales across cores and
