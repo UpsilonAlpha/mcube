@@ -806,6 +806,62 @@ sections:
       extra_qm_residues: {A: [93]}
       resume: true
 
+  # ---- michaelis2d: can the carbonyl reach the zinc, and what does Asp92 do
+  # when it tries? (D144) ----
+  #
+  # Two questions neither the MD nor the 1D scans can answer, because no
+  # structure we have ever had the substrate on the metal:
+  #   1. does the substrate coordinate the zinc in the Michaelis complex?
+  #   2. is Asp92 coordinated when it does?
+  # Every "Asp92 is on the metal" result in this log (D102, D120, D134, D138,
+  # D140, D143) comes from a state where the substrate is NOT coordinated, so
+  # none of them answers question 2 as asked. And the crystal (6NC5) has Asp92
+  # OFF at 2.80 A, so the restrained-MD answer is not admissible either: MD
+  # cannot be trusted for coordination, and a contact in coordination range
+  # should be restrained at its crystal distance rather than at whatever the
+  # force field detects.
+  #
+  # So make the missing state instead of looking for it. Rows are Zn-Asp92 OD1
+  # (1.90 -> 3.60, five values spanning bound to the four-coordinate site);
+  # within each row the carbonyl is pulled in, Zn-O2x 5.00 -> 2.10 in nine
+  # steps, snaking so each point starts from an adjacent one. 45 points at
+  # ~8.5 min (D140's measured rate) is about 6.5 h on 8 cores.
+  #
+  # What the grid decides, whatever it says:
+  #   - a row where the carbonyl reaches ~2.1 A at modest cost says the
+  #     substrate CAN coordinate, and the row it happens in says what Asp92
+  #     has to do for that;
+  #   - if only the Asp92-out rows allow it, the carboxylate swing is part of
+  #     the reaction coordinate and belongs INSIDE the NEB, not fixed at one
+  #     end of it;
+  #   - if no row allows it, `carbonyl_on_metal` is wrong for CSR-1 and the
+  #     hypothesis in site.yaml has to change, not the structures.
+  # Either way both NEB endpoints come out of one surface, which is what
+  # `step1` needs and does not have - neither of its endpoint files exists.
+  #
+  # Starts from aspout's own optimised 1.90 A point: substrate present, waters
+  # already relaxed under the flexible-water model (D142), Zn-O2x 5.01 A.
+  michaelis2d:
+    stage: scan
+    inputs:
+      pdb_file: protdft/scan_aspout/scan_00.pdb
+      atoms: [B:1:ZN, C:1:O2x]      # the carbonyl, onto the metal
+      start: 5.00
+      end: 2.10
+      points: 9
+      atoms2: [B:1:ZN, A:92:OD1]    # Asp92's own distance, as the rows
+      start2: 1.90
+      end2: 3.60
+      points2: 5
+      opt_maxiter: 300
+      extra_qm_residues: {A: [93]}  # as in aspout/aspin, so the surfaces match
+      monitor:
+        - [B:1:ZN, A:92:OD2]        # does the carboxylate go bidentate
+        - [B:1:ZN, C:1:O1x]         # the hydroxyethyl O, the other candidate
+        - [B:1:ZN, D:1:O]           # does the water leave to make room
+        - [C:2:O01, C:1:C4x]        # the attack distance
+      resume: true
+
   # ---- rwoff / rwon: what did holding the waters cost? (D141) ----
   #
   # Every QM/MM gradient run in this project before D139 held the active-region
