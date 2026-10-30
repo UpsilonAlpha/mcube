@@ -872,10 +872,12 @@ def potential(args):
     print(f"\n{out / 'potential.json'}")
 
 
-def pme_potential(mod, forcefields, r_ion_A, delta=0.01):
+def pme_potential(mod, forcefields, r_ion_A, delta=1.0):
     """Potential (V) at r_ion from the MM charges under PME, the periodic electrostatics the MD
     ran with: a probe particle (no LJ) at the ion's position, E(+delta) - E(-delta) over 2 delta.
-    The probe's self and image terms are even in delta and cancel."""
+    The energy is exactly quadratic in the probe charge, so the central difference is exact at
+    any delta; 1 e keeps it well above the single-precision noise of a 124k-atom energy. The
+    probe's self and image terms are even in delta and cancel."""
     import openmm
     from openmm import unit
     from openmm.app import ForceField, PME
@@ -883,20 +885,24 @@ def pme_potential(mod, forcefields, r_ion_A, delta=0.01):
                                                    nonbondedCutoff=1.0 * unit.nanometer)
     nb = next(f for f in system.getForces() if isinstance(f, openmm.NonbondedForce))
     nb.setEwaldErrorTolerance(1e-5)
-    for f in list(system.getForces()):
-        f.setForceGroup(1 if f is nb else 2)
     probe = system.addParticle(0.0)
     nb.addParticle(0.0, 0.1, 0.0)
     pos = list(mod.positions.value_in_unit(unit.nanometer)) + [openmm.Vec3(*(np.asarray(r_ion_A) / 10.0))]
     ctx = openmm.Context(system, openmm.VerletIntegrator(0.001), openmm.Platform.getPlatformByName("CPU"))
     ctx.setPositions(pos)
     energies = []
+    # The total energy: only the NonbondedForce sees the probe (no bonds, no other forces on it).
+    # The first version read the NonbondedForce's force group alone, and getState(groups=...)
+    # returned 0 on this OpenMM, so every frame read 0 V
     for q in (delta, -delta):
         nb.setParticleParameters(probe, q, 0.1, 0.0)
         nb.updateParametersInContext(ctx)
-        energies.append(ctx.getState(getEnergy=True, groups={1}).getPotentialEnergy()
+        energies.append(ctx.getState(getEnergy=True).getPotentialEnergy()
                         .value_in_unit(unit.kilojoule_per_mole))
-    return (energies[0] - energies[1]) / (2 * delta) / 96.4853   # kJ/mol/e -> V
+    phi = (energies[0] - energies[1]) / (2 * delta) / 96.4853   # kJ/mol/e -> V
+    if phi == 0.0:
+        raise RuntimeError("PME probe saw no potential: check the box vectors of the frame")
+    return phi
 
 
 def print_report(report):
