@@ -2922,6 +2922,34 @@ So **the sweeping version of D137's claim is wrong**: `$set` water constraints a
 **A caveat for the hysteresis comparison, noticed while auditing.** `aspin`'s point 0 and `aspout`'s point 8 are the same structure at the same 3.60 A, but their energies are -447.31984 and -447.31201 Eh - 4.9 kcal/mol apart. They are different runs, so `resolve_actatoms` re-derived the active region from a different `pdb_file` and the two will not contain exactly the same water set. **Absolute energies are not comparable between the arms**; each curve must be read relative to its own first point, which is how both CSVs already report them.
 
 
+**D142 - Holding the waters cost 0.003 kcal/mol on a structure whose waters were already relaxed - which is the answer for half the affected runs and, by showing why, tells us the other half is still open.** (2026-10-30, jobs 31146622 `rwoff` and 31146643 `rwon`, both COMPLETED in under 4 minutes)
+
+One variable, one structure: both re-optimised `protdft/scan_aspout/scan_04.pdb` with Zn-Asp92 OD1 held at 2.75 A, the same QM region, and - verified in the results, not assumed - **the same 485-atom active region** (`actatoms_fingerprint: 7c61d230af2a` in both).
+
+| | `rwoff` | `rwon` |
+| --- | --- | --- |
+| `constraints.txt` | `$set`, 1 distance | `$set`, 25 distances |
+| converged | true | true |
+| steps (`optimization_energies.log`) | 28 | 28 |
+| `SVD Error` | 0 | 0 |
+| `opt_energy` (Eh) | -447.33041053983123 | -447.33040619825940 |
+
+**`rwon` - `rwoff` = +4.34e-06 Eh = +0.0027 kcal/mol.** `site.py sphere` on the two optimised structures is identical on every distance to 0.01 A (O01 1.85, His88 2.00, His164 2.03, HOH485 2.05, OD1 2.75, OD2 4.55, mer O2x 4.82, O01-C4x 3.72); the only difference anywhere is one Burgi-Dunitz angle, 85 against 84 degrees. Twenty-four water constraints changed nothing at all.
+
+**Why it cost nothing, and this is the part that matters.** `rwon`'s `constraints.txt` holds the waters at **0.9787 and 0.9785 A** - because `scan_04.pdb` came out of the fixed, flexible-water scan, so its waters already sit at the force field's own flexible minimum. The constraint asks them to stay where they already want to be, and `bond_constraints` holds *current* lengths, not TIP3P's. There is nothing to strain.
+
+Compare 31016878, which started from an MD last frame: OpenMM ran that MD with `rigidWater=True`, so its waters are at exactly **0.9574 A**, the rigid model's value, while the QM/MM system is built with `rigidwater=False` and its flexible terms pull them to ~0.98-1.03. That is the whole mechanism of D137, now visible as a number in two constraint files: **0.9787 (satisfiable, free) against 0.9574 (strained, and in that run unsatisfiable)**.
+
+**So D141 closes for one class of run and stays open for the other:**
+
+- **Closed - results stand as computed:** anything optimised or scanned from a structure that had already been through a flexible-water QM/MM optimisation. That is `CSR_crystal_v2/protdft/zncheck/scan` and `protdft/coscan` (both from `QM_MM_optimized.pdb`), and every `qmmm` optimisation with no `opt_constraints`, where the waters were `$freeze`d and so projected out rather than scored.
+- **Still open - and now with a measurable mechanism rather than a worry:** runs started directly from an MD frame, where the water constraints were pinned 0.02 A below the flexible minimum. That is `scan_H1_f00497` and `scan_H2_f00395` (from `nac_frame00497.pdb` / `nac_frame00395.pdb`, 46 points, 3 of them unconverged), D81's sphere-constrained reactant/product pair, and D105's stalled optimisation that D106 then used as a NEB endpoint.
+
+**The job that would close the rest**, not submitted: the same `rwoff`/`rwon` pair from `../CSR_nac/md_naclong_results/NVTtrajectory_lastframe_imaged.pdb` - 31016878's own start - with Zn-OD1 held at its current value rather than 2.75. `rwon` there should reproduce the D137 failure and `rwoff` should converge, and the energy each reaches is the size of the correction for the MD-frame runs. About 20 minutes on 8 cores, and it is the user's call.
+
+**`aspin` (31143211) finished while this ran: nine of nine points, all converged.** The point-by-point comparison against D140 is the next entry; the headline is that the reverse arm reaches -13.95 kcal/mol at 1.90 A against the outward arm's +13.84 at 3.60 A, and both put their minimum at 2.11 A.
+
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
