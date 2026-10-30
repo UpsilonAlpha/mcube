@@ -110,9 +110,10 @@ def main(site_file, names):
         # 31176144/31176145 (D152), which died in 8 s with no `pdb_file`.
         if name == stage or name.startswith(stage + "_"):
             problems.append("%s: drop the `%s_` - sections.py writes this as "
-                            "`%s`, but mcube is given `%s_%s`, which does not "
-                            "exist. Name it `%s`."
-                            % (name, stage, section, stage, name,
+                            "`%s`, while a job submitted as `%s` reads a "
+                            "section of that name and finds nothing. "
+                            "Name it `%s`."
+                            % (name, stage, section, name,
                                name[len(stage) + 1:] or "<something>"))
             continue
         if "start" in body:

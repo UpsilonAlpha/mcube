@@ -3293,6 +3293,52 @@ An MM umbrella run over the same coordinate would cost under an hour on a GPU an
 **The protonated-Asp92 test is not the quick run it sounds like.** Asp92 is in the QM region, but the MM system still needs a template for the residue, and the config's `amino_acids` list deliberately omits the protonated variants - the same blocker D133's charge-deletion test hit with LYN. It needs the residue renamed to ASH with an HD2 built on OD2, and the force field confirmed to template it. **Corrected the same night, by building it** (`site.py protonate`, commit d11a552): ff14SB's ASH is exactly ASP plus HD2 on OD2, and **`amino_acids` does not need extending** - `PDBFile` renames ASH back to ASP on load through OpenMM's own `pdbNames.xml` alt-name mapping, so `build_qm_region` never sees the name and treats the residue identically either way (verified: QM region 6 atoms for ASP, 7 for ASH, same cut at CA-CB). What does change is the **charge**: the residue goes -1 to 0, so the system's total charge and the QM region's both rise by +1 and the `charge` in the qmmm section must be incremented - a run that forgets this is wrong without looking wrong. ASH is also mid-chain only (there is no NASH/CASH), and LYN cannot be done by renaming at all, because OpenMM has no alt-name entry for it and the residue would load with no bonds.
 
 
+**D152 - The Arg229 charge-deletion pair died in 8 s on a doubled section prefix, not on the feature: `sections.py` writes `sp_qmmm_ref` under `stage: sp` as `sp_sp_qmmm_ref`, and the job was given `sp_qmmm_ref`. Fixed at the tool, pair resubmitted, and the protonated-Asp92 test moved to the structure where Asp92 is actually on the metal.** (2026-10-31, jobs 31176144/31176145 FAILED; 31185324, 31185325, 31186037, 31186038 submitted)
+
+**The failure.** Both single points ran 8 s and died identically:
+
+```
+KeyError: 'No geometry to score for the sp stage. Set `pdb_file` in `sp_qmmm_ref.inputs`.'
+```
+
+`sp_inputs` loads the config key equal to the section it is given, and the section given was `sp_qmmm_ref`. The key holding `pdb_file` was `sp_sp_qmmm_ref`, because `sections.py` writes every entry as `<stage>_<name>` and the entry had been *named* `sp_qmmm_ref` in `site.yaml`. So the run read an empty section, found no geometry and stopped - correctly, and loudly, which is the one good thing here.
+
+**D110 found this and called it harmless.** Its own words: *"several existing keys double - `scan_znasp` becomes `scan_scan_znasp`, `sp_dft` becomes `sp_sp_dft` - which is harmless but means `run.slurm`'s documented examples disagree with what those keys actually produce"*, and it left them alone. It is harmless only while nothing is submitted: the moment a job is, the name a person types and the name the config holds are different strings and nothing between them objects. The pair was submitted at 21:39 and dead by 21:40, and the whole overnight window was spent with nothing running, for a naming rule that was written down and not enforced.
+
+**Fixed where it can be caught** (`7e3a38c`, 5 tests). `sections.py` now refuses a name that begins with its own stage, before writing anything, and prints the key it would have made:
+
+```
+sp_qmmm_ref: drop the `sp_` - sections.py writes this as `sp_sp_qmmm_ref`,
+while a job submitted as `sp_qmmm_ref` reads a section of that name
+and finds nothing. Name it `qmmm_ref`.
+```
+
+The five `sp_*` entries in `site.yaml` are renamed to `qmmm_ref`, `qmmm_r229`, `dft`, `co0/4/8` - **the mcube keys they produce are unchanged** (`sp_qmmm_ref`, `sp_dft`, `sp_co0/4/8`), so every reference in this log still names the right thing. The two stale `sp_sp_*` keys were dropped from `config.yaml`; nothing else in it doubled, and `sp_dft`/`sp_co*` had never been run, so no result was ever stored under a doubled name.
+
+**What is therefore still unknown.** The charge-deletion feature has not run once. Nothing is known about `pointcharge_lists`, `scope`, `charge_removed` or `verified_after_run`, and **there is no Arg229 electrostatic contribution** - D151's open question about whether `charge_sequences` finds where this ASH build keeps its point charges is exactly as open as it was. **Resubmitted as 31185324 (`spref`) and 31185325 (`spr229`)**, same structure, same settings, one key apart, 16 cores. The Lys226/Arg90/Gln93 sections were deliberately **not** submitted: the brief made them conditional on the pair working, and a decomposition built on an unverified deletion mechanism would be three more numbers of unknown meaning.
+
+**The protonated structure: built, and it does not clash** (`fad1162`). `site.py protonate` on both ends of the `aspin` scan:
+
+| structure | HD2 geometry | nearest atom outside Asp92 |
+| --- | --- | --- |
+| `scan_00.pdb` (Asp92 out, 3.60 A) | OD2-HD2 0.980, CG-OD2-HD2 113.00 deg, out of plane 0.0000, HD2-OD1 3.038 (syn would be 2.347) | **2.37 A** to E:9994:H2 |
+| `scan_08.pdb` (Asp92 on, 1.90 A) | OD2-HD2 0.980, 113.00 deg, out of plane 0.0000, HD2-OD1 3.035 (syn 2.334) | **1.82 A** to E:9994:H2 |
+
+Anti, in plane, and in neither case an overlap. The 1.82 A is an H...H contact that is tight but real - above the sum of two hydrogen vdW radii is 2.2-2.4 A, so it is strained rather than impossible, and the optimisation is free to relax it.
+
+**A clash check added to the tool, because it had none.** `protonate` places the proton from three heavy atoms of one residue and knows nothing about the rest of the structure. It now reports the three nearest atoms outside the residue on **every** run - so the line is evidence the check ran, not something only a failure reveals - and refuses below 1.2 A, writing nothing. A strong O-H...O hydrogen bond is 1.6-2.0 A, so 1.2 A is an overlap and not a contact. `subst_start.pdb` carried a 0.58 A Lys226-O4x overlap for weeks (D151) and job 31160947 died of it in `xtbpcgradientgrab` with a row of asterisks where a point charge should have been; nothing in that path ever named the overlap. 6 tests.
+
+**A correction to the overnight brief, which would have made the test vacuous.** It said to protonate `scan_aspin/scan_00.pdb`. **scan_00 is `aspin`'s 3.60 A end - the structure where Asp92 has already left the metal.** `aspin` runs Zn-OD1 from 3.60 inward to 1.90, so scan_00 is the four-coordinate site (that is exactly why `michaelis2d` starts there). Protonating it and optimising asks whether a neutral acid *comes back*, which is not the question the user put. The question - *"obviously protonating asp prevents it from coordinating - might be worthwhile doing a quick semi-empirical QM/MM run with that assumption"* - needs the structure that has something to lose.
+
+**So `qmmm_asph` (job 31186037) starts from `scan_08.pdb`**, measured first with `site.py sphere`: **five ligands** - Asp92 OD1 1.90, hydroxide O01 1.94, His88 NE2 2.04, HOH485 2.19, His164 NE2 2.19, with OD2 at 3.43 (monodentate) and the substrate out at O1x 3.64 / carbonyl 4.96. `--to=ASH` puts HD2 on **OD2**, the oxygen that is *not* on the metal, leaving the bound OD1 bare: the chemically sensible tautomer, and the only one ff14SB defines. **`charge: 3`, not the inherited 2** - the residue goes -1 to 0, so the system's and the QM region's total charge both rise, and a run left at 2 converges the SCF on the wrong species while looking entirely normal. **Nothing restrained**: no `opt_constraints`, so the answer is a distance rather than a convergence criterion.
+
+**And a real rate for the umbrella cost** (job 31186038, `qmmm_qmrate`). D151 costs umbrella sampling at ~62 h per window and ~13,000 core-hours from **1.7 ps/h, a figure taken from a job that was cancelled before it had run long enough to measure it.** 3 ps of QM/MM MD on 8 cores from `scan_08.pdb`, same QM region as the windows would use, `skip_optimize: true` so the optimiser is not what gets timed. D151's cost line can then be corrected in either direction.
+
+**Four jobs running at 08:05**: 31185324/31185325 on bun157 (10 min), 31186037/31186038 on bun155. Disk checked first: scratch **250 of 300 GB**, home 38 of 50, 755k of 1M files - nothing near the limit and nothing pruned, since no new trajectory has finished.
+
+**The bridge, for the record.** The overnight chain stopped at 02:47 with the code-server session expired and redirecting to the UQ sign-in page; nothing was submitted and no successor was scheduled, which is the standing rule and cost about five hours of queue. On reconnection the port had moved from 10539 to **47121** on bun149 - the URL in a wakeup prompt is not durable, and the first action of any shift has to be reading `location.href` and following the redirect.
+
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
