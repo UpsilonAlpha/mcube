@@ -356,8 +356,9 @@ def frames(args):
             raise SystemExit(f"{path} carries {ion.residue.name}, not {src_ion}")
         with DCDTrajectoryFile(str(dcd)) as fh:
             n_total = len(fh)
-        dt = frame_spacing_ps(path, kind, n_total,
-                              args.frame_ps if kind == "site" else args.water_frame_ps)
+        box = top_name == "system.pdb"   # a bulk_ion.py box: water, or a --complex
+        dt = frame_spacing_ps(path, "water" if box else "site", n_total,
+                              args.water_frame_ps if box else args.frame_ps)
         mdtop, anchors = imaging(topology, anchor)
         chosen = pick_frames(n_total, dt, n, spacing, start)
         print(f"[{kind} {src}] {n_total} frames, {dt:g} ps apart: frames {chosen} "
