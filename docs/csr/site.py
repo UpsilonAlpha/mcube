@@ -4,6 +4,7 @@
     python site.py nucleophiles <pdb> [pdb ...]     attack geometry + proton acceptors
     python site.py shell        <traj> <topology>   metal coordination over a trajectory
     python site.py contacts     <traj> <topology>   named pairs over a trajectory
+                                [--profile=<substring>] [--bin=0.05]
     python site.py acceptors    <traj> <topology>   what CAN take the proton, counted
     python site.py joint        <traj> <topology>   attack AND donate, same molecule
     python site.py poses        <pdbqt> <receptor> [ligand.pdb]
@@ -544,6 +545,51 @@ def mode_contacts(site, traj_file, top_file):
                  dist[:, k].mean(), dist[:, k].max()))
     for name, why in missing:
         print("   %-26s     -  %s" % (name, why))
+
+    want = OPTS.get("profile")
+    if want:
+        _profile(np, named, dist, want, float(OPTS.get("bin", 0.05)),
+                 float(cfg.get("temperature", 300.0)), traj.n_frames)
+
+
+def _profile(np, named, dist, want, width, temperature, n_frames):
+    """-RT ln P(r) for every pair whose name contains `want`.
+
+    Unbiased sampling already carries the free energy along any distance it
+    explored: the histogram of a 100 ns trajectory is a potential of mean force
+    over the range it visited, for nothing but the cost of reading the frames.
+    It is only as good as the sampling, so the count per bin is printed beside
+    the energy - a bin with a handful of frames is noise wearing a number, and
+    the top of a profile like this is always the thin end.
+
+    This is not a substitute for umbrella sampling, which is what reaches the
+    range the molecule does not visit on its own. It is the part of the answer
+    that is already paid for.
+    """
+    rt = 0.0019872041 * temperature          # kcal/mol
+    for k, name in enumerate(named):
+        if want.lower() not in name.lower():
+            continue
+        d = dist[:, k]
+        lo = np.floor(d.min() / width) * width
+        hi = np.ceil(d.max() / width) * width
+        edges = np.arange(lo, hi + width, width)
+        counts, edges = np.histogram(d, bins=edges)
+        centres = 0.5 * (edges[:-1] + edges[1:])
+        keep = counts > 0
+        # Jacobian: a distance shell grows as r^2, so the radial density is
+        # divided by it before the log, or every profile tilts outward.
+        p = counts[keep] / (centres[keep] ** 2)
+        g = -rt * np.log(p / p.max())
+        print()
+        print("   -- %s: -RT ln P at %.0f K, %.2f A bins, %d frames"
+              % (name, temperature, width, n_frames))
+        print("      %6s %8s %10s" % ("r", "frames", "dG kcal"))
+        for c, n, e in zip(centres[keep], counts[keep], g):
+            print("      %6.2f %8d %10.2f" % (c, n, e))
+        best = centres[keep][int(np.argmin(g))]
+        print("      minimum at %.2f A; %d of %d frames in the range"
+              % (best, counts.sum(), n_frames))
 
 
 def mode_poses(site, args):

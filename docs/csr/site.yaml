@@ -39,6 +39,12 @@ site:
     # the oxygen that does NOT coordinate. OD1 was the one that migrated onto the
     # metal, at 1.99-2.07 A, and nothing was watching it.
     Zn-Asp92 OD1: [B:1:ZN, A:92:OD1]
+    # The carboxylate CARBON, not an oxygen: a profile along Zn-OD1 is
+    # contaminated every time the carboxylate rotates OD2 in and OD1 out, which
+    # is exactly the motion D120 was about. Zn-CG moves only when the whole
+    # group moves, which is the coordinate the free energy is wanted along -
+    # the same choice the classical carboxylate-cation PMFs make.
+    Zn-Asp92 CG: [B:1:ZN, A:92:CG]
     Zn-O01: [B:1:ZN, C:2:O01]
     Zn-HOH485: [B:1:ZN, D:1:O]
     Zn-His88: [B:1:ZN, A:88:NE2]
