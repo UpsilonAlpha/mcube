@@ -3093,6 +3093,53 @@ With HOH485 removed in the build, the sphere after Asp92 is pulled out is **2 Hi
 **Not submitted yet:** the 100 ns itself. `subst.inputs.pdb_file` still names the unoptimised graft because `sections.py` refuses a structure that does not exist, so it gets repointed at `protdft/qmmm_substopt/QM_MM_optimized.pdb` once 31160947 finishes and its sphere has been read. `michaelis2d` (31155441) is 56 minutes in on the rival hypothesis.
 
 
+**D147 - The carbonyl cannot bind this zinc at any Asp92 position: 25-34 kcal/mol, and it gets in only by pushing **His88** off the metal while destroying the attack angle. `carbonyl_on_metal` is not expensive, it is anti-catalytic. `substopt` failed on the graft's clash, which puts the MM minimisation first; `subst` submitted as 31167021.** (2026-10-30, job 31155441 `mich2d`, 32 of 45 points at 19:52, all converged)
+
+**Rate:** 32 points in 1 h 40 m, **3.1 min a point** against D140's 8.5 - the carbonyl pull is a smaller perturbation per step than the Asp92 one. Three of five rows are complete; the fourth is five points in. Scratch 241/300 GB.
+
+**1. Does the carbonyl ever reach the metal?** The cost of pulling Zn-O2x from 4.70 to 2.10 A, each row against its own 4.70 A point:
+
+| Asp92 held at (A) | Zn-O2x 4.70 -> 2.10 costs | row's 4.70 A point, vs row 0's |
+| --- | --- | --- |
+| 3.60 (four-coordinate) | **+25.2** | 0.00 |
+| 3.175 | **+28.2** | -5.12 |
+| 2.75 | **+34.0** | -9.03 |
+| 2.325 | in progress (+18.9 at 2.10 A, 3.40 A at +1.9) | - |
+
+**No row lets the carbonyl in at anything like a thermal cost.** The rows do differ, and in the direction the hypothesis wanted - the further Asp92 is out, the cheaper, 25.2 against 34.0 - so **Asp92's position is worth about 9 kcal/mol of the 25**, which settles D144's question 2 as far as a scan can: moving Asp92 helps and is not sufficient. The right-hand column is the other half of the same surface: with the carbonyl out at 4.70, bringing Asp92 in from 3.60 to 2.75 A *gains* 9.03 kcal/mol, which reproduces D143's curve on an independent structure and active region.
+
+**2. What the carbonyl displaces, which is the finding.** `site.py sphere` at the two most forced points:
+
+| | row 0 (Asp92 3.60) | row 3 (Asp92 2.32) |
+| --- | --- | --- |
+| Zn-O2x (forced) | 2.10 | 2.10 |
+| Zn-O01 (nucleophile) | 1.84 | 1.88 |
+| Zn-His164 NE2 | 1.96 | 2.12 |
+| Zn-HOH485 | 2.21 | 2.06 |
+| **Zn-His88 NE2** | **2.43** (from 2.03) | **3.59 - off the metal** |
+| Zn-mer O1x | 3.61 | 3.64 |
+| O01-C4x | 2.94 | 2.62 |
+| **Burgi-Dunitz angle** | **58 degrees** | **69 degrees** |
+
+**It does not displace the water.** HOH485 stays at 2.21 and 2.06 A; what moves is **a protein ligand**. In row 0 His88 is stretched from 2.03 to 2.43 A, and in row 3, with Asp92 also on the metal, His88 is **expelled to 3.59 A**. D145 predicted the carbonyl would have to take HOH485's position, the one vacancy the crystal leaves; the surface says it would rather take a histidine's.
+
+**And the geometry it produces is the wrong one.** The nucleophile does come closer to C4x - 2.94 A, and 2.62 A in row 3, the shortest attack distances this project has seen - but the **Burgi-Dunitz angle collapses to 58 and 69 degrees**, far outside the 95-120 window, because an oxygen bound to the same metal as the carbonyl cannot approach the carbonyl carbon along its pi* axis. Short distance, hopeless angle. Compare the `substituent_on_metal` pose, where the carbonyl is 4.50 A off the metal and the attack line is 3.17 A at **106 degrees** with nothing restrained (D146). **The two hypotheses are not close: one costs 25 kcal/mol and ruins the angle, the other is free and satisfies it.**
+
+**3. `substopt` (31160947) FAILED after 26 m 44 s, at optimiser step 76**, in ASH's xTB interface:
+
+```
+ValueError: could not convert string to float: '************-53.41870456************'
+```
+
+`xtbpcgradientgrab` reads xTB's point-charge gradient out of a fixed-width Fortran field, and a component overflowed it - asterisks where a number should be. That happens when an MM point charge and a QM atom approach near-zero separation, which is exactly what D146 flagged in the start structure: the substrate's H5x 1.19 A from the nucleophile's oxygen, O1x and O01 about 2.1 A apart.
+
+**So D146 had the order backwards, and the failure is what shows it.** A QM/MM optimisation is the wrong tool for a steric clash, because the point-charge gradient can diverge before the geometry relaxes; **MM minimisation is the right one**, and it cannot fail this way - no point charges in a QM region, a finite Lennard-Jones wall, and a minimiser that will open O...H from 1.19 to an ordinary 1.8-2.0 A. The `md` stage begins with exactly that minimisation. The QM/MM optimisation belongs **after** it, on the equilibrated structure, where it can decide where the proton sits without a clash to resolve first.
+
+**`subst` submitted: job 31167021** (`-p gpu_cuda --qos=gpu --gres=gpu:h100:1 --cpus-per-task=4 --mem=32G -t 12:00:00`, PD behind another session's GPU jobs). 100 ns NVT from `subst_start.pdb` with D146's crystal restraint list - Asp92 OD1 4.22 and OD2 4.20, His88 2.22, His164 2.09, the hydroxide held where it is, Zn-O1x at 2.66 - and `sections.py` checked all twelve selectors. About 3 h of production at D100's rate. **What it now decides is sharper than when it was designed:** with the carbonyl route costing 25-34 kcal/mol and expelling a histidine, this is no longer one hypothesis of two but the only arrangement left in which the substrate coordinates at all, and the run measures whether it survives 100 ns with the metal held at the crystal's own geometry.
+
+**Nothing pruned:** the grid is still writing points into `protdft/scan_michaelis2d`, and the two optimisations' directories are small. `substopt`'s failed run is kept as the evidence above.
+
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
