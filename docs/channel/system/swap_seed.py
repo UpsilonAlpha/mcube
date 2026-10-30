@@ -34,6 +34,39 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "qmmm"))
 import exchange  # noqa: E402
 
 
+def move_to_bulk(topology, xyz, box_A, ion, dz):
+    """The ion and the water whose O sits within 1.5 Å of the plane dz above the chain A CA
+    centre and farthest (minimum image) from every protein heavy atom trade places: the water
+    goes, translated whole, to the ion's old position. Charge and atom count are unchanged."""
+    ca = [a.index for a in topology.atoms() if a.residue.chain.id == "A" and a.name == "CA"
+          and a.residue.name in exchange.AMINO_ACIDS]
+    z_t = float(xyz[ca, 2].mean()) + dz
+    prot = np.array([a.index for a in topology.atoms() if a.residue.name in exchange.AMINO_ACIDS
+                     and a.element is not None and a.element.symbol != "H"])
+    best, far = None, -1.0
+    for res in topology.residues():
+        if res.name not in exchange.WATER:
+            continue
+        o = next(a.index for a in res.atoms() if a.element is not None and a.element.symbol == "O")
+        if abs(xyz[o, 2] - z_t) > 1.5:
+            continue
+        d = xyz[prot] - xyz[o]
+        d -= box_A * np.round(d / box_A)
+        m = float(np.sqrt((d ** 2).sum(axis=1)).min())
+        if m > far:
+            best, far = (res, o), m
+    if best is None:
+        raise SystemExit(f"no water within 1.5 A of z {z_t:.1f} A (CA centre + {dz} A)")
+    res, o = best
+    idx = [a.index for a in res.atoms()]
+    out = xyz.copy()
+    out[idx] += xyz[ion.index] - xyz[o]
+    out[ion.index] = xyz[o]
+    print(f"[INFO] ion moved to water {res.name}{int(res.id)}'s place, z {z_t:.1f} A, "
+          f"{far:.1f} A from the nearest protein heavy atom")
+    return out
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--window", required=True, help="source window dir (start.pdb, window.dcd)")
@@ -44,6 +77,10 @@ def main():
     p.add_argument("--section", default="umbrella_res")
     p.add_argument("--window-index", type=int, default=35, help="window whose seed this is (z0 0)")
     p.add_argument("--set", nargs="*", default=[], help="KEY=VALUE section inputs (YAML values)")
+    p.add_argument("--move-z", type=float,
+                   help="also move the ion into bulk water, this far (Å) above the chain A CA centre: it "
+                        "trades places with the water there farthest from the protein (the in-box water "
+                        "reference of decision log C22)")
     args = p.parse_args()
 
     from openmm import unit
@@ -59,6 +96,8 @@ def main():
     old = ion.residue.name
     dq = exchange.IONS[old][1] - exchange.IONS[args.ion][1]
     exchange.swap(topology, ion, args.ion)
+    if args.move_z is not None:
+        xyz = move_to_bulk(topology, xyz, np.diag(box_nm) * 10.0, ion, args.move_z)
 
     mod = Modeller(topology, xyz / 10.0 * unit.nanometer)
     if dq:

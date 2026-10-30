@@ -384,9 +384,13 @@ def frames(args):
     # last frames of the PMF's outer umbrella windows, ion in the bulk water layer. Same periodic
     # system as the site frames, so the net-charge and Ewald-convention terms that a separate
     # water cube does not share are common to site and reference.
-    for src, (src_ion, path) in parse_sources(args.bulk, "bulk").items():
-        plan.append(("water", src, src_ion, path, "start.pdb", None, None, None, None,
-                     args.site_forcefields or SITE_FF, "ion"))
+    # A single window with window.dcd (a bulk umbrella window, swap_seed.py --move-z) is read
+    # like a site run with the water frame picks; DIR1:DIR2:... takes each window's lastframe.pdb.
+    bulk = parse_sources(args.bulk, "bulk")
+    for src, (src_ion, path) in bulk.items():
+        dcd = "window.dcd" if (path / "window.dcd").exists() else None
+        plan.append(("water", src, src_ion, path, "start.pdb", dcd, args.water_n, args.water_spacing_ns,
+                     args.water_start, args.site_forcefields or SITE_FF, "ion"))
     if not plan:
         raise SystemExit("nothing to do: give --site, --complex, --water and/or --bulk")
 
@@ -443,9 +447,9 @@ def frames(args):
                      "frame": index, "time_ns": round(t_ns, 3),
                      "qm_residues": residues, "coordination": coord, "notes": notes,
                      "residue_charge": res_charge, "qm_elements": sorted(elems), "jobs": {}}
-            if dcd_name is None:
+            if kind == "water" and src in bulk:
                 entry["environment"] = environment(topology, xyz, ion)
-                print(f"  window {index}: " + ", ".join(f"{k} {v}" for k, v in entry["environment"].items()))
+                print(f"  frame {index}: " + ", ".join(f"{k} {v}" for k, v in entry["environment"].items()))
                 if entry["environment"]["protein_min_A"] < args.bulk_min_A:
                     raise SystemExit(f"{src} window {index}: protein {entry['environment']['protein_min_A']} A "
                                      f"from the ion, under --bulk-min {args.bulk_min_A}; not bulk")

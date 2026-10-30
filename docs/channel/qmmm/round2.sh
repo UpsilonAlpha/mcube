@@ -10,7 +10,9 @@
 #   bash round2.sh complex      ion + capped Glu boxes for the calibration (CPU MM, 2 ns each)
 #   bash round2.sh ca           frames + submit for the Ca sources, once `mm` has finished
 #   bash round2.sh calib        frames + submit for the calibration boxes, once `complex` has finished
-#   bash round2.sh inbox        the water reference inside the membrane box (PMF outer windows), Ca and La
+#   bash round2.sh bulkseeds    La and Ca moved into the bulk water layer of the membrane box (LA_bulk, CA_bulk)
+#   bash round2.sh bulkmm       submit their 2 ns windows (GPU)
+#   bash round2.sh inbox        frames + submit: the in-box water reference, Ca and La, once `bulkmm` has finished
 set -e
 S=/scratch/user/uquadhik
 Q=$S/mcube/docs/channel/qmmm
@@ -89,19 +91,31 @@ calib)
 import json; a = json.load(open('$CAL/frames.json')); b = json.load(open('$OUT/frames.json'))
 a.update({k: v for k, v in b.items() if v['kind'] == 'water'}); json.dump(a, open('$CAL/frames.json', 'w'), indent=1)"
     submit_from $CAL/jobs_site.txt 1 qc_site 8:00:00 ;;
+bulkseeds)
+    # The water reference inside the membrane box (C22): La and Ca moved from the bound La frame
+    # into the bulk water layer, 38 A above the channel centre (mid-layer is ~41.6 A; the PMFs'
+    # outer windows never leave the barrel mouth, bulk-survey), z-only restraint, no cylinder
+    BULK=(k=2.5 time=2000 'frames_at=[38.0]' traj_frequency=6250 z_start=38.0 z_end=39.0 spacing=1.0 cylinder=null)
+    for ION in LA CA; do
+        $P $SY/swap_seed.py --window $S/channel/system/LA/umbrella_res_035 --frame 159 --ion $ION \
+            --base $S/channel/system/$ION/config.yaml --out $S/channel/system/${ION}_bulk \
+            --section umbrella_bulk --window-index 0 --move-z 38 --set "${BULK[@]}"
+    done ;;
+bulkmm)
+    for ION in LA CA; do
+        (cd $S/channel/system/${ION}_bulk && sbatch -J bulk_$ION --export=ALL,FIRST=0,LAST=0,SECTION=umbrella_bulk $SY/umbrella_windows.slurm)
+    done ;;
 inbox)
-    # The water reference inside the membrane box (C22): the last frames of the La and Ca PMFs'
-    # outer windows, ion in the bulk water layer, Ca and La swapped into each. The site jobs stay
-    # in $OUT; their entries are linked in (rerun after `ca` to take in the Ca site sources).
+    # Frames + submit for the in-box reference, once `bulkmm` has finished. The site jobs stay in
+    # $OUT; their entries are linked in (rerun after `ca` to take in the Ca site sources).
     first=$(( $(lines $IN/jobs_water.txt) + 1 ))
     U=$S/channel/system
     $P $Q/exchange.py frames --out $IN --ions CA LA --actradius 0.5 $BASIS \
-        --bulk LA@LAbulk=$U/LA/umbrella_010:$U/LA/umbrella_011:$U/LA/umbrella_062:$U/LA/umbrella_063:$U/LA/umbrella_064 \
-        --bulk CA@CAbulk=$U/CA/umbrella_000:$U/CA/umbrella_001:$U/CA/umbrella_002:$U/CA/umbrella_069:$U/CA/umbrella_070
+        --bulk LA@LAbulk=$U/LA_bulk/umbrella_bulk_000 --bulk CA@CAbulk=$U/CA_bulk/umbrella_bulk_000
     $P -c "
 import json; a = json.load(open('$IN/frames.json')); b = json.load(open('$OUT/frames.json'))
 a.update({k: v for k, v in b.items() if v['kind'] == 'site'}); json.dump(a, open('$IN/frames.json', 'w'), indent=1)"
     submit_from $IN/jobs_water.txt $first qx_bulk 24:00:00 ;;
 *)
-    sed -n 2,15p $0; exit 1 ;;
+    sed -n 2,17p $0; exit 1 ;;
 esac
