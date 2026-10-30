@@ -1018,6 +1018,26 @@ def write_grafted(system, sys_atoms, lig_rows, ref_atoms, pos_of, clashing, n):
 # `parent` is the charged residue the input must currently be: refusing anything
 # else is the point, because a residue that is already ASH, or is an ASN that
 # someone mistyped the selector for, would otherwise be silently mangled.
+# A proton placed from three heavy atoms knows nothing about the rest of the
+# structure, so it can land inside a neighbour. 1.2 A is below any real contact:
+# a strong O-H...O hydrogen bond is 1.6-2.0 A, and the shortest H...H in a
+# protein structure is about 1.7 A, so anything under 1.2 A is an overlap and
+# not a close contact. Reported either way - `subst_start.pdb` carried a 0.58 A
+# overlap for weeks because nothing measured it (D152).
+CLASH_A = 1.2
+
+
+def proton_contacts(atoms, xyz, exclude, n=3):
+    """The `n` nearest atoms to `xyz` outside the residue, nearest first.
+
+    `exclude` is the set of line indices the residue occupies, so the proton is
+    not reported as clashing with the oxygen it was just built on.
+    """
+    near = sorted((_norm(_sub(xyz, a[5])), i) for i, a in enumerate(atoms)
+                  if a[0] not in exclude)
+    return [(d, atoms[i]) for d, i in near[:n]]
+
+
 PROTON_VARIANTS = {
     "ASH": {"parent": "ASP", "add": "HD2", "oxygen": "OD2", "carbon": "CG",
             "other": "OD1"},
@@ -1231,8 +1251,21 @@ def mode_protonate(site, args):
             "into a field that has run out. Nothing was written."
             % (src, serial - 1))
 
-    body = []
     residue_rows = {a[0] for a in residue}
+    # Measured before anything is written: a clash is a reason not to have a
+    # structure, not something to find out after optimising it.
+    contacts = proton_contacts(atoms, xyz, residue_rows)
+    if contacts and contacts[0][0] < CLASH_A:
+        d, other = contacts[0]
+        raise SystemExit(
+            "%s on %s:%s lands %.2f A from %s:%s:%s, under %.1f A, so it is "
+            "inside that atom rather than beside it. The placement is geometric "
+            "and does no search, so this frame cannot carry the proton in the "
+            "anti position; pick another frame or relax the neighbour first. "
+            "Nothing was written."
+            % (proton, chain, resid, d, other[3], other[4], other[1], CLASH_A))
+
+    body = []
     for index, line in enumerate(lines):
         if index in residue_rows:
             line = _rename(line, variant)
@@ -1266,6 +1299,9 @@ def mode_protonate(site, args):
     print("  %s-%s %.3f A, anti (syn would be %.3f A)"
           % (proton, spec["other"], _norm(_sub(xyz, other)),
              _norm(_sub(_syn(c, other, o), other))))
+    print("  nearest outside the residue: "
+          + ", ".join("%.2f A to %s:%s:%s" % (d, a[3], a[4], a[1])
+                      for d, a in contacts))
     print("  the residue's atom set is now exactly ff14SB's %s template; the "
           "residue is neutral where %s was -1, so the system's total charge "
           "rises by 1" % (variant, spec["parent"]))

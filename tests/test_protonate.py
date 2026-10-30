@@ -543,3 +543,68 @@ def test_GLH_goes_the_same_way_on_OE2(run, capped_glutamate):
     assert {a.name for a in residue.atoms()} == {
         a.name for a in field._templates["GLH"].atoms}
     field.createSystem(pdb.topology)
+
+class TestTheClashCheck:
+    """The placement is geometric: it reads three heavy atoms of one residue and
+    knows nothing about the rest of the structure, so it can put the proton
+    inside a neighbour. `subst_start.pdb` carried a 0.58 A Lys226-substrate
+    overlap for weeks because nothing measured it (D152), and an optimisation
+    started from an overlap either explodes or quietly relaxes something else.
+    """
+
+    def near_proton(self, mod, aspartate, offset):
+        """The same aspartate with one extra water oxygen `offset` A from HD2."""
+        xyz = mod.place_carboxyl_proton(CG, OD1, OD2)
+        direction = mod._unit(mod._sub(xyz, OD2))     # further along O-H
+        spot = tuple(xyz[i] + direction[i] * offset for i in range(3))
+        lines = aspartate.read_text().splitlines(keepends=True)
+        end = next(i for i, l in enumerate(lines) if l.startswith("END"))
+        lines[end:end] = [pdb_line(900, "O", "HOH", "W", "600", spot,
+                                   record="HETATM")]
+        aspartate.write_text("".join(lines))
+        return aspartate
+
+    def test_a_proton_inside_a_neighbour_is_refused(self, mod, run, aspartate):
+        src = self.near_proton(mod, aspartate, 0.4)
+        with pytest.raises(SystemExit) as exc:
+            run(src, "A:92", to="ASH")
+        assert "W:600:O" in str(exc.value) and "0.40" in str(exc.value)
+
+    def test_nothing_is_written_when_it_clashes(self, mod, run, aspartate):
+        src = self.near_proton(mod, aspartate, 0.4)
+        with pytest.raises(SystemExit):
+            run(src, "A:92", to="ASH")
+        assert not written(src).exists()
+
+    def test_a_hydrogen_bond_is_not_a_clash(self, mod, run, aspartate, capsys):
+        """1.8 A from an acceptor is the contact this structure wants, not a
+        reason to refuse it."""
+        src = self.near_proton(mod, aspartate, 1.8)
+        run(src, "A:92", to="ASH")
+        assert written(src).exists()
+        assert "1.80 A to W:600:O" in capsys.readouterr().out
+
+    def test_the_nearest_contacts_are_always_reported(self, mod, run, aspartate,
+                                                      capsys):
+        """Printed even when nothing is close, so the line is evidence the
+        check ran rather than something only a failure reveals."""
+        run(aspartate, "A:92", to="ASH")
+        out = capsys.readouterr().out
+        assert "nearest outside the residue:" in out
+
+    def test_the_residues_own_atoms_are_not_counted(self, mod, run, aspartate,
+                                                    capsys):
+        """HD2 is 0.98 A from the OD2 it was built on; measuring against its own
+        residue would refuse every structure."""
+        run(aspartate, "A:92", to="ASH")
+        out = capsys.readouterr().out
+        assert "A:92:" not in out.split("nearest outside the residue:")[1].split(chr(10))[0]
+
+    def test_contacts_exclude_by_line_not_by_name(self, mod, aspartate):
+        xyz = mod.place_carboxyl_proton(CG, OD1, OD2)
+        lines = aspartate.read_text().splitlines(keepends=True)
+        atoms = mod._pdb_atoms(lines)
+        rows = {a[0] for a in atoms if a[3] == "A" and a[4] == "92"}
+        near = mod.proton_contacts(atoms, xyz, rows)
+        assert near and all(not (a[3] == "A" and a[4] == "92") for _, a in near)
+
