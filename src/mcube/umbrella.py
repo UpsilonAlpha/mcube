@@ -538,8 +538,9 @@ def pdb_box(pdb) -> np.ndarray:
     return np.array([cell[i]._value for i in range(3)]) * 10.0
 
 
-def mm_system(pdb, inputs: Dict[str, Any], preprocess: Dict[str, Any], md: Dict[str, Any]):
+def mm_system(pdb, inputs: Dict[str, Any], preprocess: Dict[str, Any], md: Dict[str, Any], config=None):
     """The md stage's classical system for this structure, with the same metal parameters.
+    `config` is what md.inputs' force-field entries are read against (`md_forcefields`).
     Returns (system, forcefields)."""
     from openmm import unit
     from openmm.app import ForceField, PME, HBonds
@@ -550,10 +551,17 @@ def mm_system(pdb, inputs: Dict[str, Any], preprocess: Dict[str, Any], md: Dict[
     md_in = md.get("inputs") or {}
     if md_in.get("implicit"):
         raise NotImplementedError("umbrella sampling needs explicit solvent")
-    forcefields = (md.get("results") or {}).get("forcefields") or md_forcefields(md_in, preprocess, config)
+    forcefields = (md.get("results") or {}).get("forcefields")
+    membrane = md_membrane(md_in, preprocess)
+    if not forcefields:
+        # what run_md builds when md has no results (a swap_seed.py run dir): its inputs, plus lipids
+        forcefields = md_forcefields(md_in, preprocess, config)
+        if membrane:
+            forcefields = membrane_mod.lipid_forcefields(
+                forcefields, md_in.get("membrane_lipid_xml") or membrane_mod.LIPID_XML)
     temp = temperature_of(inputs, md)
     cutoff = float(inputs.get("nonbonded_cutoff", md_in.get("nonbonded_cutoff", membrane_mod.NONBONDED_CUTOFF)))
-    if md_membrane(md_in, preprocess):
+    if membrane:
         system = membrane_mod.membrane_system(
             pdb.topology, forcefields, temperature=temp, nonbonded_cutoff=cutoff,
             pressure=md_in.get("pressure", membrane_mod.PRESSURE),
@@ -716,7 +724,7 @@ def run_pull(config: str, section: str, inputs, preprocess, md) -> Dict[str, Any
     masses = atom_masses(pdb.topology)
     coords = image_ion(np.array(pdb.getPositions()._value) * 10.0, ion, reference, masses, box)
 
-    system, _ = mm_system(pdb, inputs, preprocess, md)
+    system, _ = mm_system(pdb, inputs, preprocess, md, config)
     z_start = float(cv_values(coords, ion, reference, masses, box)[0][0])
     k = float(inputs.get("pull_k", inputs["k"]))
     groups = cn_atom_groups(pdb.topology, ion)
@@ -811,7 +819,7 @@ def run_mm_window(config, section, inputs, preprocess, md, index: int) -> Dict[s
         coords = image_ion(coords, ion, reference, masses, box)
     start = write_coords_pdb(pdb.topology, coords, "start.pdb")
 
-    system, _ = mm_system(pdb, inputs, preprocess, md)
+    system, _ = mm_system(pdb, inputs, preprocess, md, config)
     bias = bias_force(ion, reference, float(inputs["k"]), z0, inputs.get("cylinder"), masses,
                       groups, cn_cutoff(inputs, preprocess), coordinate, pair)
     system.addForce(bias)
@@ -1120,7 +1128,7 @@ def run_energies(config, section, inputs, preprocess, md, index: int, level: str
 
     energies = []
     if level == "mm":
-        system, _ = mm_system(pdb, inputs, preprocess, md)
+        system, _ = mm_system(pdb, inputs, preprocess, md, config)
         simulation, _ = make_simulation(pdb, system, xyz[0], dict(inputs, timestep=0.001), md)
         groups = {g for g in range(32) if g != BIAS_GROUP}
         for f in range(traj.n_frames):

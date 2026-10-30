@@ -268,7 +268,7 @@ def run_metadynamics(config, section, inputs, preprocess, md) -> Dict[str, Any]:
         raise ValueError("n_coo: the structure has no charged Asp/Glu carboxylate oxygens")
     cutoff = cn_cutoff(inputs, preprocess)
 
-    system, _ = mm_system(pdb, inputs, preprocess, md)
+    system, _ = mm_system(pdb, inputs, preprocess, md, config)
     # The umbrella force holds z (off when z is biased) and the cylinder, and logs the CVs
     groups = dict(cn_atom_groups(pdb.topology, ion), coo=coo)
     k = 0.0 if "z" in cvs else float(inputs["k"])

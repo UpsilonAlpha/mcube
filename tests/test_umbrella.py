@@ -664,3 +664,18 @@ class TestDistanceCoordinateLimits:
                               fh, keepIds=True)
         assert umbrella.residues_of(str(pdb), [0]) == {"A": {92: "ASP"}}
         assert umbrella.residues_of(str(pdb), [0, 1]) == {"A": {92: "ASP", 93: "GLN"}}
+
+
+def test_mm_system_without_md_results_builds_what_run_md_built(umbrella, tmp_path, monkeypatch):
+    """A swap_seed.py run dir carries md.inputs but no md.results: the system's force fields
+    then come from md_forcefields (read against the config) plus the lipids run_md adds."""
+    from mcube import membrane
+    seen = {}
+    monkeypatch.setattr(membrane, "membrane_system",
+                        lambda topology, forcefields, **k: seen.setdefault("ff", list(forcefields)))
+    preprocess = {"inputs": {"membrane": True,
+                             "default_forcefields": ["amber14/protein.ff14SB.xml", "amber14/tip3p.xml"]}}
+    pdb = types.SimpleNamespace(topology=None)
+    umbrella.mm_system(pdb, {"metal_parameters": "none"}, preprocess, {"inputs": {}},
+                       str(tmp_path / "config.yaml"))
+    assert seen["ff"] == ["amber14/protein.ff14SB.xml", "amber14/tip3p.xml", "amber14/lipid17.xml"]
