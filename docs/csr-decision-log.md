@@ -2839,6 +2839,56 @@ against 31016878's `$set` header over 27 water distances **plus** that same bond
 **`aspin` now has a start that exists.** It runs after `aspout` and begins from `protdft/scan_aspout/scan_08.pdb` - aspout's own last point at 3.60 A, the same box, waters and substrate, walked back. Neither MD run can supply a free-Asp92 start: `md_wt100`'s last frame has no substrate in the site (D134) and `md_wt100b`'s has Asp92 bidentate at 2.15 A in 100% of frames (D138). A reverse arm from the forward end point is the hysteresis test proper, and it is also the only one available. The PMF (D133 test 2) is held until the two curves are in hand, per the user: "do the scans, then we can do the pmf if necessary".
 
 
+**D140 - `aspout` ran clean: nine of nine points converged in 76 minutes, no SVD failures, no dumps - and at 3.60 A the site is the canonical four-coordinate B3 sphere, 13.8 kcal/mol uphill. The reverse arm is submitted as 31143211.** (2026-10-30, job 31051634, COMPLETED 01:16:44 on bun133)
+
+**The constraint fix (D139) is confirmed by outcome, not just by `constraints.txt`.** Against 31016878, which spent 4 h 39 m on point 0 of 9 and converged by no criterion:
+
+| | 31016878 (rigid waters) | 31051634 (D139 default) |
+| --- | --- | --- |
+| points converged | 0 of 9, 120 steps on the first | **9 of 9** |
+| wall time | 4 h 39 m, cancelled | **1 h 16 m 44 s**, COMPLETED |
+| per point | >11.5 h projected | ~8.5 min |
+| `SVD Error` | 160 in 120 steps | **0** |
+| `HT.v_*.txt` dumps | 151 files, 4.6 GB | **0 files** |
+| run directory | 4.8 GB | 101 MB |
+
+So D105's reading of the SVD failures was right and D137 inherited it correctly: they came from frozen bonds being enforced in a degenerating coordinate system, not from the system's size. Remove the water constraints and they do not occur at all. `opt_coordsystem` and `actradius` were never needed.
+
+**The outward profile** (GFN2-xTB/MM, Zn-Asp92 OD1, relative to point 0, Gln93 in the QM region):
+
+| point | Zn-OD1 target / actual (A) | rel (kcal/mol) |
+| --- | --- | --- |
+| 0 | 1.900 / 1.901 | 0.00 |
+| 1 | 2.112 / 2.113 | **-0.86** |
+| 2 | 2.325 / 2.325 | +1.02 |
+| 3 | 2.538 / 2.538 | +3.99 |
+| 4 | 2.750 / 2.750 | +7.20 |
+| 5 | 2.962 / 2.962 | +10.56 |
+| 6 | 3.175 / 3.175 | **+8.77** |
+| 7 | 3.388 / 3.388 | +11.13 |
+| 8 | 3.600 / 3.600 | +13.84 |
+
+Every point holds its target to within 0.0002-0.0007 A. The minimum is at **2.11 A**, not at the 1.90 A the structure started from, and the crystal's 2.80 A sits about 8 kcal/mol up this curve. **Point 6 breaks the monotonic rise** - 8.77 after 10.56 at 2.96 - a 1.8 kcal/mol drop that is the signature of the active region finding a different relaxation partway out; it is also where the run spent its longest stretch of output. A curve with a step in it is exactly what the reverse arm is for, so no weight is put on it yet.
+
+**At 3.60 A the zinc has the sphere the B3 literature expects, and this log has never produced before.** `site.py sphere` on the two ends:
+
+| | scan_00 (1.90 A) | scan_08 (3.60 A) |
+| --- | --- | --- |
+| ligands within 2.8 A | **5** | **4** |
+| Asp92 OD1 / OD2 | 1.90 / 3.83 | 3.60 / 4.48 |
+| O01 (nucleophile) | 1.93 | 1.84 |
+| HOH485 | 2.08 | 2.00 |
+| His88 / His164 | 2.03 / 2.24 | 2.03 / 1.95 |
+| mer O2x | 5.01 | 4.68 |
+| O01-C4x | 3.58 | 3.60 |
+
+Two histidines, hydroxide and one water, with Asp92 off the metal entirely - the four-coordinate mono-Zn site, reached by pulling one coordinate and letting everything else relax. Note what did **not** happen: the nucleophile stayed on the zinc and 3.58-3.60 A from C4x with **no restraint holding it there** (the scan's only constraint is the Zn-OD1 bond; the substrate tether belongs to `md_naclong`, which produced the starting frame, not to this optimisation). The substrate did not leave, and the carbonyl came in slightly, 5.01 -> 4.68 A.
+
+**What this does and does not say.** It gives a number for the first time: **displacing Asp92 to the crystal's geometry costs ~8 kcal/mol, and to 3.60 A costs 13.8**, at xTB/MM, in one direction. It does not yet say whether that is the surface or the starting basin - that is D94's objection and it is unanswered until the reverse arm lands on the same curve or does not.
+
+**`aspin` submitted: job 31143211** (PD at 14:07), `--cpus-per-task=8 --mem=64G -t 12:00:00`, starting from `protdft/scan_aspout/scan_08.pdb` - this run's own last point, the four-coordinate structure above - and walking 3.60 -> 1.90 A in the same nine steps. At 8.5 min a point it should take about 1 h 20 m. Nothing else was submitted; scratch is 237/300 GB and nothing needed pruning (the whole scan is 101 MB, and `protdft/scan_aspout_d137` is kept as D137's evidence at 211 MB).
+
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
