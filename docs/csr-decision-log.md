@@ -3053,6 +3053,46 @@ That is a structural argument, not a measurement: **no structure in this project
 **Still running:** `michaelis2d` (31155441), which pulls the **carbonyl** in across five Asp92 rows from the four-coordinate structure. It tests the rival hypothesis, and its rows stop at 3.60 A - now known to be short of the crystal's 4.20. Nothing new submitted beyond it.
 
 
+**D146 - `subst` is restrained at the crystal's distances now, but it is not run yet: its start structure has the substrate's hydroxyethyl proton 1.19 A from the nucleophile's oxygen, which MM cannot resolve. `substopt` (31160947) relieves that first, in twenty minutes rather than three hours of GPU.** (2026-10-30, user: "Run subst")
+
+**What `subst_start.pdb` actually contains**, measured today rather than taken from D127's description:
+
+| | distance (A) |
+| --- | --- |
+| Zn-O01 (nucleophile) | 1.86 |
+| **Zn-Asp92 OD1** | **1.99** |
+| Zn-His88 NE2 | 2.22 |
+| Zn-His164 NE2 | 2.32 |
+| **Zn-mer O1x** | **2.66** |
+| Zn-Asp92 OD2 | 2.98 |
+| Zn-mer O2x (carbonyl) | 4.50 |
+| O01-C4x, angle | 3.17, **106 degrees** |
+| **O01...H5x** | **1.19** |
+
+The first five make it five-coordinate as built. The attack geometry is the best in this project - 3.17 A at 106 degrees, inside the Burgi-Dunitz window D34 never reached in 791 frames. **And the last row is a problem nobody had looked for:** the substrate's own hydroxyethyl hydrogen sits 1.19 A from the nucleophile's oxygen, which puts O1x and O01 roughly 2.1 A apart. That is a shared proton, not a hydrogen bond. `site.py sphere` has been printing it all along - "O01 ... 2 H H5x 1.19, H03 0.98" - and it was never read.
+
+**Why that stops the MD rather than being a caveat on it.** The force field holds H5x on O1x by topology while the geometry wants it on O01, and MM cannot transfer a proton. A 100 ns run from here spends three hours of H100 on a strained contact and tells us about the strain, not the pose. This is a graft artefact in the ordinary sense: `site.py graft` transplants coordinates, nothing minimises them, and the pose was docked into a receptor rather than into this system's own site.
+
+**`substopt`, job 31160947** (`qmmm`, `--cpus-per-task=8 --mem=64G -t 4:00:00`, PD at 17:0x): one QM/MM optimisation of `subst_start.pdb`, Zn-O1x held at the 2.66 A it already has - the hypothesis held where it is, not pulled (D93) - and **nothing on Asp92**, because where the carboxylate goes is the measurement. Three answers for twenty minutes: whether the proton settles on O01 or back on O1x, whether O1x stays on the metal when the site relaxes under a real Hamiltonian, and whether 106 degrees survives.
+
+**`subst`'s restraint list, rewritten under the rule** (restrain what is in coordination range, at its crystal distance):
+
+| pair | distance (A) | why |
+| --- | --- | --- |
+| Zn-Asp92 OD1 | 4.22 | crystal, 6NC5 ZN302-Asp91 OD1 (D145) |
+| Zn-Asp92 OD2 | 4.20 | crystal, same carboxylate |
+| Zn-His88 NE2 | 2.22 | crystal His87 |
+| Zn-His164 NE2 | 2.09 | crystal His163 |
+| Zn-O01 | (held where it is) | see below |
+| Zn-mer O1x | 2.66 | the hypothesis, held not pulled |
+
+Three things about it. **Asp92 is restrained at 4.2 rather than left free**: the crystal puts it there, the grafted structure has it at 1.99, and leaving it unrestrained is precisely what produced D120. **Both oxygens are named, at 4.22 and 4.20**, so no orientation is asserted - D130's objection to the old list (OD2 2.80, OD1 3.81) does not apply to two equal distances. And **the hydroxide is held where it is, not at the crystal's 2.14**: in 6NC5 HOH493 bridges two zincs, which is why it is long, and a terminal hydroxide on a mono-zinc site belongs at 1.85-1.95, which is what this structure has. That is the one place a crystal distance is not transferable, and it is a choice rather than a measurement - flagged here because it is exactly the kind of substitution that produced the 2.80 A error.
+
+With HOH485 removed in the build, the sphere after Asp92 is pulled out is **2 His + hydroxide + O1x = four**, which is the only vacancy the crystal leaves (D145).
+
+**Not submitted yet:** the 100 ns itself. `subst.inputs.pdb_file` still names the unoptimised graft because `sections.py` refuses a structure that does not exist, so it gets repointed at `protdft/qmmm_substopt/QM_MM_optimized.pdb` once 31160947 finishes and its sphere has been read. `michaelis2d` (31155441) is 56 minutes in on the rival hypothesis.
+
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
