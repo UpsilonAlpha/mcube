@@ -633,14 +633,70 @@ sections:
   # for O1x over the run, and the `--at=reactant` check on the last frame is
   # what verifies that it happened. A count is not a composition; do not read
   # the start check as saying the sphere is right.
+  # ---- substopt: relieve the graft's clash before 100 ns is spent on it (D146)
+  # ----
+  #
+  # `subst_start.pdb` was never optimised - it is a docked pose transplanted by
+  # `site.py graft`. Measured now: five ligands (O01 1.86, Asp92 OD1 1.99,
+  # His88 2.22, His164 2.32, O1x 2.66), carbonyl 4.50, attack 3.17 A at 106
+  # degrees - and **the nucleophile has the substrate's H5x 1.19 A from its
+  # oxygen**, which puts O1x and O01 about 2.1 A apart. That is a shared proton,
+  # not a hydrogen bond, and MM cannot transfer it: the force field would hold
+  # H5x on O1x while the geometry wants it on O01, and 100 ns of GPU would be
+  # spent on a strained contact rather than on the pose.
+  #
+  # So: one QM/MM optimisation first, ~10-20 min, with the Zn-O1x contact held
+  # at the 2.66 A the structure has (the hypothesis, held where it is, not
+  # pulled - D93) and **nothing on Asp92**, since the question of where the
+  # carboxylate goes is the one we are trying to measure. It answers three
+  # things cheaply: whether the proton settles on O01 or on O1x, whether O1x
+  # stays on the metal when the rest of the site relaxes, and whether the 106
+  # degree attack geometry survives contact with a real Hamiltonian.
+  substopt:
+    stage: qmmm
+    inputs:
+      pdb_file: md_naclong_results/subst_start.pdb
+      skip_equilibrate: true
+      opt_maxiter: 300
+      opt_constraints:
+        - [B:1:ZN, C:1:O1x, 2.66]
+
+  # ---- subst, with the restraint list the new rule gives it (D145/D146) ----
+  #
+  # Restrain what is within coordination range, at the distance it has in the
+  # crystal (user, 2026-10-30). Measured in 6NC5 ZN302: His87 NE2 2.22,
+  # His163 NE2 2.09, HOH485 1.90, HOH493 2.14 - and **Asp91 at 4.20/4.22 A**,
+  # nowhere near coordination range (D145). So Asp92 gets a restraint at its
+  # crystal distance rather than none: the grafted structure has OD1 at 1.99 A,
+  # which is D120's artefact, and leaving it unrestrained is what put it there.
+  # Both oxygens are named, at 4.22 and 4.20, so no orientation is asserted -
+  # D130's objection to the old list, which held OD2 at 2.80 and OD1 at 3.81,
+  # does not apply to two equal distances.
+  #
+  # The hydroxide is held where it is, with no distance given, NOT at the
+  # crystal's 2.14: in 6NC5 HOH493 bridges two zincs, and that is why it is
+  # long. A terminal hydroxide on a mono-zinc site belongs at 1.85-1.95, which
+  # is what this structure has (1.86). **This is the one place a crystal
+  # distance is not transferable, and it is a choice, not a measurement.**
+  #
+  # HOH485 was removed in the build step, so O1x takes its position and the
+  # sphere is 2 His + hydroxide + O1x = four, which is the only vacancy the
+  # crystal leaves (D145).
+  #
+  # Repoint `pdb_file` at substopt's `QM_MM_optimized.pdb` once that run
+  # finishes; sections.py refuses a structure that does not exist yet, so this
+  # still names the unoptimised graft.
   subst:
     stage: md
     inputs:
       pdb_file: md_naclong_results/subst_start.pdb
       coordination_redetect: true
       restraints:
-        - [B:1:ZN, A:92:OD2, 2.80]
-        - [B:1:ZN, A:92:OD1, 3.81]
+        - [B:1:ZN, A:92:OD1, 4.22]     # crystal, 6NC5 ZN302-Asp91 OD1
+        - [B:1:ZN, A:92:OD2, 4.20]     # crystal, 6NC5 ZN302-Asp91 OD2
+        - [B:1:ZN, A:88:NE2, 2.22]     # crystal His87
+        - [B:1:ZN, A:164:NE2, 2.09]    # crystal His163
+        - [B:1:ZN, C:2:O01]            # held where it is; see above
         - [B:1:ZN, C:1:O1x, 2.66]
       nvt_time: 100000          # ps; ~3 h on an H100 at the rate D100 measured
       traj_frequency: 5000
