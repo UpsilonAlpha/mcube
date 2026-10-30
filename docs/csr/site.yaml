@@ -44,6 +44,12 @@ site:
     Zn-His88: [B:1:ZN, A:88:NE2]
     Zn-His164: [B:1:ZN, A:164:NE2]
     Zn-mer O2x: [B:1:ZN, C:1:O2x]
+    # D144: O1x, the 6-alpha-hydroxyethyl oxygen, is the closest substrate atom
+    # to the zinc in every run we have (3.00 A minimum over 5,000 frames,
+    # against the carbonyl's 5.98) and the ligand the `substituent_on_metal`
+    # hypothesis is about - and it was in no monitor, so no report ever printed
+    # it. It is here now.
+    Zn-mer O1x: [B:1:ZN, C:1:O1x]
     O01-C4x: [C:2:O01, C:1:C4x]
     HOH485-C4x: [D:1:O, C:1:C4x]
     C4x-N1x: [C:1:C4x, C:1:N1x]
