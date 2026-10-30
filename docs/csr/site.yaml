@@ -1258,6 +1258,28 @@ sections:
   # detection in `charge_sequences` finds where this ASH build keeps its point
   # charges. Check `pointcharge_lists` and `verified_after_run` in the results,
   # and that the two energies actually differ.
+  # ---- qmrate: what does QM/MM MD actually cost? (D152) ----
+  #
+  # D151 costed umbrella sampling at ~62 h per window from 1.7 ps/h, and that
+  # figure came from a job that was CANCELLED before it had run long enough to
+  # measure - so the 13,000 core-hours the entry quotes rests on a soft number.
+  # 3 ps on 8 cores from the same structure and the same QM region every
+  # production run uses gives a real rate, and the entry can then be corrected
+  # either way.
+  #
+  # `skip_optimize: true` because this is a timing, not a result: optimising
+  # first would measure the optimiser. Same charge and region as `aspin`, so the
+  # rate transfers to the windows it is used to cost.
+  qmrate:
+    stage: qmmm
+    inputs:
+      pdb_file: protdft/scan_aspin/scan_08.pdb
+      extra_qm_residues: {A: [93]}
+      skip_equilibrate: true
+      skip_optimize: true
+      time: 3
+      rigid_water: false
+
   # ---- asph: does a NEUTRAL Asp92 stay on the zinc? (D152) ----
   #
   # The user's test (2026-10-30): "obviously protonating asp prevents it from
