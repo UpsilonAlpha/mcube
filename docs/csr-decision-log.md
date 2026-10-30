@@ -2982,6 +2982,41 @@ Both arms on the same scale, each relative to **its own 1.90 A point** (absolute
 Nothing submitted. Scratch 239/300 GB; `scan_aspin` is 112 MB and nothing needed pruning.
 
 
+**D144 - Neither question can be answered from what we have: the substrate has never coordinated the zinc in any structure in this project, which makes "is Asp92 coordinated when substrate is bound?" unanswerable rather than answered. `michaelis2d` (31154229) submitted to build the missing state.** (2026-10-30, user: "we can't trust MD for coordination so that's automatically invalid")
+
+**A standing rule, from the user, that changes what counts as evidence here.** MD cannot be trusted for metal coordination, and **anything within coordination range should be restrained at the distance it has in the crystal**. CSR-1's crystal (6NC5 ZN302) has **Asp92 off the metal at 2.80 A**. So:
+
+- every MD-derived statement about Asp92's coordination in this log - D102, D120's shell, D134's 56.7%, D138's 100% bidentate - is **inadmissible**, not merely caveated;
+- and `md_naclong` was worse than inadmissible: `coordination_redetect` found OD1 at ~1.99 A and *restrained it there*, so the run imposed a contact the crystal does not have. Under this rule it should have been restrained at 2.80. Any future MD in this project restrains the crystal's distances explicitly and does not redetect Asp92.
+
+**1. Does the substrate coordinate the zinc in the Michaelis complex? On everything we have: no, never, in any run.**
+
+| source | closest substrate atom to Zn |
+| --- | --- |
+| `md_wt100` 5,000 frames (D134) | O1x 3.35 min, 3.92 mean; carbonyl O2x 7.80 at the end |
+| `md_wt100b` 5,000 frames (D138) | O1x 3.00 min, 3.56 mean, **never inside 2.6**; O2x 5.98 |
+| nine docked poses grafted into four systems (D126) | carbonyl 4.26-4.82 |
+| D34, 791 frames | attack criterion never met |
+| `aspout` / `aspin` optimised points (D140, D143) | O2x 4.68-5.01 |
+| `rwoff`/`rwon` optimisations (D142) | O2x 4.82 |
+
+`site.py check --hypothesis=carbonyl_on_metal` has been **REJECTED in every run it has ever been applied to**. The one structure that ever showed 2.55 A was `CSR_ligand`'s, and D126 established that the number was produced by that run's own restraint, in a system D123 had already rejected for its metal site. **So we have no Michaelis complex with the substrate on the metal - not a weak one, none.** What is not established is *why*: whether CSR-1 genuinely does not bind the carbonyl to Zn1, or whether every structure we have built simply failed to reach it.
+
+**2. Does Asp92 coordinate the zinc if the substrate is also bound? Unanswerable from existing data, and not for want of looking.** Every "Asp92 is on the metal" result in this log - 2.11 A from both scan arms, 1.99 in naclong, 2.15 at 100% in wt100b - comes from a state in which **the substrate is not coordinated**. They answer "where does Asp92 sit when the fourth site is occupied by water and hydroxide", which is a different question. With the MD evidence now inadmissible as well, what remains is xTB QM/MM optimisation and the two scans, and those have O2x at 4.7-5.0 A throughout. There is no data point of the kind question 2 asks about.
+
+**The user's framing, which is the right one and is now the open hypothesis:** unconstrained xTB *making* Asp92 coordinate is interesting, but the state it makes may not be the catalytic one. The crystal has Asp92 off; a four-coordinate site with a free face is what the carbonyl would need; and our models put Asp92 in that face. Whether the carboxylate is displaced *by* the substrate is exactly what nothing we have tests.
+
+**So: `michaelis2d`, job 31154229** (`--cpus-per-task=8 --mem=64G -t 24:00:00`, PD at 16:0x). A 9 x 5 grid on `aspout`'s optimised 1.90 A point - substrate present, waters already relaxed (D142), Zn-O2x 5.01: rows are Zn-Asp92 OD1 at 1.90, 2.32, 2.75, 3.18, 3.60; within each row the carbonyl is pulled Zn-O2x 5.00 -> 2.10 in nine steps, snaking. Monitored throughout: Zn-OD2 (does the carboxylate go bidentate), Zn-O1x (the hydroxyethyl O, the other candidate ligand), Zn-HOH485 (does the water leave to make room) and O01-C4x (the attack distance). 45 points at D140's measured 8.5 min is about 6.5 h.
+
+**What it decides, in each direction:**
+
+- a row where the carbonyl reaches ~2.1 A at modest cost answers question 1 **yes**, and which row it is answers question 2;
+- if only the Asp92-out rows allow it, the carboxylate swing is **part of the reaction coordinate** and belongs inside the NEB rather than fixed at one end of it;
+- if no row allows it, `carbonyl_on_metal` is wrong for CSR-1 and the hypothesis in `site.yaml` is what changes, not the structures. The grid also reports whether O1x or the water takes the site instead, which is the obvious alternative and is monitored for that reason.
+
+**It also unblocks the NEB, which cannot run today in any case:** `neb_step1` names `protdft/qmmm_protH_oh/QM_MM_optimized.pdb` and `protdft/scan_attack/scan_15.pdb`, and **neither file exists anywhere on scratch** (`CSR_crystal/scan_attack_f400` has a header and zero points). Both endpoints have to be built regardless, and a grid builds them on one surface instead of one at a time.
+
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
