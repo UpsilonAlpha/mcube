@@ -1528,6 +1528,17 @@ blocks 30576666/67 held; the Ca jobs run)
     - Calibration boxes (31053172–74) done. Every ion stays monodentate on the capped Glu with 7–9 waters, as at
       the site. 45 swaps submitted (31143422, `qmmm_cal`; water reference shared with `qmmm`). The `frames
       --complex` step needed bulk_ion's frame time (7eb7ef9).
+    - **Calibration result (31143422, all 45 done; r2SCAN/TZVP sp, direct embedding).** The complex and the water
+      reference are the same 1264-water cube with the same embedding, so this tests the direct protocol on its own
+      terms. Acetate experiment: La − Ca ≈ −1.5, Lu − La ≈ −0.2 kcal/mol.
+      - La → Lu: −1.55 ± 2.7 pooled (La frames +0.7, Lu frames −3.9). Within error of experiment, so the La vs Lu
+        protocol is calibrated to about ±3 kcal/mol.
+      - Ca → Ln: the shared water reference holds only La and Lu frames (the Ca water swaps are part of `ca`, still
+        waiting on the GPU), so only the Ln-endpoint values are like for like: Ca → La on La frames −13.4 ± 3.7,
+        Ca → Lu on Lu frames −8.6 ± 4.7. The acCA frames sit ≈ 90 kcal/mol above the Ln water frames (site sd between
+        sources 57), so the pooled +24 mixes endpoints and means nothing. A one-sided value on the Ln endpoint is a
+        lower bound on the linear-response ΔG, so −13 does not contradict −1.5. Closing it needs the Ca water swaps
+        (`CA_1264_frames`, MM done 2026-10-30 12:33).
   - **Ca vs Ln is the main test (user, 2026-10-30), so the reference moves into the membrane box.** No
     post-hoc correction fixes a 2+ → 3+ swap compared across two differently embedded systems. Comparing the site
     against the ion in the bulk water layer of the same periodic box makes the net-charge and Ewald-convention
