@@ -3140,6 +3140,54 @@ ValueError: could not convert string to float: '************-53.41870456********
 **Nothing pruned:** the grid is still writing points into `protdft/scan_michaelis2d`, and the two optimisations' directories are small. `substopt`'s failed run is kept as the evidence above.
 
 
+**D148 - The RQK triad measured at last, over 5,000 frames and three structures: Gln93 is not an oxyanion hole, Arg90 does not reach the substrate, and the residue that actually holds it is Arg229 - which is not in the QM region. Also: `subst_start.pdb` has Lys226 NZ **0.58 A** from the substrate, so `subst` is cancelled.** (2026-10-30, user: "why didn't you grab the info we can get with no new simulation?")
+
+**What was built to get it** (commits 8f931f4, 7e0a750). `site.py contacts <traj> <topology>` reports every pair named in `monitor` over a trajectory - occupancy inside `contacts.cutoff` (3.5 A, the polar-contact convention D32 used) with min/mean/max. `shell` answers what is on the metal; nothing answered what holds the substrate, which is why the RQK numbers had only ever come from a one-off script. Sixteen pairs were added to `monitor` for the triad, the substrate's two carboxylate oxygens and the three residues that compete for them, so a contact is now reported because the site description names it.
+
+**A bug found and fixed in the process, which is why the first run of this is not in this entry.** `one()` resolved a selector by residue number and atom name only, ignoring the chain: `D:1:O` matches the crystal water's oxygen **and residue 1's backbone O**, and whichever came first in the topology won. The first table had **Zn-HOH485 at 0% occupancy, minimum 14.13 A**. After the fix it reads **100%, 1.93/2.08/2.27 A** - which matches D138's `shell` row exactly, by a different code path. An ambiguous selector now raises and names the candidates. Any earlier analysis that used a `chain:1:O`-style selector on a trajectory is suspect; `shell`, `sphere` and `check` are not, because they resolve differently.
+
+**The RQK triad over `md_wt100b`'s 100 ns** (5,000 frames, substrate held by the O01-C4x tether, Asp92 free; MM, so these are hydrogen-bond contacts, not coordination claims):
+
+| pair | occ% | min / mean / max (A) |
+| --- | --- | --- |
+| **Arg229 NH2 - mer O4x** | **64.2** | 2.64 / 3.65 / 7.02 |
+| Zn - mer O1x | 33.6 | 3.00 / 3.56 / 4.79 |
+| Lys226 NZ - O01 | 18.0 | 2.46 / 4.02 / 5.38 |
+| Lys226 NZ - mer O4x | 2.2 | 2.59 / 6.62 / 8.38 |
+| Lys226 NZ - mer O3x | 0.1 | 2.92 / 6.06 / 8.37 |
+| Arg229 NH1 - mer O3x | 0.0 | 3.43 / 6.13 / 8.43 |
+| Arg90 NH1 - mer O1x | 0.0 | 4.65 / 6.08 / 7.51 |
+| Arg90 NH1 - O01 | 0.0 | 5.45 / 7.01 / 8.60 |
+| Ser186 OG - mer O4x | 0.0 | 4.78 / 6.91 / 8.50 |
+| Asn225 ND2 - O01 | 0.0 | 4.42 / 5.61 / 6.88 |
+| **Gln93 OE1 - mer O2x** | **0.0** | 6.16 / 8.37 / 9.66 |
+| **Gln93 NE2 - mer O2x** | **0.0** | 7.86 / 9.66 / 11.06 |
+| Gln93 NE2 - O01 | 0.0 | 6.31 / 7.64 / 8.46 |
+
+And the same pairs in three optimised QM/MM structures, which do not share the tether or the pose:
+
+| pair | `subst_start` (O1x pose) | `aspin/scan_00` (4-coord) | `mich2d/scan_00_08` (carbonyl forced on) |
+| --- | --- | --- | --- |
+| Gln93 NE2 - mer O2x | 8.12 | 11.10 | 9.76 |
+| Gln93 OE1 - mer O2x | 7.43 | 9.87 | 8.47 |
+| Arg90 NH1 - mer O1x | 6.16 | 4.37 | 4.39 |
+| Arg90 NH1 - HOH485 | - | 3.82 | 3.51 |
+| Lys226 NZ - mer O3x | 2.72 | 3.92 | 3.96 |
+| Lys226 NZ - mer O4x | **0.58** | 5.37 | 5.30 |
+| Arg229 NH2 - mer O4x | 6.42 | 3.64 | 3.64 |
+
+**Four findings, and they are about the enzyme rather than the method.**
+
+1. **Gln93 is not an oxyanion hole and is not near the chemistry.** 6.2-11.1 A from the carbonyl in every structure, 0% occupancy over 5,000 frames, and never closer than 6.31 A to the nucleophile. SMB-1's Gln157 holds the carbonyl at 1.67-1.70 A through ES, TS and EI (Mu & Xu 2020) - but Q157 is a Loop1 residue and our Gln93 is BBL Q121, a **Zn2-ligand position**. The positions are not homologous and the measurement says so: **the Q of RQK is a vestigial metal ligand, not a catalytic one.** If CSR-1 has an oxyanion hole it is some other residue, and nothing in our monitors is it.
+2. **Arg90 does not touch the substrate; it sits on the water side.** 4.37-6.16 A from the 6-alpha-hydroxyethyl oxygen, 0% occupancy, but **3.51-3.82 A from HOH485** in both optimised structures - the closest cation to the non-nucleophile water. Its position (BBL R118, where Zn1's third histidine would be) fits a role in the solvent shell rather than substrate recognition. This **supersedes D32's "Arg90 NH1...O1x 99%"**, which was measured in the degraded shell on a different pose; the contact is pose-dependent, not a property of the enzyme.
+3. **Lys226's grip on the substrate carboxylate is pose-dependent too** - 2.72 A in the O1x pose, 5.3-5.4 A and ~2% occupancy in the naclong-derived ones - while its contact with the hydroxide (18%, minimum 2.46 A) is the more persistent one. D107's "Lys226 salt-bridges the C3 carboxylate" holds for the pose it was measured on and not generally.
+4. **The one persistent substrate contact in 100 ns belongs to Arg229** - NH2 to the C3 carboxylate O4x, **64.2% of 5,000 frames**, mean 3.65 A, and 3.64 A in both optimised structures. D32 already noted Arg229 is closer to the carboxylate and to the leaving nitrogen than Lys226 "yet is not in the QM region". It still is not. **Whatever anchors the substrate in CSR-1, it is this arginine and not the K of RQK**, and the QM region is drawn around the wrong cation.
+
+**Separately, and it stops a job: `subst_start.pdb` has Lys226 NZ 0.58 A from the substrate's O4x.** A nitrogen and an oxygen cannot be 0.58 A apart. That is a second graft artefact, worse than the 1.19 A shared proton D146 found, and it **explains `substopt`'s failure better**: xTB's point-charge gradient overflowed its field (D147) because two atoms were essentially superimposed, not because of the proton. **`subst` (31167021) cancelled before it started** - 100 ns of MM from a 0.58 A overlap either fails on the first minimisation step or buries the error in a distorted site, and either way the 3 h of H100 would answer nothing. The `substituent_on_metal` hypothesis is not refuted by this; its **structure** is, and it needs re-grafting with a clash check before it can be tested.
+
+**`michaelis2d` (31155441) finished while this ran: 45 of 45 points, all converged.** The full row-by-row table is the next entry.
+
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
