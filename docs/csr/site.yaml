@@ -1238,6 +1238,38 @@ sections:
       freq: true
       irc_method: mode
 
+  # ---- the charge-deletion pair (D152) ----
+  #
+  # Mulholland's decomposition: zero a residue's MM point charges, recompute the
+  # energy on an UNCHANGED geometry, and the difference is that residue's
+  # electrostatic contribution. `zero_charges_qm_only` deletes the charges the
+  # QM code is handed and leaves the MM system's own electrostatics alone, so
+  # the difference is the QM-MM interaction - the quantity that stays meaningful
+  # when two structures are differenced, because the MM-MM part would otherwise
+  # change with every atom that moved between them.
+  #
+  # These two run the SAME structure with the SAME settings and differ in one
+  # key, which is the only way the difference means anything. Arg229 first: it
+  # holds the substrate carboxylate at 3.62 +/- 0.04 A across all 45 grid points
+  # and both trajectories (D150), it is in MM, and it is the residue the paper
+  # has to put a number on.
+  #
+  # The first run also settles an open question in the library: whether the
+  # detection in `charge_sequences` finds where this ASH build keeps its point
+  # charges. Check `pointcharge_lists` and `verified_after_run` in the results,
+  # and that the two energies actually differ.
+  sp_qmmm_ref:
+    stage: sp
+    inputs: &sp_cd
+      pdb_file: protdft/scan_aspin/scan_00.pdb
+      sp_cores: 16
+
+  sp_qmmm_r229:
+    stage: sp
+    inputs:
+      <<: *sp_cd
+      zero_charges_qm_only: [A:229]
+
   sp_dft:                      # score a geometry someone else produced
     stage: sp
     inputs: &sp_only
