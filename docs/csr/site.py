@@ -3,6 +3,7 @@
     python site.py sphere       <pdb> [pdb ...]     metal sphere and protonation
     python site.py nucleophiles <pdb> [pdb ...]     attack geometry + proton acceptors
     python site.py shell        <traj> <topology>   metal coordination over a trajectory
+    python site.py contacts     <traj> <topology>   named pairs over a trajectory
     python site.py acceptors    <traj> <topology>   what CAN take the proton, counted
     python site.py joint        <traj> <topology>   attack AND donate, same molecule
     python site.py poses        <pdbqt> <receptor> [ligand.pdb]
@@ -24,6 +25,14 @@ The modes answer different questions, in rough order of cost:
   shell         over a trajectory, what is coordinated and how many of them, with
                 every ligand's occupancy - the question `sphere` can only
                 answer for the one frame it is given.
+  contacts      over a trajectory, how often each pair named in `monitor` is
+                within hydrogen-bonding reach, with the distance distribution.
+                `shell` answers what is on the metal; this answers everything
+                else - which residue holds the substrate's carboxylate, whether
+                a glutamine reaches the carbonyl - and it answers it for the
+                pairs the site description already names, so a contact is
+                reported because the YAML names it and not because someone
+                wrote a one-off script for this protein.
   nucleophiles  for one structure: which waters could attack, and for each of
                 their protons, what is within hydrogen-bond reach?
   acceptors     over a trajectory, during the frames where a water is genuinely
@@ -462,6 +471,57 @@ def receptor_metal(site):
     Falls back to `metal`, so a site whose two files agree needs no new key.
     """
     return (site.get("docking") or {}).get("receptor_metal") or site["metal"]
+
+def mode_contacts(site, traj_file, top_file):
+    """Every pair in `monitor`, over a trajectory: occupancy and distribution.
+
+    `sphere` prints these distances for one frame, which cannot tell a contact
+    that is held from one that happens to be there - the same objection
+    `shell` exists for, applied to the pairs that are not on the metal. A
+    residue "near the carboxylate" in one optimised structure and one at 100%
+    occupancy over 5,000 frames are different claims, and only the second is
+    worth writing down.
+
+    Occupancy is the fraction of frames inside `contacts.cutoff` (3.5 A by
+    default, the usual polar-contact convention for heavy-atom pairs). Pairs
+    whose atoms are not in this topology are listed as missing rather than
+    skipped silently, because a pair that is absent from the system is a fact
+    about the model, not a typo to swallow.
+    """
+    import numpy as np
+    md, top, traj, one, waters, w_o, w_h = _traj_setup(site, traj_file, top_file)
+
+    cfg = site.get("contacts") or {}
+    cutoff = float(cfg.get("cutoff", 3.5))
+    pairs = site.get("monitor") or {}
+
+    named, idx, missing = [], [], []
+    for name, sel in pairs.items():
+        try:
+            i, j = one(sel[0]), one(sel[1])
+        except SystemExit as e:
+            missing.append((name, str(e)))
+            continue
+        named.append(name)
+        idx.append([i, j])
+
+    print()
+    print("== %s  (%d frames, cutoff %.2f A)" % (traj_file, traj.n_frames, cutoff))
+    if not idx:
+        print("   no pair in `monitor` resolves in this topology")
+        return
+    dist = md.compute_distances(traj, idx, periodic=True) * 10.0
+    occ = (dist < cutoff).mean(axis=0) * 100.0
+    order = sorted(range(len(named)), key=lambda k: (-occ[k], dist[:, k].mean()))
+
+    print("   %-26s  occ%%    min  mean   max" % "pair")
+    for k in order:
+        print("   %-26s %5.1f  %5.2f %5.2f  %5.2f"
+              % (named[k], occ[k], dist[:, k].min(),
+                 dist[:, k].mean(), dist[:, k].max()))
+    for name, why in missing:
+        print("   %-26s     -  %s" % (name, why))
+
 
 def mode_poses(site, args):
     """Where do docked poses sit relative to the metal, and which one did we use?
@@ -967,7 +1027,7 @@ def mode_check(site, args):
 MODES = {"sphere": mode_sphere, "nucleophiles": mode_nucleophiles,
          "acceptors": mode_acceptors, "joint": mode_joint, "poses": mode_poses,
          "graft": mode_graft, "shell": mode_shell,
-         "check": mode_check}
+         "contacts": mode_contacts, "check": mode_check}
 
 if __name__ == "__main__":
     args = [a for a in sys.argv[1:] if not a.startswith("--")]

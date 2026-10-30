@@ -54,6 +54,36 @@ site:
     HOH485-C4x: [D:1:O, C:1:C4x]
     C4x-N1x: [C:1:C4x, C:1:N1x]
 
+    # ---- the RQK triad and the residues that hold the substrate (D148) ----
+    # Arg90 (BBL R118) stands where Zn1's third histidine would be; Gln93
+    # (Q121) and Lys226 (K263) stand on two of Zn2's three ligand positions,
+    # which is why there is no Zn2 and why Asp92 (D120) is left orphaned.
+    # SMB-1's Gln157 hydrogen-bonds the carbonyl oxygen at 1.67-1.70 A through
+    # ES, TS and EI and is called the oxyanion hole there (Mu & Xu 2020); our
+    # Gln93 is at a different BBL position, so whether it reaches the carbonyl
+    # at all is a measurement, not an analogy. It had never been monitored.
+    Gln93 NE2-mer O2x: [A:93:NE2, C:1:O2x]
+    Gln93 OE1-mer O2x: [A:93:OE1, C:1:O2x]
+    Gln93 NE2-O01: [A:93:NE2, C:2:O01]
+    Gln93 NE2-Asp92 OD1: [A:93:NE2, A:92:OD1]
+    Arg90 NH1-mer O1x: [A:90:NH1, C:1:O1x]
+    Arg90 NH2-mer O1x: [A:90:NH2, C:1:O1x]
+    Arg90 NH1-O01: [A:90:NH1, C:2:O01]
+    Arg90 NH1-HOH485: [A:90:NH1, D:1:O]
+    Lys226 NZ-O01: [A:226:NZ, C:2:O01]
+    Lys226 NZ-mer O3x: [A:226:NZ, C:1:O3x]
+    Lys226 NZ-mer O4x: [A:226:NZ, C:1:O4x]
+    Arg229 NH1-mer O3x: [A:229:NH1, C:1:O3x]
+    Arg229 NH2-mer O4x: [A:229:NH2, C:1:O4x]
+    Ser186 OG-mer O4x: [A:186:OG, C:1:O4x]
+    Asn225 ND2-O01: [A:225:ND2, C:2:O01]
+
+  # `site.py contacts` - the pairs above over a trajectory. 3.5 A is the usual
+  # polar-contact convention for heavy-atom pairs, and the same number D32's
+  # one-off analysis used, so its occupancies can be compared with these.
+  contacts:
+    cutoff: 3.5
+
   # Near-attack criteria. The angle window is a working tolerance around the
   # Burgi-Dunitz value of ~107 degrees, not a literature constant; the distance
   # is the usual near-attack-conformation convention. Both are choices, so they
