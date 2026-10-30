@@ -126,11 +126,19 @@ def write_ash_surface(points: List[Dict[str, Any]], two_d: bool,
     ASH's format has no column for: the distance actually reached, the
     convergence flag, the monitored distances and the per-point PDB.
     """
+    # A 2D point's first coordinate is `target1_A`, not `target_A`: the CSV
+    # header differs between the two kinds of scan, and this asked only for the
+    # 1D spellings. Every 2D scan therefore ran to completion and then died
+    # here, after the last point had converged - job 31155441 lost its surface
+    # file and its `results` block that way, with all 45 points already in the
+    # CSV (D149).
     with open(path, "w") as fh:
         for point in points:
-            cols = [point_value(point, "target", "target_A")]
             if two_d:
-                cols.append(point_value(point, "target2", "target2_A"))
+                cols = [point_value(point, "target1", "target1_A", "target", "target_A"),
+                        point_value(point, "target2", "target2_A")]
+            else:
+                cols = [point_value(point, "target", "target_A")]
             cols.append(point_value(point, "energy", "energy_Eh"))
             fh.write(" ".join(f"{c:.8f}" for c in cols) + chr(10))
     return Path(path).resolve().as_posix()
