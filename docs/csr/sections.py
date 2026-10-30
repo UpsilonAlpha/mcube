@@ -103,6 +103,18 @@ def main(site_file, names):
         body = available[name]
         stage, inputs = body.get("stage", "qmmm"), dict(body.get("inputs") or {})
         section = "%s_%s" % (stage, name)
+        # A name that already starts with its own stage doubles the prefix, and
+        # the doubled key is not what anyone then types: `sp_qmmm_ref` under
+        # `stage: sp` is written as `sp_sp_qmmm_ref`, while `run.slurm sp
+        # sp_qmmm_ref` looks up `sp_qmmm_ref` and finds nothing. That cost jobs
+        # 31176144/31176145 (D152), which died in 8 s with no `pdb_file`.
+        if name == stage or name.startswith(stage + "_"):
+            problems.append("%s: drop the `%s_` - sections.py writes this as "
+                            "`%s`, but mcube is given `%s_%s`, which does not "
+                            "exist. Name it `%s`."
+                            % (name, stage, section, stage, name,
+                               name[len(stage) + 1:] or "<something>"))
+            continue
         if "start" in body:
             problems.append("%s: `start` is gone; put the structure in "
                             "`inputs.pdb_file` (neb: `reactant_pdb` and "

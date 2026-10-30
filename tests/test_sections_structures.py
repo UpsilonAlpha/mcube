@@ -203,3 +203,44 @@ class TestRestraintSelectorsAreChecked:
             "restraints": [["B:1:ZN", "A:88:NE2", 2.2]]}}})
         mod.main(file, ["sub"])
         assert "2 selectors checked" in capsys.readouterr().out
+
+class TestADoubledStagePrefix:
+    """`sp_qmmm_ref` under `stage: sp` is written as `sp_sp_qmmm_ref`, while
+    `run.slurm sp sp_qmmm_ref` looks up `sp_qmmm_ref`. Jobs 31176144/31176145
+    died in 8 s on that (D152), and nothing before the submission caught it.
+    """
+
+    def test_a_name_starting_with_its_stage_is_refused(self, mod, home, capsys):
+        file = site(home, {"sp_qmmm_ref": {"stage": "sp", "inputs": {
+            "pdb_file": "md_results/last.pdb"}}})
+        with pytest.raises(SystemExit):
+            mod.main(file, ["sp_qmmm_ref"])
+        out = capsys.readouterr().out
+        assert "sp_sp_qmmm_ref" in out and "qmmm_ref" in out
+
+    def test_nothing_is_written_under_either_key(self, mod, home):
+        file = site(home, {"sp_qmmm_ref": {"stage": "sp", "inputs": {
+            "pdb_file": "md_results/last.pdb"}}})
+        with pytest.raises(SystemExit):
+            mod.main(file, ["sp_qmmm_ref"])
+        assert written(home, "sp_sp_qmmm_ref") is None
+        assert written(home, "sp_qmmm_ref") is None
+
+    def test_a_name_equal_to_its_stage_is_refused(self, mod, home):
+        file = site(home, {"sp": {"stage": "sp", "inputs": {
+            "pdb_file": "md_results/last.pdb"}}})
+        with pytest.raises(SystemExit):
+            mod.main(file, ["sp"])
+
+    def test_the_undoubled_name_is_written_as_the_key_mcube_is_given(self, mod, home):
+        file = site(home, {"qmmm_ref": {"stage": "sp", "inputs": {
+            "pdb_file": "md_results/last.pdb"}}})
+        mod.main(file, ["qmmm_ref"])
+        assert written(home, "sp_qmmm_ref")["pdb_file"] == "md_results/last.pdb"
+
+    def test_a_stage_name_merely_contained_in_the_name_is_fine(self, mod, home):
+        """`aspout` is not an `sp` section doubled; only a leading `<stage>_` is."""
+        file = site(home, {"aspout": {"stage": "scan", "inputs": {
+            "pdb_file": "md_results/last.pdb", "atoms": ["B:1:ZN"]}}})
+        mod.main(file, ["aspout"])
+        assert written(home, "scan_aspout") is not None
