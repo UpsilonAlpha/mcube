@@ -3263,6 +3263,36 @@ Four things were listed as answerable from data already on disk. D148 did the fi
 **One operational note that cost a run tonight.** `conda activate ASH` can leave `CONDA_DEFAULT_ENV=ASH` while `which python` still points at the miniforge base, and then `site.py` dies on `ModuleNotFoundError: mdtraj`. The reliable form is the interpreter's absolute path, `/home/uquadhik/.conda/envs/ASH/bin/python`, which is what every analysis command here used after the first failure.
 
 
+**D151 - The free energy was already in the frames, and it does not say what D150's paper outline said: at MM level Asp92 on and off the metal are two basins of near-equal population, not one filled vacancy. "The orphaned carboxylate fills the vacancy" is withdrawn as a claim.** (2026-10-30, user: "I'm not fully convinced the orphaned carboxylate fills the vacancy ... are you sure we have enough evidence to say that?")
+
+**The user's doubt was right, and three things were wrong with the claim.**
+
+1. **The framing.** 6NC5 is the **engineered Q93H/K226H double mutant with Zn2 present**, and in it Asp91 is a Zn2 ligand at 1.95 A. Its 4.20 A from Zn1 is a distance measured in a protein where a second metal holds the carboxylate. There is **no wild-type RQK structure**, so we are not contradicting an experimental observation of this site - we are saying a mutant that restores Zn2 cannot speak to the state without it. That is a far weaker claim and the only one the data supports.
+2. **The arms are not independent.** Every structure descends from **one build** - superpose on 6NC5, delete ZN301, keep the carboxylate - and `aspin` started from `aspout`'s own end point. The hysteresis pair tests *path* dependence, which it passed. It does not test *model* dependence, and deleting a +2 ion beside a carboxylate will move that carboxylate toward the nearest remaining cation in almost any method.
+3. **Asp92's protonation state has never been tested.** The literature leans ionised - a QM/MM/DFT study of CcrA found that protonating Asp120 disrupts its metal bonding, and IMP-1 mutagenesis argues it is not a proton donor - but those are di-zinc sites where a metal depresses the pKa, and that argument does not transfer to a site with no Zn2.
+
+**What the existing frames already say.** `site.py contacts --profile` (new, commit cab5853) computes -RT ln P(r) from any monitored pair's histogram: unbiased sampling already carries the free energy over the range it explored. A radial Jacobian is divided out, and the frame count is printed beside every bin so a number standing on three frames looks like what it is. A `Zn-Asp92 CG` pair was added as the coordinate, because a profile along Zn-OD1 is contaminated every time the carboxylate rotates OD2 in and OD1 out - the same choice the classical carboxylate-cation PMFs make.
+
+| run | coordinate | sampled range (A) | minimum | second basin |
+| --- | --- | --- | --- | --- |
+| `md_wt100` (no substrate, Asp92 free) | Zn-OD1 | 1.93-3.73 | **2.13** | **3.18 A at +1.86 kcal/mol** (74 frames) |
+| `md_wt100` | Zn-CG | 2.33-3.37 | **2.47** | **3.22 A at +1.53** (123 frames) |
+| `md_wt100b` (substrate tethered) | Zn-OD1 | 1.93-2.73 | 2.13 | none - 2.73 A is the furthest frame |
+| `md_wt100b` | Zn-CG | 2.33-2.72 | 2.52 | none |
+
+**`md_wt100`'s profile is two-state.** There is a sharp basin at 2.1-2.5 A, a thinly sampled gap at 2.6-2.8 (one frame a bin), and a second, broad, well-sampled basin at 3.2 A only **1.5-1.9 kcal/mol** above the first. And by population rather than by basin depth the two are closer still: D134 measured OD1 inside 2.6 A in **56.7%** of 5,000 frames, so **-RT ln(0.433/0.567) = +0.16 kcal/mol**. The bound state is narrow and the unbound state is broad; the minima differ by ~1.5 kcal/mol and the free energies by ~0.2, which is the entropy of a carboxylate that is free to move.
+
+**So the correct statement is the one D133 guessed and this log then over-claimed on:** with no substrate, Asp92 is **in equilibrium between on and off the metal**, not parked on it. The 2.11 A minimum from both scan arms is real and is the enthalpic minimum; it is not evidence that the site is four-coordinate only in the crystal. **D150's paper outline is corrected: section 4 is "an equilibrium, measured", not "the vacancy is filled".**
+
+**Two caveats that keep this from being the final word.** The profile is MM, with the other four donors restrained, which is exactly the kind of coordination claim the user has ruled MD out of. And the barrier between the basins rests on bins holding one frame each, so the shape between 2.6 and 2.8 A is noise. What the profile does establish is that **the off state is populated at all**, which no previous analysis showed, and that is enough to withdraw the claim.
+
+**Costing the QM/MM umbrella sampling, on SMB-1's protocol.** Coordinate Zn-Asp92 CG, 2.3 -> 4.8 A (the crystal is at 4.66), 26 windows at 0.1 A, k = 150 kcal/mol/A^2 (the DFTB3/3OB zinc value; SMB-1 used 100-300), 45 ps equilibration + 60 ps data a window, WHAM - that is **2.7 ns of xTB/MM MD**. Our measured rate is soft: job 30467248 ran 50 ps of QM/MM MD plus an optimisation in 33.7 h on 8 cores, so **~1.7 ps/h**, and 105 ps a window is **~62 h**. Twenty-six windows in parallel is therefore ~62 h of wall time and **~13,000 core-hours**, each window inside the 72 h limit but not by much. **Before committing that, one short timed QM/MM MD is needed to replace the 1.7 ps/h figure**, which comes from a cancelled job and includes work that was not MD.
+
+An MM umbrella run over the same coordinate would cost under an hour on a GPU and would converge the barrier the histogram cannot - but it would be measuring the force field's answer to a coordination question, which is the thing we have agreed not to trust. It is worth running as a sampling control, not as the result.
+
+**The protonated-Asp92 test is not the quick run it sounds like.** Asp92 is in the QM region, but the MM system still needs a template for the residue, and the config's `amino_acids` list deliberately omits the protonated variants - the same blocker D133's charge-deletion test hit with LYN. It needs the residue renamed to ASH with an HD2 built on OD2, `amino_acids` extended, and the force field confirmed to template it (ff14SB does carry ASH). That is a real piece of setup, not a five-minute job, and it is the next thing to build.
+
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
