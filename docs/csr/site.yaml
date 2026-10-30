@@ -806,6 +806,47 @@ sections:
       extra_qm_residues: {A: [93]}
       resume: true
 
+  # ---- rwoff / rwon: what did holding the waters cost? (D141) ----
+  #
+  # Every QM/MM gradient run in this project before D139 held the active-region
+  # MM waters rigid, because that was the default and no config ever set the
+  # key. Most of those runs converged anyway (D141's table), so the question
+  # left over is not whether they finished but whether the held waters moved
+  # their energies.
+  #
+  # One variable, one structure: both sections re-optimise `aspout`'s own
+  # converged 2.75 A point with the same Zn-Asp92 OD1 constraint, the same QM
+  # region and the same active region - the active region is re-derived from
+  # `pdb_file`, so it is identical between the two and NOT identical to the
+  # scan's, which is why `rwoff` is run as the control rather than comparing
+  # straight to the scan's -447.32259831 Eh. `rwon - rwoff` is the number.
+  #
+  # Agreement to a few tenths of a kcal/mol closes D141: every converged result
+  # in the log stands as computed. A larger gap is the size of the correction,
+  # and it would apply to every pre-D139 scan point and constrained
+  # optimisation. About 10 minutes each on 8 cores.
+  rwoff:
+    stage: qmmm
+    inputs:
+      pdb_file: protdft/scan_aspout/scan_04.pdb
+      skip_equilibrate: true
+      opt_maxiter: 300
+      extra_qm_residues: {A: [93]}
+      opt_constraints:
+        - [B:1:ZN, A:92:OD1, 2.75]
+      rigid_water: false         # the D139 default, stated for the record
+
+  rwon:
+    stage: qmmm
+    inputs:
+      pdb_file: protdft/scan_aspout/scan_04.pdb
+      skip_equilibrate: true
+      opt_maxiter: 300
+      extra_qm_residues: {A: [93]}
+      opt_constraints:
+        - [B:1:ZN, A:92:OD1, 2.75]
+      rigid_water: true          # what every pre-D139 run did
+
   # ===========================================================================
   # DO NOT RUN `pose2` AS WRITTEN. D126 (2026-10-29) disproved its premise.
   #
