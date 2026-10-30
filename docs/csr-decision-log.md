@@ -60,8 +60,8 @@ this. **Update the status line in the same commit that changes the behaviour.**
 ### The coordination sphere (D120, D121, D130)
 
 1. **A restraint only preserves a bond if the contact IS one.** `preprocess.inputs.cutoff` decides which contacts become 50 kcal/mol/A^2 restraints for the whole run. A Zn-O/N bond is 1.9-2.2 A; **2.5 is defensible, 3.0 is not.** *Enforced:* `md` warns on every pair it will restrain beyond `LIGAND_MAX` (2.5 A), detected and configured alike, and records them in `coordination_beyond_bond_length`. The library default cutoff is still 2.8, so **set `cutoff` explicitly**. Raise `coordination_warn_above` for a genuinely longer bond (Ln-O reaches 2.4-2.5 A).
-2. **The crystal sphere is four:** HOH485 1.90, His163 NE2 2.09, HOH493 2.14, His87 NE2 2.22 (6NC5 ZN302). **Asp92 is not on it** - OD2 sits at 2.80 A as a second-shell contact. *Enforced:* nothing. A run whose sphere disagrees has to be caught by reading `site.py shell`.
-3. **Asp92 binds the zinc at every level of theory we have run, and the crystal says it should not. Do not set up a run that assumes either side of that.** MM at 100 ns (D102), unconstrained GFN2-xTB at 25 ps (D51) and DFT, 1.6x steeper than xTB (D58/D60), all put it on the metal; 6NC5 ZN302 has it at 2.80 A. The working explanation is D133: Asp92 is a **Zn2** ligand with no Zn2 to bind, held off Zn1 by the RQK cations, and probably in equilibrium rather than fixed. Two things follow. **Removing a restraint does not fix this** - D102's extra ligands were unrestrained - it only makes the coordination measurable. And **"xTB over-coordinates the zinc" is no longer the open question**; D58/D60 settled it. *Enforced:* nothing.
+2. **The crystal sphere is four:** HOH485 1.90, His163 NE2 2.09, HOH493 2.14, His87 NE2 2.22 (6NC5 ZN302). **Asp92 is not on it, and not near it: 4.20 A (OD2) and 4.22 A (OD1), measured in `CSR_crystal/6NC5.pdb` itself.** The 2.80 A this rule used to quote is not a crystal distance - see D145. *Enforced:* nothing. A run whose sphere disagrees has to be caught by reading `site.py shell`.
+3. **Asp92 binds the zinc at every level of theory we have run, and the crystal says it should not. Do not set up a run that assumes either side of that.** MM at 100 ns (D102), unconstrained GFN2-xTB at 25 ps (D51) and DFT, 1.6x steeper than xTB (D58/D60), all put it on the metal; 6NC5 ZN302 has it at **4.20 A** (D145 corrects the 2.80 A this used to say). The working explanation is D133: Asp92 is a **Zn2** ligand with no Zn2 to bind, held off Zn1 by the RQK cations, and probably in equilibrium rather than fixed. Two things follow. **Removing a restraint does not fix this** - D102's extra ligands were unrestrained - it only makes the coordination measurable. And **"xTB over-coordinates the zinc" is no longer the open question**; D58/D60 settled it. *Enforced:* nothing.
 
 4. **Count coordination against this enzyme's own motif, which has TWO protein ligands and not three.** CSR-1's Zn1 site is **H-R-H**: Arg90 (BBL R118) stands where the third histidine would be. The canonical-equivalent four-coordinate sphere is therefore **two His + hydroxide + one water**, so an extra solvent ligand is not over-coordination until it is counted against two protein ligands. *Enforced:* nothing; user correction, made twice.
 5. **The other five zincs in 6NC5 are not the site.** ZN301 occupies the Zn2 pocket only because the construct is the engineered HARLDQ motif, whose `SEQADV` records mutate **Gln93 to His and Lys226 to His** - the Q and K of RQK - restoring an Asp-His-His Zn2 set. In the wild type those are a glutamine and a lysine and cannot ligate a metal, which is the structural basis for Zn2 being vacant. ZN303-306 are adventitious. Measure ZN302. *Enforced:* `reference-structures.md` tabulates all six.
@@ -3015,6 +3015,42 @@ Nothing submitted. Scratch 239/300 GB; `scan_aspin` is 112 MB and nothing needed
 - if no row allows it, `carbonyl_on_metal` is wrong for CSR-1 and the hypothesis in `site.yaml` is what changes, not the structures. The grid also reports whether O1x or the water takes the site instead, which is the obvious alternative and is monitored for that reason.
 
 **It also unblocks the NEB, which cannot run today in any case:** `neb_step1` names `protdft/qmmm_protH_oh/QM_MM_optimized.pdb` and `protdft/scan_attack/scan_15.pdb`, and **neither file exists anywhere on scratch** (`CSR_crystal/scan_attack_f400` has a header and zero points). Both endpoints have to be built regardless, and a grid builds them on one surface instead of one at a time.
+
+
+**D145 - The crystal has Asp92 4.20 A from the catalytic zinc, not 2.80: the number this log has quoted for ten weeks is our own model's Asp-hydroxide hydrogen bond, not a metal contact. And the crystal's Zn1 is four-coordinate with two histidines and two waters, so a substrate that coordinates at all has exactly one position to take.** (2026-10-30, measured directly in `CSR_crystal/6NC5.pdb`; user: "Asp92 is not coordinated in the crystal - which is important")
+
+**The correction.** Measured on the deposited coordinates, zinc by zinc:
+
+| pair | distance (A) |
+| --- | --- |
+| ZN302 (Zn1) - Asp91 OD2 | **4.20** |
+| ZN302 (Zn1) - Asp91 OD1 | **4.22** |
+| ZN302 (Zn1) - Asp91 CG | 4.66 |
+| ZN301 (the mutant's Zn2) - Asp91 OD2 | 1.95 |
+| Asp91 OD2 - HOH493 (the bridging water) | 3.58 |
+| Asp91 OD2 - HOH485 | 4.31 |
+
+(6NC5 numbering; Asp91 is our Asp92.) **No carboxylate oxygen is within 3.3 A of Zn1** - a 3.3 A sweep of ZN302 returns only His87 2.22, His163 2.09, HOH485 1.90, HOH493 2.14. The 2.80/2.84 A figure traces back to the model build, where it is recorded correctly as **our model's** Asp OD2...hydroxide hydrogen bond after Zn_alpha and its waters were moved as a rigid unit - "Here it H-bonds Asp120 OD2 (2.84 A)", in explicit contrast to the crystal. Somewhere between there and rule 2 it became "the crystal has Asp92 at 2.80 A", and D120, D133, D140 and D143 all inherited it. Rules 2 and 3 are corrected above.
+
+**What changes, and it makes the problem bigger rather than smaller.** The disagreement between our surface and the structure is not 2.11 against 2.80 A - it is **2.11 against 4.20 A**. Both scan arms stop at 3.60 A, 0.6 A short of the crystal, at 13.8-14.0 kcal/mol and still climbing. So "the crystal's geometry costs 5.4-7.9 kcal/mol on our surface" (D143) is wrong: the crystal's geometry is **off the end of both arms**, and the cost of reaching it has not been measured at all. Nothing in this log has ever put Asp92 where the crystal has it.
+
+**Question 1: is the catalytic zinc four- or five-coordinate with substrate bound? From existing data, the only defensible statement is about the four positions, not about the substrate.**
+
+The crystal's Zn1 is **four-coordinate**: His87 2.22, His163 2.09, HOH485 1.90, HOH493 2.14 - two histidines and two waters, which is rule 4's canonical-equivalent sphere for an H-R-H site. In our wild-type model HOH493 becomes the hydroxide nucleophile (O01), so three of the four positions are **not exchangeable**: two histidines and the nucleophile that does the chemistry. **That leaves exactly one position, HOH485.** Therefore:
+
+- a substrate that coordinates Zn1 must **displace HOH485**, and the Michaelis complex is then **four-coordinate**: 2 His + OH- + one substrate oxygen;
+- a **five**-coordinate Michaelis complex requires either keeping HOH485 alongside the substrate, or Asp92 joining - and the crystal supports neither, since Asp92 is 4.2 A away and the fifth position does not exist in it;
+- every five- and six-coordinate sphere in this log is Asp92 joining, which is now a 2.1 A difference from the structure rather than 0.7.
+
+That is a structural argument, not a measurement: **no structure in this project has ever had the substrate in the sphere** (D144), so the Michaelis complex's coordination number remains unmeasured. What the crystal does fix is that there is one vacancy, not two.
+
+**Question 2: does the substrate bind another way we have not tested? Yes - through O1x, and the structure for it already exists and has never been run.**
+
+`Zn-mer O1x` was in no monitor until today, so no report printed it. With it printed: O1x is **3.89 A** in the four-coordinate structure and 3.92 A in the Asp92-bound one, against the carbonyl's 4.69-5.01 - the 6-alpha-hydroxyethyl oxygen is the closest substrate atom to the zinc in every structure and every trajectory we have (3.00 A minimum over 5,000 frames, D138). The `substituent_on_metal` arrangement from docking pose 2 has it **on the metal at 2.66 A** with the carbonyl 4.50 A out, HOH485 removed so the sphere is 2 His + hydroxide + O1x = **four**, and an attack geometry of **3.17 A at 106 degrees** - inside the Burgi-Dunitz window D34 never reached in 791 frames. `site.py check --hypothesis=substituent_on_metal` accepts it. It was submitted once as job 30923516 and cancelled an hour in (D130) for its restraint list, and never re-run.
+
+**Under the user's new rule that list becomes trivial, which removes the reason it was cancelled.** D130's objection was that restraining Asp92 OD2 at 2.80 and OD1 at 3.81 asserted the carboxylate's orientation. With the crystal measured at 4.20/4.22 A, Asp92 is far outside any coordination cutoff - 3.0 A included - so under "restrain what is within coordination range, at its crystal distance" it gets **no restraint at all**, and the run neither imposes D120's artefact nor asserts an orientation. What is restrained is the crystal's own four: His88, His164, the hydroxide and (where kept) HOH485, at 2.22, 2.09, 2.14 and 1.90 A.
+
+**Still running:** `michaelis2d` (31155441), which pulls the **carbonyl** in across five Asp92 rows from the four-coordinate structure. It tests the rival hypothesis, and its rows stop at 3.60 A - now known to be short of the crystal's 4.20. Nothing new submitted beyond it.
 
 
 ## Resources (see `running-on-bunya.md`)
