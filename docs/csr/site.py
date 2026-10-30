@@ -265,11 +265,34 @@ def _traj_setup(site, traj_file, top_file):
     top = md.load_topology(top_file)
 
     def one(selector):
+        """Atom index for "chain:resid:name", by residue number and atom name.
+
+        The chain letter is only used to break a tie, because a trajectory
+        topology does not have to carry the PDB's chain IDs - but a tie is
+        exactly what used to go wrong silently: `D:1:O` matches the crystal
+        water's oxygen AND residue 1's backbone O, and whichever came first in
+        the topology was returned. An ambiguous selector now raises instead of
+        guessing, and reports the candidates, because a wrong atom here is a
+        measurement that looks right (D148).
+        """
         chain, resid, name = selector.split(":")
-        for a in top.atoms:
-            if a.name == name and str(a.residue.resSeq) == resid:
-                return a.index
-        raise SystemExit("not found in topology: " + selector)
+        hits = [a for a in top.atoms
+                if a.name == name and str(a.residue.resSeq) == resid]
+        if not hits:
+            raise SystemExit("not found in topology: " + selector)
+        if len(hits) > 1 and chain:
+            want = ord(chain[0].upper()) - ord("A")
+            narrowed = [a for a in hits if a.residue.chain.index == want]
+            if len(narrowed) == 1:
+                return narrowed[0].index
+        if len(hits) > 1:
+            where = ", ".join("%s%d chain %d" % (a.residue.name,
+                                                 a.residue.resSeq,
+                                                 a.residue.chain.index)
+                              for a in hits[:6])
+            raise SystemExit("ambiguous selector %s: %d atoms match (%s)"
+                             % (selector, len(hits), where))
+        return hits[0].index
 
     print("loading trajectory...")
     traj = md.load(traj_file, top=top_file)
