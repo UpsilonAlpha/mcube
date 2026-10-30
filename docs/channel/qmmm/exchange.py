@@ -172,6 +172,44 @@ def read_frame(dcd: Path, index: int, mdtop, anchors):
     return traj.xyz[0] * 10.0, traj.unitcell_vectors[0]
 
 
+def read_pdb_frame(pdb: Path, mdtop, anchors):
+    """`read_frame` for a single-frame PDB (an umbrella window's lastframe.pdb), on the
+    topology of the window's start.pdb (which carries the bonds the imaging needs)."""
+    import mdtraj
+    from openmm import unit
+    from openmm.app import PDBFile
+    p = PDBFile(str(pdb))
+    if p.topology.getNumAtoms() != mdtop.n_atoms:
+        raise SystemExit(f"{pdb}: {p.topology.getNumAtoms()} atoms, start.pdb has {mdtop.n_atoms}")
+    xyz = np.array(p.positions.value_in_unit(unit.nanometer), dtype=np.float32)[None]
+    box = np.array(p.topology.getPeriodicBoxVectors().value_in_unit(unit.nanometer), dtype=np.float32)[None]
+    traj = mdtraj.Trajectory(xyz, mdtop)
+    traj.unitcell_vectors = box
+    traj.image_molecules(inplace=True, anchor_molecules=anchors)
+    return traj.xyz[0] * 10.0, traj.unitcell_vectors[0]
+
+
+def window_time_ns(window: Path):
+    """Length of an umbrella window's run (cv.csv's last time), the time of its lastframe."""
+    cv = window / "cv.csv"
+    last = cv.read_text().strip().splitlines()[-1].split(",")[0] if cv.exists() else "0"
+    return float(last) / 1000.0
+
+
+def environment(topology, xyz, ion):
+    """How bulk a reference frame is: nearest protein heavy atom, lipid P and the box faces
+    of the frame as written (the non-periodic embedding ends there), from the ion, in Å."""
+    r = np.linalg.norm(xyz - xyz[ion.index], axis=1)
+    prot = [a.index for a in topology.atoms() if a.residue.name in AMINO_ACIDS and a.element is not None
+            and a.element.symbol != "H"]
+    lip_p = [a.index for a in topology.atoms() if a.residue.name in LIPIDS and a.element is not None
+             and a.element.symbol == "P"]
+    lo, hi = xyz.min(axis=0), xyz.max(axis=0)
+    return {"protein_min_A": round(float(r[prot].min()), 1) if prot else None,
+            "lipid_P_min_A": round(float(r[lip_p].min()), 1) if lip_p else None,
+            "edge_min_A": round(float(min((xyz[ion.index] - lo).min(), (hi - xyz[ion.index]).min())), 1)}
+
+
 def shell(topology, xyz, box_A, ion, cutoff: float, donors):
     """mcube's coordination rule (preprocess.coordination_shell): the closest donor of each
     residue within `cutoff` of the ion, minimum image. [(residue, donor atom, distance)]"""
@@ -342,29 +380,49 @@ def frames(args):
              args.water_forcefields or WATER_FF, "ion")):
         for src, (src_ion, path) in sources.items():
             plan.append((kind, src, src_ion, path, top_name, dcd_name, n, spacing, start, ff, anchor))
+    # The water reference inside the membrane box itself (decision log C22, second round): the
+    # last frames of the PMF's outer umbrella windows, ion in the bulk water layer. Same periodic
+    # system as the site frames, so the net-charge and Ewald-convention terms that a separate
+    # water cube does not share are common to site and reference.
+    for src, (src_ion, path) in parse_sources(args.bulk, "bulk").items():
+        plan.append(("water", src, src_ion, path, "start.pdb", None, None, None, None,
+                     args.site_forcefields or SITE_FF, "ion"))
     if not plan:
-        raise SystemExit("nothing to do: give --site, --complex and/or --water")
+        raise SystemExit("nothing to do: give --site, --complex, --water and/or --bulk")
 
     meta = json.loads((out / "frames.json").read_text()) if (out / "frames.json").exists() else {}
     lists = {"site": [], "water": []}
     for kind, src, src_ion, path, top_name, dcd_name, n, spacing, start, ff, anchor in plan:
-        from mdtraj.formats import DCDTrajectoryFile
-        dcd = path / dcd_name
-        topology = load_topology(path / top_name, bonds.get(src) if kind == "site" else None)
+        if dcd_name is None:
+            # --bulk: DIR is DIR1:DIR2:..., one frame (lastframe.pdb) per umbrella window
+            windows = [Path(p) for p in str(path).split(":")]
+            path = windows[0].parent
+            topology = load_topology(windows[0] / "start.pdb")
+            mdtop, anchors = imaging(topology, anchor)
+            frames_of = [(int(w.name.rsplit("_", 1)[-1]), lambda w=w: read_pdb_frame(w / "lastframe.pdb", mdtop, anchors),
+                          window_time_ns(w)) for w in windows]
+            print(f"[{kind} {src}] {len(windows)} umbrella windows: "
+                  + ", ".join(w.name for w in windows), flush=True)
+        else:
+            from mdtraj.formats import DCDTrajectoryFile
+            dcd = path / dcd_name
+            topology = load_topology(path / top_name, bonds.get(src) if kind == "site" else None)
+            with DCDTrajectoryFile(str(dcd)) as fh:
+                n_total = len(fh)
+            box = top_name == "system.pdb"   # a bulk_ion.py box: water, or a --complex
+            dt = frame_spacing_ps(path, "water" if box else "site", n_total,
+                                  args.water_frame_ps if box else args.frame_ps)
+            mdtop, anchors = imaging(topology, anchor)
+            chosen = pick_frames(n_total, dt, n, spacing, start)
+            print(f"[{kind} {src}] {n_total} frames, {dt:g} ps apart: frames {chosen} "
+                  f"({', '.join(f'{(i + 1) * dt / 1000:.2f}' for i in chosen)} ns)", flush=True)
+            frames_of = [(i, lambda i=i: read_frame(dcd, i, mdtop, anchors), (i + 1) * dt / 1000)
+                         for i in chosen]
         ion = find_ion(topology)
         if ion.residue.name != src_ion:
             raise SystemExit(f"{path} carries {ion.residue.name}, not {src_ion}")
-        with DCDTrajectoryFile(str(dcd)) as fh:
-            n_total = len(fh)
-        box = top_name == "system.pdb"   # a bulk_ion.py box: water, or a --complex
-        dt = frame_spacing_ps(path, "water" if box else "site", n_total,
-                              args.water_frame_ps if box else args.frame_ps)
-        mdtop, anchors = imaging(topology, anchor)
-        chosen = pick_frames(n_total, dt, n, spacing, start)
-        print(f"[{kind} {src}] {n_total} frames, {dt:g} ps apart: frames {chosen} "
-              f"({', '.join(f'{(i + 1) * dt / 1000:.2f}' for i in chosen)} ns)", flush=True)
-        for index in chosen:
-            xyz, box_nm = read_frame(dcd, index, mdtop, anchors)
+        for index, read, t_ns in frames_of:
+            xyz, box_nm = read()
             box_A = np.diag(box_nm) * 10.0
             residues, res_charge, coord, notes = qm_region(topology, xyz, box_A, ion, args)
             # ASH sees raw positions: every QM atom must sit next to the ion as written
@@ -382,9 +440,15 @@ def frames(args):
             frame_key = f"{src}_f{index:04d}"
             entry = {"kind": kind, "source": src, "source_ion": src_ion,
                      "source_dir": str(path.resolve()),
-                     "frame": index, "time_ns": round((index + 1) * dt / 1000, 3),
+                     "frame": index, "time_ns": round(t_ns, 3),
                      "qm_residues": residues, "coordination": coord, "notes": notes,
                      "residue_charge": res_charge, "qm_elements": sorted(elems), "jobs": {}}
+            if dcd_name is None:
+                entry["environment"] = environment(topology, xyz, ion)
+                print(f"  window {index}: " + ", ".join(f"{k} {v}" for k, v in entry["environment"].items()))
+                if entry["environment"]["protein_min_A"] < args.bulk_min_A:
+                    raise SystemExit(f"{src} window {index}: protein {entry['environment']['protein_min_A']} A "
+                                     f"from the ion, under --bulk-min {args.bulk_min_A}; not bulk")
             for target in args.ions:
                 job = out / kind / frame_key / target
                 job.mkdir(parents=True, exist_ok=True)
@@ -941,6 +1005,11 @@ def main():
     f.add_argument("--complex", action="append",
                    help="ION@LABEL=bulk run dir with a bound ligand (bulk_ion.py --ligand-from), "
                         "read like --water and analysed as a site")
+    f.add_argument("--bulk", action="append",
+                   help="ION@LABEL=WIN1:WIN2:... umbrella windows of the membrane box with the ion in bulk "
+                        "water (one frame each, lastframe.pdb), read as the water reference in the same box")
+    f.add_argument("--bulk-min", dest="bulk_min_A", type=float, default=8.0,
+                   help="refuse a --bulk frame whose ion is nearer the protein than this (Å)")
     f.add_argument("--bonds-from", action="append",
                    help="ION=processed_pdb whose bonds a site start.pdb lacks (F10)")
     f.add_argument("--ions", nargs="+", default=list(IONS), choices=sorted(IONS))

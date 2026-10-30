@@ -10,6 +10,7 @@
 #   bash round2.sh complex      ion + capped Glu boxes for the calibration (CPU MM, 2 ns each)
 #   bash round2.sh ca           frames + submit for the Ca sources, once `mm` has finished
 #   bash round2.sh calib        frames + submit for the calibration boxes, once `complex` has finished
+#   bash round2.sh inbox        the water reference inside the membrane box (PMF outer windows), Ca and La
 set -e
 S=/scratch/user/uquadhik
 Q=$S/mcube/docs/channel/qmmm
@@ -17,6 +18,7 @@ SY=$S/mcube/docs/channel/system
 B=$S/mcube/docs/channel/bulk
 OUT=$S/channel/qmmm
 CAL=$S/channel/qmmm_cal
+IN=$S/channel/qmmm_inbox
 BASIS="--basis-svp $S/channel/dft/def2-svp_lcecp1.nw --basis-tzvp $S/channel/dft/def2-tzvp_lcecp1.nw"
 module load miniforge/26.1.0-0
 source $ROOTMINIFORGE/etc/profile.d/conda.sh
@@ -87,6 +89,19 @@ calib)
 import json; a = json.load(open('$CAL/frames.json')); b = json.load(open('$OUT/frames.json'))
 a.update({k: v for k, v in b.items() if v['kind'] == 'water'}); json.dump(a, open('$CAL/frames.json', 'w'), indent=1)"
     submit_from $CAL/jobs_site.txt 1 qc_site 8:00:00 ;;
+inbox)
+    # The water reference inside the membrane box (C22): the last frames of the La and Ca PMFs'
+    # outer windows, ion in the bulk water layer, Ca and La swapped into each. The site jobs stay
+    # in $OUT; their entries are linked in (rerun after `ca` to take in the Ca site sources).
+    first=$(( $(lines $IN/jobs_water.txt) + 1 ))
+    U=$S/channel/system
+    $P $Q/exchange.py frames --out $IN --ions CA LA --actradius 0.5 $BASIS \
+        --bulk LA@LAbulk=$U/LA/umbrella_010:$U/LA/umbrella_011:$U/LA/umbrella_062:$U/LA/umbrella_063:$U/LA/umbrella_064 \
+        --bulk CA@CAbulk=$U/CA/umbrella_000:$U/CA/umbrella_001:$U/CA/umbrella_002:$U/CA/umbrella_069:$U/CA/umbrella_070
+    $P -c "
+import json; a = json.load(open('$IN/frames.json')); b = json.load(open('$OUT/frames.json'))
+a.update({k: v for k, v in b.items() if v['kind'] == 'site'}); json.dump(a, open('$IN/frames.json', 'w'), indent=1)"
+    submit_from $IN/jobs_water.txt $first qx_bulk 24:00:00 ;;
 *)
-    sed -n 2,14p $0; exit 1 ;;
+    sed -n 2,15p $0; exit 1 ;;
 esac
