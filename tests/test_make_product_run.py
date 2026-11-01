@@ -291,3 +291,21 @@ class TestTheInheritedLigandXml:
         cfg = {"preprocess": {"inputs": {}}, "qmmm": {"inputs": {"forcefields": ff}}}
         got = mod.product_config(cfg, "a", "b", "hyd")["qmmm"]["inputs"]
         assert got["forcefields"] == ff
+
+
+class TestTheLigandIsMergedIn:
+    """The reactant inherits `merge_ligand: false` because its substrate is
+    already in the protein file. The product's protein file has it removed on
+    purpose, so inheriting that flag builds a system with no ligand - and
+    preprocess reports [DONE], because a system without a ligand is a valid
+    system (D165)."""
+
+    def test_merge_is_turned_on(self, mod):
+        cfg = {"preprocess": {"inputs": {"merge_ligand": False}}}
+        got = mod.product_config(cfg, "a", "b", "hyd")["preprocess"]["inputs"]
+        assert got["merge_ligand"] is True
+
+    def test_it_is_set_even_when_the_reactant_never_mentioned_it(self, mod):
+        got = mod.product_config({"preprocess": {"inputs": {}}},
+                                 "a", "b", "hyd")["preprocess"]["inputs"]
+        assert got["merge_ligand"] is True

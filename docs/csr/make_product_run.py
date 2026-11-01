@@ -106,9 +106,16 @@ def product_config(reactant_cfg: dict, protein: str, ligand: str,
     out = {"preprocess": {"inputs": dict(
         (reactant_cfg.get("preprocess") or {}).get("inputs") or {})}}
     inputs = out["preprocess"]["inputs"]
+    # `merge_ligand: false` is right for the reactant, whose substrate is
+    # already inside `csr_crystal_start.pdb` - there the ligand file only
+    # supplies parameters. Here the substrate has been removed on purpose and
+    # the product exists only in its own file, so inheriting `false` builds a
+    # system with no ligand at all: preprocess reported [DONE], the zinc shell
+    # was correct, and nothing in it was the product (D165).
     inputs.update({"protein_pdb": protein, "ligand": ligand,
                    "ligand_resname": resname, "ligand_smiles": PRODUCT_SMILES,
-                   "charge": -1, "ligand_xmlfile": None})
+                   "charge": -1, "ligand_xmlfile": None,
+                   "merge_ligand": True})
     for section in ("md", "qmmm"):
         body = reactant_cfg.get(section)
         if body and body.get("inputs"):
