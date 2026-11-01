@@ -17,6 +17,8 @@ from ash import *
 import mdtraj
 
 from .preprocess import (
+    hydrogen_report,
+    report_hydrogens,
     save_result,
     load_section,
     ligand_resname,
@@ -298,6 +300,38 @@ def report_coordination_occupancy(rep, label: str) -> None:
           + ", ".join("%s in %d frames" % (k, v)
                       for k, v in rep["coordination_number"].items()))
 
+
+def export_frames(pdb_file: str, trajectory: str, frames, out: str = "frame") -> list:
+    """Write the named trajectory frames out as PDB files.
+
+    A crashed run has to be restarted from somewhere, and the only structure a
+    stage can be pointed at is a file. Negative indices count from the end, so
+    `[-3]` is "a couple of frames before the last one" - which is what a restart
+    after a NaN wants, since the frames nearest the crash are the ones whose
+    geometry is least trustworthy (D172).
+
+    The written PDB carries the topology's names and the frame's coordinates, so
+    it is the same system in another geometry - which is what `neb` requires of
+    its endpoints and what `md` needs to resume.
+    """
+    u = mda.Universe(pdb_file, trajectory)
+    total = len(u.trajectory)
+    written = []
+    for want in frames:
+        index = int(want)
+        if index < 0:
+            index += total
+        if not 0 <= index < total:
+            raise ValueError(
+                f"frame {want} is outside {trajectory}, which has {total} "
+                "frames (negative indices count from the end)")
+        u.trajectory[index]
+        path = Path(f"{out}_{index}.pdb").resolve()
+        u.atoms.write(str(path))
+        print(f"[INFO] Wrote frame {index} of {total} to {path.name}")
+        written.append(path.as_posix())
+    return written
+
 def run(args):
 
     result: Dict[str, Any] = {}
@@ -352,7 +386,41 @@ def run(args):
                 "submitted as), or give `pdb_file` and `trajectory` outright.")
         pdbfile = given_pdb or md["results"]["lastframe"]
         trajectory = given_traj or md["results"]["trajfile"]
-        csv = md["results"]["csv"]
+        # Optional, like the two above. A run that CRASHED has a trajectory and
+        # no results, so insisting on its reporter CSV refused to analyse the
+        # very runs most worth analysing - which is how the product arm's
+        # 34 ns, salvaged from a NaN crash, hit `KeyError: 'csv'` with both
+        # files given outright (D172).
+        csv = pp_inputs.get("csv") or (md.get("results") or {}).get("csv")
+        if csv:
+            csv = config_relative(args.config, csv)
+
+        # Frames written out before anything else in this section, so a
+        # restart has its structure even if a later analysis step fails.
+        want_frames = pp_inputs.get("export_frames")
+        if want_frames:
+            result["frames"] = export_frames(
+                pdbfile, trajectory,
+                want_frames if isinstance(want_frames, list) else [want_frames],
+                out=pp_inputs.get("export_prefix") or "frame")
+            save_result(result, filename=args.config, section=section)
+
+        # `hydrogens: true` runs the same check `preprocess` runs on the system
+        # it builds, on whatever structure this section is pointed at - a frame
+        # pulled out of a trajectory, or a system built before the check
+        # existed. It reads the structure only, so it costs seconds and needs
+        # no force field (D172).
+        if pp_inputs.get("hydrogens"):
+            pre_in = preprocess.get("inputs") or {}
+            pre_res = preprocess.get("results") or {}
+            # On the exported frame where there is one, because that is the
+            # structure a restart will be given; otherwise on the topology.
+            target = (result.get("frames") or [pdbfile])[0]
+            hyd = hydrogen_report(target, pre_in,
+                                  ligand_resname=pre_res.get("ligand_resname"))
+            report_hydrogens(hyd)
+            result["hydrogens"] = hyd
+            save_result(result, filename=args.config, section=section)
 
         # The coordination sphere over the whole trajectory, by the same rule
         # that built the restraints. Its settings come from `preprocess.inputs`
@@ -408,32 +476,37 @@ def run(args):
             result["contacts_trajectory"] = Path(trajectory).resolve().as_posix()
             save_result(result, filename=args.config, section=section)
 
-        df = pl.read_csv(csv)
+        if not csv:
+            print("[INFO] No reporter CSV for this run: no "
+                  "thermodynamic plots. Give `csv` in this "
+                  "section's inputs to plot them.")
+        else:
+            df = pl.read_csv(csv)
 
-        steps = df['#"Step"']
-        time = df['Time (ps)']
-        temperature = df['Temperature (K)']
+            steps = df['#"Step"']
+            time = df['Time (ps)']
+            temperature = df['Temperature (K)']
 
-        #Creating data list
-        data_list=[temperature]
-        #Density and Volume only present for NPT
-        try:
-            density = df['Density (g/mL)']
-            data_list.append(density)
-            volume = df['Box Volume (nm^3)']
-            data_list.append(volume)
-        except:
-            pass
+            #Creating data list
+            data_list=[temperature]
+            #Density and Volume only present for NPT
+            try:
+                density = df['Density (g/mL)']
+                data_list.append(density)
+                volume = df['Box Volume (nm^3)']
+                data_list.append(volume)
+            except:
+                pass
 
-        #Looping over data_list and plot
-        for pd_col in data_list:
-            np_array = pd_col.to_numpy()
-            label=pd_col.name
-            label_no_unit = label.split('(')[0].replace(' ','')
-            print(label_no_unit)
-            eplot = ASH_plot(label, num_subplots=1, x_axislabel="Steps", y_axislabel=label)
-            eplot.addseries(0, x_list=steps.to_numpy(), y_list=np_array, label=label, color='blue', line=True, scatter=True)
-            eplot.savefig(label_no_unit)
+            #Looping over data_list and plot
+            for pd_col in data_list:
+                np_array = pd_col.to_numpy()
+                label=pd_col.name
+                label_no_unit = label.split('(')[0].replace(' ','')
+                print(label_no_unit)
+                eplot = ASH_plot(label, num_subplots=1, x_axislabel="Steps", y_axislabel=label)
+                eplot.addseries(0, x_list=steps.to_numpy(), y_list=np_array, label=label, color='blue', line=True, scatter=True)
+                eplot.savefig(label_no_unit)
 
         # A membrane system gets the membrane report (box, bilayer, partner pose) in place of the
         # ligand-centred analysis below; its options are `postprocess.inputs.membrane` (optional).

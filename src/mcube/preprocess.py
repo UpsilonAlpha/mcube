@@ -622,6 +622,219 @@ def resolve_cores(requested, label: str = "cores") -> int:
 
 
 # ==============================
+# Hydrogens
+# ==============================
+
+# Hydrogens are the one part of a system no crystal structure supplies: every
+# one of them was placed by something - pdbfixer, Modeller's `addHydrogens`,
+# OpenFF's `AddHs`, or a graft done by hand - and a wrongly placed one is
+# refused by nothing downstream. A missing amide H changes a backbone; an extra
+# carboxylate H changes a charge; an H sitting on another atom is a NaN waiting
+# for the integrator to find it (D172).
+#
+# What is checkable without a force field: which protonation state each
+# state-defining residue is actually in, whether any residue has no hydrogens
+# at all, whether every amide nitrogen has its H, whether the ligand's formula
+# is the one its SMILES asks for, and whether any hydrogen is geometrically
+# impossible.
+
+# Residues whose protonation state is readable from which hydrogens are
+# present. {resname: {atom name: the state its presence implies}} - absence is
+# as informative as presence, so both are reported.
+STATE_HYDROGENS = {
+    "HIS": {"HD1": "HID (delta)", "HE2": "HIE (epsilon)"},
+    "HID": {"HD1": "HID (delta)", "HE2": "HIE (epsilon)"},
+    "HIE": {"HD1": "HID (delta)", "HE2": "HIE (epsilon)"},
+    "HIP": {"HD1": "HID (delta)", "HE2": "HIE (epsilon)"},
+    "ASP": {"HD2": "protonated (ASH)"},
+    "ASH": {"HD2": "protonated (ASH)"},
+    "GLU": {"HE2": "protonated (GLH)"},
+    "GLH": {"HE2": "protonated (GLH)"},
+    "CYS": {"HG": "thiol (CYS)"},
+    "TYR": {"HH": "hydroxyl"},
+}
+
+# An H is bonded to the heavy atom it sits on. Nothing in a PDB says so, but a
+# covalent X-H is 0.96-1.10 A and in a minimised system nothing else comes this
+# close to an H, so one distance brackets "attached" without any connectivity.
+H_ATTACHED = 1.35      # A
+
+
+def hydrogen_report(pdb_file: str, inputs=None, ligand_smiles=None,
+                    ligand_resname=None) -> dict:
+    """What placed the hydrogens got right and wrong, read off the structure.
+
+    Per-residue protonation states, residues with no hydrogens, amide nitrogens
+    missing their H, the non-standard residues' formulas (against
+    `ligand_smiles` where RDKit can read it), and hydrogens that are
+    geometrically impossible. Nothing here needs a force field, so it runs on
+    any structure: a built system, a frame pulled out of a trajectory, or a PDB
+    someone else prepared.
+    """
+    inputs = inputs or {}
+    rows, cell = coordination_rows(pdb_file)
+    amino = {a.upper() for a in (inputs.get("amino_acids") or AMINO_ACIDS)}
+    if ligand_resname is None:
+        ligand_resname = inputs.get("ligand_resname")
+    if ligand_smiles is None:
+        ligand_smiles = inputs.get("ligand_smiles")
+
+    residues: Dict[tuple, list] = {}
+    for row in rows:
+        residues.setdefault((row[0], row[1], row[3]), []).append(row)
+
+    heavy = [r for r in rows if r[4] != "H"]
+    hydrogens = [r for r in rows if r[4] == "H"]
+
+    states, no_h, missing_amide, orphans, clashes, nonstandard = [], [], [], [], [], []
+
+    for (chain, seq, resname), atoms in residues.items():
+        names = {a[2] for a in atoms}
+        label = f"{resname} {chain}:{seq}"
+        if not any(a[4] == "H" for a in atoms):
+            # Water counts too: a TIP3P oxygen with no hydrogens is not water.
+            no_h.append(label)
+        rule = STATE_HYDROGENS.get(resname.upper())
+        if rule:
+            present = sorted(n for n in rule if n in names)
+            absent = sorted(n for n in rule if n not in names)
+            states.append({"residue": label, "present": present, "absent": absent,
+                           "reads_as": ", ".join(rule[n] for n in present)
+                                       or "none of " + ", ".join(sorted(rule))})
+        if resname.upper() in amino and resname.upper() != "PRO":
+            if "N" in names and not (names & {"H", "H1", "H2", "H3", "HN"}):
+                missing_amide.append(label)
+        if resname.upper() not in amino and resname.upper() not in ("HOH", "WAT"):
+            counts: Dict[str, int] = {}
+            for a in atoms:
+                counts[a[4]] = counts.get(a[4], 0) + 1
+            nonstandard.append({"residue": label, "atoms": len(atoms),
+                                "formula": "".join(f"{e}{counts[e]}"
+                                                   for e in sorted(counts))})
+
+    # Geometry. Every H against every heavy atom is the price of needing no
+    # connectivity, so the heavy atoms are binned on a grid of the cutoff
+    # first. The grid WRAPS with the cell, because `separation` applies the
+    # minimum image: an atom at one box edge and its hydrogen at the other are
+    # bonded, and a grid that did not wrap would report every edge atom's
+    # hydrogen as unattached.
+    ncell = [max(1, int(c // H_ATTACHED)) for c in cell] if cell else None
+
+    def bin_of(xyz):
+        if ncell is None:
+            return tuple(int(c // H_ATTACHED) for c in xyz)
+        return tuple(int(c // H_ATTACHED) % n for c, n in zip(xyz, ncell))
+
+    grid: Dict[tuple, list] = {}
+    for x in heavy:
+        grid.setdefault(bin_of(x[5]), []).append(x)
+    for h in hydrogens:
+        base = bin_of(h[5])
+        near, seen = [], set()
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                for dz in (-1, 0, 1):
+                    key = (base[0] + dx, base[1] + dy, base[2] + dz)
+                    if ncell is not None:
+                        key = tuple(k % n for k, n in zip(key, ncell))
+                    if key in seen:
+                        # A box only a few cells wide wraps onto itself, so the
+                        # same bin can be a neighbour twice over.
+                        continue
+                    seen.add(key)
+                    for x in grid.get(key, ()):
+                        r = separation(h[5], x[5], cell)
+                        if r <= H_ATTACHED:
+                            near.append((round(r, 2), f"{x[3]} {x[0]}:{x[1]}:{x[2]}"))
+        near.sort()
+        label = f"{h[3]} {h[0]}:{h[1]}:{h[2]}"
+        if not near:
+            orphans.append({"hydrogen": label,
+                            "why": f"no heavy atom within {H_ATTACHED} A"})
+        elif len(near) > 1:
+            clashes.append({"hydrogen": label, "near": near[:3]})
+
+    report = {"pdb_file": Path(pdb_file).resolve().as_posix(),
+              "atoms": len(rows), "hydrogens": len(hydrogens),
+              "protonation": states, "residues_without_hydrogens": no_h,
+              "amide_n_without_h": missing_amide,
+              "unattached_hydrogens": orphans, "hydrogen_clashes": clashes,
+              "nonstandard_residues": nonstandard}
+
+    if ligand_smiles and ligand_resname:
+        report["ligand_formula_check"] = ligand_formula_check(
+            nonstandard, ligand_resname, ligand_smiles)
+    return report
+
+
+def ligand_formula_check(nonstandard, resname: str, smiles: str) -> dict:
+    """The ligand's composition against the formula its SMILES asks for.
+
+    The one check that catches a ligand hydrogenated to the wrong protonation
+    state, which no template match refuses: OpenFF types whatever it is given.
+    A mismatch in H alone is a protonation error; a mismatch in anything else
+    means the SMILES and the file are not the same molecule.
+    """
+    found = [n for n in nonstandard
+             if n["residue"].split()[0].upper() == resname.upper()]
+    if not found:
+        return {"resname": resname, "status": f"no residue named {resname}",
+                "agrees": False}
+    try:
+        mol = Chem.AddHs(Chem.MolFromSmiles(smiles))
+    except Exception as exc:                                  # noqa: BLE001
+        return {"resname": resname, "agrees": False,
+                "status": f"RDKit could not read ligand_smiles: {exc}"}
+    if mol is None:
+        return {"resname": resname, "agrees": False,
+                "status": "ligand_smiles is not a molecule RDKit can read"}
+    want: Dict[str, int] = {}
+    for atom in mol.GetAtoms():
+        e = atom.GetSymbol().upper()
+        want[e] = want.get(e, 0) + 1
+    wanted = "".join(f"{e}{want[e]}" for e in sorted(want))
+    return {"resname": resname, "from_smiles": wanted,
+            "copies": [f["formula"] for f in found],
+            "agrees": all(f["formula"] == wanted for f in found), "status": "ok"}
+
+
+def report_hydrogens(rep: dict) -> None:
+    """Print `hydrogen_report`, worst first."""
+    print(f"\n=== Hydrogens in {Path(rep['pdb_file']).name}: "
+          f"{rep['hydrogens']} of {rep['atoms']} atoms ===")
+    for key, title in (("residues_without_hydrogens", "Residues with NO hydrogens"),
+                       ("amide_n_without_h", "Amide N with no H")):
+        if rep.get(key):
+            print(f"[WARNING] {title} ({len(rep[key])}): "
+                  + ", ".join(rep[key][:12])
+                  + (" ..." if len(rep[key]) > 12 else ""))
+    for o in rep.get("unattached_hydrogens") or []:
+        print(f"[WARNING] {o['hydrogen']}: {o['why']}")
+    for c in rep.get("hydrogen_clashes") or []:
+        near = "; ".join(f"{d} A to {w}" for d, w in c["near"])
+        print(f"[WARNING] {c['hydrogen']} has more than one heavy atom within "
+              f"{H_ATTACHED} A: {near}")
+    chk = rep.get("ligand_formula_check")
+    if chk:
+        if chk.get("agrees"):
+            print(f"[INFO] Ligand {chk['resname']} matches ligand_smiles: "
+                  f"{chk['from_smiles']}")
+        else:
+            print(f"[WARNING] Ligand {chk.get('resname')} does NOT match "
+                  f"ligand_smiles: file {chk.get('copies')} vs SMILES "
+                  f"{chk.get('from_smiles')} - {chk.get('status')}")
+    for n in rep.get("nonstandard_residues") or []:
+        print(f"[INFO] Non-standard residue {n['residue']}: {n['formula']}")
+    for s in rep["protonation"]:
+        print(f"[INFO] {s['residue']}: {s['reads_as']}"
+              + (f" (no {', '.join(s['absent'])})" if s["absent"] else ""))
+    if not (rep.get("residues_without_hydrogens") or rep.get("amide_n_without_h")
+            or rep.get("unattached_hydrogens") or rep.get("hydrogen_clashes")):
+        print("[INFO] Every amide N has its H, every H is attached to exactly "
+              "one heavy atom, no residue is without hydrogens.")
+
+
+# ==============================
 # Atom selectors
 # ==============================
 
@@ -1294,6 +1507,13 @@ def run(args) -> Dict[str, Any]:
             if missing:
                 raise ValueError(f"extra_qm_residues: chain {chain} residues {sorted(missing)} not found in {pdb_file}")
 
+    # Every hydrogen in the system was placed by something, and nothing
+    # downstream refuses a wrongly placed one - so the run says what it built
+    # while the structure is still in front of it (D172).
+    print("[STEP] Checking hydrogens...")
+    hyd = hydrogen_report(pdb_file, inputs)
+    report_hydrogens(hyd)
+
     print("[STEP] Building QM region...")
     # Atom indices refer to processed_pdb; OpenMM keeps atom order through MD, so qmmm/neb reuse them
     qm_atoms, boundary_excluded = build_qm_region(pdb_file, qm_residues, **qm_region_settings(inputs))
@@ -1302,6 +1522,16 @@ def run(args) -> Dict[str, Any]:
         "ligand_xml": ligand_xmlfile,
         "ligand_resname": resname if inputs.get("ligand") else None,
         "ligand_atom_map": atom_map,
+        # The problems only: the full protonation list is printed, not stored,
+        # because a config is read by hand and every HIS, ASP, GLU, CYS and TYR
+        # in the system would bury the four lists that need acting on.
+        "hydrogens": {k: hyd[k] for k in
+                      ("atoms", "hydrogens", "residues_without_hydrogens",
+                       "amide_n_without_h", "unattached_hydrogens",
+                       "hydrogen_clashes")
+                      if hyd.get(k)} | (
+                      {"ligand_formula_check": hyd["ligand_formula_check"]}
+                      if hyd.get("ligand_formula_check") else {}),
         "processed_pdb": Path(pdb_file).resolve().as_posix(),
         "qm_residues": qm_residues,
         "qm_atoms": qm_atoms,

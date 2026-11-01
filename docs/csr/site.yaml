@@ -1307,6 +1307,16 @@ sections:
       # (D171).
       pdb_file: md_prod100_results/NVTtrajectory_firstframe.pdb
       trajectory: md_prod100_results/NVTtrajectory.dcd
+      # Three frames back from the crash (60 ps), as the restart structure. The
+      # last frame is the one nearest whatever went wrong, so it is the one not
+      # to use; 60 ps is far enough to be clear of it and short enough that
+      # nothing else about the system has changed (D172).
+      export_frames: [-3]
+      export_prefix: restart
+      # Checked on that exported frame, because it is what the restart will
+      # actually be given. Hydrogens are the one part no crystal structure
+      # supplies, and nothing downstream refuses a wrongly placed one.
+      hydrogens: true
       coordination:
         per_residue: false
         margin: 1.0
