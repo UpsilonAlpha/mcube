@@ -4007,6 +4007,28 @@ It also does not rewrite existing configs. `prodpost`'s 23 pairs are already in 
 
 `tests/test_ligand_atom_map.py` is 12 tests, and the permutation is the one they are built around: the same four oxygens in both orders, which must give the same map.
 
+**D170 - The route from the product MD to a mechanism: check the shell, equilibrate at QM/MM, optimise, then build the OTHER endpoint by scanning this one. The reactant cannot be preprocessed separately, and Gln93 - the Q of RQK - is in neither QM region.** (2026-11-02, user: "next steps after MD runs is to check the resultant structure before doing QM/MM to equilibrate the reactant - then a geometry optimisation followed by converting it to a product along reaction coordinate - perhaps for NEB, being aware of the pitfalls. Remember our overall hypothesis of analysing the RQK site's impacts on mechanism")
+
+## The order, and what gates each step
+
+1. **`prodpost` before any QM/MM.** 100 ns of MM MD is not evidence that the site survived it. The gate is the one the whole product arm exists to protect: four-coordinate zinc (two His, the hydroxide-derived oxygen, one water - CSR-1's Zn1 is **H-R-H**, Arg90 where the third His would be, so four is the canonical-equivalent sphere), Asp92 off the metal, and an empty `missing` list. A five-coordinate distribution or Asp92 on the metal stops the arm: equilibrating a product whose zinc is already overcoordinated measures the artefact, not the mechanism, and no later cutoff undoes coordinates.
+2. **`prodqm`** - QM/MM MD, which is what "equilibrate" means here, since the MM force field cannot hold the hydrolysed ligand's electronics. ~20 h on 8 CPU cores; xTB is the bottleneck and a GPU does not help.
+3. **Geometry optimisation** from that frame, giving a stationary product.
+4. **Scan along the reaction coordinate** to the other endpoint - for this arm the **reverse**: re-forming `C4x`-`N1x`. The arm starts at the product because 5AXO gives the hydrolysed complex at crystallographic resolution; the reactant is what has to be constructed.
+5. **NEB** between the two.
+
+## The pitfall that decides step 4, so it is not a choice
+
+`neb` refuses endpoints that differ in atom count **or in atom order**, and a reactant built through its own `preprocess` run will not match this product however carefully it is prepared - different solvation, different atom order, and nothing about the two runs makes them one system. **The only valid route is `scan` from this product**, because scan writes every point through the product's own MM topology, so the order matches by construction. This is why "convert it to the other state along a reaction coordinate" is not an alternative to NEB but a prerequisite for it.
+
+Two smaller ones. `C4x` and `N1x` happen to be unchanged by OpenFF's renaming, so the bond being re-formed can be named the same way in both files - but every other ligand atom selector must be checked against `preprocess.results.ligand_atom_map` first (D169). And a scan that re-forms a bond the MM topology does not have is a QM-region question, not an MM one: the bond order lives in the QM calculation, so both atoms must be inside the QM region at every point.
+
+## The RQK gap, which matters more than the mechanics
+
+The hypothesis is what the **R-Q-K** triad does to the mechanism: Arg90 in place of the third zinc histidine, Gln93, and Lys226. **Gln93 is in neither preprocess QM region** - the reactant's scans add it per section as `extra_qm_residues: {A: [93]}` (D133), and the product's sections need the same. A scan or NEB run without it would answer a question about a site missing the residue the study is named after. Gln is neutral, so the QM charge is unchanged - which is exactly why the omission is easy to miss.
+
+This also sets up **P2** (switching off the charges of Lys226, Arg90 and Asp92 along each path): the per-residue contributions are the direct test of the hypothesis, and they need a converged path on each arm first.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
