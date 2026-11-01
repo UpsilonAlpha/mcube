@@ -197,6 +197,53 @@ def build_parser():
     return parser
 
 
+
+# Each stage's result keys that mean it actually computed something, as opposed
+# to having built a system and stopped. A stage that finishes without one of
+# these has not done its job, and `confirm_produced` turns that into a non-zero
+# exit so Slurm records FAILED - because the alternative is what job 31186038
+# did: build the system, print [DONE] in 14 s, write a results record with no
+# energy, no trajectory and no structure, and be recorded COMPLETED (D153).
+#
+# `umbrella` is deliberately absent. Its three entry points return three
+# different shapes (window setup, WHAM, MM->QM stitching) with no key in common,
+# so a single list would either miss a real failure or refuse a good run. An
+# unlisted stage is not checked, which is the safe direction for this guard.
+STAGE_PRODUCTS = {
+    "preprocess": ("processed_pdb",),
+    "md": ("lastframe", "trajfile"),
+    "qmmm": ("optimized_pdb", "lastframe", "trajfile", "opt_energy"),
+    "scan": ("surface_results", "energies_csv"),
+    "neb": ("saddlepoint_pdb", "images", "mep_energies"),
+    "ts": ("ts_pdb", "ts_energy"),
+    "sp": ("sp_energy",),
+    "metadynamics": ("fes_2d", "convergence"),
+}
+
+
+def confirm_produced(stage: str, result) -> None:
+    """Raise unless `result` carries something the stage computed.
+
+    The point is the exit code, not the message: a job that computed nothing
+    must not be recorded as COMPLETED, because every later reader - this log, a
+    results table, the next stage reaching for `lastframe` - treats a completed
+    job as a result. Listing a stage here is a promise that its run always
+    produces one of these keys on success; see STAGE_PRODUCTS for why
+    `umbrella` is not listed.
+    """
+    wanted = STAGE_PRODUCTS.get(stage)
+    if not wanted or not isinstance(result, dict):
+        return
+    if any(result.get(key) is not None for key in wanted):
+        return
+    raise SystemExit(
+        f"[ERROR] {stage} finished without producing any of "
+        f"{', '.join(wanted)}, so it computed nothing. What it did write: "
+        f"{', '.join(sorted(result)) or '(an empty record)'}. This is a "
+        "configuration that gave the stage nothing to do, not a result - "
+        "exiting non-zero so the job is not recorded as a success.")
+
+
 def main():
     parser = build_parser()
     args = parser.parse_args()
@@ -214,6 +261,7 @@ def main():
     # require pyscf or MDAnalysis to be importable.
     stage = importlib.import_module(f".{args.command}", package=__package__)
     result = stage.run(args)
+    confirm_produced(args.command, result)
 
     # =========================================================
     # OUTPUT

@@ -3385,7 +3385,7 @@ One proton, nothing held, and the carboxylate walks off to 2.99 A. The site is l
 
 **What this decides.** The Asp92-Zn contact in this model **requires the anionic carboxylate**: it is electrostatic, not steric, and it is not a restraint artefact (nothing was restrained) nor an optimiser artefact (it converged). And the model *can* produce the crystal's four-coordinate sphere - something D120, D134 and D138 each failed to get by any other route, having tried twice.
 
-**What it does not decide.** It does **not** show Asp92 is protonated at pH 7. A buried carboxylate 1.9 A from a dication is the textbook environment for an upshifted pKa, so the protonated state is a hypothesis this run makes structurally concrete, not one it establishes; settling it needs a pKa calculation or constant-pH sampling, neither of which is staged. What it does give the D145 discrepancy - our model at 1.90-2.15 A against 6NC5's **4.20 A** - is a mechanism that produces the crystal number without touching the restraints, which is more than the other explanations have.
+**What it does not decide.** It does **not** show Asp92 is protonated at pH 7, and **the sentence that first stood here had the electrostatics backwards** - it claimed a carboxylate 1.9 A from a dication is the textbook case for an *upshifted* pKa. It is the opposite: a cation stabilises the conjugate base, so direct Zn(II) coordination *lowers* a carboxylate's pKa, which is why metal-bound aspartates are taken as ionised and why DFT work on the B. fragilis dizinc enzyme concludes Asp120 is ionised. See D154 for what that does to the interpretation. What it does give the D145 discrepancy - our model at 1.90-2.15 A against 6NC5's **4.20 A** - is a mechanism that produces the crystal number without touching the restraints, which is more than the other explanations have.
 
 **And the substrate does not take the freed face.** O1x 3.64 -> 3.72, carbonyl O2x 4.96 -> 4.63, O01-C4x 3.48 -> 3.69. The vacancy closes by the **hydroxide** moving in, not by the substrate moving over. So emptying the Asp92 site does not by itself produce a Michaelis complex, which is a direct answer to the assumption behind `michaelis2d`: the open face is not sufficient, the carbonyl has to be driven in.
 
@@ -3404,6 +3404,55 @@ One proton, nothing held, and the carboxylate walks off to 2.99 A. The site is l
 Disk checked first: scratch **256 of 300 GB**, home 38 of 50, 844k of 1M files. **Nothing pruned.** The only candidate is `qmmm_asph/geometric_OPTtraj_Full.xyz` at 122 MB, and `qmmm_asph.results.opttraj` points at it: breaking a recorded path to recover 0.05% of the allocation is a worse trade than keeping it. The two `sp` directories are 24 MB each (four cubes plus the PySCF checkpoint), which is the evidence for the number in part 1.
 
 The code-server port had moved again, bun149/47121 -> **bun151/28472**, as D152 said it would.
+
+
+**D154 - No, we do not have an equilibrated Michaelis complex by this literature's standards, and the reason is upstream of everything measured since D98: the reactant pose came from docking rather than from reversing a product complex, and our own acceptance gate has rejected it twice. Also: a protonated Asp92 is not a plausible reactant state, which changes what the `asph` run is evidence for; and the whole job history is now inventoried.** (2026-11-01, user: "Have we established a good equilibrated michaleis complex structure according to the literature?")
+
+## 1. What the literature does, and what we did
+
+**The standard route to an MBL Michaelis complex is to reverse a crystallographic product complex.** There are no crystal structures of an MBL with an intact beta-lactam bound - that is the whole problem - so the QM/MM studies in this field build the Henry-Michaelis complex from a structure of the enzyme with the **hydrolysed** drug and undo the hydrolysis. The NDM-1/meropenem study builds its complexes "from the crystal structures of NDM-1 complex with hydrolyzed drug molecules, PDB 4RL2"; Lisa 2017 (*Nat Commun* 10.1038/s41467-017-00601-9), already cited in `reference-structures.md`, is the mononuclear/binuclear product-complex paper. Then: solvate, neutralise, classical equilibration, **QM/MM MD** (SMB-1: 10 ns of SCC-DFTB/CHARMM), and only then a surface.
+
+**We docked instead.** Every reactant structure in this project descends from an AutoDock Vina pose - pose 2 by D123, chosen on a bond-graph match - and nothing in the chain ever came from a crystallographic complex with the ligand in it.
+
+**And the gate says no.** `site.py check --at=reactant --hypothesis=carbonyl_on_metal` is **REJECTED** on both 100 ns trajectories, five of seven criteria failing (D134, D138). The supporting evidence, all of it already in this log:
+
+| what was asked | what happened | where |
+| --- | --- | --- |
+| does the substrate stay bound without help? | **no** - it leaves the site in 100 ns | D134 |
+| ... with a 50 kcal/mol/A^2 tether on O01-C4x? | it stays, and the zinc goes **six-coordinate in 4,998 of 5,000 frames** | D138 |
+| is the carbonyl anywhere near the metal? | **5.98 A** with the tether on, 7.80 A without | D134, D138 |
+| can it be brought in? | only by driving it, at **25.2-34.0 kcal/mol** across the five Asp92 rows | D147, D149 |
+| is there an oxyanion hole holding it instead? | **no** - Gln93 never comes within 7.86 A of the carbonyl in 10,000 frames or 45 optimised points | D148, D150 |
+
+So the honest statement is: **we have an equilibrated enzyme, and a substrate that will not stay in the pose we need without being held there.** Two 100 ns trajectories and a 45-point surface agree on that.
+
+## 2. The hypothesis may be the wrong one, not just the pose
+
+The closest literature analogue we have read in full is **SMB-1** (Mu & Xu 2020, B3), and its answer is that the beta-lactam carbonyl is **not a zinc ligand**: O8 sits 2.90/2.87/2.90 A from Zn1 through ES, TS and EI, and what holds it is **Gln157's amide** (Hepsilon21...O8 at 1.70 A). We have been testing `carbonyl_on_metal` - a hypothesis that paper rejects for its own enzyme - and measuring the one CSR-1 residue that could play Gln157's part (Gln93, the Q of RQK) only to find it 8-11 A away in every structure we own.
+
+That gives three possibilities, and they are distinguishable:
+
+1. **The pose is wrong.** Reversing the product complex would put the ligand where the chemistry requires rather than where Vina put it. `CSR_hydrolysed` already exists - built from the user's own crystal model `CSR_nontruncated_1metal_original.pdb`, with atom order deliberately matched to the reactant (D-entries at lines 101-122 of this log) - and it has never been used for this. **This is the cheapest and most defensible next step and it is the one the literature would expect.**
+2. **The carbonyl does not coordinate in CSR-1 either**, and the acceptance criterion in `site.yaml` should be an oxyanion-hole contact rather than a Zn-O2x distance - in which case the question becomes which residue, and the answer from our own measurements is *none of the RQK three in this pose*.
+3. **The RQK site works on the C3 carboxylate rather than the carbonyl.** The one contact that is real and reproducible across everything we have is **Arg229 NH2-O4x at 3.62 +/- 0.04 A in all 45 optimised points and 64% of the MD frames** (D148, D150), and Lys226 NZ-O3x at 3.80-3.90 A. That is substrate *anchoring*, not nucleophile activation, and it is consistent with SMB-1, where Ser221/Thr223 hold the C3 carboxylate and no zinc contacts it.
+
+None of these is settled by more sampling of the current structure.
+
+## 3. A protonated Asp92 is not a plausible reactant, and D153's reasoning was wrong
+
+D153 said the protonated state was hard to rule out because "a buried carboxylate 1.9 A from a dication is the textbook environment for an upshifted pKa". **That is backwards.** A nearby cation stabilises the conjugate base, so coordination to Zn(II) *lowers* a carboxylate's pKa - the same effect that takes the zinc-bound water in carbonic anhydrase from ~15.7 to 6.8. Burial and desolvation push the other way, but for an oxygen at 1.9 A from the metal the metal wins, which is why metal-bound aspartates are modelled as ionised and why the DFT work on the *B. fragilis* dizinc enzyme concludes **Asp120 is ionised**. D153 is corrected in place.
+
+**So `asph` (31186037) is a diagnostic, not a candidate reactant.** What it establishes stands: the Asp92-Zn contact in this model is **purely electrostatic** - remove the charge and the carboxylate leaves on its own, unrestrained, and the site relaxes to the crystal's four-coordinate sphere. What it does not do is offer a protonated Asp92 as the state the Michaelis complex starts in: at pH 7, coordinating or not, that carboxylate is deprotonated. The D145 discrepancy (our 1.90-2.15 A against 6NC5's 4.20 A) therefore still needs an explanation, and "it is protonated" is no longer on the list. What remains: xTB/ff14SB over-binding the carboxylate to Zn(II); the crystal being a **Q93H/K226H double mutant** with a second zinc that changes the first shell (D145); or the crystallographic Asp genuinely being held off the metal by something our truncation removed.
+
+## 4. The job history, inventoried
+
+`docs/csr/job-inventory.md`, generated from `sacct` rather than from memory: **166 CSR allocations** since August, one row each with state, elapsed, directory and the decision-log entries that cite it, plus each system's QM region and the structures that are live inputs today. Forty of them are the early `mcube_QMMM` setup cluster - all FAILED inside two minutes, in `CSR_ligand` and `CSR_hydrolysed`, none cited anywhere - and they are counted rather than listed. The regeneration command is in the file, on the same principle as `reference-structures.md`: a number in a doc should be re-derivable, not quoted.
+
+**The question it was written to answer, answered: no, there is no equilibrated complex with Arg90 and Lys226 outside the QM region.** All eleven systems put them there, because `preprocess.inputs.extra_qm_residues: {A: [90, 226]}` says so and neither is a zinc ligand the 2.5 A detection would find. `CSR_hydrolysed` is the only directory with Lys226 in MM, and it is the hydrolysed product with **no His164, no hydroxide and no HOH485** in its QM region - the wrong state and an incomplete first shell. Measuring those two by charge deletion therefore needs a fresh `preprocess` and a re-equilibration of everything downstream: a new model, whose numbers would not be comparable with the Arg229 value in D153.
+
+## 5. And the silent-success class is closed at the CLI
+
+D153 fixed the one section that could skip both of its steps. The general fix is now in `mcube.cli`: **`confirm_produced` raises unless the stage's result carries a key that means it computed something** - `sp_energy` for `sp`, `lastframe`/`trajfile` for `md`, `optimized_pdb`/`lastframe`/`trajfile`/`opt_energy` for `qmmm`, and so on - so the exit code is non-zero and **Slurm records FAILED rather than COMPLETED**. That is the part that matters: job 31186038 sits in the inventory as COMPLETED having computed nothing, and every reader of a job table treats COMPLETED as a result. `umbrella` is deliberately unlisted (its three entry points return three different shapes with no key in common) and a test asserts that, so listing it has to be a deliberate change. 12 tests.
 
 
 ## Resources (see `running-on-bunya.md`)

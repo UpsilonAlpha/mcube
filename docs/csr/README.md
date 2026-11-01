@@ -20,6 +20,7 @@ file.
 | --- | --- |
 | `refstruct.py` | `shell` and `centre` modes against a downloaded PDB, so every reference number in `site.yaml` is re-derivable rather than quoted (D125) |
 | `reference-structures.md` | the PDB IDs, ligand codes, exact commands and measured tables behind those numbers |
+| `job-inventory.md` | every job that has run, from `sacct`, with the decision-log entry that read it, each system's QM region, and the structures that are live inputs today |
 
 ## Read this before setting up a metal run
 
