@@ -3339,6 +3339,73 @@ Anti, in plane, and in neither case an overlap. The 1.82 A is an H...H contact t
 **The bridge, for the record.** The overnight chain stopped at 02:47 with the code-server session expired and redirecting to the UQ sign-in page; nothing was submitted and no successor was scheduled, which is the standing rule and cost about five hours of queue. On reconnection the port had moved from 10539 to **47121** on bun149 - the URL in a wakeup prompt is not durable, and the first action of any shift has to be reading `location.href` and following the redirect.
 
 
+**D153 - Charge deletion works and is verified; Arg229's QM-MM electrostatics at the four-coordinate geometry is +44.34 kcal/mol, repulsive. A protonated Asp92 leaves the metal on its own and the site becomes the crystal's four-coordinate sphere. Arg90 and Lys226 cannot be measured this way at all, and the QM/MM MD rate is still unmeasured because the timing job computed nothing and reported success.** (2026-11-01, jobs 31185324, 31185325, 31186037 COMPLETED; 31186038 vacuous; 31277149, 31277150 submitted)
+
+## 1. The charge-deletion pair, and the feature is sound
+
+| run | job | energy (Eh) | elapsed |
+| --- | --- | --- | --- |
+| `sp_qmmm_ref` | 31185324 | **-5076.869006116424** | 03:01:51 |
+| `sp_qmmm_r229` (A:229 deleted) | 31185325 | **-5076.939666070885** | 03:06:14 |
+
+Both wb97x-v/def2-SVP on 16 cores, same structure (`scan_aspin/scan_00.pdb`), one key apart. The energies **differ**, so the deletion reached the QM Hamiltonian:
+
+**E(with Arg229's charges) - E(without) = +0.07065995 Eh = +44.34 kcal/mol.**
+
+The record, exactly as `confirm_zero_charges` wrote it: `key: zero_charges_qm_only`, `scope: qm_mm`, `residues: [A:229]`, **`atoms: 24`**, **`charge_removed: 1.0`** (ff14SB ARG, net +1 - the right residue, whole), **`verified_after_run: true`**, and no `[WARNING]` about restored lists.
+
+**`pointcharge_lists: [theory.charges, theory.charges_qmregionzeroed]`** - not the `charges`/`charges_original` pair the test condition named, and this is **benign, not the defect that condition was watching for**. `charges_qmregionzeroed` is precisely the list ASH hands the QM code as point charges, so zeroing it is what makes the measurement QM-MM rather than MM-MM. The 44 kcal/mol difference is the proof: had the detection written to an attribute nothing reads, the two energies would have been identical to every digit. **No correction to the feature.** D151's open question - whether `charge_sequences` finds where this ASH build keeps its point charges - is answered yes.
+
+**What the number is, and what it is not.** It is the *absolute* QM-MM electrostatic interaction between a +1 guanidinium and a +2 QM region at **one** geometry, and it is repulsive, which two like charges must be. It is **not** a catalytic contribution and must not be quoted as one: only the *change* in this quantity between the reactant and the transition state enters a barrier, and a residue can be strongly repulsive in both states while contributing nothing to catalysis. The measurement becomes mechanistic only when the same deletion is run at both ends of a reaction coordinate, on the same structures that give the barrier. That is the next use of these two sections, not a third residue.
+
+## 2. Arg90 and Lys226 are not measurable this way - established without spending a job
+
+`preprocess.results.qm_residues` puts **nine** residues in the QM region: Zn (B:1), HOH485 (D:1), His88, His164, **Asp92**, **Arg90**, **Lys226**, the hydroxide (C:2) and meropenem (C:1). Under electrostatic embedding ASH has already removed the MM charges of all of them, so deleting them again cannot change the energy, and the difference would be noise written down as an electrostatic contribution - which `charge_deletion` refuses by name, for exactly this reason. **Arg90 and Lys226 are therefore dropped**, as the brief required, and dropped from the config rather than by submitting two jobs to be told so.
+
+**Gln93 is the only one of the three that can be measured**, and only because the two `sp` sections do *not* set `extra_qm_residues` (unlike the scans, which put Gln93 in QM): it is in MM for these runs and has charges to delete. Submitted as **31277149** (`sp_qmmm_q93`).
+
+**A limit on the paper's electrostatics section, worth facing now.** A charge-deletion table over the RQK site cannot be completed: Arg229 and Gln93 by deletion, but Arg90 and Lys226 only by taking them out of the QM region - which changes the model and so cannot be compared with the other two. Either the decomposition covers the MM residues only and says so, or the whole set is done another way (alanine substitution, or a second parallel model with all four in MM) and the two methods are not mixed in one table.
+
+## 3. A neutral Asp92 leaves the metal, and the crystal's sphere comes back
+
+Job 31186037, free xTB/MM optimisation from `scan_08_A92_ASH.pdb`, **converged** in 12 min 03 s, charge 3, **nothing restrained on Asp92 or anything else**.
+
+| ligand | protonated start | optimised |
+| --- | --- | --- |
+| **Asp92 OD1** | **1.90** | **2.99** |
+| Asp92 OD2 | 3.43 | 4.73 |
+| Asp92 CG | 2.95 | 3.81 |
+| hydroxide O01 | 1.94 | **1.80** |
+| His88 NE2 | 2.04 | 2.00 |
+| His164 NE2 | 2.19 | 2.02 |
+| HOH485 O | 2.19 | 2.08 |
+| **ligands within 2.8 A** | **5** | **4** |
+
+One proton, nothing held, and the carboxylate walks off to 2.99 A. The site is left with **two histidines, the hydroxide and HOH485 - the crystal's four-coordinate sphere** - and all three remaining ligands tighten, the hydroxide most (1.94 -> 1.80).
+
+**What this decides.** The Asp92-Zn contact in this model **requires the anionic carboxylate**: it is electrostatic, not steric, and it is not a restraint artefact (nothing was restrained) nor an optimiser artefact (it converged). And the model *can* produce the crystal's four-coordinate sphere - something D120, D134 and D138 each failed to get by any other route, having tried twice.
+
+**What it does not decide.** It does **not** show Asp92 is protonated at pH 7. A buried carboxylate 1.9 A from a dication is the textbook environment for an upshifted pKa, so the protonated state is a hypothesis this run makes structurally concrete, not one it establishes; settling it needs a pKa calculation or constant-pH sampling, neither of which is staged. What it does give the D145 discrepancy - our model at 1.90-2.15 A against 6NC5's **4.20 A** - is a mechanism that produces the crystal number without touching the restraints, which is more than the other explanations have.
+
+**And the substrate does not take the freed face.** O1x 3.64 -> 3.72, carbonyl O2x 4.96 -> 4.63, O01-C4x 3.48 -> 3.69. The vacancy closes by the **hydroxide** moving in, not by the substrate moving over. So emptying the Asp92 site does not by itself produce a Michaelis complex, which is a direct answer to the assumption behind `michaelis2d`: the open face is not sufficient, the carbonyl has to be driven in.
+
+## 4. The timing job computed nothing and said DONE
+
+31186038 ran **14 s**, exited 0, printed `[DONE] qmmm_qmrate`, and wrote a results record holding `qm_level: GFN2-xTB` and `metal_parameters: iod` and **no energy, no trajectory, no structure**. Nothing in the `.err` but the thread-binding INFO line.
+
+**Cause: in the `qmmm` stage the MD *is* the equilibrate step**, so `skip_equilibrate: true` switched it off while `time: 3` sat in the section asking for 3 ps and was read by nothing. `site.yaml`'s own `nacarg` comment states this - *"skip_equilibrate: false # qmmm.inputs sets true; without this there is no MD"* - and the section was written wrong anyway.
+
+**Fixed at the library** (`057a12e`, 5 tests): a `qmmm` section that skips both now raises **before anything is built**, names the `time` it asked for, and points at the `sp` stage for an energy on a geometry already in hand. A stage that can be configured to do nothing and report success is the same failure mode as D152's doubled prefix - a job number spent on a run that looks like a result.
+
+**So D151's 1.7 ps/h is still unmeasured**, and the umbrella cost in that entry - ~62 h per window, ~13,000 core-hours - still rests on a cancelled job. Resubmitted as **31277150** with `skip_equilibrate: false`.
+
+## 5. Housekeeping
+
+Disk checked first: scratch **256 of 300 GB**, home 38 of 50, 844k of 1M files. **Nothing pruned.** The only candidate is `qmmm_asph/geometric_OPTtraj_Full.xyz` at 122 MB, and `qmmm_asph.results.opttraj` points at it: breaking a recorded path to recover 0.05% of the allocation is a worse trade than keeping it. The two `sp` directories are 24 MB each (four cubes plus the PySCF checkpoint), which is the evidence for the number in part 1.
+
+The code-server port had moved again, bun149/47121 -> **bun151/28472**, as D152 said it would.
+
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
