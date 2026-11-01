@@ -3894,6 +3894,28 @@ That matters because restraining Asp92 to the metal fixes the very thing the mec
 
 268 of 300 GB. A 100 ns run of this system writes **2.9 GB**, so the MD and the QM/MM both fit in the 32 GB free. The large consumers are other projects (`glp1r_md` 41G, `channel` 38G, `boltzgen` 35G, `AANCA` 27G, `hf` 25G); all of CSR_wt is 6.9 G. `CSR_wt` holds two 2.9 GB 100 ns trajectories, `md_wt100_results` and `md_wt100b_results` - one is probably redundant, but D134/D138 cite these runs and nothing was deleted without checking which.
 
+**D166 - Measurement only, no decision: both equilibrated 100 ns end states have Asp92 on the zinc, one of them bidentate. Recorded because the question of grafting the product into an equilibrated frame turns on these numbers.** (2026-11-01, user: "you can probably graft the hydrolysed SMB1 meropenem in to an already 100ns equilibrated MD structure that has already been equilibrated with the correct restraints")
+
+`refstruct.py shell` on the two candidate scaffolds, `NVTtrajectory_lastframe.pdb` in each:
+
+| | `md_wt100` (30966977) | `md_wt100b` (31016877) |
+| --- | --- | --- |
+| OH O01 | 1.90 | 1.93 |
+| **Asp92 OD2** | **2.02** | **2.06** |
+| HOH D:1 | 2.08 | 2.09 |
+| **Asp92 OD1** | - | **2.12** |
+| His88 NE2 | 2.28 | 2.22 |
+| His164 NE2 | 2.18 | 2.31 |
+| count | five | **six, Asp92 bidentate** |
+
+Counted against this enzyme's own H-R-H motif, where the canonical-equivalent four is two His + hydroxide + one water (rule 4), **the extra ligand in both frames is Asp92** - not a solvent ligand, so this is over-coordination in the sense that matters. `md_wt100` is the run with the correct restraints (four, redetected at 2.5 A, nothing on Asp92 or the substrate, D134), and Asp92 still arrives at 2.02 A unforced; `md_wt100b` tethered the substrate and ends with the carboxylate chelating.
+
+For comparison, the structure the running product MD started from, `csr_crystal_start.pdb`: HOH 1.90, His164 2.09, His88 2.22, **Asp92 OD2 out at 2.80** - four-coordinate, crystal geometry (D159).
+
+**What job 31327774 is actually doing**, from its own `.out`: `Coordination restraints from: redetected on .../CSR_prod/preprocess_results/finalsystem.pdb`, then `4 harmonic distance restraints (4 detected metal coordination)` at 1.90, 2.09, 2.14, 2.22. The same four, at the same distances, as D134's reactant run, from the same crystal shell, for the same 100 ns, with only the ligand different. Rate: 9.16 ns in about 32 minutes, so ~5.8 h rather than the 3 h estimated from the reactant - inside the 12 h walltime.
+
+**The open question, left open.** Grafting into `md_wt100`'s end state would give the product an equilibrated protein, which is the motive and a good one. It would also start it with Asp92 bound at 2.02 A, which is rule 7 ("no cutoff undoes an artefact already in the coordinates", a mistake D120 has costed once), and it would break the matched control that makes "the product stayed" readable against "the reactant's substrate left". No structure available has both an equilibrated protein and an Asp92-out shell: `scan_00` is four-coordinate with Asp92 out at 3.60 A and descends from the equilibrated trajectory, but it is a constrained scan point, biased along the coordinate, and carries the substrate rather than the product.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
