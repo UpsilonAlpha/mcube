@@ -1258,6 +1258,40 @@ sections:
   # detection in `charge_sequences` finds where this ASH build keeps its point
   # charges. Check `pointcharge_lists` and `verified_after_run` in the results,
   # and that the two energies actually differ.
+  # ---- The hydrolysed-product complex, grafted from SMB-1's 5AXO (D156, D159)
+  # and run in `CSR_prod`. Both of these are the reactant's protocol with
+  # nothing added: `wt100`'s 100 ns and the 50 ps QM/MM MD that `ohH` and
+  # `nacarg` ran, because the point of the product run is to be comparable.
+  #
+  # **No substrate restraint, deliberately.** Measured in 5AXO against ZN301 -
+  # the Zn1-site metal our single zinc occupies - the closest product atom is
+  # 3.41 A. Everything that binds the product there binds **Zn2**, which CSR-1
+  # does not have, so a restraint would transplant a Zn2 bond onto a Zn1 metal.
+  # `coordination_redetect` picks up the protein shell at the crystal distances
+  # the start structure already carries (His88 2.22, His164 2.09, HOH485 1.90,
+  # and the water that replaced the hydroxide at 2.14), and
+  # `constraint_exclude_residues: {C: [1]}` keeps the ligand out of detection.
+  prod100:
+    stage: md
+    inputs:
+      pdb_file: preprocess_results/finalsystem.pdb
+      coordination_redetect: true
+      nvt_time: 100000          # ps; ~3 h on a full H100 (D134, D138)
+      traj_frequency: 5000      # a frame every 20 ps
+      platform: CUDA
+      properties: {Precision: mixed}
+
+  # 50 ps of GFN2-xTB QM/MM MD from that trajectory's last frame. `charge` is
+  # inherited at +2 and that is correct for the product as well as the
+  # reactant: the hydroxide (-1) is gone and the ligand is -1 in its place.
+  prodqm:
+    stage: qmmm
+    inputs:
+      skip_equilibrate: false   # qmmm.inputs sets true; without this there is no MD
+      skip_optimize: true       # MD only, as `nacarg` and `ohH` ran
+      time: 50
+      rigid_water: false
+
   # ---- qmrate: what does QM/MM MD actually cost? (D152) ----
   #
   # D151 costed umbrella sampling at ~62 h per window from 1.7 ps/h, and that
