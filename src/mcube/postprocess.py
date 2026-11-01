@@ -139,8 +139,7 @@ def coordination_occupancy(pdb_file, trajectory, inputs, radius=None,
 
 
 def report_coordination_occupancy(rep, label: str) -> None:
-    print("
-===== Metal coordination over %d frames: %s ====="
+    print("\n===== Metal coordination over %d frames: %s ====="
           % (rep["frames"], label))
     print("  cutoff %.2f A, +%.1f A margin shown, per_residue=%s"
           % (rep["cutoff"], rep["margin"], rep["per_residue"]))
