@@ -215,3 +215,51 @@ class TestTheQMRegionIsRebuilt:
         here = self.write(tmp_path / "here.pdb", self.SITE)
         with pytest.raises(KeyError, match="qm_residues"):
             qmmm.resolve_qm_region({}, self.preprocess(qm_residues=False), here)
+
+class TestSkippingBothLeavesNothingToDo:
+    """`qmmm_qmrate` (job 31186038) asked for 3 ps of QM/MM MD, built the system,
+    printed [DONE] in 14 s and wrote a results record with no energy, no
+    trajectory and no structure (D153). MD is the equilibrate step, so
+    `skip_equilibrate: true` switched it off while `time: 3` said otherwise, and
+    nothing between the two objected.
+    """
+
+    def config(self, tmp_path, **extra):
+        body = {"skip_equilibrate": True, "skip_optimize": True}
+        body.update(extra)
+        path = tmp_path / "config.yaml"
+        lines = ["preprocess:", "  inputs: {}", "md:", "  inputs: {}",
+                 "qmmm:", "  inputs:"]
+        lines += ["    %s: %s" % (k, v) for k, v in body.items()]
+        path.write_text("\n".join(lines) + "\n")
+        return types.SimpleNamespace(config=str(path), section="qmmm")
+
+    def test_both_skipped_is_refused(self, qmmm, tmp_path):
+        with pytest.raises(KeyError) as exc:
+            qmmm.run(self.config(tmp_path))
+        assert "nothing for the qmmm stage to compute" in str(exc.value)
+
+    def test_the_refusal_names_the_time_that_was_asked_for(self, qmmm, tmp_path):
+        with pytest.raises(KeyError) as exc:
+            qmmm.run(self.config(tmp_path, time=3))
+        assert "3 ps" in str(exc.value)
+
+    def test_it_points_at_the_sp_stage(self, qmmm, tmp_path):
+        """An energy on a geometry already in hand is what `sp` is for."""
+        with pytest.raises(KeyError) as exc:
+            qmmm.run(self.config(tmp_path))
+        assert "`sp` stage" in str(exc.value)
+
+    def test_skipping_only_the_optimisation_is_fine(self, qmmm, tmp_path):
+        """MD-only runs are ordinary: `nacarg` and `ohH` are both one."""
+        args = self.config(tmp_path, skip_equilibrate=False)
+        with pytest.raises(Exception) as exc:
+            qmmm.run(args)
+        assert "nothing for the qmmm stage" not in str(exc.value)
+
+    def test_skipping_only_the_md_is_fine(self, qmmm, tmp_path):
+        args = self.config(tmp_path, skip_optimize=False)
+        with pytest.raises(Exception) as exc:
+            qmmm.run(args)
+        assert "nothing for the qmmm stage" not in str(exc.value)
+

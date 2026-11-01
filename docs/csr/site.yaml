@@ -1275,7 +1275,7 @@ sections:
     inputs:
       pdb_file: protdft/scan_aspin/scan_08.pdb
       extra_qm_residues: {A: [93]}
-      skip_equilibrate: true
+      skip_equilibrate: false    # MD *is* the equilibrate step - D153
       skip_optimize: true
       time: 3
       rigid_water: false
@@ -1332,6 +1332,19 @@ sections:
     inputs:
       <<: *sp_cd
       zero_charges_qm_only: [A:229]
+
+  # Gln93 is the only one of the four RQK cations/amides that CAN be measured
+  # this way: `preprocess.results.qm_residues` puts Arg90 and Lys226 INSIDE the
+  # QM region, where electrostatic embedding has already removed their MM
+  # charges, so deleting them again cannot change the energy and the difference
+  # would be noise reported as a contribution (D153). `charge_deletion` refuses
+  # them by name. Gln93 is in MM for these two sections - they do not set
+  # `extra_qm_residues`, unlike the scans - so it has charges to delete.
+  qmmm_q93:
+    stage: sp
+    inputs:
+      <<: *sp_cd
+      zero_charges_qm_only: [A:93]
 
   dft:                      # score a geometry someone else produced
     stage: sp

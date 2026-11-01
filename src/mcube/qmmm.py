@@ -1127,6 +1127,22 @@ def run(args) -> Dict[str, Any]:
     # its own `inputs` (if any) override qmmm.inputs, e.g. skip_equilibrate or opt_constraints per run
     section = getattr(args, "section", None) or "qmmm"
     inputs = stage_inputs(args.config, "qmmm", section)
+    # The stage does two things, and skipping both leaves it nothing to do. It
+    # used to build the system, print [DONE] and write a results record with no
+    # energy, no trajectory and no structure in it - a run that cost a job
+    # number and looked like a success (D153). `time` in such a section is the
+    # giveaway: MD is the equilibrate step, so `skip_equilibrate: true` is what
+    # switches it off, however the section is named.
+    if inputs.get("skip_equilibrate") and inputs.get("skip_optimize"):
+        raise KeyError(
+            f"`{section}` skips both the QM/MM MD (`skip_equilibrate: true`) and "
+            "the optimisation (`skip_optimize: true`), so there is nothing for "
+            "the qmmm stage to compute. MD is the equilibrate step: set "
+            "`skip_equilibrate: false` to run it"
+            + (f" (this section asks for {inputs['time']} ps)"
+               if inputs.get("time") else "")
+            + ". For an energy on a geometry you already have, use the `sp` "
+            "stage instead.")
     md_results = md.get("results") or {}
 
     pdb_file, pdb_source = resolve_start_structure(
