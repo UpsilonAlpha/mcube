@@ -73,8 +73,7 @@ COORDINATION_NAME = "mcube_coordination"
 # The collective variable a section biases. `z` is the channel case this stage was
 # written for: the ion's displacement along z from a reference group's centre.
 # `distance` is the separation of two named atoms, which is what a metal-ligand PMF
-# needs (CSR-1's Zn-Asp92 OD1, D133) - the same windows, bias, seeding and WHAM, one
-# different CV. Everything that used to be named after z reads and writes `cv0` now,
+# needs (D133) - the same windows, bias, seeding and WHAM, one different CV. Everything that used to be named after z reads and writes `cv0` now,
 # with `z0`/`z_start`/`z_end` kept as aliases so existing channel configs and their
 # saved windows keep working untouched.
 COORDINATES = ("z", "distance")
@@ -896,7 +895,8 @@ def residues_of(pdb_file: str, qm_atoms) -> Dict[str, Dict[int, str]]:
     Read off the atoms that were resolved, not off the rule that produced them. A
     section's own `qm_residues` / `extra_qm_residues` take precedence inside
     `resolve_qm_region`, so recording preprocess's saved list instead would write down a
-    region the run did not use - CSR-1's scans add Gln93 that way (D133).
+    region the run did not use: a scan that adds a catalytic residue the
+    equilibration did not have is exactly that case (D133).
     """
     from openmm.app import PDBFile
     atoms = list(PDBFile(pdb_file).topology.atoms())

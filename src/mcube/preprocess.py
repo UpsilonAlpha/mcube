@@ -311,8 +311,8 @@ def check_coordination_atoms(coordination, pdb_file: str, inputs) -> None:
 
     What can be checked without the original structure is the identity the rows
     assert: the first atom of each pair is a metal, the second is a donor
-    element. That is what caught D115 by eye - the recorded "metal" was
-    meropenem's C1x and one "donor" was a hydrogen - so it is what is checked
+    element. That is what caught D115 by eye - the recorded "metal" was a
+    ligand carbon and one "donor" was a hydrogen - so it is what is checked
     here, per row, before anything is restrained.
     """
     metals = {m.upper() for m in (inputs.get("metals") or [])}
@@ -405,13 +405,13 @@ COORDINATION_FORCE = 50.0  # kcal/mol/A^2
 # the contact is second-shell, and a harmonic at COORDINATION_FORCE then holds a
 # non-ligand against the metal for the whole run.
 #
-# This is not hypothetical. A detection cutoff of 3.0 A swept Asp92 OD2 in at
-# 2.80 A, which is where the crystal has it as a second-shell contact, and the
-# restraint held it there; a carboxylate pinned that close has one cheap way to
-# relax, so OD1 rotated onto the metal at 1.99 A and two QM/MM arms ran on a
-# five-coordinate zinc against the crystal's four. The restraint whose purpose
-# was to preserve the crystal's coordination sphere is what destroyed it.
-# `docs/csr-decision-log.md`, D120 and D130.
+# This is not hypothetical. A detection cutoff of 3.0 A swept a carboxylate
+# oxygen in at 2.80 A, which is where the crystal has it as a second-shell
+# contact, and the restraint held it there; a carboxylate pinned that close has
+# one cheap way to relax, so its other oxygen rotated onto the metal at 1.99 A
+# and two QM/MM arms ran on a five-coordinate zinc against the crystal's four.
+# The restraint whose purpose was to preserve the crystal's coordination sphere
+# is what destroyed it (D120, D130).
 #
 # Holding a contact where the structure already has it is sound - that is the
 # rule this pipeline runs on, and nothing here weakens it. What it cannot do is
@@ -551,8 +551,8 @@ def coordination_from_rows(rows, cell, inputs, radius=None,
                 continue
             # Per residue for the QM region, which takes whole residues anyway.
             # Per atom for restraints: a carboxylate can rotate its second
-            # oxygen in while the first is held, which is how Asp92 OD1 reached
-            # 1.75 A with OD2 pinned at 2.80.
+            # oxygen in while the first is held, which is how one reached 1.75 A
+            # with the other pinned at 2.80.
             key = (donor[0], donor[1], donor[3]) if per_residue else di
             if key not in closest or r < closest[key][0]:
                 closest[key] = (r, di, donor[2])
@@ -607,7 +607,7 @@ def resolve_cores(requested, label: str = "cores") -> int:
     Thread *placement* -- OMP_NUM_THREADS, OMP_PROC_BIND, OMP_PLACES -- is set by
     the job script, not by mcube, because the right policy differs per stage and
     cannot be changed once the process has started: see the thread recipes in the
-    README and `docs/csr/run.slurm`. This only decides a count.
+    README. This only decides a count.
     """
     if requested is not None:
         return int(requested)
@@ -632,7 +632,7 @@ def resolve_atoms(value, topology):
     An atom can be given as an index (int) or as "chain:resid:atom", e.g. "B:1:ZN"
     or "A:88:NE2", matched against `topology` (an OpenMM Topology or a PDB file).
     Lists are resolved element by element, so constraint/restraint entries such as
-    ["B:1:ZN", "C:1:O2x", 2.2, 20.0] keep their numbers. This lets configs name
+    ["B:1:ZN", "C:1:O1", 2.2, 20.0] keep their numbers. This lets configs name
     atoms instead of hard-coding indices that change with every system.
     """
     if not _has_selector(value):
@@ -790,12 +790,12 @@ def ligand_atom_map(input_pdb: str, parameterised_pdb: str,
 
     OpenFF re-derives atom names from the molecular graph, so the names in the
     ligand file a config was written against are not the names in the system
-    that runs. For the hydrolysed meropenem product 15 of 53 names changed, and
-    three of those were a permutation among names that both files use -
-    `O01`->`O6x`, `O5x`->`O4x`, `O6x`->`O5x` - so a selector written against
-    the input named a real but different atom: no missing atom, no error, a
-    distance between the wrong pair of oxygens reported under the right label
-    (D169).
+    that runs. The bad case is a permutation among names that both files use -
+    one ligand here had `O01`->`O6x`, `O5x`->`O4x` and `O6x`->`O5x` among 15
+    changes in 53 atoms - because a selector written against the input then
+    names a real but different atom: nothing is missing, nothing raises, and a
+    distance between the wrong pair of oxygens is reported under the right
+    label (D169).
 
     Atoms are matched by coordinate, not by order or by name. The parameteriser
     writes the same geometry it was given, and a coordinate match is the one
@@ -1062,9 +1062,9 @@ def resolve_forcefields(entries, config) -> list:
     A config directory is meant to be copyable: the user's rule is that
     everything resolves against it, so a run that is copied keeps using its own
     files instead of silently reaching back into the directory it came from.
-    Three of the CSR configs were doing exactly that - reading `openff_MER.xml`
-    and `hydroxide.xml` out of another run - because an absolute path survives
-    a copy intact.
+    Configs in one project were doing exactly that - reading a ligand XML and a
+    custom residue XML out of another run - because an absolute path survives a
+    copy intact.
 
     An entry is rewritten only when a file of that name sits beside the config.
     That leaves OpenMM's bundled names (`amber14/protein.ff14SB.xml`) alone,

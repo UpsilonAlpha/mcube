@@ -19,11 +19,11 @@ anything not given there is taken from `scan.inputs`):
 
     scan_attack:
       inputs:
-        atoms: ["C:2:O01", "C:1:C4x"]   # i, j: "chain:resid:atom" or 0-based indices
+        atoms: ["C:2:O1", "C:1:C2"]     # i, j: "chain:resid:atom" or 0-based indices
         start: 3.0            # Å; default: the current distance
         end: 1.45             # Å
         points: 16            # including both ends
-        atoms2: ["D:1:H1", "A:92:OD1"]  # optional second coordinate (2D grid)
+        atoms2: ["C:2:H1", "A:50:OD1"]  # optional second coordinate (2D grid)
         start2: 1.8
         end2: 1.0
         points2: 6

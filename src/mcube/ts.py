@@ -20,8 +20,8 @@ taken from `ts.inputs`):
 
     ts_attack:
       inputs:
-        hessian_atoms: ["B:1:ZN", "C:1:C4x", "C:1:O2x", "C:2:O01"]  # default: the QM atoms
-        monitor: [["C:2:O01", "C:1:C4x"]]   # distances to report at TS and endpoints
+        hessian_atoms: ["B:1:ZN", "C:1:C2", "C:1:O2", "C:2:O1"]  # default: the QM atoms
+        monitor: [["C:2:O1", "C:1:C2"]]     # distances to report at TS and endpoints
         tsopt: true
         tsopt_maxiter: 100
         convergence_setting: null    # geomeTRIC preset, e.g. GAU
