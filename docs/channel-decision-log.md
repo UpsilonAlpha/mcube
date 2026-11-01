@@ -1549,6 +1549,12 @@ blocks 30576666/67 held; the Ca jobs run)
       run dirs carry `md.inputs` only. Fixed in c9ccebf (test added; a dry build on Bunya gives the original
       run's force fields and the metal term). Resubmitted once: `LA_bulk` 31185320, `CA_bulk` 31185321,
       `CA_la` 31185322, `CA_lu` 31185323.
+    - **All four windows done (2026-10-31/11-01).** Bulk La and Ca: z 36.2–39.8 Å (mean 38.0), no protein O/N
+      within the coordination cutoff at any frame. Ca site windows: the ion stays in the ring (z −0.6 / +0.1 Å) and
+      keeps 1.8 (CA_la) / 1.6 (CA_lu) protein O over the second half, with 5.7–5.9 waters. `round2.sh ca` (frames
+      and swaps for CAla, CAlu and the Ca water cube: site 31277233, water 31277234) and `round2.sh inbox` (20
+      swaps, 31277506; every site source linked, CAla/CAlu included). The bulk frames sit 38–54 Å from the
+      protein, 16–21 Å from the nearest lipid P and 45–50 Å from the box edge in z.
   - **Ca vs Ln is the main test (user, 2026-10-30), so the reference moves into the membrane box.** No
     post-hoc correction fixes a 2+ → 3+ swap compared across two differently embedded systems. Comparing the site
     against the ion in the bulk water layer of the same periodic box makes the net-charge and Ewald-convention
