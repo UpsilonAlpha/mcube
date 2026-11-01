@@ -1088,6 +1088,14 @@ def run(args) -> Dict[str, Any]:
         # the lipids without this
         forcefields = lipid_forcefields(forcefields, inputs.get("membrane_lipid_xml") or LIPID_XML)
 
+    # md and qmmm have resolved their force fields against the config's
+    # directory since the rule was written; preprocess, the stage that actually
+    # builds the system, never did. So a custom residue XML named beside the
+    # config - `hydroxide.xml` here - was found by every later stage and not by
+    # this one, which failed with OpenMM's "Could not locate file" after the
+    # ligand had already been parameterised (D163).
+    forcefields = resolve_forcefields(forcefields, args.config)
+
     resname = ligand_resname(inputs)
 
     if inputs.get("ligand"):

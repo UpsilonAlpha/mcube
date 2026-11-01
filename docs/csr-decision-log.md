@@ -3797,6 +3797,51 @@ Twelve scripts in `docs/csr/`, and the documentation is in better shape than I e
 **31303502 submitted** with the zwitterion SMILES and the 53-atom ligand. The zinc-shell check still gates the 100 ns.
 
 
+**D163 - The eighth preprocess got the ligand right and died on the force fields: `resolve_forcefields` has been wired into `md` and `qmmm` since the config-relative rule was written, and never into `preprocess`. Fixed in mcube, not worked around in the config. Two further defects found by reading the generated file rather than by running it.** (2026-11-01)
+
+## What job 31303502 did
+
+It parameterised the ligand. `openff_hyd.xml` is 23 kB, and ASH's own consistency check passed with identical Coulomb and LJ energies from the XML and from the forcefield object - so the 53-atom grafted product, zwitterion SMILES and transferred hydrogens (D162) are all accepted. That was the hard part and it is done.
+
+Then, at `[STEP] Solvating system...`:
+
+```
+ValueError: Could not locate file "hydroxide.xml"
+```
+
+104 seconds, after the ligand work, which is why it looks like a late failure for an early reason.
+
+## The cause is general, not a CSR detail
+
+`hydroxide.xml` is the custom residue template for the nucleophile, and it sits beside each run's `config.yaml`. `src/mcube/preprocess.py` resolved nothing: it passed the config's strings straight to `ForceField`, which reads a bare name against the **working** directory - `preprocess_results/` under `run.slurm` - and the file is one level up. `md.py:55` and `qmmm.py:224` have both called `resolve_forcefields` for months.
+
+So every stage except the one that builds the system honoured the rule. Any config naming a custom residue XML beside it would equilibrate and run QM/MM fine and fail at preprocess, which reads as a problem with the structure. `preprocess.run()` now calls `resolve_forcefields(forcefields, args.config)` after the membrane block, which is the same resolution md and qmmm already use.
+
+`hydroxide.xml` stays in the product's list even though the product has no hydroxide residue: an unused template costs nothing, and the two states are only comparable if the force fields are identical.
+
+## Two more, found by reading the file
+
+Neither had been reached yet; both would have failed afterwards.
+
+1. **The converted water was still called `O01`.** `make_product_run.py` turned the hydroxide into a `HOH` and kept the hydroxide's atom name. `amber14/tip3p.xml` types a water by its atom names, so that residue has no template. Now renamed to ` O  `, in the name columns only.
+2. **`qmmm.inputs.forcefields` still named `openff_MER.xml`** - the substrate's parameters, inherited verbatim. The product would have run with the reactant's ligand typed in. The XML name follows the resname, so `retarget_ligand_xml` derives it: `openff_hyd.xml`, directory preserved.
+
+**The QM charge of 2 is correct unchanged, and that is worth stating rather than assuming.** Hydrolysis conserves total charge: the reactant's QM region holds a neutral substrate and a hydroxide (-1), the product's holds a -1 product and a neutral water. Zn(2+) + Asp92(-1) + Arg90(+1) + Lys226(+1) + (-1) = 2 either way.
+
+## State
+
+Nothing resubmitted: see D164 on the terminal bridge. The rebuild is three commands and the zinc-shell check still gates the 100 ns MD.
+
+596 tests pass locally (`PYTHONPATH=src pytest tests`), 5 of them new.
+
+**D164 - Nothing was resubmitted: the code-server terminal will not take input, and the one toggle that fixes it does not respond. The bridge reads files fine, which is how D163 was diagnosed without running a single command.** (2026-11-01)
+
+code-server is up at `bun151:28472` and `vscode-remote-resource` serves every file, so the whole of D163 came from reading `protdft/prodprep-31303502.err`, `config.yaml`, `product_protein.pdb` and `openff_hyd.xml`. That is worth knowing on its own: a failed preprocess can be diagnosed completely without a shell.
+
+Input is a different matter. The status bar reads **`Screen Reader Optimized`**, the documented mode in which `computer{action:"type"}` does not reach xterm at all (`BUNYA_BROWSER_SHELL.md`, 29 Oct). The three documented ways out were all tried and none changed the status bar: the command palette, `Shift+Alt+F1`, and a synthetic click on the status-bar item. Synthetic `keydown`/`keypress` into the helper textarea delivered exactly one command and then stopped.
+
+So the next step is one keystroke in the browser tab, and it is the user's: turn Screen Reader Optimized off. Everything else is ready - the rebuild is `make_product_run.py`, `sections.py prod100`, `sbatch`, and the zinc-shell check still gates the MD.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

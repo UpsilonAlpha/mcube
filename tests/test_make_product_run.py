@@ -69,7 +69,7 @@ class TestTheProteinFile:
         out = tmp_path / "p.pdb"
         mod.product_protein(start, out)
         kept = [l for l in out.read_text().splitlines()
-                if l.startswith("HETATM") and l[12:16].strip() == "O01"]
+                if l.startswith("HETATM") and l[21] == "W" and int(l[22:26]) == 2]
         assert len(kept) == 1 and kept[0][30:38].strip() == "2.140"
 
     def test_the_hydroxide_proton_is_dropped(self, mod, start, tmp_path):
@@ -199,14 +199,14 @@ class TestTheConvertedWaterJoinsTheWaterChain:
         out = tmp_path / "p.pdb"
         mod.product_protein(start, out)
         line = [l for l in out.read_text().splitlines()
-                if l.startswith("HETATM") and l[12:16].strip() == "O01"][0]
+                if l.startswith("HETATM") and l[21] == "W" and int(l[22:26]) == 2][0]
         assert line[21] == "W"
 
     def test_it_is_numbered_after_the_existing_waters(self, mod, start, tmp_path):
         out = tmp_path / "p.pdb"
         mod.product_protein(start, out)
         line = [l for l in out.read_text().splitlines()
-                if l.startswith("HETATM") and l[12:16].strip() == "O01"][0]
+                if l.startswith("HETATM") and l[21] == "W" and int(l[22:26]) == 2][0]
         assert int(line[22:26]) == 2
 
     def test_the_ligand_chain_is_left_empty(self, mod, start, tmp_path):
@@ -221,7 +221,7 @@ class TestTheConvertedWaterJoinsTheWaterChain:
         out = tmp_path / "p.pdb"
         mod.product_protein(start, out)
         line = [l for l in out.read_text().splitlines()
-                if l.startswith("HETATM") and l[12:16].strip() == "O01"][0]
+                if l.startswith("HETATM") and l[21] == "W" and int(l[22:26]) == 2][0]
         assert line[30:38].strip() == "2.140"
 
     def test_without_existing_waters_it_stays_where_it_is(self, mod, tmp_path):
@@ -242,3 +242,52 @@ class TestTheConvertedWaterJoinsTheWaterChain:
         seqs = [int(l[22:26]) for l in out.read_text().splitlines()
                 if l.startswith(("ATOM", "HETATM")) and l[21] == "W"]
         assert seqs == sorted(seqs)
+
+
+class TestTheConvertedWaterIsTypeable:
+    """`amber14/tip3p.xml` types a water by its atom names, so the hydroxide's
+    " O01" has to become " O  " on the way. Nothing downstream renames it."""
+
+    def test_the_oxygen_is_renamed_to_O(self, mod, start, tmp_path):
+        out = tmp_path / "p.pdb"
+        mod.product_protein(start, out)
+        converted = [l for l in out.read_text().splitlines()
+                     if l.startswith("HETATM") and l[21] == "W"
+                     and int(l[22:26]) == 2][0]
+        assert converted[12:16] == " O  "
+
+    def test_the_columns_are_not_shifted(self, mod, start, tmp_path):
+        out = tmp_path / "p.pdb"
+        mod.product_protein(start, out)
+        line = [l for l in out.read_text().splitlines()
+                if l.startswith("HETATM") and l[21] == "W"][-1]
+        assert line[17:20] == "HOH" and line[30:38].strip() == "2.140"
+
+
+class TestTheInheritedLigandXml:
+    """The reactant's qmmm list names `openff_MER.xml` - the substrate's
+    parameters. Inherited unchanged, the product would run with the reactant's
+    ligand typed in (D163)."""
+
+    def test_the_qmmm_entry_follows_the_resname(self, mod):
+        cfg = {"preprocess": {"inputs": {}},
+               "qmmm": {"inputs": {"forcefields": [
+                   "amber14/protein.ff14SB.xml",
+                   "preprocess_results/openff_MER.xml"]}}}
+        got = mod.product_config(cfg, "a", "b", "hyd")["qmmm"]["inputs"]
+        assert got["forcefields"] == ["amber14/protein.ff14SB.xml",
+                                      "preprocess_results/openff_hyd.xml"]
+
+    def test_a_bare_name_stays_bare(self, mod):
+        cfg = {"preprocess": {"inputs": {}},
+               "md": {"inputs": {"default_forcefields": ["openff_MER.xml"]}}}
+        got = mod.product_config(cfg, "a", "b", "hyd")["md"]["inputs"]
+        assert got["default_forcefields"] == ["openff_hyd.xml"]
+
+    def test_everything_else_is_left_alone(self, mod):
+        """`hydroxide.xml` stays: the product has no hydroxide residue, but an
+        unused template is harmless and the two runs' lists must match."""
+        ff = ["amber14/tip3p.xml", "hydroxide.xml"]
+        cfg = {"preprocess": {"inputs": {}}, "qmmm": {"inputs": {"forcefields": ff}}}
+        got = mod.product_config(cfg, "a", "b", "hyd")["qmmm"]["inputs"]
+        assert got["forcefields"] == ff

@@ -77,7 +77,10 @@ def product_protein(src: Path, dst: Path, ligand_resname: str = "mer",
             if name.startswith("H"):          # the hydroxide's own proton
                 dropped += 1
                 continue
-            moved = line[:17] + "HOH" + line[20:]
+            # " O01" is the hydroxide's name, and `amber14/tip3p.xml` types a
+            # water by its atom names: a HOH whose oxygen is called O01 has no
+            # template and the system cannot be built (D163).
+            moved = line[:12] + " O  " + line[16:17] + "HOH" + line[20:]
             if water_chain:
                 moved = (moved[:21] + water_chain + "%4d" % next_water
                          + moved[26:])
@@ -109,8 +112,33 @@ def product_config(reactant_cfg: dict, protein: str, ligand: str,
     for section in ("md", "qmmm"):
         body = reactant_cfg.get(section)
         if body and body.get("inputs"):
-            out[section] = {"inputs": dict(body["inputs"])}
+            out[section] = {"inputs": retarget_ligand_xml(
+                dict(body["inputs"]), resname)}
     return out
+
+
+FF_KEYS = ("forcefields", "default_forcefields")
+
+
+def retarget_ligand_xml(inputs: dict, resname: str) -> dict:
+    """Point inherited force-field lists at this ligand's openff XML.
+
+    The reactant's `qmmm.inputs.forcefields` names `openff_MER.xml`, which is
+    the substrate's parameters: inherited unchanged it would run the product
+    with the reactant's ligand typed in, and OpenMM would either fail to find a
+    template or quietly use the wrong one. The name follows the resname, so it
+    is derivable rather than a thing to remember.
+    """
+    want = "openff_%s.xml" % resname
+    for key in FF_KEYS:
+        entries = inputs.get(key)
+        if not entries:
+            continue
+        inputs[key] = [
+            ("%s/%s" % (e.rsplit("/", 1)[0], want) if "/" in e else want)
+            if Path(e).name.startswith("openff_") and e.endswith(".xml") else e
+            for e in entries]
+    return inputs
 
 
 def main(reactant_dir, product_dir, ligand_pdb):
