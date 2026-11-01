@@ -437,3 +437,70 @@ class TestConectIsPreferredToDistance:
         atoms = rs.rows(path)
         heavy, adj = rs.heavy_graph(atoms, rs.conect_bonds(path))
         assert len(heavy) == 3 and adj[0] == {1}
+
+
+class TestHydrogensComeAcross:
+    """mcube parameterises a ligand from its own file against
+    `AddHs(MolFromSmiles(...))`, so a structure without hydrogens cannot match
+    the template whatever its protonation - five preprocess jobs died on that
+    before the cause was found (D162). Leaving them where they were is not an
+    option either: the heavy atoms have moved."""
+
+    def methanol(self, rs, origin=(0.0, 0.0, 0.0), names=None):
+        """C-O with one hydrogen on each, far enough apart to be unambiguous."""
+        n = names or ["C1", "O1", "HC", "HO"]
+        x, y, z = origin
+        return [atom(n[0], "LIG", "L", 1, (x, y, z), "C"),
+                atom(n[1], "LIG", "L", 1, (x + 1.43, y, z), "O"),
+                atom(n[2], "LIG", "L", 1, (x - 0.6, y + 0.9, z), "H"),
+                atom(n[3], "LIG", "L", 1, (x + 1.9, y + 0.9, z), "H")]
+
+    def test_a_hydrogen_gets_its_parent(self, rs):
+        lig = self.methanol(rs)
+        parents = rs.hydrogen_parents(lig)
+        assert parents == {2: 0, 3: 1}
+
+    def test_conect_beats_distance_for_parents(self, rs):
+        lig = self.methanol(rs)
+        assert rs.hydrogen_parents(lig, {(0, 1), (0, 2), (1, 3)}) == {2: 0, 3: 1}
+
+    def test_a_translated_target_moves_the_hydrogens_with_it(self, rs):
+        """The simplest check that the frame is applied at all."""
+        ours = self.methanol(rs)
+        target = self.methanol(rs, (10.0, 0.0, 0.0))
+        heavy_order = [0, 1]
+        _, adj = rs.heavy_graph(ours, {(0, 1), (0, 2), (1, 3)})
+        moved = rs.transfer_hydrogens(
+            ours, {2: 0, 3: 1}, heavy_order, {0: 0, 1: 1},
+            [target[0], target[1]], adj)
+        assert moved[2][0] == pytest.approx(ours[2][4] + 10.0, abs=1e-6)
+        assert moved[3][0] == pytest.approx(ours[3][4] + 10.0, abs=1e-6)
+
+    def test_the_bond_length_is_preserved(self, rs):
+        """A hydrogen carried on a rigid frame keeps its X-H distance; one left
+        behind would not."""
+        ours = self.methanol(rs)
+        target = self.methanol(rs, (10.0, 5.0, -3.0))
+        _, adj = rs.heavy_graph(ours, {(0, 1), (0, 2), (1, 3)})
+        moved = rs.transfer_hydrogens(ours, {2: 0, 3: 1}, [0, 1], {0: 0, 1: 1},
+                                      [target[0], target[1]], adj)
+        before = rs.dist(ours[0], ours[2])
+        after = math.dist(moved[2], target[0][4:7])
+        assert after == pytest.approx(before, abs=1e-6)
+
+    def test_every_atom_is_written_not_just_the_heavy_ones(self, rs, tmp_path):
+        a = tmp_path / "a.pdb"
+        b = tmp_path / "b.pdb"
+        ours = self.methanol(rs)
+        a.write_text("".join(rs.pdb_lines(ours))
+                     + "CONECT    1    2\nCONECT    1    3\n"
+                       "CONECT    2    4\nEND\n")
+        b.write_text("".join(rs.pdb_lines(
+            [x for x in self.methanol(rs, (10.0, 0.0, 0.0)) if x[7] != "H"]))
+            + "END\n")
+        out = tmp_path / "m.pdb"
+        rs.mode_match([str(a), str(b), "--out=%s" % out])
+        written = [l for l in out.read_text().splitlines()
+                   if l.startswith("HETATM")]
+        assert len(written) == 4
+        assert [l[12:16].strip() for l in written] == ["C1", "O1", "HC", "HO"]

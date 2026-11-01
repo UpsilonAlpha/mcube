@@ -615,6 +615,68 @@ def isomorphisms(a_el, a_adj, b_el, b_adj, limit=64):
     return found
 
 
+
+def hydrogen_parents(atoms, bonds=None):
+    """{hydrogen index: heavy-atom index} over the full atom order.
+
+    From `bonds` where the file has CONECT, else the nearest heavy atom within
+    1.3 A, which is every X-H bond there is.
+    """
+    out = {}
+    if bonds is not None:
+        for i, j in bonds:
+            for h, heavy in ((i, j), (j, i)):
+                if atoms[h][7] == "H" and atoms[heavy][7] != "H":
+                    out[h] = heavy
+        return out
+    heavy_idx = [k for k, a in enumerate(atoms) if a[7] != "H"]
+    for k, a in enumerate(atoms):
+        if a[7] != "H":
+            continue
+        near = sorted((dist(a, atoms[m]), m) for m in heavy_idx)
+        if near and near[0][0] <= 1.3:
+            out[k] = near[0][1]
+    return out
+
+
+def local_environment(index, adj, want=4):
+    """`index` plus its neighbours and their neighbours, as a set.
+
+    Enough atoms to define a rigid frame: a hydrogen's parent and one neighbour
+    are two points, and two points leave a free rotation about their axis -
+    which would spin the hydrogen anywhere on a cone.
+    """
+    env = {index} | set(adj[index])
+    if len(env) < want:
+        for nb in list(adj[index]):
+            env |= set(adj[nb])
+    return env
+
+
+def transfer_hydrogens(atoms, parents, heavy_order, mapping, template_heavy, adj):
+    """{hydrogen index: new xyz}, each placed by its parent's local frame.
+
+    The heavy atoms move to the template's coordinates, which changes the
+    conformation; a hydrogen left where it was would be a bond stretched across
+    the molecule. Each one is carried over by fitting the small rigid group
+    around its parent - the parent, its neighbours and theirs - onto the same
+    atoms in their new positions, and applying that fit.
+    """
+    position = {atom_index: k for k, atom_index in enumerate(heavy_order)}
+    moved = {}
+    for h, parent in parents.items():
+        if parent not in position:
+            continue
+        env = [i for i in local_environment(position[parent], adj)]
+        if len(env) < 3:
+            env = list(range(min(3, len(heavy_order))))
+        src = [atoms[heavy_order[k]][4:7] for k in env]
+        dst = [template_heavy[mapping[k]][4:7] for k in env]
+        fit = kabsch(src, dst)
+        moved[h] = tuple(apply_fit(fit, atoms[h][4:7]))
+    return moved
+
+
 def mode_match(args):
     """Put our ligand's atom names on a deposited ligand's coordinates.
 
@@ -625,9 +687,11 @@ def mode_match(args):
     LMP and our `hyd` name the same 27 atoms completely differently - and the
     output is **our** atom names and order at the **template's** coordinates.
 
-    Hydrogens are dropped rather than moved: the template has none, and a
-    hydrogen left at its old position after the heavy atoms have moved is a
-    bond stretched across the molecule. `preprocess` adds them back.
+    Hydrogens come across too, each carried by a rigid fit of the small group
+    around its parent, because mcube parameterises a ligand from its own file
+    against `AddHs(MolFromSmiles(...))` and a structure without them cannot
+    match that template. Leaving them at their old coordinates is not an
+    option either: the heavy atoms have moved.
 
     The number of distinct mappings is printed. More than one means a symmetric
     group - the two oxygens of a carboxylate, the two methyls of an amide - and
@@ -669,11 +733,31 @@ def mode_match(args):
     if varying:
         print("  interchangeable under the symmetry: %s" % ", ".join(varying))
 
-    moved = []
+    heavy_order = [i for i, a in enumerate(ours) if a[7] != "H"]
+    placed = {}
     for i, a in enumerate(a_heavy):
         t = b_heavy[best[i]]
         print("     %-5s <- %-5s" % (a[0], t[0]))
-        moved.append((a[0], a[1], a[2], a[3], t[4], t[5], t[6], a[7]))
+        placed[heavy_order[i]] = (t[4], t[5], t[6])
+
+    # mcube parameterises a ligand from its own PDB and matches it against
+    # `AddHs(MolFromSmiles(...))`, so the file needs its hydrogens: without
+    # them the template carries 26 atoms the structure does not and the
+    # substructure match cannot succeed, whatever the protonation. Five
+    # preprocess jobs died on that (D162).
+    parents = hydrogen_parents(ours, our_bonds)
+    placed.update(transfer_hydrogens(ours, parents, heavy_order, best,
+                                     b_heavy, a_adj))
+    missing = [i for i, a in enumerate(ours) if i not in placed]
+    if missing:
+        raise SystemExit(
+            "%d atom(s) could not be placed, including %s - every hydrogen "
+            "needs a heavy-atom parent. Nothing was written."
+            % (len(missing), ours[missing[0]][0]))
+    moved = [(a[0], a[1], a[2], a[3]) + placed[i] + (a[7],)
+             for i, a in enumerate(ours)]
+    print("  %d atoms placed (%d heavy, %d hydrogens carried on their "
+          "parents' frames)" % (len(moved), len(a_heavy), len(parents)))
 
     if opts.get("out"):
         resname = moved[0][1]
@@ -686,13 +770,16 @@ def mode_match(args):
             # which is what job 31299591 died of, and the right behaviour: a
             # ligand whose bonds are guessed from distance is how this project
             # got a spurious O-O bond once already (D21).
-            for i in range(len(a_adj)):
-                for j in sorted(a_adj[i]):
-                    if j > i:
-                        fh.write("CONECT%5d%5d\n" % (i + 1, j + 1))
+            for i, j in sorted(our_bonds or set()):
+                fh.write("CONECT%5d%5d\n" % (i + 1, j + 1))
+            if our_bonds is None:
+                for i in range(len(a_adj)):
+                    for j in sorted(a_adj[i]):
+                        if j > i:
+                            fh.write("CONECT%5d%5d\n"
+                                     % (heavy_order[i] + 1, heavy_order[j] + 1))
             fh.write("END\n")
-        print("  written to %s (heavy atoms and CONECT; preprocess adds "
-              "hydrogens)" % opts["out"])
+        print("  written to %s (all atoms and CONECT)" % opts["out"])
 
 
 if __name__ == "__main__":
