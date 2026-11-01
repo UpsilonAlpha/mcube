@@ -186,3 +186,19 @@ class TestTheBetaLactamMarker:
                atom("O32", "LMP", "C", 1, (9.4, 3.9, 0.0), "O")]
         out = self.report(rs, lig, capsys)
         assert "amide C=O" in out and "<-- beta-lactam" not in out
+
+    def test_two_carboxylates_make_it_abstain(self, rs, capsys):
+        """Moxalactam has a second carboxylate on its side arm, and the rule
+        then picks the distal amide over the lactam the crystal shows on the
+        metal. Abstaining is the only safe answer."""
+        lig = [atom("C1", "MX0", "C", 1, (0.0, 5.0, 0.0), "C"),
+               atom("O1", "MX0", "C", 1, (1.2, 5.0, 0.0), "O"),
+               atom("N1", "MX0", "C", 1, (-0.7, 6.2, 0.0), "N"),
+               atom("C13", "MX0", "C", 1, (3.5, 5.0, 0.0), "C"),
+               atom("O8", "MX0", "C", 1, (4.2, 6.0, 0.0), "O"),
+               atom("O9", "MX0", "C", 1, (3.9, 3.9, 0.0), "O"),
+               atom("C11", "MX0", "C", 1, (12.0, 5.0, 0.0), "C"),
+               atom("O6", "MX0", "C", 1, (12.7, 6.0, 0.0), "O"),
+               atom("O7", "MX0", "C", 1, (12.4, 3.9, 0.0), "O")]
+        out = self.report(rs, lig, capsys)
+        assert "<-- beta-lactam" not in out and "2 carboxylates" in out

@@ -209,9 +209,17 @@ def ligand_report(label, lig, zn, reference=None):
                 for c, o, _ in amides), default=None)
     if ring and ring[0] > 6.0:
         ring = None
+    # Abstain where the rule cannot be trusted: moxalactam carries a second
+    # carboxylate on its side arm, and the nearest-carboxylate test then picks
+    # the distal amide (6.52 A from the zinc) over the lactam the crystal puts
+    # at 2.53 A. A wrong label is worse than none.
+    if len(acids) != 1:
+        ring = None
     for c, o, n in amides:
         near = min((dist(c, a) for a in acids), default=float("nan"))
-        mark = "  <-- beta-lactam" if ring and c is ring[1] else ""
+        mark = ("  <-- beta-lactam" if ring and c is ring[1]
+                else ("  (%d carboxylates: not marked)" % len(acids)
+                      if len(acids) != 1 else ""))
         print("     amide C=O at %-4s: Zn-O %.2f (N %s, %.1f A from a "
               "carboxylate C)%s" % (c[0], dist(zn, o), n[0], near, mark))
     if reference:
