@@ -3977,11 +3977,35 @@ Everything else, `C4x` and `N1x` among them, is unchanged - which matters, becau
 
 **What this breaks.** Any config selector naming a ligand atom was written against the ligand file and means a *different atom* in the system that runs. Nothing records the map, nothing warns, and the failure is silent: `D:1:O01` simply does not resolve, while `D:1:O5x` resolves to the wrong oxygen. There are now three naming systems in play - the reactant's substrate, the grafted product, and the simulated product - and a selector has to say which.
 
-**Proposed, not built:** `preprocess` should record the input-to-parameterised name map in `preprocess.results` (and warn when it is non-empty), so a config can be checked against it. Preserving the input names instead would be better still, if the parameterizer can be made to.
+**Built in D169:** `preprocess` records the input-to-parameterised name map in `preprocess.results` and warns when it is non-empty.
 
 `prodpost` therefore carries 23 pairs written in **final-system names**, with pairs named by atom rather than by chemical role wherever the role has not been re-derived from the product's connectivity: the reactant monitor's roles do not carry over.
 
 632 pass locally (9 skipped, MDAnalysis- and ASH-gated), and the compile check now parses `postprocess.py` on every run, which is what would have caught D167's collapsed escape.
+
+**D169 - `preprocess` now records the ligand's input-to-parameterised atom-name map in its results and warns when it is non-empty, so a config's ligand selectors can be checked against the config.** (2026-11-02, user: "Yep add and document it correctly")
+
+## The failure this closes
+
+D168 found the renaming; this records it. OpenFF re-derives ligand atom names from the molecular graph, so the names in the ligand file a config was written against are not the names in the system that runs. The product's case is the bad one: three of the fifteen changes are a **permutation among names both files use** - `O01`->`O6x`, `O5x`->`O4x`, `O6x`->`O5x`. A selector written against the input therefore names a real but different atom. Nothing is missing, nothing raises, and a distance between the wrong pair of oxygens is reported under the right label. That is the one class of error no existing check could catch: `resolve_atoms` refuses a selector that matches nothing, and D168's own monitor reports a pair that does not resolve - but neither can see a selector that resolves to the wrong atom.
+
+## What it does
+
+`preprocess.ligand_atom_map(input_pdb, parameterised_pdb)` returns `{input name: parameterised name}` for **the entries that differ only**, so an empty map is the positive statement that the config's own names are the system's names. `run` calls it after `merge_ligand`, saves it as `preprocess.results.ligand_atom_map`, and prints each pair as a `[WARNING]` when it is non-empty, saying that ligand atom selectors must use the right-hand name.
+
+**Matched by coordinate, not by order or by name.** The parameteriser writes back the geometry it was given, so a coordinate match is the one correspondence a renaming or a reordering cannot fool - and it is how D168's map was established by hand in the first place. The tolerance is 0.05 A, two orders below a bond.
+
+**Only for a `.pdb` input.** A `.mol` or `.pdbqt` ligand carries no atom names to map from, so there is nothing to compare and no warning to give. This is the reactant's case: its substrate comes in through a PDBQT, which is why the reactant's configs never hit this.
+
+**A map that cannot be built is reported and empty, never guessed.** Different atom counts, an atom with no match, an ambiguous match, a missing file: each prints what it could not do and tells the reader to check the selectors by hand. The parameterisation has already succeeded by this point and failing a run over an analysis aid would be worse than the gap - but the warning matters, because a silent `{}` would read as "no renaming happened", which is the opposite claim.
+
+## What it does not do
+
+It does not stop the renaming. Preserving the input names through `small_molecule_parameterizer` would be better - the map would then always be empty and no config would need checking - but that means getting names back onto the parameterised molecule inside ASH's call, which I have not established is possible cleanly. The map is the version that is safe to have now. **P7: try to preserve the input ligand atom names through parameterisation, and if it works, keep the map as the check that it worked.**
+
+It also does not rewrite existing configs. `prodpost`'s 23 pairs are already in final-system names (D168); nothing else in `site.yaml` names a ligand atom, and the product's `prodqm` selects whole residues rather than atoms. The next config that needs one - the reactant build's `C4x`-`N1x` bond, where both names happen to be unchanged - can now be checked against `preprocess.results.ligand_atom_map` instead of against a coordinate match done by hand.
+
+`tests/test_ligand_atom_map.py` is 12 tests, and the permutation is the one they are built around: the same four oxygens in both orders, which must give the same map.
 
 ## Resources (see `running-on-bunya.md`)
 
@@ -3998,3 +4022,4 @@ Everything else, `C4x` and `N1x` among them, is unchanged - which matters, becau
 - P4: Δ1 tautomer pathway (D19).
 - P5: DFT/MM energies along the converged xTB paths.
 - P6: establish whether the Lys226 -> OH- transfer survives in a clean four-coordinate sphere (D41). Blocks all scans.
+- P7: preserve the input ligand atom names through OpenFF parameterisation, so `preprocess.results.ligand_atom_map` is always empty (D169).

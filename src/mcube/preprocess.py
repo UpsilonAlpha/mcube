@@ -781,6 +781,63 @@ def ligand_mol_from_pdb(ligand: str, charge: int, smiles: str = None) -> Chem.Mo
     return mol
 
 
+NAME_MAP_TOLERANCE = 0.05       # A; the parameteriser does not move the atoms
+
+
+def ligand_atom_map(input_pdb: str, parameterised_pdb: str,
+                    tolerance: float = NAME_MAP_TOLERANCE) -> Dict[str, str]:
+    """Input ligand atom names -> the names the parameterised ligand carries.
+
+    OpenFF re-derives atom names from the molecular graph, so the names in the
+    ligand file a config was written against are not the names in the system
+    that runs. For the hydrolysed meropenem product 15 of 53 names changed, and
+    three of those were a permutation among names that both files use -
+    `O01`->`O6x`, `O5x`->`O4x`, `O6x`->`O5x` - so a selector written against
+    the input named a real but different atom: no missing atom, no error, a
+    distance between the wrong pair of oxygens reported under the right label
+    (D169).
+
+    Atoms are matched by coordinate, not by order or by name. The parameteriser
+    writes the same geometry it was given, and a coordinate match is the one
+    correspondence a renaming or a reordering cannot fool. Only the entries
+    that differ are returned, so an empty map means the config's own names are
+    the system's names.
+
+    A map that cannot be built is reported and returns `{}`: the warning tells
+    the reader to check the selectors by hand, and the parameterisation itself
+    has already succeeded, so this is not worth failing a run over.
+    """
+    for path in (input_pdb, parameterised_pdb):
+        if not Path(path).is_file():
+            print(f"[WARNING] Cannot map ligand atom names: no file at {path}. "
+                  "Check any ligand atom selectors in the config by hand.")
+            return {}
+
+    want = [(r[2], r[5]) for r in coordination_rows(input_pdb)[0]]
+    got = [(r[2], r[5]) for r in coordination_rows(parameterised_pdb)[0]]
+    if len(want) != len(got) or not want:
+        print(f"[WARNING] Cannot map ligand atom names: {input_pdb} has "
+              f"{len(want)} atoms and {parameterised_pdb} has {len(got)}. "
+              "Check any ligand atom selectors in the config by hand against "
+              f"{parameterised_pdb}.")
+        return {}
+
+    tol2 = tolerance * tolerance
+    mapping: Dict[str, str] = {}
+    for name, xyz in want:
+        near = [other for other, pos in got
+                if sum((a - b) ** 2 for a, b in zip(xyz, pos)) <= tol2]
+        if len(near) != 1:
+            print(f"[WARNING] Cannot map ligand atom names: {name} in "
+                  f"{input_pdb} matches {len(near)} atoms of "
+                  f"{parameterised_pdb} within {tolerance} A. Check any ligand "
+                  "atom selectors in the config by hand.")
+            return {}
+        if near[0] != name:
+            mapping[name] = near[0]
+    return mapping
+
+
 def merge_ligand(protein_pdb: str, ligand: str, model: int = 1, charge: int = 0,
                  resname: str = None, smiles: str = None, merge: bool = True) -> Tuple[str, str]:
     """
@@ -1119,6 +1176,7 @@ def run(args) -> Dict[str, Any]:
     forcefields = resolve_forcefields(forcefields, args.config)
 
     resname = ligand_resname(inputs)
+    atom_map: Dict[str, str] = {}
 
     if inputs.get("ligand"):
         print("[STEP] Preparing ligand...")
@@ -1126,6 +1184,21 @@ def run(args) -> Dict[str, Any]:
                                                 inputs.get("charge"), resname=resname,
                                                 smiles=inputs.get("ligand_smiles"),
                                                 merge=inputs.get("merge_ligand", True))
+        # The names in `ligand` are the names the config was written against;
+        # the names in the system are the parameteriser's. Record the
+        # difference so a config can be checked against the config, and say so
+        # here because nothing downstream can tell a mistyped selector from a
+        # renamed one (D169). Only a PDB input has names to map from: .mol and
+        # .pdbqt carry none.
+        if str(inputs["ligand"]).lower().endswith(".pdb"):
+            atom_map = ligand_atom_map(inputs["ligand"], f"{resname}.pdb")
+            if atom_map:
+                print(f"[WARNING] OpenFF renamed {len(atom_map)} ligand atoms "
+                      "while parameterising. Ligand atom selectors in the "
+                      "config must use the right-hand name, which is the one "
+                      "in the system that runs:")
+                for before, after in sorted(atom_map.items()):
+                    print(f"[WARNING]   {before} -> {after}")
     else:
         ligand_xmlfile = inputs.get("ligand_xmlfile")
         pdb_file = inputs.get("protein_pdb")
@@ -1228,6 +1301,7 @@ def run(args) -> Dict[str, Any]:
     result = {
         "ligand_xml": ligand_xmlfile,
         "ligand_resname": resname if inputs.get("ligand") else None,
+        "ligand_atom_map": atom_map,
         "processed_pdb": Path(pdb_file).resolve().as_posix(),
         "qm_residues": qm_residues,
         "qm_atoms": qm_atoms,
