@@ -3729,6 +3729,17 @@ Zn ZN1 chain B:  1.90 HOH W1 | 2.09 His164 NE2 | 2.22 His88 NE2
 **Nothing submitted.** A 100 ns MD and a 50 ps QM/MM on a guessed protonation state would produce a product complex that cannot anchor a reaction coordinate, which is the whole purpose. The graft, the mapping and the restraint finding stand whatever is decided.
 
 
+**D160 - The product preprocess failed twice in nine seconds total, both times on the submission rather than the science, and the second one was worth fixing at the tool: a grafted ligand written without CONECT is 27 unbonded atoms to the thing that reads it.** (2026-11-01, jobs 31296723 and 31299591 FAILED; 31299717 submitted)
+
+**31296723, 3 s.** `run.slurm preprocess` with no second argument: the script takes `<stage> <section>` and preprocess's section is the word `preprocess` again, which its own usage line says. My error, and the script caught it before anything ran.
+
+**31299591, 6 s.** `OSError: Bad input file ./hyd_crystal.pdb` from `Chem.MolFromPDBFile(..., proximityBonding=False)`. **mcube reads a ligand with proximity bonding switched off on purpose** - D21 records RDKit's distance-based bonding inventing an O-O bond in this very molecule - so the bonds have to come from CONECT records, and `refstruct.py match` wrote none.
+
+Fixed where it belongs (`65e0b27`, 2 tests): `match` now writes CONECT from the graph it did the matching on. The connectivity was already known exactly - it is what the isomorphism was computed from - so emitting it costs nothing and keeps the ligand's bonds out of a distance guess, which is the same reason `proximityBonding=False` is there.
+
+**Neither failure touched the structure.** The regrafted `hyd_crystal.pdb` is the same 27 atoms with the same 8-fold symmetric mapping, now with its 29 bonds written down. Resubmitted as **31299717**.
+
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
