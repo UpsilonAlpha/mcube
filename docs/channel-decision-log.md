@@ -1561,7 +1561,9 @@ blocks 30576666/67 held; the Ca jobs run)
       keeps 1.8 (CA_la) / 1.6 (CA_lu) protein O over the second half, with 5.7–5.9 waters. `round2.sh ca` (frames
       and swaps for CAla, CAlu and the Ca water cube: site 31277233, water 31277234) and `round2.sh inbox` (20
       swaps, 31277506; every site source linked, CAla/CAlu included). The bulk frames sit 38–54 Å from the
-      protein, 16–21 Å from the nearest lipid P and 45–50 Å from the box edge in z.
+      protein, 16–21 Å from the nearest lipid P and 45–50 Å from the nearest face of the atoms'
+      bounding box (`edge_min_A`, any axis). In-box swaps 31277506: all 20 done (2026-11-02); `potential --pme`
+      submitted as 31353792.
   - **Ca vs Ln is the main test (user, 2026-10-30), so the reference moves into the membrane box.** No
     post-hoc correction fixes a 2+ → 3+ swap compared across two differently embedded systems. Comparing the site
     against the ion in the bulk water layer of the same periodic box makes the net-charge and Ewald-convention
