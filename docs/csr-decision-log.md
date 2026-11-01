@@ -3842,6 +3842,48 @@ Input is a different matter. The status bar reads **`Screen Reader Optimized`**,
 
 So the next step is one keystroke in the browser tab, and it is the user's: turn Screen Reader Optimized off. Everything else is ready - the rebuild is `make_product_run.py`, `sections.py prod100`, `sbatch`, and the zinc-shell check still gates the MD.
 
+**D165 - The product complex is built and its zinc shell is exactly what D159 predicted: four-coordinate, with the product's nearest oxygen at 2.92 A and not coordinating. The 100 ns MD is away (31327774). Three preprocess runs were needed, and the two failures in between both reported `[DONE]`.** (2026-11-01)
+
+## The shell, which is the result this build was for
+
+`refstruct.py shell` on `CSR_prod/preprocess_results/finalsystem.pdb`:
+
+```
+Zn ZN1 chain B:
+    1.90  O    HOH C1
+    2.09  NE2  HIS A164
+    2.14  O    HOH C2
+    2.22  NE2  HIS A88
+    2.80  OD2  ASP A92
+    2.92  O5x  hyd D1     <-- LIGAND
+    2.94  O4x  hyd D1     <-- LIGAND
+```
+
+**Four-coordinate - two histidines and two waters, at the 6NC5 distances - and the grafted product's nearest oxygen sits at 2.92 A, outside the 2.5 A detection cutoff.** D159 measured 3.41 A from the Zn1-site metal to the closest product atom in 5AXO and predicted ~2.9 A here; the graft reproduces it to within the fit error. Nothing of the product is restrained, which is what that measurement requires: everything that binds in 5AXO binds Zn2, the metal CSR-1 does not have.
+
+`coordination` holds exactly four terms (C:1:O 1.90, A:164:NE2 2.09, C:2:O 2.14, A:88:NE2 2.22) and `qm_residues` holds the zinc, His88, His164, Asp92, Arg90, Lys226, the ligand at D:1 and both waters - the reactant's QM region residue for residue, with the hydroxide now a water.
+
+## Two runs that failed by succeeding
+
+Both printed `[DONE] preprocess` and wrote a complete, solvated, internally consistent system.
+
+1. **31322290 built the complex without the complex.** `merge_ligand: false` is correct for the reactant, whose substrate sits inside `csr_crystal_start.pdb` and whose ligand file only supplies parameters. `make_product_run.py` inherited that flag into a run whose protein file has the substrate removed *on purpose*, so nothing ever put the product in. The zinc shell was right, the restraints were right, and the thing being equilibrated was apo CSR-1.
+2. **31325102's predecessor pointed every ligand selector at a water.** ASH's merge renames the water chain to C and appends the ligand as its own chain - D here. The reactant's `extra_qm_residues: {C: [1]}` and `constraint_exclude_residues: {C: [1]}` mean *the substrate* there and *a water* after the merge. Consequences, both silent: the ligand stayed out of the QM region, and the 1.90 A water lost its restraint, because the exclusion written for the ligand landed on it. A chain letter chosen by a merge is not a stable name for a molecule, and `extra_qm_residues` cannot catch this - a water at C:1 exists, so there is nothing to refuse.
+
+**Worth proposing as an mcube change:** let the ligand be named by resname rather than by chain and number (`constraint_exclude_resnames: [hyd]`, or a resname key in `extra_qm_residues`). Every selector that means "the ligand" is currently spelled as a position that another residue can occupy.
+
+## The reactant and the product are not built the same way, and that is now the open question
+
+`CSR_wt/config.yaml` says `cutoff: 2.5`, but its stored `preprocess.results` were produced under the **2.8 A default** and never regenerated. Its `coordination` has **five** terms, the fifth being **Asp92 OD2 at 2.80 A**, and it is stored as raw atom indices (4203, 4257, ...) rather than the selector strings the current code writes - two independent signs of a stale result.
+
+So the reactant's 100 ns MD and 50 ps QM/MM (D134/D136/D138) ran with the zinc-Asp92 distance **restrained at 2.80 A**, and with Asp92 in the QM region by detection. The product, built today at 2.5 A, restrains four contacts and gets Asp92 into the QM region only because `make_product_run.py` now adds it explicitly.
+
+That matters because restraining Asp92 to the metal fixes the very thing the mechanism question is about, and the standing position here is that there is no point starting from a structure where Asp92 is overcoordinated. The product is built the way that position implies. **The reactant is not, and bringing it into line means re-running its 100 ns MD and its 50 ps QM/MM.** The product MD does not depend on which way that goes, so it was submitted.
+
+## Disk
+
+268 of 300 GB. A 100 ns run of this system writes **2.9 GB**, so the MD and the QM/MM both fit in the 32 GB free. The large consumers are other projects (`glp1r_md` 41G, `channel` 38G, `boltzgen` 35G, `AANCA` 27G, `hf` 25G); all of CSR_wt is 6.9 G. `CSR_wt` holds two 2.9 GB 100 ns trajectories, `md_wt100_results` and `md_wt100b_results` - one is probably redundant, but D134/D138 cite these runs and nothing was deleted without checking which.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
