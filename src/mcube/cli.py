@@ -184,6 +184,12 @@ def build_parser():
     p5 = subparsers.add_parser("postprocess", help="Analyse trajectory")
 
     p5.add_argument("config", help="Input yaml file")
+    # Named like every other stage, so one config can hold an analysis per
+    # trajectory and `sections.py` can write it. Without this the stage could
+    # only read a section literally called `postprocess`, which is why the
+    # analysis of a named md run had to be driven from the command line.
+    p5.add_argument("--section", default="postprocess",
+                    help="Config section to read inputs from and write results to")
     p5.add_argument("--cutoff", type=float, default=2.6)
     p5.add_argument("--cores", type=int, default=int(os.environ.get("SLURM_CPUS_PER_TASK", 1)))
     p5.add_argument("--metals", nargs="+", default=["ZN"])

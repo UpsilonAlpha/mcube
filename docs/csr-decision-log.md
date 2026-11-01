@@ -3918,6 +3918,38 @@ For comparison, the structure the running product MD started from, `csr_crystal_
 
 **The case against grafting into an equilibrated frame.** Grafting into `md_wt100`'s end state would give the product an equilibrated protein, which is the motive and a good one. It would also start it with Asp92 bound at 2.02 A, which is rule 7 ("no cutoff undoes an artefact already in the coordinates", a mistake D120 has costed once), and it would break the matched control that makes "the product stayed" readable against "the reactant's substrate left". No structure available has both an equilibrated protein and an Asp92-out shell: `scan_00` is four-coordinate with Asp92 out at 3.60 A and descends from the equilibrated trajectory, but it is a constrained scan point, biased along the coordinate, and carries the substrate rather than the product.
 
+**D167 - The trajectory analysis this build needs is now a mcube stage. It was never missing from the framework so much as half-present: `postprocess` already had a coordination category, but it reimplemented the detection rule with a hardcoded donor set, a cutoff from the command line and no minimum image.** (2026-11-01, user: "stick to mcube rather than using custom scripts to keep everything reproducible")
+
+## What was actually outside mcube, after auditing rather than assuming
+
+The single-frame sphere never was: `preprocess.coordination_shell` is the rule, and `md` already prints it **before and after** every run, so a contact that appears during equilibration is visible in the job's own output. `sphere`'s protonation reporting has no mcube equivalent.
+
+The trajectory version is what mattered, and `mcube postprocess` had a version of it - an interaction graph with a `coordination` edge type and per-edge occupancy. Five differences from the rule that builds the restraints, all load-bearing here:
+
+| | `postprocess` as it was | the restraint rule |
+| --- | --- | --- |
+| donors | hardcoded `element N O S` | `preprocess.inputs.donor_elements` |
+| cutoff | `--cutoff`, default **2.6** | `preprocess.inputs.cutoff` (2.5 here) |
+| metals | `--metals`, default **ZN** | `preprocess.inputs.metals` |
+| periodicity | raw `np.linalg.norm` | minimum image on an orthorhombic CRYST1 |
+| keyed by | residue | atom or residue, a switch |
+
+So the cutoff and the metal list reached the analysis from a **command line**, which no config records - the reproducibility hole, and in a general library a default of `ZN` is this project leaking into everyone else's. Keying by residue also collapses a bidentate carboxylate to one edge, which is the distinction D166 had just measured. And nothing reported the coordination **number**, the quantity D114 shows semiempirical methods get wrong.
+
+## The change
+
+`coordination_shell` is split into `coordination_rows` (parsing) and `coordination_from_rows` (the rule). `postprocess` substitutes each frame's coordinates into those rows, so a trajectory is measured by the same rule, cutoff, donor set and minimum image as a file - one implementation, not two. It reports per-ligand occupancy with min/mean/max, the coordination number as a **distribution** (a site flipping between 4 and 5 is not a site at 4.5), and donors just past the cutoff, since 2.7 against a 2.6 cutoff is a borderline call about the site and not an absence. Settings come from `preprocess.inputs`; what was measured is saved into the section's `results`.
+
+`postprocess` also now takes `--section` like every other stage, and `inputs.md_section` names which md run to analyse - a run submitted as `md md_prod100` saves its results under that name, so a stage that could only read a section called `md` could not find them. `site.yaml` gains `prodpost`, so the analysis is submitted as `run.slurm postprocess postprocess_prodpost` and nothing is typed by hand.
+
+**Still outside mcube**, and only worth moving when needed: `site.py`'s `contacts` (named pairs over a trajectory, which the reaction-coordinate work will want), `nucleophiles`, `acceptors`, `joint`, `poses`, `graft`, `check`, `protonate`, and `refstruct.py` entirely. These are config-driven rather than hardcoded, but they are not stages and a result from them is not recorded in a config.
+
+## A testing gap this exposed, which is the part worth keeping
+
+The first version of the report had a `print("\n...")` whose escape had collapsed into a literal newline, so `postprocess.py` would not parse. **The local suite was green.** The only test importing that module is gated on MDAnalysis, which is not installed locally, so the module was never imported, never parsed, and the syntax error surfaced only on Bunya - in the one environment that has MDAnalysis. Gating on an optional dependency hides syntax errors in everything it guards.
+
+`tests/test_modules_compile.py` now parses every module in `src/mcube` and every `docs/csr` helper with `compile()`, which imports nothing and needs nothing installed. 632 pass locally (8 skipped, all ASH-gated), **707 pass on Bunya with nothing skipped.**
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

@@ -174,7 +174,8 @@ def run(args):
     # `postprocess.inputs` (read against the config's directory) rather than
     # from a flag; with neither key set it is the run the config already
     # records. `--trajectory` used to be accepted here and then ignored.
-    pp_inputs = load_section(args.config, "postprocess").get("inputs") or {}
+    section = getattr(args, "section", None) or "postprocess"
+    pp_inputs = load_section(args.config, section).get("inputs") or {}
     given_pdb = config_relative(args.config, pp_inputs.get("pdb_file"))
     given_traj = config_relative(args.config, pp_inputs.get("trajectory"))
     for key, value in (("pdb_file", given_pdb), ("trajectory", given_traj)):
@@ -203,7 +204,17 @@ def run(args):
                 W.write(u)
 
     else:
-        md = load_section(args.config, "md")
+        # Which md run to analyse. A run submitted as `md md_prod100` saves its
+        # results under that name, so defaulting to a section called `md` would
+        # find nothing and the paths would have to be repeated by hand.
+        md_section = pp_inputs.get("md_section") or "md"
+        md = load_section(args.config, md_section)
+        if not (md.get("results") or {}) and not (given_pdb and given_traj):
+            raise KeyError(
+                f"`{md_section}` has no results in {args.config}, so there is "
+                "no trajectory to analyse. Name the run with "
+                f"`{section}.inputs.md_section` (the section the md job was "
+                "submitted as), or give `pdb_file` and `trajectory` outright.")
         pdbfile = given_pdb or md["results"]["lastframe"]
         trajectory = given_traj or md["results"]["trajfile"]
         csv = md["results"]["csv"]
@@ -231,7 +242,7 @@ def run(args):
                 report_coordination_occupancy(rep, Path(trajectory).name)
                 result["coordination"] = rep
                 result["coordination_trajectory"] = Path(trajectory).resolve().as_posix()
-                save_result(result, filename=args.config, section="postprocess")
+                save_result(result, filename=args.config, section=section)
 
         df = pl.read_csv(csv)
 
@@ -267,7 +278,7 @@ def run(args):
             out = spec.get("out", "membrane_report")
             rep = membrane_report(pdbfile, trajectory, out, **options_from_config(spec))
             result["membrane_report"] = [Path(f).resolve().as_posix() for f in rep["files"]]
-            save_result(result, filename=args.config, section="postprocess")
+            save_result(result, filename=args.config, section=section)
             return rep
 
 
@@ -610,7 +621,7 @@ def run(args):
     result["rmsf_pdb"] = Path("rmsf_bfactor.pdb").resolve().as_posix()
     result["network_graph"] = Path("interaction_network.png").resolve().as_posix()
     result["network_csv"] = Path("interaction_network.csv").resolve().as_posix()
-    save_result(result, filename=args.config, section="postprocess")
+    save_result(result, filename=args.config, section=section)
 
 
     return output_pdb

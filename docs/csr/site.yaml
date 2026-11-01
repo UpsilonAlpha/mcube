@@ -1281,6 +1281,25 @@ sections:
       platform: CUDA
       properties: {Precision: mixed}
 
+  # The coordination sphere over the whole 100 ns, by the same rule that built
+  # the restraints: `mcube postprocess` reads `metals`, `cutoff` and
+  # `donor_elements` from `preprocess.inputs`, applies the minimum image, and
+  # saves what it measured into this section's `results` - so the config records
+  # the analysis as well as the run. This replaces `site.py shell`, which was
+  # outside the package and took its cutoff from a command line (D167).
+  #
+  # `per_residue: false` because a carboxylate binding with both oxygens is a
+  # different sphere from one binding with one, and keying by residue hides
+  # exactly that - D166 measured Asp92 monodentate at 2.02 in `md_wt100` and
+  # bidentate at 2.06/2.12 in `md_wt100b`.
+  prodpost:
+    stage: postprocess
+    inputs:
+      md_section: md_prod100
+      coordination:
+        per_residue: false
+        margin: 1.0
+
   # 50 ps of GFN2-xTB QM/MM MD from that trajectory's last frame. `charge` is
   # inherited at +2 and that is correct for the product as well as the
   # reactant: the hydroxide (-1) is gone and the ligand is -1 in its place.
