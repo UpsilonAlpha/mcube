@@ -1539,6 +1539,13 @@ blocks 30576666/67 held; the Ca jobs run)
         sources 57), so the pooled +24 mixes endpoints and means nothing. A one-sided value on the Ln endpoint is a
         lower bound on the linear-response ΔG, so −13 does not contradict −1.5. Closing it needs the Ca water swaps
         (`CA_1264_frames`, MM done 2026-10-30 12:33).
+      - **Closed (Ca water swaps 31277234, 2026-11-01).** The Ca endpoint against Ca water frames: Ca → La −9.5 ± 3.9,
+        Ca → Lu −11.6 ± 3.8. The two-endpoint mean (linear response) is **Ca → La ≈ −11.5 ± 2.7, Ca → Lu ≈ −10.1 ±
+        3.0**, against ≈ −1.5 measured. With the reference in the same box, so the net-charge terms cancel, the
+        direct r2SCAN QM/MM protocol over-favours Ln over Ca by ≈ 10 kcal/mol per monodentate carboxylate
+        (the cluster calibration gave +1.8 per carboxylate, SMD). La → Lu with all three endpoints: −1.7 ± 2.2.
+        So an in-box site ΔΔE has to beat ≈ −10 × (carboxylates on the ion) before it says anything about Ca vs Ln;
+        a per-carboxylate offset is only approximate for a multidentate ring.
     - **La Ch-BE site swaps (31053028, all 15 converged, 2026-10-31).** La → Lu on LAchbe frames +3.7 ± 3.2
       (La frames −1.1 ± 3.2, Lu frames −2.2 ± 1.3); pooled over the three sources +1.7 ± 2.8, site sd between
       sources 7.9. No La/Lu preference at the site beyond the ±3 kcal/mol the calibration supports. (Ca → Ln
