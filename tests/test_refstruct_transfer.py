@@ -351,3 +351,31 @@ class TestMatch:
         with pytest.raises(SystemExit) as exc:
             rs.mode_match([str(a), str(b)])
         assert "not the same molecule" in str(exc.value)
+
+    def test_the_output_carries_CONECT_records(self, rs, tmp_path):
+        """preprocess reads a ligand with proximityBonding=False, so without
+        CONECT RDKit sees unbonded atoms and refuses the file - job 31299591."""
+        a = tmp_path / "a.pdb"
+        b = tmp_path / "b.pdb"
+        ours = self.ethanol(rs, ["C1x", "C2x", "O1x"])
+        a.write_text("".join(rs.pdb_lines(ours)) + "END\n")
+        b.write_text("".join(rs.pdb_lines(
+            self.ethanol(rs, ["CAA", "CAB", "OAC"], (10.0, 0.0, 0.0)))) + "END\n")
+        out = tmp_path / "m.pdb"
+        rs.mode_match([str(a), str(b), "--out=%s" % out])
+        lines = [l for l in out.read_text().splitlines() if l.startswith("CONECT")]
+        assert len(lines) == 2                      # C-C and C-O
+        assert "CONECT    1    2" in lines
+
+    def test_the_coordinates_written_are_the_templates(self, rs, tmp_path):
+        a = tmp_path / "a.pdb"
+        b = tmp_path / "b.pdb"
+        a.write_text("".join(rs.pdb_lines(self.ethanol(rs, ["C1x", "C2x", "O1x"]))))
+        b.write_text("".join(rs.pdb_lines(
+            self.ethanol(rs, ["CAA", "CAB", "OAC"], (10.0, 0.0, 0.0)))))
+        out = tmp_path / "m.pdb"
+        rs.mode_match([str(a), str(b), "--out=%s" % out])
+        first = [l for l in out.read_text().splitlines()
+                 if l.startswith("HETATM")][0]
+        assert first[12:16].strip() == "C1x"        # our name
+        assert float(first[30:38]) == pytest.approx(10.0)   # their coordinate

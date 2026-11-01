@@ -630,9 +630,19 @@ def mode_match(args):
         with open(opts["out"], "w") as fh:
             fh.writelines(pdb_lines(moved, resname,
                                     moved[0][2] or "L", int(moved[0][3] or 1)))
+            # CONECT, because the bonds are the whole point of this file.
+            # `preprocess` reads a ligand with `proximityBonding=False`, so
+            # without them RDKit sees 27 unbonded atoms and refuses the file -
+            # which is what job 31299591 died of, and the right behaviour: a
+            # ligand whose bonds are guessed from distance is how this project
+            # got a spurious O-O bond once already (D21).
+            for i in range(len(a_adj)):
+                for j in sorted(a_adj[i]):
+                    if j > i:
+                        fh.write("CONECT%5d%5d\n" % (i + 1, j + 1))
             fh.write("END\n")
-        print("  written to %s (heavy atoms only - preprocess adds hydrogens)"
-              % opts["out"])
+        print("  written to %s (heavy atoms and CONECT; preprocess adds "
+              "hydrogens)" % opts["out"])
 
 
 if __name__ == "__main__":
