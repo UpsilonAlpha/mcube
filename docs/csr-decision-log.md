@@ -3872,7 +3872,17 @@ Both printed `[DONE] preprocess` and wrote a complete, solvated, internally cons
 
 **Worth proposing as an mcube change:** let the ligand be named by resname rather than by chain and number (`constraint_exclude_resnames: [hyd]`, or a resname key in `extra_qm_residues`). Every selector that means "the ligand" is currently spelled as a position that another residue can occupy.
 
-## The reactant and the product are not built the same way, and that is now the open question
+## ~~The reactant and the product are not built the same way~~ [WITHDRAWN 2026-11-01, same day: wrong, and wrong because I inferred a history from two config files instead of reading the log I had already written. See the correction below.]
+
+**The correction.** `cutoff: 2.5` was decided deliberately - the rules section of this log says "a Zn-O/N bond is 1.9-2.2 A; **2.5 is defensible, 3.0 is not**", and says to set it explicitly because the library default is 2.8. It did not drift into the product by accident; inheriting it is correct.
+
+The stale five-term block is real but **inert**. It is `CSR_nac`'s, detected at **3.0 A** - not 2.8 - and carried in when D132 built `CSR_wt` as a copy of `CSR_nac`'s preprocess output. `md_wt100` set `coordination_redetect: true`, so the MD ignored it and measured the coordination itself: **D134 records four restraints redetected at 2.5 A - HOH 1.90, His164 2.09, O01 2.14, His88 2.22 - and states that nothing restrained Asp92 and nothing restrained the substrate.** `md_prod100` carries the same flag. So the reactant and the product are restrained identically, Asp92 free in both, and **nothing needs re-running.** D134's finding - Asp92 on the zinc in 5,000 of 5,000 frames - is a measurement precisely because nothing held it, which is the opposite of what the withdrawn section claimed.
+
+What survives is narrower and was already prescribed here: a fresh preprocess at 2.5 A **drops Asp92 from the QM region**, because its OD2 at 2.80 A is outside the cutoff and the reactant's saved region only has it by inheritance from the 3.0 A detection. D133's closing note says "put 92 and 93 in `extra_qm_residues` before ever re-running it". `make_product_run.py` now adds 92, so the product's QM region matches the reactant's residue for residue - the right change, for that reason rather than the one I gave. **Gln93 is in neither preprocess region**; the reactant's two scan sections add it per-section, so the product's reaction-coordinate sections will need `extra_qm_residues: {A: [93]}` the same way. Gln is neutral, so the QM charge stays unchanged.
+
+**The lesson, since this is the second time.** D133 wrote the note, and D165 asked the question it answers. Two config files were enough to build a plausible story, and the log had the measurement. Read the log entry for a run before reasoning about what that run did.
+
+## ~~The withdrawn section, kept as written~~
 
 `CSR_wt/config.yaml` says `cutoff: 2.5`, but its stored `preprocess.results` were produced under the **2.8 A default** and never regenerated. Its `coordination` has **five** terms, the fifth being **Asp92 OD2 at 2.80 A**, and it is stored as raw atom indices (4203, 4257, ...) rather than the selector strings the current code writes - two independent signs of a stale result.
 
