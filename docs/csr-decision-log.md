@@ -3779,6 +3779,24 @@ Twelve scripts in `docs/csr/`, and the documentation is in better shape than I e
 `CSR_prod` rebuilt with the inputs in the right place and **submitted as 31301810**, using the one-argument form to confirm the `run.slurm` change. Nothing has been equilibrated yet; the zinc shell check that gates the 100 ns MD is still the next thing to read. Scratch 265 of 300 GB.
 
 
+**D162 - The product preprocess failed seven times, and the protomer was a red herring: the real cause was that the grafted ligand had no hydrogens, which no SMILES can fix. Fixed, along with two file-format rules mcube's own guards caught. The zwitterion stands.** (2026-11-01, jobs 31299591 through 31303033 FAILED; 31303502 submitted)
+
+**The diagnostic that settled it.** D161 left a question open: run the product as the zwitterion (matching `hyd_zw.pdb`'s hydrogens and D13) or as the neutral amine (matching `CSR_hydrolysed`). I ran `CSR_hydrolysed`'s **known-good** SMILES as a one-variable test, and **it failed with exactly the same error**. So the SMILES was never the problem, and **the protomer question does not need answering to make the build work** - the zwitterion is restored, for the reason D13 gives.
+
+**The real cause.** `ligand_mol_from_pdb` builds its template as `Chem.AddHs(Chem.MolFromSmiles(smiles))` - 53 atoms - and matches it against the ligand file. My `refstruct.py match` wrote **heavy atoms only**, 27 of them, on the reasoning that `preprocess` adds hydrogens. It does, to the protein and the waters; the ligand is parameterised from its own file, and the docstring says so in its first line: *"Read a ligand PDB with explicit hydrogens"*. A 27-atom structure cannot match a 53-atom template under any protonation.
+
+`match` now **carries the hydrogens across**, each one by a rigid fit of the small group around its parent - the parent, its neighbours and theirs - onto those same atoms in their new positions. Leaving them at their old coordinates was never an option either, since the heavy atoms move to the template's conformation. 53 atoms out, 27 heavy and 26 hydrogens, with the X-H distances preserved by construction and a test that checks it.
+
+**Two more, both caught by mcube rather than by me**, and both worth having:
+
+1. **`preprocess.inputs` paths are read from the stage's working directory** while every other stage reads `pdb_file` against the config's (D161). Fixed in the builder; `ligand_mol_from_pdb` now names the directory instead of letting RDKit answer "Bad input file".
+2. **`check_residue_numbering` twice refused a chain not numbered 1..N.** Removing the substrate left its chain starting at residue 2; moving the converted water into the water chain then left that chain reading 2 then 1, because the hydroxide sat before the crystal water in the file and the check walks it in order. Both are real: ASH renumbers, so every selector would afterwards point at a different residue. The builder now moves the converted water to the end of the water block and numbers it after the others.
+
+**Seven failures, and every one of them was a guard doing its job** - a missing argument, a missing file, missing bonds, wrong bonds, missing hydrogens, and twice a numbering rule. None of them would have been visible in the output of a run that went ahead; the two that could have gone unnoticed, the bonds and the hydrogens, are exactly the ones that would have produced a parameterised molecule that was not the one we meant.
+
+**31303502 submitted** with the zwitterion SMILES and the 53-atom ligand. The zinc-shell check still gates the 100 ns.
+
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
