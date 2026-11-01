@@ -309,3 +309,48 @@ class TestTheLigandIsMergedIn:
         got = mod.product_config({"preprocess": {"inputs": {}}},
                                  "a", "b", "hyd")["preprocess"]["inputs"]
         assert got["merge_ligand"] is True
+
+
+class TestTheLigandSelectors:
+    """The reactant's `C: [1]` is the substrate because its substrate sits in
+    the protein file. After the merge the waters take C and the ligand takes a
+    chain of its own, so inherited unchanged those selectors name a water -
+    silently, because a water at C:1 exists (D165)."""
+
+    def cfg(self):
+        return {"preprocess": {"inputs": {
+            "extra_qm_residues": {"A": [90, 226], "C": [1]},
+            "constraint_exclude_residues": {"C": [1]}}}}
+
+    def test_the_qm_selector_moves_to_the_ligands_chain(self, mod):
+        got = mod.product_config(self.cfg(), "a", "b", "hyd")["preprocess"]["inputs"]
+        assert got["extra_qm_residues"][mod.LIGAND_CHAIN] == [1]
+        assert "C" not in got["extra_qm_residues"]
+
+    def test_the_restraint_exclusion_moves_too(self, mod):
+        """Left on C it excludes the 1.90 A water, which is a restraint the
+        crystal requires and the one the reactant has."""
+        got = mod.product_config(self.cfg(), "a", "b", "hyd")["preprocess"]["inputs"]
+        assert got["constraint_exclude_residues"] == {mod.LIGAND_CHAIN: [1]}
+
+    def test_the_protein_residues_are_kept(self, mod):
+        got = mod.product_config(self.cfg(), "a", "b", "hyd")["preprocess"]["inputs"]
+        assert 90 in got["extra_qm_residues"]["A"]
+        assert 226 in got["extra_qm_residues"]["A"]
+
+    def test_the_general_base_is_added_explicitly(self, mod):
+        """Asp92 is in the reactant's QM region only because that run used the
+        2.8 A default and its OD2 sits at 2.80. At 2.5 detection misses it."""
+        got = mod.product_config(self.cfg(), "a", "b", "hyd")["preprocess"]["inputs"]
+        assert mod.GENERAL_BASE in got["extra_qm_residues"]["A"]
+
+    def test_it_is_not_added_twice(self, mod):
+        cfg = self.cfg()
+        cfg["preprocess"]["inputs"]["extra_qm_residues"]["A"] = [90, 92, 226]
+        got = mod.product_config(cfg, "a", "b", "hyd")["preprocess"]["inputs"]
+        assert got["extra_qm_residues"]["A"].count(92) == 1
+
+    def test_a_config_without_selectors_is_untouched(self, mod):
+        got = mod.product_config({"preprocess": {"inputs": {}}},
+                                 "a", "b", "hyd")["preprocess"]["inputs"]
+        assert "extra_qm_residues" not in got

@@ -116,6 +116,7 @@ def product_config(reactant_cfg: dict, protein: str, ligand: str,
                    "ligand_resname": resname, "ligand_smiles": PRODUCT_SMILES,
                    "charge": -1, "ligand_xmlfile": None,
                    "merge_ligand": True})
+    retarget_ligand_chain(inputs, LIGAND_CHAIN)
     for section in ("md", "qmmm"):
         body = reactant_cfg.get(section)
         if body and body.get("inputs"):
@@ -125,6 +126,43 @@ def product_config(reactant_cfg: dict, protein: str, ligand: str,
 
 
 FF_KEYS = ("forcefields", "default_forcefields")
+
+# Where ASH's merge puts the ligand. `product_protein.pdb` holds the protein in
+# A, the zinc in B and the waters in W; the merge renames W to C and appends the
+# ligand as a chain of its own, which for this system is D. The reactant's
+# selectors say C:1 because there the substrate was inside the protein file, so
+# inherited unchanged they name a **water** - and nothing complains, because a
+# water at C:1 exists. That cost two preprocess runs: the ligand stayed out of
+# the QM region and the 1.90 A water lost its restraint, since the exclusion
+# meant for the ligand landed on it (D165).
+LIGAND_CHAIN = "D"
+
+# Asp92 is in the reactant's QM region, but only because that run was built
+# with the old 2.8 A default cutoff and its OD2 sits at 2.80: at the 2.5 A this
+# config now sets, detection misses it. It is the general base, so it belongs in
+# both QM regions by intent rather than by a cutoff that happens to reach.
+GENERAL_BASE = 92
+
+SELECTOR_KEYS = ("extra_qm_residues", "constraint_exclude_residues",
+                 "exclude_residues")
+
+
+def retarget_ligand_chain(inputs: dict, chain: str) -> dict:
+    """Move the reactant's ligand selectors onto the merged ligand's chain."""
+    old = (inputs.get("ligand_chain") or "C")
+    for key in SELECTOR_KEYS:
+        block = inputs.get(key)
+        if not isinstance(block, dict) or old not in block:
+            continue
+        block = dict(block)
+        block[chain] = block.pop(old)
+        inputs[key] = block
+    extra = inputs.get("extra_qm_residues")
+    if isinstance(extra, dict) and "A" in extra:
+        if GENERAL_BASE not in extra["A"]:
+            inputs["extra_qm_residues"] = dict(
+                extra, A=sorted(list(extra["A"]) + [GENERAL_BASE]))
+    return inputs
 
 
 def retarget_ligand_xml(inputs: dict, resname: str) -> dict:
