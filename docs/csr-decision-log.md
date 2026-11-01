@@ -4029,7 +4029,7 @@ The hypothesis is what the **R-Q-K** triad does to the mechanism: Arg90 in place
 
 This also sets up **P2** (switching off the charges of Lys226, Arg90 and Asp92 along each path): the per-residue contributions are the direct test of the hypothesis, and they need a converged path on each arm first.
 
-## Written, not submitted (2026-11-02, 00:3x)
+## Written, not submitted (2026-11-02, overnight)
 
 The bridge was not open - no code-server pane, so no way to read job 31327774 or submit anything, and the portal is the user's to open. What could be done without Bunya was done: `site.yaml` gains the product arm's whole path, `prodopt` -> `recombine` -> `expel` -> `pstep2`/`pstep1` -> `psaddle2`/`psaddle1`, each carrying `extra_qm_residues: {A: [93]}`, with the reasoning above in the comments. No `start` is set on either scan: `scan` defaults it to the distance in the structure it is given and records what it used, so there are no invented numbers waiting to be believed. `end` values are the reactant arm's own measurements (1.39 A for the ring, 3.00 A where `attack` begins).
 
