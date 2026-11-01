@@ -121,6 +121,8 @@ The approach angle has to be measured on our own trajectory.
 | **5K0W** | GOB-18 (B3, mono-Zn) | Zn2 (DHH); Gln116 OE1 on the metal at 2.04/2.21 Å | closest by subclass, wrong site |
 | **1X8I**, **1X8G** | CphA (B2, mono-Zn) | Zn2 (Asp-Cys-His) | the route ruled out twice |
 | **7UHI**, **7UHJ** | L1 (B3, di-Zn), intact moxalactam | Zn1 + Zn2 | the only measured Michaelis complex: carbonyl O1 at 2.53/2.63 Å from Zn1 |
+| **7UHH**, **7UHK** | L1, the 20 ms and 80 ms snapshots of the same series | Zn1 + Zn2 | the intact β-lactam is seen to 100 ms; cleavage at 150 ms |
+| **5B15** | SMB-1 (B3, di-Zn) + **hydrolysed doripenem** | Zn1 + Zn2 | the structure Mu & Xu built their ampicillin Michaelis model from, by swapping the ligand on its core (D155). A carbapenem, so the core match to meropenem is closer than the swap they published |
 
 **Every mononuclear MBL in the literature carries its zinc in the Zn2 site.**
 CSR-1's is in Zn1 (His87/His163 = BBL H116/H196). It appears to be the only

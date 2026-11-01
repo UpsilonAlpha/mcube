@@ -3432,7 +3432,7 @@ The closest literature analogue we have read in full is **SMB-1** (Mu & Xu 2020,
 
 That gives three possibilities, and they are distinguishable:
 
-1. **The pose is wrong.** Reversing the product complex would put the ligand where the chemistry requires rather than where Vina put it. `CSR_hydrolysed` already exists - built from the user's own crystal model `CSR_nontruncated_1metal_original.pdb`, with atom order deliberately matched to the reactant (D-entries at lines 101-122 of this log) - and it has never been used for this. **This is the cheapest and most defensible next step and it is the one the literature would expect.**
+1. **The pose is wrong.** Reversing the product complex would put the ligand where the chemistry requires rather than where Vina put it. `CSR_hydrolysed` already exists - built from the user's own crystal model `CSR_nontruncated_1metal_original.pdb`, with atom order deliberately matched to the reactant (D-entries at lines 101-122 of this log) - and it has never been used for this. **[Corrected 2026-11-01, D155: `CSR_hydrolysed` is a docked model too - CSR-1 has no complex structure of any kind, with substrate, product or inhibitor. The route that survives is transferring the ligand from another B3 enzyme's experimental complex, which is what D23 already did for the zinc.]**
 2. **The carbonyl does not coordinate in CSR-1 either**, and the acceptance criterion in `site.yaml` should be an oxyanion-hole contact rather than a Zn-O2x distance - in which case the question becomes which residue, and the answer from our own measurements is *none of the RQK three in this pose*.
 3. **The RQK site works on the C3 carboxylate rather than the carbonyl.** The one contact that is real and reproducible across everything we have is **Arg229 NH2-O4x at 3.62 +/- 0.04 A in all 45 optimised points and 64% of the MD frames** (D148, D150), and Lys226 NZ-O3x at 3.80-3.90 A. That is substrate *anchoring*, not nucleophile activation, and it is consistent with SMB-1, where Ser221/Thr223 hold the C3 carboxylate and no zinc contacts it.
 
@@ -3453,6 +3453,58 @@ D153 said the protonated state was hard to rule out because "a buried carboxylat
 ## 5. And the silent-success class is closed at the CLI
 
 D153 fixed the one section that could skip both of its steps. The general fix is now in `mcube.cli`: **`confirm_produced` raises unless the stage's result carries a key that means it computed something** - `sp_energy` for `sp`, `lastframe`/`trajfile` for `md`, `optimized_pdb`/`lastframe`/`trajfile`/`opt_energy` for `qmmm`, and so on - so the exit code is non-zero and **Slurm records FAILED rather than COMPLETED**. That is the part that matters: job 31186038 sits in the inventory as COMPLETED having computed nothing, and every reader of a job table treats COMPLETED as a result. `umbrella` is deliberately unlisted (its three entry points return three different shapes with no key in common) and a test asserts that, so listing it has to be a deliberate change. 12 tests.
+
+
+**D155 - The precedent for a docking-derived Michaelis complex says the dock is a starting point, not the answer: in the closest published study the ligand is placed by swapping it onto an experimental complex's core and the pose is then produced by ~10 ns of QM/MM MD. We already do exactly that for the zinc and never did it for the substrate.** (2026-11-01, user: "CSR_hydrolysed is also a docked structure. There's no crystal of CSR-1 with substrate bound. We need to get the literature-grade Michaelis complex from a docked structure, look for precedent.")
+
+D154 proposed reversing `CSR_hydrolysed` and that is wrong: it is a docked model too, and CSR-1 has no complex structure of any kind. Correcting that, here is what the literature actually does when it has no ES crystal - which is **always**, for this enzyme family.
+
+## 1. SMB-1, in its own words
+
+Mu & Xu 2020 (*J Mol Model* 26:71, the local PDF) is the closest analogue we have - same subclass, same question - and it had the same problem: *"due to its strikingly efficient catalytic activity, it is impossible to obtain crystallographic structure of enzyme in complex with a natural substrate."* Their protocol, from the Computational details section:
+
+1. **Start from an experimental complex of the same enzyme with a non-substrate ligand.** *"the initial model was extracted from the crystallographic structure of SMB-1 (PDB entry code 5B15), which is a structure in complex with hydrolyzed doripenem."*
+2. **Swap the ligand on the shared core.** *"On the basis of the same core structure between doripenem and ampicillin, we then manually replace this hydrolyzed intermediate with the ampicillin molecule."* Note what that is: a carbapenem replaced by a penicillin, by hand, on the core.
+3. **Place the mechanistic pieces by chemistry, not by docking.** *"one hydroxide ion was inserted into this position, which is further hydrogen bonded with D120"*; the C3/C4 carboxylate was *"postulated to have direct contact with zinc ion at the second position"*.
+4. **Let the simulation produce the pose.** *"Such a model would be further subjected to an extensive QM/MM molecular dynamic (MD) simulation for relaxation to generate the equilibrated Michaelis complex structure"* - 50 ps heating, 250 ps NPT, then **9.7 ns of SCC-DFTB/CHARMM QM/MM MD**.
+
+**The pose in that paper is not the modeller's and not a docking program's: it is whatever survived ten nanoseconds of QM/MM MD.** That is what "equilibrated Michaelis complex" means in this literature, and it is the standard we have not met - not because we docked, but because nothing has relaxed the complex at QM/MM level and then been measured.
+
+## 2. The precedent for starting from a dock
+
+For a docked start specifically, the IMP-1 study (*Proteins* 2022, 10.1002/prot.26227) is the pattern: **dock, then MD, then QM/MM refinement**, with two safeguards - the docking protocol is validated against ligands whose complexes *are* known, and the QM/MM optimisation is reported as having restored the experimentally observed coordination. So a docked start is publishable when (a) the protocol is shown to reproduce a known pose, and (b) the final geometry comes out of QM/MM, not out of the docking score. We have done neither: no redocking control exists, and no QM/MM MD of the current complex exists.
+
+## 3. We already use template transfer - for the metal
+
+**CSR-1's own crystals have no metal in them.** 6DN4 and 6DQ2 are metal-free (D22), and the published characterisation says the same of CSR-1 and CSR-1_trunc. The zinc in every structure in this project is there because **D23 superposed 6NC5 - the Q121H/K254H construct - on 256 Calpha at 0.58 A RMSD and moved Zn_alpha and its two waters across as a rigid unit**, then adjusted by 0.38 A so Zn-NE2 matched. The nucleophile is 6NC5's HOH493, transferred the same way.
+
+That is precisely the technique SMB-1 used for its ligand, applied by us to the metal and accepted without argument. **The substrate is the one component of the model that was never placed this way** - it came from AutoDock Vina, pose 2, chosen on a bond-graph match (D123). The inconsistency is the finding: there is no principled reason the metal gets a crystallographic template and the ligand does not.
+
+## 4. The templates we can transfer from
+
+| template | what it holds | why it fits |
+| --- | --- | --- |
+| **7UHI / 7UHJ** (+ 7UHH, 7UHK) | L1, B3, **intact moxalactam** - the only measured Michaelis complex in the family | the lactam end is positioned by experiment, carbonyl O1 at 2.53/2.63 A from Zn1 |
+| **5B15** | SMB-1, B3, hydrolysed **doripenem** | the published swap was doripenem -> ampicillin; doripenem -> **meropenem** is carbapenem to carbapenem, a *smaller* step than the one in print |
+| L1 + hydrolysed carbapenem products (PMC10148155) | stereochemistry of the product end | a check on the product state if a NEB ever needs one |
+
+**The caveat that has to be stated, not hidden: every template is di-zinc, and in all of them the C3 carboxylate is held by Zn2, which CSR-1 does not have.** So a transfer fixes the lactam end and the scaffold and leaves the carboxylate end to relax onto whatever CSR-1 offers. Our own measurements already say what that is - **Arg229 NH2-O4x at 3.62 +/- 0.04 A in all 45 optimised points and 64.2% of wt100b frames, Lys226 NZ-O3x at 3.80-3.90 A** (D148, D150) - which is the RQK site standing in for Zn2. That is the paper's thesis, and a transferred pose is a way to *test* it; a Vina pose is not, because the contacts it produces are whatever the scoring function liked.
+
+## 5. The cost, which is a system-size decision and not a core-count one
+
+SMB-1's 9.7 ns of QM/MM MD is the number to match, and at D151's unverified 1.7 ps/h it is **about 240 days**. They could afford it because of their boundary: a **25 A TIP3P sphere centred on Zn2, everything beyond 25 A deleted**, 22-25 A under Langevin dynamics, free inside 22 A, and 114 QM atoms. That is a few thousand atoms against our periodic box.
+
+So reaching the literature's equilibration length means changing the model, not the allocation. Three ways, in order of how much they concede:
+
+1. **Build a stochastic-boundary model for the equilibration only** - a sphere around the zinc, as SMB-1 did - and carry the relaxed complex back into the periodic system for the surface. Most faithful to the precedent; needs a truncation step mcube does not have.
+2. **Equilibrate classically for nanoseconds and report a short QM/MM MD as a stability check**, stating plainly that it is picoseconds against SMB-1's 9.7 ns. Cheapest, and defensible if the limitation is in the methods section rather than buried.
+3. **Measure the real rate first and then decide** - job 31277150 is running for exactly this, and until it lands every cost in this entry is built on a cancelled job's figure.
+
+## 6. What this means for the acceptance gate
+
+`carbonyl_on_metal` was already withdrawn for B3 (D123), and SMB-1 puts its carbonyl at **2.90 A from Zn1, not a ligand**, held instead by Gln157's amide. So the gate for a transferred pose should be the measured L1 geometry plus the C3-carboxylate anchoring, **judged after QM/MM relaxation rather than at the moment of grafting** - which is also the only way the judgement is about the enzyme rather than about the modeller.
+
+**Nothing submitted.** The step this points to is a build, not a job: superpose 7UHI/7UHJ and 5B15 onto the CSR-1 model, transfer the ligand as a rigid unit, graft meropenem onto the shared bicyclic core, run the redocking control the IMP-1 precedent implies (re-place each template's own ligand by the same procedure and report RMSD), clash-check it, and only then equilibrate. `site.py graft` already does bond-graph matching between ligands and `protonate` now clash-checks what it writes, so most of the tooling exists.
 
 
 ## Resources (see `running-on-bunya.md`)
