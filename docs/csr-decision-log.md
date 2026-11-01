@@ -4063,6 +4063,40 @@ D170 read Gln93's absence from the QM regions as a gap and called the omission "
 
 **The lesson is the same one as D165.** I inferred a design decision from a config's contents - twice now, in the same week - rather than from the record or from asking. "Present in these sections and absent in those" is evidence of a decision, not of a mistake, and the asymmetry was the decision being visible. `prodpost` monitors Gln93 NE2 to Asp92 OD1 and to the ligand's O2x, so the claim that it is far from everything will be a number on this trajectory rather than either of our assertions.
 
+**D172 - Before restarting, check the hydrogens: they are the one part of a system no crystal structure supplies, nothing downstream refuses a wrongly placed one, and an H sitting on another atom is a NaN waiting for the integrator to find it. `hydrogen_report` and `export_frames` put both halves of that in mcube.** (2026-11-02, user: "Go back a couple frames in the trajectory and restart - but before you do, check that the topology and forcefield is correct - make sure both the ligand and protein has hydrogens placed correctly, as that is the main thing not present in PDB structures")
+
+## Why this is the right check for this failure
+
+The NaN came with no warning: energy and temperature flat to the last reported frame, every force-field template matched, the minimiser satisfied. Everything that *can* be checked by a template match already was. What a template match cannot see is a hydrogen placed in the wrong spot or the wrong state - it checks that the names it needs are present, not that the geometry is possible or that the protonation is the one intended. Those are placed by pdbfixer, Modeller's `addHydrogens`, OpenFF's `AddHs`, or a graft done by hand, and on this arm all four touched the system.
+
+## What went into mcube
+
+`preprocess.hydrogen_report(pdb_file, inputs)` reads it off the structure, needing no force field and no connectivity, so it runs on a built system, a frame out of a trajectory, or someone else's PDB:
+
+- **Protonation states by which hydrogens are present**, not by residue name: HD1 alone is HID, HE2 alone is HIE, both is HIP; ASP with HD2 is ASH; GLU with HE2 is GLH. `residue_variants` asks for a tautomer - this reports what the file has. Asp92's charge is the question this whole site turns on, and a stray HD2 would quietly remove the electrostatic reason for the contact being measured.
+- **Residues with no hydrogens at all** - a TIP3P oxygen without its two is not water.
+- **Amide nitrogens missing their H**, proline and the terminal H1/H2/H3 variants excepted.
+- **Unattached hydrogens** (nothing heavy within 1.35 A) and **hydrogens with two heavy atoms that close**, which is the clash that becomes a NaN. The neighbour grid wraps with the cell, because `separation` applies the minimum image and a grid that did not wrap would report every atom at a box edge.
+- **The ligand's formula against its own `ligand_smiles`.** This is the check with no substitute: OpenFF types whatever it is given, so a ligand hydrogenated to the wrong protonation state parameterises cleanly and runs at the wrong charge. Methanol less one hydrogen is methoxide, and nothing but the formula says so.
+
+`preprocess` now runs it on every system it builds. `postprocess.inputs.hydrogens: true` runs it on an existing structure, which is how this arm's system - built before the check existed - gets checked without rebuilding it.
+
+`postprocess.export_frames` writes named frames back out through the topology, negative indices counting from the end, so a crashed run can be restarted from a frame *before* the crash. A frame past either end is refused rather than clamped, because silently clamping would restart a run from a geometry nobody chose. Written before any other analysis in the section, so the restart structure survives a later step failing.
+
+## A bug of my own, found by the first attempt
+
+Job 31354500 - the analysis of the salvaged 34 ns - died with `KeyError: 'csv'`. D171 made the trajectory and topology optional for a FAILED md section and left the reporter CSV required, so the stage still refused to analyse exactly the runs most worth analysing. The CSV is now optional too, and its thermodynamic plots are skipped with a line saying why.
+
+## The restart, as configured and not yet submitted
+
+`prod100b` resumes from **frame 1704 = 34.08 ns**, three frames and 60 ps before the crash. **Nothing else is changed**, and that is the point: 4 fs carried `md_wt100` through all 100 ns on the same constraints, so the timestep is not a known fault, and a product integrated differently from its reactant is a different control. Resuming from a PDB draws fresh velocities, which is the one thing that does differ - so a second crash near 34 ns indicts the system, while a clean run indicts the first integration step and nothing else.
+
+The four restraints are given **outright rather than redetected**. Redetecting on a trajectory frame would hold each metal-donor distance where MD had drifted to, which is the inversion D120 and D130 are about: a contact is held where the crystal has it, never where a previous run put it.
+
+**Job 31355566** does the export, the hydrogen check and the shell analysis in one pass. The restart waits on it: the user's instruction was to check the topology *before* restarting, and a restart from a frame whose hydrogens are wrong would reproduce the crash on purpose.
+
+43 of the new tests pass in the ASH environment, which is the one that has MDAnalysis - run there on purpose, since D167 is the entry about a gated test hiding a broken module.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

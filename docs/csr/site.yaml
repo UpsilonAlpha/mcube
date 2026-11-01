@@ -1384,6 +1384,45 @@ sections:
       time: 50
       rigid_water: false
 
+  # ---- prod100b: the restart after the NaN (D172) ----
+  #
+  # `md_prod100` (job 31327774) died at 34.14 ns with `Particle coordinate is
+  # NaN`, energy and temperature flat right up to the last reported frame. This
+  # resumes from frame 1704 - 34.08 ns, three frames and 60 ps BEFORE the crash,
+  # because the frames nearest it are the ones whose geometry is least
+  # trustworthy - and runs the remaining 65.9 ns.
+  #
+  # **Nothing else is changed, deliberately.** 4 fs carried the reactant's
+  # `md_wt100` through all 100 ns on the same constraints, so the timestep is
+  # not a known fault, and the two arms are a matched pair: a product
+  # integrated differently from its reactant is a different control. Resuming
+  # from a PDB draws fresh Maxwell-Boltzmann velocities, which is the one thing
+  # that does change - and that is the test. If it crashes again near 34 ns the
+  # fault is in the system and the arm needs rebuilding; if it runs through, the
+  # first one was an unlucky integration step.
+  #
+  # **The restraints are given outright, not redetected.** `coordination_redetect`
+  # on a trajectory frame would restrain the metal-donor distances at the values
+  # MD had drifted to, which is exactly the inversion D120 and D130 are about:
+  # a contact must be held where the CRYSTAL has it, never where a previous run
+  # put it. These four are `md_prod100.results.coordination_restraints` verbatim,
+  # which were themselves detected on `finalsystem.pdb` at the 2.5 A cutoff.
+  prod100b:
+    stage: md
+    inputs:
+      pdb_file: protdft/postprocess_prodpost/restart_1704.pdb
+      coordination_redetect: false
+      restraints:
+        - [B:1:ZN, C:1:O, 1.90, 50.0]      # the hydroxide-derived water
+        - [B:1:ZN, A:164:NE2, 2.09, 50.0]
+        - [B:1:ZN, C:2:O, 2.14, 50.0]
+        - [B:1:ZN, A:88:NE2, 2.22, 50.0]
+      nvt_time: 65920            # ps, to 100 ns in total with the 34.08 already run
+      traj_frequency: 5000
+      platform: CUDA
+      properties:
+        Precision: mixed
+
   # ---- The product arm's reaction coordinate (D170) ----
   #
   # Order: `prodopt` (a stationary product), then the two scans BACKWARDS along
