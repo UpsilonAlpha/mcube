@@ -4039,6 +4039,30 @@ The bridge was not open - no code-server pane, so no way to read job 31327774 or
 
 2. **The reactant arm's path sections do not have it either** - `attack`, `ringopen`, `step1`, `step2`, `saddle1`, `saddle2`. `aspout`, `aspin`, `michaelis2d`, `rwoff`, `rwon`, `qmrate` and `asph` all do, because D133 added it when the Asp92 question was the live one. So the sections that would produce the **barriers for the paper** are precisely the ones missing it, on both arms. The product arm is fixed; **the reactant arm is left as it is pending the user's call**, since those sections were planned before D133 and changing them changes work already designed. Left inconsistent, the two arms are not comparable, which is the whole point of building the second one.
 
+**D171 - The product's 100 ns MD did not finish: job 31327774 died at 34.14 ns with `Particle coordinate is NaN`. The same 4 fs timestep carried the reactant through all 100 ns, so the instability is the product's own. And Gln93's absence from the QM regions was the user's decision, not an oversight - D170 had that backwards.** (2026-11-02, user: "glutamine was left out deliberately because it's probably not involved/functional as it's neutral and far away from everything")
+
+## The failure
+
+`protdft/prod100-31327774.err`: `openmm.OpenMMException: Particle coordinate is NaN`, raised from `simulation.step` after 68.7 minutes, at step 8,535,000 of 25,000,000. `nvtsim.csv` has 1,707 frames and its last rows are unremarkable - potential energy -659,172 kJ/mol, 300.2 K, the same as 30 ns earlier - so the blow-up happened inside the final 20 ps reporting interval with no drift leading into it.
+
+**It is not the timestep as such.** `md_wt100` reached 100,000.00 ps at step 25,000,000 - 4 fs, the same `md.inputs` default, the same `autoconstraints='HBonds'` and `rigidwater=True`, completed. **It is not disk**: scratch is 273/300 GB and the write succeeded. What differs on this arm is the merged, OpenFF-parameterised 53-atom product ligand, which the reactant's run did not have (`merge_ligand: false` there - the substrate came in inside the protein PDB).
+
+A NaN with no energetic warning is a single bad interaction, not a degrading system: the candidates are the grafted geometry relaxing into a close contact, an OpenFF torsion on the hydrolysed carboxylate end, or mixed precision on CUDA. Which of those it is cannot be read off the trajectory; it can only be distinguished by restarting and seeing whether it recurs at the same place.
+
+## What is salvageable, and what it decides
+
+**34.14 ns of trajectory survived** - 1.0 GB of `NVTtrajectory.dcd`, written right up to the crash. The question that gates this arm is whether the zinc held its four-coordinate shell, and 34 ns answers that as well as 100 ns would; what 34 ns cannot do is match the reactant's 100 ns as a control. So `prodpost` runs now on what exists (**job 31354500**), and the restart decision waits on what it says. If the shell degraded before the crash, the NaN is a symptom and the arm needs rebuilding; if the shell is clean, the NaN is an accident and a restart is enough.
+
+`prodpost` therefore names `pdb_file` and `trajectory` directly, because a FAILED `md` section never recorded a `trajfile` or a `lastframe`. The topology is the trajectory's own first frame rather than `finalsystem.pdb` - postprocess refuses a topology whose atom count disagrees with the frames, and the first frame is by definition the structure the frames were produced from.
+
+**The restart options, for the user:** (a) continue from the last good frame with fresh velocities at 2 fs, ~5.4 h for the remaining 66 ns, which also tests whether 4 fs was the cause; (b) accept 34 ns as the product's equilibration and go straight to `prodqm`, giving up the matched 100 ns control; (c) restart at 4 fs with a new seed, cheapest and least informative.
+
+## Gln93: D170 corrected
+
+D170 read Gln93's absence from the QM regions as a gap and called the omission "easy to miss". It was not a gap. The user left it out deliberately: the Q of RQK is a **neutral** amide and far from the site, so it has none of the electrostatic lever the R and the K have, and the QM region stays as small as the question allows. Removed again from the eight product-arm sections D170 added. The sections that do carry it - `aspout`, `aspin`, `michaelis2d`, `rwoff`, `rwon`, `qmrate`, `asph` - added it for D133's Asp92 question, where the amide is a hydrogen-bond partner of the carboxylate rather than a charge, and that remains a different question from the barrier.
+
+**The lesson is the same one as D165.** I inferred a design decision from a config's contents - twice now, in the same week - rather than from the record or from asking. "Present in these sections and absent in those" is evidence of a decision, not of a mistake, and the asymmetry was the decision being visible. `prodpost` monitors Gln93 NE2 to Asp92 OD1 and to the ligand's O2x, so the claim that it is far from everything will be a number on this trajectory rather than either of our assertions.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
