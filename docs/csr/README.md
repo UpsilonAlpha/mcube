@@ -18,7 +18,8 @@ file.
 
 | File | What it is |
 | --- | --- |
-| `refstruct.py` | `shell` and `centre` modes against a downloaded PDB, so every reference number in `site.yaml` is re-derivable rather than quoted (D125) |
+| `refstruct.py` | deposited structures, measured so every reference number is re-derivable rather than quoted (D125). `shell` and `centre` for one structure; `similarity` for identity and CA RMSD between two (D158); `transfer` to put a deposited complex's ligand into our frame on a named atom correspondence, and `match` to put our atom names on it by graph isomorphism (D156, D159) |
+| `make_product_run.py` | builds the hydrolysed-product run directory from the reactant's: substrate out, hydroxide back to a water, grafted ligand in, every other preprocess input inherited so the two states stay comparable (D159). Writes into `preprocess_results/`, because `run.slurm` runs preprocess there |
 | `reference-structures.md` | the PDB IDs, ligand codes, exact commands and measured tables behind those numbers |
 | `job-inventory.md` | every job that has run, from `sacct`, with the decision-log entry that read it, each system's QM region, and the structures that are live inputs today |
 
@@ -52,7 +53,7 @@ bond — that is what the threshold above is for.
 | File | What it is |
 | --- | --- |
 | `traj_frame.py` | writes one frame of an xyz trajectory onto a PDB template, validating the atom count and the element-vs-name order |
-| `traj_contacts.py` | named active-site contacts over a trajectory - min, max, mean and the fraction of frames inside a cutoff, with the closest atom pair named (D111) |
+| `traj_contacts.py` | **superseded by `site.py contacts`** and kept only until D111's numbers are re-derived with it. Same measurement - min, max, mean and the fraction of frames inside a cutoff - but from a pair list hard-coded in the script rather than from `site.yaml`'s `monitor`, which is the thing this directory exists to avoid |
 
 **Building the ohH arm of the protonation test** (D112-D114). Only needed while
 that comparison is open; see `site.yaml`'s `ohHmin` and `ohH` sections.

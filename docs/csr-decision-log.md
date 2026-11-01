@@ -3740,6 +3740,45 @@ Fixed where it belongs (`65e0b27`, 2 tests): `match` now writes CONECT from the 
 **Neither failure touched the structure.** The regrafted `hyd_crystal.pdb` is the same 27 atoms with the same 8-fold symmetric mapping, now with its 29 bonds written down. Resubmitted as **31299717**.
 
 
+**D161 - The product preprocess failed a third time, and the cause is a real inconsistency in mcube rather than my typing: `preprocess.inputs` paths are read from the stage's working directory while every other stage reads `pdb_file` against the config's. Fixed three ways. Also, the helper-script audit: everything is documented except what was written today, and `traj_contacts.py` is now a duplicate.** (2026-11-01, jobs 31299591 and 31299717 FAILED, 31301810 submitted; user: "Why does run.slurm preprocess need two commands? ... check how many of those helper .py scripts should actually be a part of the mcube repo and documented")
+
+## 1. Why `run.slurm preprocess preprocess` was needed, and why it no longer is
+
+It was redundant and the user is right. `SECTION` was mandatory, but for preprocess the script sets `SECTION_ARGS=()` and never passes it on - the word only named the output directory, which is `preprocess_results` regardless. **`SECTION` now defaults to the stage name**, which is also mcube's own default section for every stage that takes one (`qmmm`, `sp`, `scan`, `neb`, `ts` all default to their own name), so `run.slurm preprocess` works and `run.slurm qmmm` means the `qmmm` section. Nothing that used to work changes.
+
+## 2. The failure that was not my typing
+
+Both 31299591 and 31299717 died in six seconds with `OSError: Bad input file ./hyd_crystal.pdb` - and the file was there, well formed, with CONECT records, and RDKit read it happily when asked from the run directory.
+
+**`run.slurm` does `cd "$OUT"` before calling mcube.** So `preprocess` resolves `protein_pdb` and `ligand` against `preprocess_results/`, while every other stage resolves `pdb_file` against the **config's** directory (`config_relative`, which exists precisely so a structure is found from wherever the stage runs). Two rules in one config file, and nothing says which applies where. The reactant run never tripped on it because its `csr_crystal_start.pdb` happens to live in `preprocess_results/` - the layout encodes the rule, and nothing else does.
+
+Three changes:
+
+- **`make_product_run.py` writes both inputs into `preprocess_results/`**, with the reason in a comment and two tests that assert the location, since the path in the config has to stay bare.
+- **`ligand_mol_from_pdb` checks the file exists first**, and the message names the working directory and contrasts it with `pdb_file`. RDKit's own error reads like a malformed structure and sends you to count PDB columns; it cost two jobs here.
+- The `run.slurm` change above, so the command is shorter and the directory rule is documented where it bites.
+
+**The deeper fix is not made:** preprocess should read its inputs the way every other stage does. Changing that would break every existing config whose paths are already `preprocess_results`-relative, so it needs a fallback (try the config's directory, then the stage's) and a sweep of the eleven run directories. Worth doing; not today.
+
+## 3. The helper-script audit
+
+Twelve scripts in `docs/csr/`, and the documentation is in better shape than I expected: **all of them were already in `README.md`**, including a "one-shot, kept only as a record" note for `migrate_paths.py` and `make_ohH_config.py`. The gaps:
+
+| script | tests | state |
+| --- | --- | --- |
+| `site.py`, `sections.py`, `refstruct.py` | yes | the core; `refstruct`'s three new modes were documented only in its own docstring - now in the README |
+| `make_product_run.py` | 16 | written today, was undocumented - now in the README |
+| `make_water_nuc.py`, `traj_frame.py`, `make_ohH_config.py`, `migrate_paths.py` | yes | fine |
+| **`traj_contacts.py`** | yes | **superseded.** `site.py contacts` does the same measurement from `site.yaml`'s `monitor`; this one carries its own hard-coded pair list, which is the exact anti-pattern `site.py`'s docstring exists to forbid - *"a contact is reported because the YAML names it and not because someone wrote a one-off script for this protein"*. Marked as superseded; delete once D111's numbers are re-derived with `site.py contacts`. |
+| `check_ohH_frame.py`, `check_ohH_system.py` | **none** | one-off pre-flight checks for a build that finished at D119. Documented but not marked one-shot, unlike their siblings. |
+
+**What should arguably not be in `docs/` at all:** `refstruct.py` says in its own docstring that it is *"deliberately independent of `site.py` and of `site.yaml`"* - it knows nothing about CSR-1 - and it now holds four generally useful operations: metal-shell measurement, local superposition and ligand transfer, ligand graph matching, and sequence/structure similarity. That is library code sitting in a documentation directory, and the same argument applies to `traj_frame.py`. Moving them into `src/mcube/` with a CLI entry point is the right shape; it is a refactor with no scientific content, so it is recorded here rather than done in the middle of a build.
+
+## 4. The run
+
+`CSR_prod` rebuilt with the inputs in the right place and **submitted as 31301810**, using the one-argument form to confirm the `run.slurm` change. Nothing has been equilibrated yet; the zinc shell check that gates the 100 ns MD is still the next thing to read. Scratch 265 of 300 GB.
+
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
