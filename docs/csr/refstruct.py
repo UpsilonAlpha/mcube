@@ -195,8 +195,25 @@ def ligand_report(label, lig, zn, reference=None):
         ds = sorted(dist(zn, o) for o in oxy)
         print("     carboxylate at %-4s: Zn-O %s"
               % (c[0], ", ".join("%.2f" % x for x in ds)))
-    for c, o, n in amide_carbonyls(lig):
-        print("     amide C=O at %-4s: Zn-O %.2f (N %s)" % (c[0], dist(zn, o), n[0]))
+    # Which amide is the beta-lactam: in a carbapenem its carbonyl carbon is a
+    # few angstroms from the C3 carboxylate on the same fused bicycle, while
+    # meropenem's dimethylcarbamoyl amide is at the far end of the pyrrolidine
+    # arm. A pdbqt pose has no usable atom names, so the ring has to be found
+    # by distance or not at all.
+    acids = [c for c, _ in carboxylates(lig)]
+    amides = amide_carbonyls(lig)
+    # 6 A gates it: in a hydrolysed product the only amide left is the distal
+    # one (7.0 A from a carboxylate C in LMP), and marking that the beta-lactam
+    # would label the one bond the enzyme has already broken.
+    ring = min(((min((dist(c, a) for a in acids), default=float("inf")), c, o)
+                for c, o, _ in amides), default=None)
+    if ring and ring[0] > 6.0:
+        ring = None
+    for c, o, n in amides:
+        near = min((dist(c, a) for a in acids), default=float("nan"))
+        mark = "  <-- beta-lactam" if ring and c is ring[1] else ""
+        print("     amide C=O at %-4s: Zn-O %.2f (N %s, %.1f A from a "
+              "carboxylate C)%s" % (c[0], dist(zn, o), n[0], near, mark))
     if reference:
         print("     centroid %.2f A from %s's"
               % (centroid_distance(lig, reference[1]), reference[0]))

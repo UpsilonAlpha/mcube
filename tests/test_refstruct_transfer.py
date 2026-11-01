@@ -155,3 +155,34 @@ class TestCentroid:
         a = [atom("C1", "L", "L", 1, (0.0, 0.0, 0.0), "C")]
         b = [atom("C1", "L", "L", 1, (3.0, 4.0, 0.0), "C")]
         assert rs.centroid_distance(a, b) == pytest.approx(5.0)
+
+class TestTheBetaLactamMarker:
+    """`ligand_report` marks which amide is the beta-lactam by its distance to
+    the C3 carboxylate on the same fused bicycle, because a pdbqt pose carries
+    no usable atom names. A hydrolysed product must get no mark at all: its
+    only remaining amide is the distal one, 7.0 A away in LMP, and labelling
+    that would name the bond the enzyme has already broken."""
+
+    def report(self, rs, lig, capsys):
+        zn = atom("ZN", "ZN", "B", 1, (0.0, 0.0, 0.0), "ZN")
+        rs.ligand_report("lig", lig, zn)
+        return capsys.readouterr().out
+
+    def test_the_ring_amide_is_marked(self, rs, capsys):
+        lig = [atom("C7", "MER", "C", 1, (0.0, 5.0, 0.0), "C"),
+               atom("O1", "MER", "C", 1, (1.2, 5.0, 0.0), "O"),
+               atom("N1", "MER", "C", 1, (-0.7, 6.2, 0.0), "N"),
+               atom("C3", "MER", "C", 1, (3.5, 5.0, 0.0), "C"),
+               atom("O3", "MER", "C", 1, (4.2, 6.0, 0.0), "O"),
+               atom("O4", "MER", "C", 1, (3.9, 3.9, 0.0), "O")]
+        assert "<-- beta-lactam" in self.report(rs, lig, capsys)
+
+    def test_a_distal_amide_alone_is_not_marked(self, rs, capsys):
+        lig = [atom("C6A", "LMP", "C", 1, (0.0, 5.0, 0.0), "C"),
+               atom("O7A", "LMP", "C", 1, (1.2, 5.0, 0.0), "O"),
+               atom("N7A", "LMP", "C", 1, (-0.7, 6.2, 0.0), "N"),
+               atom("C31", "LMP", "C", 1, (9.0, 5.0, 0.0), "C"),
+               atom("O31", "LMP", "C", 1, (9.7, 6.0, 0.0), "O"),
+               atom("O32", "LMP", "C", 1, (9.4, 3.9, 0.0), "O")]
+        out = self.report(rs, lig, capsys)
+        assert "amide C=O" in out and "<-- beta-lactam" not in out
