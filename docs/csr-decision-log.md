@@ -3507,6 +3507,76 @@ So reaching the literature's equilibration length means changing the model, not 
 **Nothing submitted.** The step this points to is a build, not a job: superpose 7UHI/7UHJ and 5B15 onto the CSR-1 model, transfer the ligand as a rigid unit, graft meropenem onto the shared bicyclic core, run the redocking control the IMP-1 precedent implies (re-place each template's own ligand by the same procedure and report RMSD), clash-check it, and only then equilibrate. `site.py graft` already does bond-graph matching between ligands and `protonate` now clash-checks what it writes, so most of the tooling exists.
 
 
+**D156 - The docked poses are measured against the only experimental Michaelis complex in the family, and none of them reproduces it. The pose the project has used since D123 is the second-furthest of the nine: its beta-lactam carbonyl is 4.90 A from the zinc where L1's is 2.27, and its C3 carboxylate is 8.14 A where L1's is 2.82. AIM-1 cannot help - it has no ligand-bound structure.** (2026-11-01, user: "compare the Vina poses to the L1 and SMB-1 structures, maybe also chuck AIM-1 in there if there's a structure with substrate bound")
+
+## 1. The templates, and which of them exist
+
+| PDB | enzyme | ligand | state | usable as a pose template? |
+| --- | --- | --- | --- | --- |
+| **7UHI / 7UHJ** | L1 (B3, di-Zn) | moxalactam, **intact** | Michaelis | **yes** - the only one |
+| **5AXO** | SMB-1 (B3, di-Zn) | **hydrolysed meropenem** | product | yes, for the product end |
+| 5B15 / 5B1U | SMB-1 | hydrolysed doripenem / imipenem | product | same |
+| 4AWY, 4AWZ, 4AX0, 4AX1 | **AIM-1** (B3) | **none** | apo / Q157 mutants | **no** |
+
+**AIM-1 has no substrate-bound structure.** Its four entries are the 2012 Leiros set: wild type, and the Q157A and Q157N mutants, all with zinc and water only. That paper studied binding by *docking plus QM/MM*, which is the same position we are in rather than a way out of it.
+
+One correction to a search result that would have cost a day: **5AXR is not the hydrolysed-meropenem complex** - it is SMB-1 with 2-mercaptoethanesulfonate, checked by reading the file. The meropenem complex is **5AXO** (ligand code LMP).
+
+## 2. How the comparison was done
+
+New `refstruct.py transfer` mode (`b5e226a`, 19 tests). It fits a template on named zinc-site atoms, moves its ligand into our frame, and reports what that ligand and each of our poses present to our zinc. The correspondence is **given explicitly, not guessed** - the three proteins number their residues differently - and the fit RMSD is printed so a wrong correspondence shows up as a bad fit rather than as a plausible pose. The fit is local, on the Zn1 site, which is the right frame for comparing where a ligand sits relative to the metal and makes no claim about the fold.
+
+The BBL correspondence used, from `refstruct.py shell` on each file rather than from the papers:
+
+| BBL | CSR-1 (model) | L1 7UHI | SMB-1 5AXO |
+| --- | --- | --- | --- |
+| 116 | His88 NE2 | His105 NE2 | His72 NE2 |
+| 196 | His164 NE2 | His181 NE2 | His150 NE2 |
+| 120 | Asp92 CG | Asp109 CG | Asp76 CG |
+| Zn1 | B:1:ZN | ZN301 | ZN301 |
+
+**The B3 Zn1 site is conserved enough for this to work.** SMB-1 fits onto L1 across two different enzymes at **0.254 A** over those four atoms; both fit our model at 0.50-0.85 A. L1's own Zn1-moxalactam O1 distance is 2.53 A and comes back as 2.27-2.85 A after transfer, which is the size of the fit error and the uncertainty every number below carries.
+
+## 3. The nine Vina poses against L1's moxalactam
+
+All in `CSR_ligand`'s frame, the one the poses were docked in, with the L1 ligand transferred into it (fit RMSD 0.851 A). "lactam C=O" is the ring carbonyl, identified by connectivity; "carboxylate" is the C3 one; "centroid" is the whole-ligand centroid against the transferred template's.
+
+| pose | Zn-lactam O | Zn-carboxylate O | centroid vs L1 |
+| --- | --- | --- | --- |
+| **L1 moxalactam (transferred)** | **2.27** | **2.82** | - |
+| 1 | 10.29 | 8.64 | 1.80 |
+| **2 - the one in use since D123** | **4.90** | **8.14** | **3.66** |
+| 3 | 9.21 | 4.65 | 2.13 |
+| 4 | 5.06 | 4.43 | **0.98** |
+| 5 | **3.67** | 4.70 | 2.39 |
+| 6 | 3.77 | 4.03 | 3.49 |
+| 7 | 4.35 | 4.52 | 1.93 |
+| 8 | 3.83 | **3.69** | 2.49 |
+| 9 | 5.43 | 8.08 | 3.22 |
+
+**No pose reproduces the experimental binding mode.** The best carbonyl approach in the whole set is 3.67 A (pose 5) against 2.27; the best carboxylate is 3.69 A (pose 8) against 2.82; and no pose is good at both. Pose 4 puts the ligand in nearly the right place - centroid 0.98 A - and still has its carbonyl 5.06 A from the metal, so it is the right position in the wrong orientation.
+
+**Pose 2, the one everything since D123 descends from, is the second-worst of the nine by centroid and worst-but-two by carbonyl.** It was chosen on a bond-graph match to a hand-picked pose and a Vina score of -5.624, not against a structure. Had this comparison existed in October, pose 5 or 8 would have been the candidate and pose 2 would have been rejected.
+
+## 4. And the structure we are actually running
+
+Measured in `CSR_wt`'s own frame (fit RMSD 0.622 A, transferred L1 carbonyl at 2.85 and carboxylate at 2.54):
+
+| | Zn-lactam O | Zn-carboxylate O | centroid vs L1 |
+| --- | --- | --- | --- |
+| L1 moxalactam (transferred) | 2.85 | 2.54 | - |
+| **`scan_aspin/scan_00.pdb`** | **4.69** | **6.37** | **5.15** |
+
+**5.15 A from the experimental pose - further than any of the nine docked poses was.** That is what the MD did to it: D134 and D138 recorded the substrate leaving the site and needing a 50 kcal/mol/A^2 tether, and this is the same fact in the one unit that can be compared with experiment. The 2D surface of D147/D149 was driving the carbonyl in against ~25-34 kcal/mol because the pose it started from has the ligand in the wrong place, not only the wrong orientation.
+
+## 5. What follows
+
+1. **The pose is the error, and it is now quantified rather than suspected.** D155 argued from precedent that the ligand should be placed by transfer from an experimental complex; this says the same thing from our own numbers, and gives the target: Zn-carbonyl ~2.5 A, Zn-C3-carboxylate ~2.8 A, and in L1 both at once.
+2. **The transferred L1 pose is itself the candidate start**, not a pose to score against. `refstruct.py transfer --out` already writes it; what it needs is meropenem grafted onto the moxalactam core (`site.py graft` does bond-graph matching), a clash check, and then the equilibration D155 set out.
+3. **One honest caveat, the same one as D155.** L1 is di-zinc, and in 7UHI the C3 carboxylate is held by **Zn2**, which CSR-1 does not have. The 2.82 A in the table is that carboxylate measured against our *single* Zn1 after transfer, so it is where the carboxylate sits, not a bond we should expect to form. What CSR-1 offers that end is Arg229 and Lys226 (D148, D150), and whether they can hold it there is exactly the question the rebuilt complex would answer.
+4. **Nothing is yet rebuilt and nothing was submitted.** The two jobs from D153 (31277149 `q93`, 31277150 `qmrate`) were still running when this was written.
+
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

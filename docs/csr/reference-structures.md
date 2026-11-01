@@ -157,3 +157,28 @@ CSR-1's Gln93 is BBL **121**, a Zn2 position. Same residue type, different site.
 - Das & Nair, **NDM-1 QM/MM**, arXiv:1702.01239 — cited in D40 for weak
   carbonyl coordination, and **withdrawn for B3** in D123: L1's time-resolved
   snapshots measure 2.53–2.63 Å.
+
+## Putting a template's ligand in our frame (D156)
+
+```
+R=/scratch/user/uquadhik/refs          # 7UHI.pdb, 5AXO.pdb, 5B15.pdb from RCSB
+M=/scratch/user/uquadhik/mcube/docs/csr
+F1=A:105:NE2=A:88:NE2,A:181:NE2=A:164:NE2,A:109:CG=A:92:CG,A:301:ZN=B:1:ZN
+F2=A:72:NE2=A:88:NE2,A:150:NE2=A:164:NE2,A:76:CG=A:92:CG,A:301:ZN=B:1:ZN
+
+python $M/refstruct.py transfer $R/7UHI.pdb CSR_wt/protdft/scan_aspin/scan_00.pdb \
+    --ligand=MX0 --zn=B:1:ZN --fit=$F1 --poses=... --poseres=mer
+python $M/refstruct.py transfer $R/5AXO.pdb CSR_wt/protdft/scan_aspin/scan_00.pdb \
+    --ligand=LMP --zn=B:1:ZN --fit=$F2
+```
+
+The nine docked poses are in `CSR_ligand`'s frame, not `CSR_wt`'s, so they are
+compared against a template transferred into **that** frame
+(`CSR_ligand/CSR_nontruncated_1metal.pdb`, whose zinc is `B:2:ZN`) - the same
+command with `$F3`, which is `$F1` with that selector. A template transferred
+into `preprocess_results/finalsystem.pdb` instead puts the poses 70 A away:
+that file is the re-centred solvated box and is not the docking frame.
+
+The correspondences above were read off `refstruct.py shell` on each deposited
+file, not taken from the papers. **5AXR is not the hydrolysed-meropenem
+structure** (it is the 2-mercaptoethanesulfonate complex); 5AXO is.
