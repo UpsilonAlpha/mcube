@@ -1296,6 +1296,17 @@ sections:
     stage: postprocess
     inputs:
       md_section: md_prod100
+      # **Given explicitly because `md_prod100` FAILED.** Job 31327774 died at
+      # 34.14 ns of 100 with `Particle coordinate is NaN`, so `md`'s results
+      # never got a `trajfile` or a `lastframe` to read them from - but 1.0 GB
+      # of trajectory up to the crash exists, and whether the zinc held through
+      # those 34 ns is exactly the question that gates the arm. The topology is
+      # the trajectory's OWN first frame, not `finalsystem.pdb`: postprocess
+      # refuses a topology whose atoms disagree with the frames, and the first
+      # frame is by definition the structure the trajectory was produced from
+      # (D171).
+      pdb_file: md_prod100_results/NVTtrajectory_firstframe.pdb
+      trajectory: md_prod100_results/NVTtrajectory.dcd
       coordination:
         per_residue: false
         margin: 1.0
@@ -1346,15 +1357,18 @@ sections:
   prodqm:
     stage: qmmm
     inputs:
-      # Gln93 is the **Q** of RQK, and the hypothesis under test is what that
-      # triad does to the mechanism - so it has to be described quantum
-      # mechanically here, not just in the sections downstream. Arg90 and
-      # Lys226 are already in the region from preprocess; Gln93 was in neither
-      # preprocess region, reactant or product (D133, D170). It goes in at the
-      # equilibration and not only at the scans because a scan whose first
-      # point has to re-equilibrate a region the MD never had is measuring the
-      # region change, not the reaction. Gln is neutral, so `charge` stays 2.
-      extra_qm_residues: {A: [93]}
+      # **No Gln93 here, deliberately** (user, 2026-11-02): "glutamine was left
+      # out deliberately because it's probably not involved/functional as it's
+      # neutral and far away from everything". It is the Q of RQK by name, but
+      # the triad's mechanistic lever is charge, and a neutral amide several
+      # angstroms out has none - so it is MM like the rest of the second shell,
+      # and the QM region stays as small as the question allows. The sections
+      # that do carry it (`aspout`, `aspin`, `michaelis2d`, `rwoff`, `rwon`,
+      # `qmrate`, `asph`) added it for the Asp92 question of D133, where its
+      # amide is a hydrogen-bond partner of the carboxylate - a different
+      # question from the barrier. `prodpost` monitors Gln93 NE2 to Asp92 OD1
+      # and to the ligand's O2x, so "far away from everything" is measured on
+      # this trajectory rather than assumed (D171).
       skip_equilibrate: false   # qmmm.inputs sets true; without this there is no MD
       skip_optimize: true       # MD only, as `nacarg` and `ohH` ran
       time: 50
@@ -1399,7 +1413,6 @@ sections:
     stage: qmmm
     inputs:
       pdb_file: protdft/qmmm_prodqm/lastframe.pdb   # fill in from prodqm
-      extra_qm_residues: {A: [93]}
       skip_equilibrate: true
       skip_optimize: false
       rigid_water: false
@@ -1411,7 +1424,6 @@ sections:
       atoms: [D:1:C4x, D:1:N1x]
       end: 1.39                # as measured in the reactant's optimised complex
       points: 12               # `start` omitted: scan takes the optimised distance
-      extra_qm_residues: {A: [93]}
       monitor:
         - [B:1:ZN, D:1:N1x]    # does the leaving nitrogen re-engage the metal
         - [A:226:NZ, D:1:N1x]  # Lys226 as the proton's source or sink
@@ -1427,7 +1439,6 @@ sections:
       atoms: [D:1:O6x, D:1:C4x]
       end: 3.00                # where `attack` starts from on the reactant arm
       points: 16
-      extra_qm_residues: {A: [93]}
       monitor:
         - [B:1:ZN, D:1:O6x]    # the oxygen should return to the metal as hydroxide
         - [B:1:ZN, D:1:O2x]    # and the carbonyl should disengage
@@ -1451,7 +1462,6 @@ sections:
       images: 12
       method: nebts
       interpolation: idpp
-      extra_qm_residues: {A: [93]}
 
   pstep1:                      # Michaelis complex <-> intermediate
     stage: neb
@@ -1461,7 +1471,6 @@ sections:
       images: 12
       method: nebts
       interpolation: idpp
-      extra_qm_residues: {A: [93]}
 
   # A saddle is a transition state only if it has exactly one imaginary mode and
   # that mode is the reaction coordinate; `ts` checks both, then runs an IRC in
@@ -1472,7 +1481,6 @@ sections:
     inputs:
       pdb_file: protdft/neb_pstep2/saddlepoint.pdb
       hessian_atoms: [D:1:C4x, D:1:N1x, D:1:O6x, A:226:NZ, B:1:ZN]
-      extra_qm_residues: {A: [93]}
       monitor:
         - [D:1:C4x, D:1:N1x]
         - [A:226:NZ, D:1:N1x]
@@ -1485,7 +1493,6 @@ sections:
     inputs:
       pdb_file: protdft/neb_pstep1/saddlepoint.pdb
       hessian_atoms: [D:1:O6x, D:1:C4x, D:1:O2x, B:1:ZN]
-      extra_qm_residues: {A: [93]}
       monitor:
         - [D:1:O6x, D:1:C4x]
         - [B:1:ZN, D:1:O2x]
