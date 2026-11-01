@@ -3694,7 +3694,7 @@ $PY $M/refstruct.py match CSR_hydrolysed/preprocess_results/hyd_zw.pdb lmp.pdb \
 
 **The mapping is chemically right, which is the check that matters.** Our `C4x`, the electrophile, maps to LMP's `C7`; our `N1x`, the lactam nitrogen, to `N4`; and **our `O2x` and `O01` - the old carbonyl oxygen and the absorbed hydroxide - map to `O71` and `O72`, the two oxygens of the carboxylate the hydrolysis created.** That is the reaction written out in the atom mapping, and it came from the bonding alone.
 
-**8 mappings exist**, differing only in C12x/C13x (the amide's two methyls), O2x/O01 and O3x/O6x (each carboxylate's two oxygens). All three are real symmetries, so the choice is arbitrary - except for O2x/O01, which is not, and that is the problem in part 3.
+**8 mappings exist**, differing only in C12x/C13x (the amide's two methyls), O2x/O01 and O3x/O6x (each carboxylate's two oxygens). All three are real symmetries and all three choices are harmless: measured on `hyd_zw.pdb`, none of those four oxygens carries a hydrogen.
 
 ## 2. The restraints, checked against the crystal as asked
 
@@ -3720,11 +3720,11 @@ Zn ZN1 chain B:  1.90 HOH W1 | 2.09 His164 NE2 | 2.22 His88 NE2
                  2.80 Asp92 OD2 | 2.92 O6x | 2.94 O5x
 ```
 
-**Three decisions are open, and each one changes the run rather than the analysis:**
+**Three decisions looked open; measuring settled two of them. The surviving one is item 2.**
 
-1. **The product's protonation and net charge.** Our own files disagree. `hyd_zw.pdb` - the file this graft takes its topology from - carries **H03 on O01**, so its new carboxylate is a neutral acid; with the protonated pyrrolidine and the deprotonated ring carboxylate that is a net **0**. But D13 states the hydrolysed product is **-1**, and `CSR_hydrolysed` ran at charge -1 with a *non*-zwitterionic SMILES and a neutral amine. Those are three different molecules. This sets the openff parameters and the QM charge, and a run at the wrong one is wrong without looking wrong.
+1. ~~**The product's protonation and net charge.**~~ **[Resolved the same day by measuring it rather than reading the atom order: `hyd_zw.pdb` puts H03 on **N1x**, the leaving nitrogen, not on O01 as the file's atom order suggested. So it is N1x-H (the proton the hydrolysis delivers), N2x-H01/H10x (the protonated pyrrolidine) and **all four carboxylate oxygens bare**: +1 - 2 = **net -1**, exactly D13's figure, and internally consistent. The product zwitterion SMILES follows from `CSR_hydrolysed`'s by protonating the amine and deprotonating the ring acid:** `C[C@@H](O)[C@@H](C(=O)[O-])[C@@H]1NC(C(=O)[O-])=C(S[C@@H]2C[NH2+][C@H](C(=O)N(C)C)C2)[C@@H]1C`**. No ambiguity remains.]**
 2. **What fills the hydroxide's place on the zinc.** The nucleophile is now part of the product, and the product does not coordinate. 6NC5 has a crystal water there (HOH493, 2.14 A) and 5AXO keeps a water on Zn1 at 1.82 A, so a restrained water is defensible - but leaving the face open is a different model of the product state and the two will not give the same first shell.
-3. **O2x against O01.** The symmetry that makes the mapping arbitrary is exactly the pair that differ in our topology, because O01 is the one carrying H03. Whichever oxygen the proton ends up on is decided by the mapping unless it is decided deliberately.
+3. ~~**O2x against O01.**~~ **[Not a problem: neither oxygen carries a proton, so the swap changes nothing. The concern came from assuming H03 belonged to the atom listed before it.]**
 
 **Nothing submitted.** A 100 ns MD and a 50 ps QM/MM on a guessed protonation state would produce a product complex that cannot anchor a reaction coordinate, which is the whole purpose. The graft, the mapping and the restraint finding stand whatever is decided.
 
