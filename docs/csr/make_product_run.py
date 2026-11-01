@@ -52,6 +52,16 @@ def product_protein(src: Path, dst: Path, ligand_resname: str = "mer",
     Only the hydroxide's oxygen is kept; `preprocess` adds the second hydrogen,
     which is the same route every other water in the system takes.
     """
+    # Where the existing waters live, so the converted hydroxide can join them.
+    # It cannot stay in the ligand's chain: removing the substrate leaves that
+    # chain starting at residue 2, and mcube refuses a file not numbered 1..N
+    # per chain because ASH renumbers them and every selector would then point
+    # somewhere else. It is a water now, so the water chain is where it goes.
+    waters = [l for l in src.read_text().splitlines(keepends=True)
+              if l.startswith(("ATOM", "HETATM")) and l[17:20].strip() == "HOH"]
+    water_chain = waters[0][21] if waters else None
+    next_water = max((int(l[22:26]) for l in waters), default=0) + 1
+
     kept, dropped, converted = [], 0, 0
     for line in src.read_text().splitlines(keepends=True):
         if not line.startswith(("ATOM", "HETATM")):
@@ -67,7 +77,11 @@ def product_protein(src: Path, dst: Path, ligand_resname: str = "mer",
             if name.startswith("H"):          # the hydroxide's own proton
                 dropped += 1
                 continue
-            kept.append(line[:17] + "HOH" + line[20:])
+            moved = line[:17] + "HOH" + line[20:]
+            if water_chain:
+                moved = (moved[:21] + water_chain + "%4d" % next_water
+                         + moved[26:])
+            kept.append(moved)
             converted += 1
             continue
         kept.append(line)

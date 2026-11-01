@@ -186,3 +186,50 @@ class TestWhereTheInputsLand:
             (dst / "config.yaml").read_text())["preprocess"]["inputs"]
         assert inputs["protein_pdb"] == "./product_protein.pdb"
         assert inputs["ligand"] == "./lig.pdb"
+
+
+class TestTheConvertedWaterJoinsTheWaterChain:
+    """Removing the substrate leaves its chain starting at residue 2, and
+    mcube refuses a file that is not numbered 1..N per chain - ASH renumbers
+    them, so every selector would point somewhere else. Job 31302724 died
+    there, correctly (D162). The hydroxide is a water now, so it goes with
+    the waters."""
+
+    def test_it_moves_to_the_water_chain(self, mod, start, tmp_path):
+        out = tmp_path / "p.pdb"
+        mod.product_protein(start, out)
+        line = [l for l in out.read_text().splitlines()
+                if l.startswith("HETATM") and l[12:16].strip() == "O01"][0]
+        assert line[21] == "W"
+
+    def test_it_is_numbered_after_the_existing_waters(self, mod, start, tmp_path):
+        out = tmp_path / "p.pdb"
+        mod.product_protein(start, out)
+        line = [l for l in out.read_text().splitlines()
+                if l.startswith("HETATM") and l[12:16].strip() == "O01"][0]
+        assert int(line[22:26]) == 2
+
+    def test_the_ligand_chain_is_left_empty(self, mod, start, tmp_path):
+        """Nothing of chain C survives, so preprocess can put the ligand in at
+        residue 1 without a gap."""
+        out = tmp_path / "p.pdb"
+        mod.product_protein(start, out)
+        assert not [l for l in out.read_text().splitlines()
+                    if l.startswith(("ATOM", "HETATM")) and l[21] == "C"]
+
+    def test_the_coordinates_are_untouched_by_the_move(self, mod, start, tmp_path):
+        out = tmp_path / "p.pdb"
+        mod.product_protein(start, out)
+        line = [l for l in out.read_text().splitlines()
+                if l.startswith("HETATM") and l[12:16].strip() == "O01"][0]
+        assert line[30:38].strip() == "2.140"
+
+    def test_without_existing_waters_it_stays_where_it_is(self, mod, tmp_path):
+        """Nothing to join, and inventing a chain would be worse."""
+        path = tmp_path / "nowater.pdb"
+        path.write_text(line(1, "O01", "OH", "C", 1, 2.14) + "END" + chr(10))
+        out = tmp_path / "p.pdb"
+        counts = mod.product_protein(path, out)
+        assert counts["converted"] == 1
+        assert [l for l in out.read_text().splitlines()
+                if l.startswith("HETATM")][0][21] == "C"
