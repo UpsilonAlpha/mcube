@@ -202,3 +202,77 @@ class TestTheBetaLactamMarker:
                atom("O7", "MX0", "C", 1, (12.4, 3.9, 0.0), "O")]
         out = self.report(rs, lig, capsys)
         assert "<-- beta-lactam" not in out and "2 carboxylates" in out
+
+
+class TestSimilarity:
+    """Whether two MBLs would hold a substrate the same way is a question with
+    a number behind it, and the number has to come from the structures rather
+    than from the subclass label (D158)."""
+
+    def test_identical_sequences_align_one_to_one(self, rs):
+        assert rs.align("ACDEFGH", "ACDEFGH") == [(i, i) for i in range(7)]
+
+    def test_a_deletion_is_absorbed_by_a_gap(self, rs):
+        """The D is missing from the second sequence; everything either side
+        must still pair up rather than shifting by one."""
+        pairs = rs.align("ACDEFGHIK", "ACEFGHIK")
+        assert (0, 0) in pairs and (1, 1) in pairs
+        assert (3, 2) in pairs and (8, 7) in pairs
+        assert not any(i == 2 for i, _ in pairs)
+
+    def test_affine_gaps_keep_one_gap_rather_than_several(self, rs):
+        pairs = rs.align("AAAACDEFGHWWWW", "AAAAWWWW")
+        runs = sum(1 for k in range(1, len(pairs))
+                   if pairs[k][0] - pairs[k - 1][0] > 1)
+        assert runs == 1
+
+    def test_unrelated_sequences_still_return_pairs(self, rs):
+        """A global alignment always pairs something; identity is what says
+        whether the pairing means anything."""
+        assert rs.align("AAAAAA", "WWWWWW")
+
+    def test_a_windows_path_is_not_read_as_a_chain(self, rs, tmp_path):
+        """`C:/x.pdb` must not parse as chain-less file "C" on chain "/x.pdb"."""
+        path = tmp_path / "x.pdb"
+        path.write_text(
+            "ATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00  0.00"
+            "           C\n")
+        head, sep, tail = str(path).rpartition(":")
+        parsed = (head, tail) if sep and len(tail) == 1 else (str(path), "")
+        assert parsed[0] == str(path) and parsed[1] == ""
+
+    def test_residues_without_a_ca_are_dropped(self, rs, tmp_path):
+        path = tmp_path / "y.pdb"
+        path.write_text(
+            "ATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00  0.00"
+            "           C\n"
+            "ATOM      2  CB  SER A   2       1.000   0.000   0.000  1.00  0.00"
+            "           C\n")
+        assert [r[0] for r in rs.chain_residues(str(path))] == ["A"]
+
+    def test_only_the_named_chain_is_read(self, rs, tmp_path):
+        path = tmp_path / "z.pdb"
+        path.write_text(
+            "ATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00  0.00"
+            "           C\n"
+            "ATOM      2  CA  TRP B   1       1.000   0.000   0.000  1.00  0.00"
+            "           C\n")
+        assert [r[0] for r in rs.chain_residues(str(path), "B")] == ["W"]
+
+    def test_the_core_rmsd_ignores_one_flapping_loop(self, rs):
+        """Two folds that agree everywhere but one loop must report a small
+        core RMSD and a core smaller than the alignment."""
+        import math
+
+        # A helix, not a line: a collinear set lets Kabsch rotate freely about
+        # its own axis and the displaced points swing back into place.
+        def helix(i):
+            return (1.5 * i, 5.0 * math.cos(i * 0.6), 5.0 * math.sin(i * 0.6))
+
+        a = [("A", helix(i)) for i in range(40)]
+        b = [("A", helix(i)) for i in range(40)]
+        b[20:25] = [("A", (helix(i)[0], helix(i)[1] + 25.0, helix(i)[2]))
+                    for i in range(20, 25)]
+        pairs = [(i, i) for i in range(40)]
+        full, core, core_rmsd = rs.superpose_pairs(a, b, pairs)
+        assert full > 2.0 and core == 35 and core_rmsd < 0.01

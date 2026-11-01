@@ -3,6 +3,8 @@
     python refstruct.py shell    <pdb> [pdb ...]      what is on each metal
     python refstruct.py centre   <pdb> <resname> <resseq>
                                         a transition-state analogue's geometry
+    python refstruct.py similarity <a.pdb>[:CHAIN] <b.pdb>[:CHAIN] ...
+                                        identity and CA RMSD for every pair
     python refstruct.py transfer <template.pdb> <target.pdb> --ligand=X --zn=...
                                  --fit=a=b,... [--poses=p.pdbqt] [--out=f.pdb]
                                         put a deposited complex's ligand into
@@ -321,13 +323,195 @@ def mode_transfer(args):
                           ("the transferred ligand", moved))
 
 
+
+# BLOSUM62, the 20 standard residues. Embedded rather than imported so this
+# file keeps working in an environment without biopython, which is every
+# environment this project has.
+_B62_ORDER = "ARNDCQEGHILKMFPSTWYV"
+_B62_ROWS = """
+ 4 -1 -2 -2  0 -1 -1  0 -2 -1 -1 -1 -1 -2 -1  1  0 -3 -2  0
+-1  5  0 -2 -3  1  0 -2  0 -3 -2  2 -1 -3 -2 -1 -1 -3 -2 -3
+-2  0  6  1 -3  0  0  0  1 -3 -3  0 -2 -3 -2  1  0 -4 -2 -3
+-2 -2  1  6 -3  0  2 -1 -1 -3 -4 -1 -3 -3 -1  0 -1 -4 -3 -3
+ 0 -3 -3 -3  9 -3 -4 -3 -3 -1 -1 -3 -1 -2 -3 -1 -1 -2 -2 -1
+-1  1  0  0 -3  5  2 -2  0 -3 -2  1  0 -3 -1  0 -1 -2 -1 -2
+-1  0  0  2 -4  2  5 -2  0 -3 -3  1 -2 -3 -1  0 -1 -3 -2 -2
+ 0 -2  0 -1 -3 -2 -2  6 -2 -4 -4 -2 -3 -3 -2  0 -2 -2 -3 -3
+-2  0  1 -1 -3  0  0 -2  8 -3 -3 -1 -2 -1 -2 -1 -2 -2  2 -3
+-1 -3 -3 -3 -1 -3 -3 -4 -3  4  2 -3  1  0 -3 -2 -1 -3 -1  3
+-1 -2 -3 -4 -1 -2 -3 -4 -3  2  4 -2  2  0 -3 -2 -1 -2 -1  1
+-1  2  0 -1 -3  1  1 -2 -1 -3 -2  5 -1 -3 -1  0 -1 -3 -2 -2
+-1 -1 -2 -3 -1  0 -2 -3 -2  1  2 -1  5  0 -2 -1 -1 -1 -1  1
+-2 -3 -3 -3 -2 -3 -3 -3 -1  0  0 -3  0  6 -4 -2 -2  1  3 -1
+-1 -2 -2 -1 -3 -1 -1 -2 -2 -3 -3 -1 -2 -4  7 -1 -1 -4 -3 -2
+ 1 -1  1  0 -1  0  0  0 -1 -2 -2  0 -1 -2 -1  4  1 -3 -2 -2
+ 0 -1  0 -1 -1 -1 -1 -2 -2 -1 -1 -1 -1 -2 -1  1  5 -2 -2  0
+-3 -3 -4 -4 -2 -2 -3 -2 -2 -3 -2 -3 -1  1 -4 -3 -2 11  2 -3
+-2 -2 -2 -3 -2 -1 -2 -3  2 -1 -1 -2 -1  3 -3 -2 -2  2  7 -1
+ 0 -3 -3 -3 -1 -2 -2 -3 -3  3  1 -2  1 -1 -2 -2  0 -3 -1  4
+"""
+BLOSUM62 = {}
+for _i, _row in enumerate(_B62_ROWS.strip().splitlines()):
+    for _j, _v in enumerate(_row.split()):
+        BLOSUM62[(_B62_ORDER[_i], _B62_ORDER[_j])] = int(_v)
+
+THREE_TO_ONE = {
+    "ALA": "A", "ARG": "R", "ASN": "N", "ASP": "D", "CYS": "C", "GLN": "Q",
+    "GLU": "E", "GLY": "G", "HIS": "H", "ILE": "I", "LEU": "L", "LYS": "K",
+    "MET": "M", "MSE": "M", "PHE": "F", "PRO": "P", "SER": "S", "THR": "T",
+    "TRP": "W", "TYR": "Y", "VAL": "V",
+    # the protonation variants our own models carry
+    "HID": "H", "HIE": "H", "HIP": "H", "ASH": "D", "GLH": "E", "LYN": "K",
+    "CYX": "C",
+}
+
+
+def chain_residues(path, chain=None):
+    """[(one-letter, CA xyz)] for one chain, in file order.
+
+    Residues without a CA are dropped: they cannot be superposed and would
+    make the sequence and the structure disagree about what was aligned.
+    """
+    seen, out = set(), []
+    for a in rows(path):
+        if a[0] != "CA" or a[1] not in THREE_TO_ONE:
+            continue
+        if chain and a[2] != chain:
+            continue
+        key = (a[2], a[3])
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append((THREE_TO_ONE[a[1]], (a[4], a[5], a[6])))
+    return out
+
+
+def align(seq_a, seq_b, gap_open=-11, gap_extend=-1):
+    """Global Needleman-Wunsch with affine gaps. [(i, j)] of aligned pairs.
+
+    Affine rather than linear because a linear penalty tears loops apart to
+    buy single matches, and the loops are exactly where two MBLs of 20-40%
+    identity differ.
+    """
+    import numpy as np
+
+    n, m = len(seq_a), len(seq_b)
+    neg = -1e9
+    M = np.full((n + 1, m + 1), neg)      # ends aligned
+    X = np.full((n + 1, m + 1), neg)      # gap in b
+    Y = np.full((n + 1, m + 1), neg)      # gap in a
+    M[0, 0] = 0.0
+    for i in range(1, n + 1):
+        X[i, 0] = gap_open + (i - 1) * gap_extend
+    for j in range(1, m + 1):
+        Y[0, j] = gap_open + (j - 1) * gap_extend
+    ptr = {}
+    for i in range(1, n + 1):
+        for j in range(1, m + 1):
+            s = BLOSUM62.get((seq_a[i - 1], seq_b[j - 1]), -1)
+            best = max((M[i - 1, j - 1], "M"), (X[i - 1, j - 1], "X"),
+                       (Y[i - 1, j - 1], "Y"))
+            M[i, j] = best[0] + s
+            ptr[("M", i, j)] = best[1]
+            bx = max((M[i - 1, j] + gap_open, "M"), (X[i - 1, j] + gap_extend, "X"))
+            X[i, j], ptr[("X", i, j)] = bx[0], bx[1]
+            by = max((M[i, j - 1] + gap_open, "M"), (Y[i, j - 1] + gap_extend, "Y"))
+            Y[i, j], ptr[("Y", i, j)] = by[0], by[1]
+    state = max((M[n, m], "M"), (X[n, m], "X"), (Y[n, m], "Y"))[1]
+    i, j, pairs = n, m, []
+    while i > 0 and j > 0:
+        nxt = ptr[(state, i, j)]
+        if state == "M":
+            pairs.append((i - 1, j - 1))
+            i, j = i - 1, j - 1
+        elif state == "X":
+            i -= 1
+        else:
+            j -= 1
+        state = nxt
+    return list(reversed(pairs))
+
+
+def superpose_pairs(a, b, pairs, cutoff=3.0, rounds=10):
+    """Fit b's CAs onto a's over `pairs`, dropping outliers and refitting.
+
+    Returns (all-pair RMSD, core size, core RMSD). The core is what a
+    structural superposition actually reports: two enzymes of this family share
+    a fold and differ in loops, and one flapping loop dominates an all-pair
+    RMSD while saying nothing about whether the active sites agree.
+    """
+    import numpy as np
+
+    keep = list(pairs)
+    first = None
+    for _ in range(rounds):
+        P = [b[j][1] for _, j in keep]
+        Q = [a[i][1] for i, _ in keep]
+        R, pc, qc, rmsd = kabsch(P, Q)
+        moved = np.array([apply_fit((R, pc, qc), p) for p in P])
+        d = np.sqrt(((moved - np.array(Q)) ** 2).sum(axis=1))
+        if first is None:
+            first = float(np.sqrt((d ** 2).mean()))
+        # Tighten gradually: one badly displaced loop drags the whole fit, so
+        # a hard 3 A cut in the first round throws away residues that are only
+        # misplaced because of it. Dropping at twice the current RMSD removes
+        # the real outliers first and converges on the cutoff.
+        limit = max(cutoff, 2.0 * rmsd)
+        nxt = [pr for pr, dd in zip(keep, d) if dd <= limit]
+        floor = min(20, len(pairs) // 2)
+        if len(nxt) == len(keep) or len(nxt) < floor:
+            return first, len(keep), rmsd
+        keep = nxt
+    return first, len(keep), rmsd
+
+
+def mode_similarity(args):
+    """How alike are two structures, in sequence and in fold?
+
+        python refstruct.py similarity <a.pdb>[:CHAIN] <b.pdb>[:CHAIN] ...
+
+    Every pair of the given structures is reported: identity over the aligned
+    positions, then a CA superposition over those same positions with outliers
+    dropped. The point is to answer "would these two hold a substrate the same
+    way" with a number rather than with a subclass label.
+    """
+    loaded = []
+    for spec in args:
+        # rpartition, and only a single character counts as the chain: a
+        # Windows path starts "C:/..." and partition() would read the drive
+        # letter as the chain and the rest as the file.
+        head, sep, tail = spec.rpartition(":")
+        path, chain = (head, tail) if sep and len(tail) == 1 else (spec, "")
+        res = chain_residues(path, chain or None)
+        if not res:
+            raise SystemExit("no residues with a CA in %s" % spec)
+        loaded.append((spec, res))
+        print("  %-28s %d residues" % (spec, len(res)))
+    for x in range(len(loaded)):
+        for y in range(x + 1, len(loaded)):
+            (na, a), (nb, b) = loaded[x], loaded[y]
+            pairs = align("".join(r[0] for r in a), "".join(r[0] for r in b))
+            same = sum(1 for i, j in pairs if a[i][0] == b[j][0])
+            ident = 100.0 * same / len(pairs) if pairs else 0.0
+            full, core, core_rmsd = superpose_pairs(a, b, pairs)
+            print("\n== %s  vs  %s" % (na, nb))
+            print("   aligned %d positions, %d identical = %.1f%% identity"
+                  % (len(pairs), same, ident))
+            print("   CA RMSD over all aligned: %.2f A" % full)
+            print("   core: %d of %d within 3.0 A, RMSD %.2f A"
+                  % (core, len(pairs), core_rmsd))
+
+
 if __name__ == "__main__":
-    if len(sys.argv) < 3 or sys.argv[1] not in ("shell", "centre", "transfer"):
+    if len(sys.argv) < 3 or sys.argv[1] not in ("shell", "centre", "transfer",
+                                            "similarity"):
         raise SystemExit(__doc__)
     if sys.argv[1] == "shell":
         mode_shell(sys.argv[2:])
     elif sys.argv[1] == "transfer":
         mode_transfer(sys.argv[2:])
+    elif sys.argv[1] == "similarity":
+        mode_similarity(sys.argv[2:])
     else:
         if len(sys.argv) != 5:
             raise SystemExit("centre needs <pdb> <resname> <resseq>")

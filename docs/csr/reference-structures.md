@@ -182,3 +182,20 @@ that file is the re-centred solvated box and is not the docking frame.
 The correspondences above were read off `refstruct.py shell` on each deposited
 file, not taken from the papers. **5AXR is not the hydrolysed-meropenem
 structure** (it is the 2-mercaptoethanesulfonate complex); 5AXO is.
+
+## How alike are the B3 enzymes we borrow from (D158)
+
+```
+python refstruct.py similarity 7UHI.pdb:A 5AXO.pdb:A 6nc5.pdb:A
+```
+
+| pair | identity | core | core CA RMSD |
+| --- | --- | --- | --- |
+| L1 vs SMB-1 | 32.3% | 216/251 | 1.22 A |
+| **L1 vs CSR-1** | **39.0%** | 221/249 | **1.05 A** |
+| SMB-1 vs CSR-1 | 33.9% | 226/254 | 1.16 A |
+
+CSR-1 is represented by 6NC5 chain A: its own sequence with the Q121H/K254H
+mutations, and the only CSR-1 crystal carrying a metal. The identities are the
+ordinary B3 spread; what the table is for is the comparison *between* pairs,
+and L1 is closer to CSR-1 than it is to SMB-1.

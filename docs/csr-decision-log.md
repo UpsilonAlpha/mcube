@@ -3633,6 +3633,50 @@ The brief this shift ran from asked for the charge deletions to be written up as
 **Nothing submitted, nothing queued, and no further wakeup scheduled** - there is nothing left running to read. Scratch is **264 of 300 GB** (up 8 GB on the two jobs, mostly the 3 ps trajectory and two sets of cubes); nothing pruned, since every candidate is named by a `results` path in `config.yaml`.
 
 
+**D158 - CSR-1 is closer to L1 than SMB-1 is, so transferring L1's pose into our site rests on firmer ground than the cross-enzyme step the SMB-1 paper itself published. But similarity is not what decides this: both templates are di-zinc and both hold the ligand partly with Zn2, which CSR-1 does not have. Building the product end from 5AXO is the right move, and the reactant has to come from a template too or the reaction coordinate will be a translation.** (2026-11-01, user: "what's the sequence/structure similarity between L1 and CSR compared to L1 and SMB-1?")
+
+## 1. Measured, not assumed
+
+New `refstruct.py similarity` mode: global Needleman-Wunsch with BLOSUM62 and affine gaps, then a CA superposition over the aligned positions with outliers dropped at twice the running RMSD until it converges on 3 A. CSR-1 is represented by **6NC5** chain A, the Q121H/K254H construct, which is CSR-1's own sequence with two point mutations and the only CSR-1 crystal with a metal in it.
+
+| pair | identity | core | core CA RMSD | all-pair CA RMSD |
+| --- | --- | --- | --- | --- |
+| L1 (7UHI) vs SMB-1 (5AXO) | 32.3% | 216 of 251 | 1.22 A | 3.47 |
+| **L1 vs CSR-1 (6NC5)** | **39.0%** | 221 of 249 | **1.05 A** | 4.02 |
+| SMB-1 vs CSR-1 | 33.9% | 226 of 254 | 1.16 A | 2.46 |
+
+**CSR-1 is the closest of the three to L1 on both measures.** Every pair sits in the ordinary B3 range - the subclass is defined at roughly 20-40% identity - and the folds agree to about 1 A over ~220 residues, which is as much as any two B3 enzymes agree.
+
+And at the scale that matters for a ligand, the sites are closer still: the four-atom Zn1 fits of D156 come to **0.254 A** between SMB-1 and L1, **0.62 A** from L1 onto our model and **0.50 A** from SMB-1 onto it.
+
+**So the answer to the question as asked is yes.** Mu & Xu transferred a ligand between doripenem and ampicillin inside one enzyme and reasoned across to L1 and NDM-1 at this same level of similarity. Transferring L1's pose into CSR-1 is a smaller extrapolation than that, by the numbers.
+
+## 2. What similarity does not settle, and this is the real caveat
+
+**Both templates are di-zinc; CSR-1 has one metal.** In 7UHI the intact moxalactam touches **both** metals - carbonyl O1 on Zn1 at 2.53 A, and O8 and N1 on Zn2 at 2.65/2.67. In 5AXO the hydrolysed meropenem's new carboxylate O32 and its N4 are **both on Zn2**, at 2.26 and 2.37 A. The part of the pose nearest the chemistry is anchored by a metal we do not have, and no amount of fold similarity changes that.
+
+That is not a reason to abandon the transfer; it is the thing the transfer is for. **If the RQK cations stand in for Zn2, a ligand placed in the di-zinc pose and released should settle onto Arg229 and Lys226 rather than drift away** - and D148/D150 already measured those contacts holding at 3.62 and 3.80-3.90 A in everything we own. The transferred pose is how that hypothesis gets tested instead of asserted, and either outcome is a result.
+
+## 3. The user's plan - graft hydrolysed meropenem from 5AXO as the end state
+
+**Right, and better than the reactant-first route for three reasons.** It is the same drug in the same state, so nothing is invented: no ring to re-form, no bond orders to guess - and the log records exactly that going wrong before, with RDKit putting a spurious O-O bond into the strained hydrolysed ligand and inventing enolate and S+ forms. It is the **first experimentally anchored structure this project would have**. And the product end is the one end we can anchor, since no MBL has ever been crystallised with an intact beta-lactam except L1.
+
+**Four things it needs, none of them optional:**
+
+1. **Atom-order correspondence.** A NEB wants its two endpoints to be the same atom list in two geometries, and this log already records `hydrolysed_lastframe.pdb` being built so its order matches the reactant's. A ligand lifted out of 5AXO arrives with LMP's names and order and has to be mapped onto our topology before it is an endpoint rather than a different molecule.
+2. **Protonation and charge decided, not inherited.** Our product is hydrolysed meropenem at -1 absorbing the hydroxide, QM charge +2. 5AXO's LMP is a crystallographic model whose protons are not in the file at all.
+3. **Parameters.** Reuse `hyd_zw.pdb`'s topology if the mapping allows it rather than re-parameterising, for the reason in point 1.
+4. **The Zn2 contacts must be allowed to relax.** O32 and N4 come in holding a metal that is not there; where they go is the measurement.
+
+## 4. The one caution, and it decides the order of work
+
+**If the product comes from a template and the reactant stays where it is, the reaction coordinate between them is mostly a translation.** D156 put `scan_00`'s ligand **5.15 A** from the experimental pose. A NEB or an umbrella series run from that reactant to a template-derived product would spend its barrier moving meropenem across the site, and the number at the top would not be a chemical barrier at all. That failure would look entirely normal in the output.
+
+**So both ends come from templates, or neither.** The cheapest way to get that, and the one the literature would recognise: **build the reactant from the grafted product by re-forming the C7-N4 bond** - the reverse of the hydrolysis, which is precisely what the NDM-1 and SMB-1 studies do from their product crystals. It keeps the atom order identical to the product by construction, so point 1 above solves itself, and it uses one drug and one template rather than matching cores across moxalactam and meropenem. **7UHI then becomes the check rather than the source**: re-form the bond, relax, and ask whether the carbonyl lands near the 2.5-2.9 A that L1 measures. If it does, both endpoints are anchored and the coordinate between them is chemistry.
+
+**Nothing built or submitted.** `refstruct.py similarity` and the numbers above are the whole of this entry.
+
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
