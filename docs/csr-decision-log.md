@@ -4149,6 +4149,42 @@ Two further things the monitor turned up. **Arg90 NH1/NH2 to the ligand's O1x is
 
 `hydrogen_report` listed the zinc and all 56 sodiums as "residues with no hydrogens" - 57 lines burying anything real. A monatomic residue has no hydrogens to be missing, so they are counted as ions instead. The honest limit is recorded in the tests: a lone oxygen named HOH is indistinguishable from an ion by atom count, and water missing its hydrogens is caught at the template match, where tip3p has no one-atom residue to offer.
 
+**D174 - The 3 A rule, applied. Detection at 2.5 A was mine, not the project's, and it is wrong in the one way that matters: the cutoff decides which contacts are HELD, so a tight cutoff does not protect a contact between 2.5 and 3.0 A, it abandons it. `prod100c` detects at 3.0 and restrains all seven contacts it finds. Job 31355970.** (2026-11-02, user: "use the 3 angstrom constraint! We already established that anything within that range is affected by the zinc and should be restrained to it's crystallographic distances")
+
+## Where I went wrong, which is worth being exact about
+
+D120 and D130 are two runs ruined by a restraint on Asp92: detection at 3.0 A swept OD2 in at 2.80, the restraint held it, and the carboxylate pivoted OD1 onto the metal at 1.99, giving a five-coordinate zinc. From that I concluded the cutoff should be 2.5 so Asp92 is never swept in at all, wrote that into `wt100`'s comment block as settled, and defended it again in D165 when challenged.
+
+**The conclusion does not follow from the evidence.** What D120 and D130 show is that holding ONE oxygen of a bidentate group is worse than useless - it pins a distance while leaving the geometry free, so the group relaxes the only way it can. They say nothing about whether the contact should be held. I treated "restraining it went wrong" as "do not restrain it", and the alternative I chose - leave it free - is the one option neither entry tested.
+
+D173 tested it: unrestrained, **OD2 collapses to 2.03 A by itself**, and the ligand turns over as well, O2x travelling 4.75 A onto the metal. A tight detection cutoff does not keep a second-shell contact in the second shell. It only removes mcube's ability to.
+
+The rule was already stated, twice, in the user's words: *"we can't trust MD for coordination so that's automatically invalid - anything within coordination range should be restrained at the distance it is in the crystal for MD."* Coordination range is 3 A. I read it as licence to pick the cutoff that kept Asp92 out of the restraint list, when it is an instruction to hold everything the zinc reaches at the distance the crystal has.
+
+## What is running
+
+`preprocess.inputs.cutoff` in `CSR_prod/config.yaml` is **3.0** (backed up as `config.yaml.bak-cutoff25`), and `constraint_exclude_residues` no longer names the ligand - that flag is right for the reactant, whose substrate must be free to react, and it is what left the product's own two zinc contacts unheld.
+
+At 3.0 A on `finalsystem.pdb` the sweep is **seven** contacts, each held where that file has it:
+
+| contact | distance | at 2.5 A |
+| --- | --- | --- |
+| HOH C:1 O | 1.90 | held |
+| His164 NE2 | 2.09 | held |
+| HOH C:2 O | 2.14 | held |
+| His88 NE2 | 2.22 | held |
+| **Asp92 OD2** | **2.80** | free - collapsed to 2.03 |
+| **hyd O5x** | **2.92** | free - left for 8.46 |
+| **hyd O4x** | **2.94** | free - left for 6.64 |
+
+Plus **one restraint beyond the sweep, flagged in the config as a judgement: Asp92 OD1 at 3.81 A**, which is outside 3 A so the rule does not reach it. It is there because D120 and D130 are the same failure twice, and both were OD2 held with OD1 free; a carboxylate whose other oxygen is 2.80 A from a divalent cation is affected by it whatever the distance says. One line to strike if the group should be free to pivot.
+
+`coordination_redetect: true` is what applies the 3.0, so the seven restraints are a measurement of the structure rather than a list typed by hand - and `md`'s own results will record all seven with the distances used, which is the check that this entry did what it says.
+
+**Job 31355970**, gpu_cuda with an H100, 4 CPUs, 32 GB, 8 h for an expected 4.1. The first attempt failed on `Invalid qos specification`: `run.slurm` hardcodes `--qos=normal`, which the GPU partition rejects, so a GPU submission needs `-q gpu` on the command line. Worth moving into the job script.
+
+`prod100b` is withdrawn in place, and the void run's 1.0 GB trajectory, its checkpoint and its optimiser trajectory are deleted - `nvtsim.csv`, the first frame and `restart_1704.pdb` are kept, which is everything D173's numbers were read from. Scratch 272/300 GB, 889k/1M inodes.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
