@@ -123,11 +123,14 @@ class TestMissingHydrogens:
         assert rep["amide_n_without_h"] == []
 
     def test_a_residue_with_no_hydrogens_at_all_is_reported(self, preprocess, tmp_path):
-        """A water oxygen with no hydrogens is not water, and a PDB straight
-        from the bank has nothing but this."""
-        atoms = [("O", "HOH", "C", 1, (0.0, 0.0, 0.0))]
+        """A PDB straight from the bank is nothing but these: a residue whose
+        hydrogens were never added, which every later stage will type as though
+        they were."""
+        atoms = [("N", "ALA", "A", 10, (0.0, 0.0, 0.0)),
+                 ("CA", "ALA", "A", 10, (1.5, 0.0, 0.0)),
+                 ("C", "ALA", "A", 10, (3.0, 0.0, 0.0))]
         rep = preprocess.hydrogen_report(write(tmp_path, atoms))
-        assert rep["residues_without_hydrogens"] == ["HOH C:1"]
+        assert rep["residues_without_hydrogens"] == ["ALA A:10"]
 
 
 class TestGeometry:
@@ -210,3 +213,31 @@ def test_the_report_prints(preprocess, tmp_path, capsys):
     preprocess.report_hydrogens(rep)
     out = capsys.readouterr().out
     assert "Every amide N has its H" in out
+
+
+class TestMonatomicIons:
+    """The product system has a zinc and 56 sodiums. Reported as residues
+    without hydrogens they were 57 lines burying the one that mattered - and a
+    monatomic ion has no hydrogens to be missing (D173)."""
+
+    def test_an_ion_is_not_a_residue_without_hydrogens(self, preprocess, tmp_path):
+        atoms = [("ZN", "ZN", "B", 1, (0.0, 0.0, 0.0)),
+                 ("NA", "NA", "F", 1, (9.0, 0.0, 0.0))]
+        rep = preprocess.hydrogen_report(write(tmp_path, atoms))
+        assert rep["residues_without_hydrogens"] == []
+        assert rep["monatomic_ions"] == {"ZN": 1, "NA": 1}
+
+    def test_they_are_counted_not_listed(self, preprocess, tmp_path):
+        atoms = [("NA", "NA", "F", n, (9.0 * n, 0.0, 0.0)) for n in range(1, 6)]
+        rep = preprocess.hydrogen_report(write(tmp_path, atoms))
+        assert rep["monatomic_ions"] == {"NA": 5}
+        assert rep["nonstandard_residues"] == []
+
+    def test_a_lone_water_oxygen_is_an_ion_by_this_rule(self, preprocess, tmp_path):
+        """The honest limit of counting atoms: one oxygen named HOH is
+        indistinguishable from an ion here, so it is counted rather than
+        warned about. Water missing its hydrogens is caught at the template
+        match instead, where tip3p has no one-atom residue to match."""
+        atoms = [("O", "HOH", "C", 1, (0.0, 0.0, 0.0))]
+        rep = preprocess.hydrogen_report(write(tmp_path, atoms))
+        assert rep["monatomic_ions"] == {"HOH": 1}

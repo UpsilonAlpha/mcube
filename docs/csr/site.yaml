@@ -1384,7 +1384,80 @@ sections:
       time: 50
       rigid_water: false
 
-  # ---- prod100b: the restart after the NaN (D172) ----
+  # ---- prod100b: WITHDRAWN, do not submit (D173) ----
+  #
+  # This resumed from frame 1704 on the assumption that the 34 ns before the
+  # NaN were sound. They were not. `prodpost` on that trajectory found the zinc
+  # SIX-coordinate in 1704 of 1707 frames: Asp92 OD2 collapsed from its
+  # crystallographic 2.80 A to 2.03 A mean at 99.9% occupancy, and the ligand
+  # turned over - O2x came from 6.76 A onto the metal at 2.01 A while O4x and
+  # O5x, the two contacts the crystal actually has at 2.94 and 2.92, left for
+  # 6.64 and 8.46 A. Restarting from that frame would carry all of it into the
+  # QM/MM, and no cutoff undoes an artefact already in the coordinates.
+  #
+  # Kept here rather than deleted because the restart machinery is right and
+  # only its starting structure was wrong - `prod100c` is the same run from a
+  # structure that has not rearranged.
+  prod100b:
+    stage: md
+    inputs:
+      pdb_file: protdft/postprocess_prodpost/restart_1704.pdb
+      coordination_redetect: false
+      restraints:
+        - [B:1:ZN, C:1:O, 1.90, 50.0]
+        - [B:1:ZN, A:164:NE2, 2.09, 50.0]
+        - [B:1:ZN, C:2:O, 2.14, 50.0]
+        - [B:1:ZN, A:88:NE2, 2.22, 50.0]
+      nvt_time: 65920
+      traj_frequency: 5000
+      platform: CUDA
+      properties:
+        Precision: mixed
+
+  # ---- prod100c: the product MD with every crystal contact held (D173) ----
+  #
+  # From `finalsystem.pdb` again, not from a frame: the 34 ns rearranged the
+  # site, so there is no frame in that trajectory worth starting from.
+  #
+  # **Eight restraints, not four.** The four the detector found are the four
+  # contacts inside 2.5 A; what broke this run is everything between 2.5 and
+  # 4 A, which the detector leaves free and MM electrostatics then pulls in.
+  # The user's rule is the one being applied here: "anything within
+  # coordination range should be restrained at the distance it is in the
+  # crystal for MD" - so each of these is held at the distance
+  # `finalsystem.pdb` has, and none at a distance MD produced.
+  #
+  # Asp92 needs BOTH oxygens. D130 is the entry where holding OD2 alone at
+  # 2.80 let the carboxylate rotate OD1 in to 1.99: a monodentate restraint on
+  # a bidentate group restrains a distance, not a geometry.
+  #
+  # The ligand needs O4x and O5x for the same reason, and holding them is what
+  # makes O2x's 4.75 A migration impossible - it cannot reach the metal while
+  # the two oxygens the crystal puts there are held there. This overrides
+  # `constraint_exclude_residues: {D: [1]}`, which is right for the reactant,
+  # whose substrate must be free to react, and wrong for an equilibration whose
+  # job is to keep the crystal's geometry while the solvent relaxes.
+  prod100c:
+    stage: md
+    inputs:
+      pdb_file: preprocess_results/finalsystem.pdb
+      coordination_redetect: false
+      restraints:
+        - [B:1:ZN, C:1:O, 1.90, 50.0]        # the hydroxide-derived water
+        - [B:1:ZN, A:164:NE2, 2.09, 50.0]
+        - [B:1:ZN, C:2:O, 2.14, 50.0]
+        - [B:1:ZN, A:88:NE2, 2.22, 50.0]
+        - [B:1:ZN, A:92:OD2, 2.80, 50.0]     # second shell in the crystal, and it stays there
+        - [B:1:ZN, A:92:OD1, 3.81, 50.0]     # so the carboxylate cannot rotate instead
+        - [B:1:ZN, D:1:O4x, 2.94, 50.0]      # the product's own two contacts
+        - [B:1:ZN, D:1:O5x, 2.92, 50.0]
+      nvt_time: 100000
+      traj_frequency: 5000
+      platform: CUDA
+      properties:
+        Precision: mixed
+
+
   #
   # `md_prod100` (job 31327774) died at 34.14 ns with `Particle coordinate is
   # NaN`, energy and temperature flat right up to the last reported frame. This

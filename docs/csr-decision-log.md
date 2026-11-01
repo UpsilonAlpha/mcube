@@ -4097,6 +4097,58 @@ The four restraints are given **outright rather than redetected**. Redetecting o
 
 43 of the new tests pass in the ASH environment, which is the one that has MDAnalysis - run there on purpose, since D167 is the entry about a gated test hiding a broken module.
 
+**D173 - The 34 ns did not equilibrate the product complex, it rearranged it. The zinc is SIX-coordinate in 1704 of 1707 frames: Asp92 OD2 collapsed from 2.80 A to 2.03, and the ligand turned over - O2x came 4.75 A onto the metal while the crystal's own two contacts left. The restart is withdrawn; the hydrogens, meanwhile, are clean, and Gln93 is 7-9 A from everything, which settles it.** (2026-11-02)
+
+## The three gates
+
+**Hydrogens: pass.** On `restart_1704.pdb`, 32,297 of 49,580 atoms are hydrogens. The ligand's formula is **C17H26N3O6S1 and matches `ligand_smiles` exactly** - so the graft, the hydroxide merge and OpenFF's `AddHs` between them produced the molecule the config asks for, at the protonation state it asks for. Asp92 reads as unprotonated (no HD2); His88 and His164 are both HID, as `residue_variants` asked. No unattached hydrogens, no hydrogen clashes, every amide N with its H. **The hydrogens were never the problem.**
+
+**The `missing` contact list: pass, empty.** All 23 pairs resolved.
+
+**The zinc shell: fail, and not marginally.**
+
+| contact | `finalsystem.pdb` | over 34 ns (min/mean/max) | occupancy |
+| --- | --- | --- | --- |
+| HOH C:1 O | 1.90 | 1.94 / 2.07 / 2.29 | 100% (restrained) |
+| HOH C:2 O | 2.14 | 1.95 / 2.11 / 2.31 | 100% (restrained) |
+| His88 NE2 | 2.22 | 2.05 / 2.20 / 2.43 | 100% (restrained) |
+| His164 NE2 | 2.09 | 2.04 / 2.20 / 2.42 | 100% (restrained) |
+| **Asp92 OD2** | **2.80** | **1.88 / 2.03 / 3.25** | **99.9%** |
+| Asp92 OD1 | 3.81 | 2.04 / 3.23 / 3.50 | 0.2% |
+| **hyd O2x** | **6.76** | **1.89 / 2.01 / 2.20** | **100%** |
+| hyd O4x | 2.94 | 6.24 / 6.64 / 6.99 | 0% |
+| hyd O5x | 2.92 | 6.94 / 8.46 / 9.79 | 0% |
+| hyd O6x | 7.14 | 3.09 / 3.84 / 4.21 | 0% |
+
+**Coordination number: 6 in 1704 frames, 7 in 3.** Against the crystal's four.
+
+## What this says, which is more than "the MD failed"
+
+**Two contacts moved, and both were left unrestrained by design.** Asp92 OD2 sat at 2.80 A, outside the 2.5 A detection cutoff, so it got no restraint - and that cutoff exists precisely to stop a second-shell contact being restrained as though it were a bond (D120, D130). The decision is still right and still incomplete: it protects against holding a contact that is not a bond, and says nothing about a contact that is free to *become* one. A carboxylate 2.80 A from a divalent cation under a point-charge force field has one place to go.
+
+The ligand is the same hole with a bigger displacement. `constraint_exclude_residues: {D: [1]}` leaves the substrate free, which is correct for the reactant - a substrate that cannot move cannot react - and wrong for an equilibration whose only job is to let solvent relax around a crystallographic geometry. Freed, the product rotated: **O2x travelled 4.75 A onto the metal while O4x and O5x, the two oxygens 5AXO puts at 2.9 A, left for 6.6 and 8.5 A.** The complex that came out is not the complex that went in.
+
+**The NaN is explained, and it was never the interesting part.** A system that rearranges its metal site this far in the first frames is a sick system, not an unlucky integration step: Asp92's 99.9% occupancy means it came in almost immediately and stayed. Nothing about the timestep needed changing and nothing about it would have helped.
+
+**The user's own rule is the fix, applied properly this time:** "we can't trust MD for coordination so that's automatically invalid - anything within coordination range should be restrained at the distance it is in the crystal for MD." `prod100c` holds **eight** contacts at their `finalsystem.pdb` distances rather than four. Asp92 needs both oxygens, because D130 is the entry where holding OD2 alone let OD1 rotate in to 1.99 - a monodentate restraint on a bidentate group restrains a distance, not a geometry. The ligand needs O4x and O5x, and holding them is what makes O2x's migration impossible: it cannot reach the metal while the crystal's own contacts are held there.
+
+`prod100b` is **withdrawn in place** rather than deleted. The restart machinery was right; only its starting structure was wrong, and there is no frame in that trajectory worth starting from.
+
+## Gln93, settled by measurement
+
+The user's position was that Gln93 is "neutral and far away from everything". The trajectory agrees, and not narrowly:
+
+- **Gln93 NE2 - Asp92 OD1: 5.83 / 7.08 / 8.60 A**, 0% of frames inside 3.5 A.
+- **Gln93 NE2 - ligand O2x: 7.95 / 8.82 / 9.88 A**, 0%.
+
+Never a contact, over 34 ns, on either partner. Keeping it MM is right. **It also puts a question to the sections that still carry it** - `aspout`, `aspin`, `michaelis2d`, `rwoff`, `rwon`, `qmrate`, `asph` - which added it in D133 on the premise that its amide hydrogen-bonds the carboxylate whose position is being measured. At 5.8 A minimum it does not, at least on this arm. The reactant arm has its substrate in the pocket and may differ, which is a measurement rather than an assumption, and `postprocess` can now make it on `md_wt100`'s trajectory.
+
+Two further things the monitor turned up. **Arg90 NH1/NH2 to the ligand's O1x is 11-20 A** - not a pair worth monitoring, and I chose it from atom names without checking what they were near. And **O6x-C4x is 1.22 A at 100%**, a carbonyl bond length, confirming the nucleophile-derived oxygen is covalently on the carbon, with **C4x-N1x at 3.56-4.01 A**: the ring is properly open. The product is the right molecule in the wrong place.
+
+## One fix to the check this exposed
+
+`hydrogen_report` listed the zinc and all 56 sodiums as "residues with no hydrogens" - 57 lines burying anything real. A monatomic residue has no hydrogens to be missing, so they are counted as ions instead. The honest limit is recorded in the tests: a lone oxygen named HOH is indistinguishable from an ion by atom count, and water missing its hydrogens is caught at the template match, where tip3p has no one-atom residue to offer.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

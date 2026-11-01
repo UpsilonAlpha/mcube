@@ -687,12 +687,17 @@ def hydrogen_report(pdb_file: str, inputs=None, ligand_smiles=None,
     hydrogens = [r for r in rows if r[4] == "H"]
 
     states, no_h, missing_amide, orphans, clashes, nonstandard = [], [], [], [], [], []
+    ions: Dict[str, int] = {}
 
     for (chain, seq, resname), atoms in residues.items():
         names = {a[2] for a in atoms}
         label = f"{resname} {chain}:{seq}"
-        if not any(a[4] == "H" for a in atoms):
-            # Water counts too: a TIP3P oxygen with no hydrogens is not water.
+        monatomic = len(atoms) == 1
+        if not monatomic and not any(a[4] == "H" for a in atoms):
+            # Water counts too: a TIP3P oxygen without its two is not water.
+            # A monatomic ion does not: the product system has a zinc and 56
+            # sodiums, and listing all 57 as "residues with no hydrogens"
+            # buried the one line that mattered (D173).
             no_h.append(label)
         rule = STATE_HYDROGENS.get(resname.upper())
         if rule:
@@ -704,13 +709,18 @@ def hydrogen_report(pdb_file: str, inputs=None, ligand_smiles=None,
         if resname.upper() in amino and resname.upper() != "PRO":
             if "N" in names and not (names & {"H", "H1", "H2", "H3", "HN"}):
                 missing_amide.append(label)
-        if resname.upper() not in amino and resname.upper() not in ("HOH", "WAT"):
+        if (resname.upper() not in amino
+                and resname.upper() not in ("HOH", "WAT") and not monatomic):
+            # Monatomic ions are left out here too: their formula is their name,
+            # and a counter-ion bath would be the whole report.
             counts: Dict[str, int] = {}
             for a in atoms:
                 counts[a[4]] = counts.get(a[4], 0) + 1
             nonstandard.append({"residue": label, "atoms": len(atoms),
                                 "formula": "".join(f"{e}{counts[e]}"
                                                    for e in sorted(counts))})
+        elif monatomic:
+            ions[resname.upper()] = ions.get(resname.upper(), 0) + 1
 
     # Geometry. Every H against every heavy atom is the price of needing no
     # connectivity, so the heavy atoms are binned on a grid of the cutoff
@@ -759,7 +769,7 @@ def hydrogen_report(pdb_file: str, inputs=None, ligand_smiles=None,
               "protonation": states, "residues_without_hydrogens": no_h,
               "amide_n_without_h": missing_amide,
               "unattached_hydrogens": orphans, "hydrogen_clashes": clashes,
-              "nonstandard_residues": nonstandard}
+              "nonstandard_residues": nonstandard, "monatomic_ions": ions}
 
     if ligand_smiles and ligand_resname:
         report["ligand_formula_check"] = ligand_formula_check(
@@ -823,6 +833,9 @@ def report_hydrogens(rep: dict) -> None:
             print(f"[WARNING] Ligand {chk.get('resname')} does NOT match "
                   f"ligand_smiles: file {chk.get('copies')} vs SMILES "
                   f"{chk.get('from_smiles')} - {chk.get('status')}")
+    if rep.get("monatomic_ions"):
+        print("[INFO] Monatomic ions: "
+              + ", ".join(f"{n} x {r}" for r, n in sorted(rep["monatomic_ions"].items())))
     for n in rep.get("nonstandard_residues") or []:
         print(f"[INFO] Non-standard residue {n['residue']}: {n['formula']}")
     for s in rep["protonation"]:
