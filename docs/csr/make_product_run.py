@@ -5,7 +5,7 @@
 The product complex is the reactant system with meropenem replaced by
 hydrolysed meropenem at the pose transferred from SMB-1's 5AXO (D156, D159).
 Everything else - the protein, the zinc and its placement, the force fields,
-the histidine variants, the 2.5 A detection cutoff - is the reactant's, because
+the histidine variants, the detection cutoff - is the reactant's, because
 the two states are only comparable if nothing else differs.
 
 What this changes, and why each one:

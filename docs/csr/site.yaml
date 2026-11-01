@@ -1391,13 +1391,12 @@ sections:
   # SIX-coordinate in 1704 of 1707 frames: Asp92 OD2 collapsed from its
   # crystallographic 2.80 A to 2.03 A mean at 99.9% occupancy, and the ligand
   # turned over - O2x came from 6.76 A onto the metal at 2.01 A while O4x and
-  # O5x, the two contacts the crystal actually has at 2.94 and 2.92, left for
-  # 6.64 and 8.46 A. Restarting from that frame would carry all of it into the
-  # QM/MM, and no cutoff undoes an artefact already in the coordinates.
+  # O5x, the two contacts the crystal has at 2.94 and 2.92, left for 6.64 and
+  # 8.46 A. Restarting from that frame would carry all of it into the QM/MM,
+  # and no cutoff undoes an artefact already in the coordinates.
   #
-  # Kept here rather than deleted because the restart machinery is right and
-  # only its starting structure was wrong - `prod100c` is the same run from a
-  # structure that has not rearranged.
+  # Kept rather than deleted because the restart machinery is right and only
+  # its starting structure was wrong. Nothing should be submitted from here.
   prod100b:
     stage: md
     inputs:
@@ -1414,83 +1413,43 @@ sections:
       properties:
         Precision: mixed
 
-  # ---- prod100c: the product MD with every crystal contact held (D173) ----
+  # ---- prod100c: detection at 3.0 A, every contact it finds restrained (D174)
   #
-  # From `finalsystem.pdb` again, not from a frame: the 34 ns rearranged the
-  # site, so there is no frame in that trajectory worth starting from.
+  # The rule, already established and which I had not applied: **anything
+  # within 3 A of the zinc is affected by it and is restrained at its
+  # crystallographic distance.** Detecting at 2.5 A was my own reading of
+  # D120/D130, and it is wrong in the way that matters: the cutoff decides
+  # which contacts are *held*, so everything from 2.5 to 3.0 A was left free to
+  # collapse instead. That is what happened - Asp92 OD2 went 2.80 -> 2.03 and
+  # the ligand turned over, O2x travelling 4.75 A onto the metal (D173).
   #
-  # **Eight restraints, not four.** The four the detector found are the four
-  # contacts inside 2.5 A; what broke this run is everything between 2.5 and
-  # 4 A, which the detector leaves free and MM electrostatics then pulls in.
-  # The user's rule is the one being applied here: "anything within
-  # coordination range should be restrained at the distance it is in the
-  # crystal for MD" - so each of these is held at the distance
-  # `finalsystem.pdb` has, and none at a distance MD produced.
+  # At 3.0 A on `finalsystem.pdb` the sweep is seven contacts: HOH C:1 1.90,
+  # His164 2.09, HOH C:2 2.14, His88 2.22, **Asp92 OD2 2.80**, **hyd O5x 2.92**
+  # and **hyd O4x 2.94** - the crystal's four, plus the three that were free.
+  # `coordination_redetect: true` applies `preprocess.inputs.cutoff`, now 3.0,
+  # to this structure, so the restraints are a measurement of the file rather
+  # than a list typed by hand.
   #
-  # Asp92 needs BOTH oxygens. D130 is the entry where holding OD2 alone at
-  # 2.80 let the carboxylate rotate OD1 in to 1.99: a monodentate restraint on
-  # a bidentate group restrains a distance, not a geometry.
+  # `constraint_exclude_residues` no longer names the ligand: it is right for
+  # the reactant, whose substrate must be free to react, and it is what left
+  # the product's own two zinc contacts unheld.
   #
-  # The ligand needs O4x and O5x for the same reason, and holding them is what
-  # makes O2x's 4.75 A migration impossible - it cannot reach the metal while
-  # the two oxygens the crystal puts there are held there. This overrides
-  # `constraint_exclude_residues: {D: [1]}`, which is right for the reactant,
-  # whose substrate must be free to react, and wrong for an equilibration whose
-  # job is to keep the crystal's geometry while the solvent relaxes.
+  # **One restraint beyond the sweep, and it is a judgement: Asp92 OD1 at
+  # 3.81 A.** D120 and D130 are the same failure twice - OD2 held at 2.80 with
+  # OD1 free, and the carboxylate pivoted OD1 onto the metal at 1.99. A
+  # monodentate restraint on a bidentate group holds a distance, not a
+  # geometry. OD1 is outside 3 A so the rule does not reach it, but it is
+  # bonded to a carbon whose other oxygen is 2.80 A from the metal, so it is
+  # certainly affected by it. Strike this line if the group should be free to
+  # pivot.
   prod100c:
     stage: md
     inputs:
       pdb_file: preprocess_results/finalsystem.pdb
-      coordination_redetect: false
+      coordination_redetect: true
       restraints:
-        - [B:1:ZN, C:1:O, 1.90, 50.0]        # the hydroxide-derived water
-        - [B:1:ZN, A:164:NE2, 2.09, 50.0]
-        - [B:1:ZN, C:2:O, 2.14, 50.0]
-        - [B:1:ZN, A:88:NE2, 2.22, 50.0]
-        - [B:1:ZN, A:92:OD2, 2.80, 50.0]     # second shell in the crystal, and it stays there
-        - [B:1:ZN, A:92:OD1, 3.81, 50.0]     # so the carboxylate cannot rotate instead
-        - [B:1:ZN, D:1:O4x, 2.94, 50.0]      # the product's own two contacts
-        - [B:1:ZN, D:1:O5x, 2.92, 50.0]
+        - [B:1:ZN, A:92:OD1, 3.81, 50.0]
       nvt_time: 100000
-      traj_frequency: 5000
-      platform: CUDA
-      properties:
-        Precision: mixed
-
-
-  #
-  # `md_prod100` (job 31327774) died at 34.14 ns with `Particle coordinate is
-  # NaN`, energy and temperature flat right up to the last reported frame. This
-  # resumes from frame 1704 - 34.08 ns, three frames and 60 ps BEFORE the crash,
-  # because the frames nearest it are the ones whose geometry is least
-  # trustworthy - and runs the remaining 65.9 ns.
-  #
-  # **Nothing else is changed, deliberately.** 4 fs carried the reactant's
-  # `md_wt100` through all 100 ns on the same constraints, so the timestep is
-  # not a known fault, and the two arms are a matched pair: a product
-  # integrated differently from its reactant is a different control. Resuming
-  # from a PDB draws fresh Maxwell-Boltzmann velocities, which is the one thing
-  # that does change - and that is the test. If it crashes again near 34 ns the
-  # fault is in the system and the arm needs rebuilding; if it runs through, the
-  # first one was an unlucky integration step.
-  #
-  # **The restraints are given outright, not redetected.** `coordination_redetect`
-  # on a trajectory frame would restrain the metal-donor distances at the values
-  # MD had drifted to, which is exactly the inversion D120 and D130 are about:
-  # a contact must be held where the CRYSTAL has it, never where a previous run
-  # put it. These four are `md_prod100.results.coordination_restraints` verbatim,
-  # which were themselves detected on `finalsystem.pdb` at the 2.5 A cutoff.
-  prod100b:
-    stage: md
-    inputs:
-      pdb_file: protdft/postprocess_prodpost/restart_1704.pdb
-      coordination_redetect: false
-      restraints:
-        - [B:1:ZN, C:1:O, 1.90, 50.0]      # the hydroxide-derived water
-        - [B:1:ZN, A:164:NE2, 2.09, 50.0]
-        - [B:1:ZN, C:2:O, 2.14, 50.0]
-        - [B:1:ZN, A:88:NE2, 2.22, 50.0]
-      nvt_time: 65920            # ps, to 100 ns in total with the 34.08 already run
       traj_frequency: 5000
       platform: CUDA
       properties:
