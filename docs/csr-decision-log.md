@@ -3286,7 +3286,7 @@ Four things were listed as answerable from data already on disk. D148 did the fi
 
 **Two caveats that keep this from being the final word.** The profile is MM, with the other four donors restrained, which is exactly the kind of coordination claim the user has ruled MD out of. And the barrier between the basins rests on bins holding one frame each, so the shape between 2.6 and 2.8 A is noise. What the profile does establish is that **the off state is populated at all**, which no previous analysis showed, and that is enough to withdraw the claim.
 
-**Costing the QM/MM umbrella sampling, on SMB-1's protocol.** Coordinate Zn-Asp92 CG, 2.3 -> 4.8 A (the crystal is at 4.66), 26 windows at 0.1 A, k = 150 kcal/mol/A^2 (the DFTB3/3OB zinc value; SMB-1 used 100-300), 45 ps equilibration + 60 ps data a window, WHAM - that is **2.7 ns of xTB/MM MD**. Our measured rate is soft: job 30467248 ran 50 ps of QM/MM MD plus an optimisation in 33.7 h on 8 cores, so **~1.7 ps/h**, and 105 ps a window is **~62 h**. Twenty-six windows in parallel is therefore ~62 h of wall time and **~13,000 core-hours**, each window inside the 72 h limit but not by much. **Before committing that, one short timed QM/MM MD is needed to replace the 1.7 ps/h figure**, which comes from a cancelled job and includes work that was not MD.
+**Costing the QM/MM umbrella sampling, on SMB-1's protocol.** Coordinate Zn-Asp92 CG, 2.3 -> 4.8 A (the crystal is at 4.66), 26 windows at 0.1 A, k = 150 kcal/mol/A^2 (the DFTB3/3OB zinc value; SMB-1 used 100-300), 45 ps equilibration + 60 ps data a window, WHAM - that is **2.7 ns of xTB/MM MD**. Our measured rate is soft: job 30467248 ran 50 ps of QM/MM MD plus an optimisation in 33.7 h on 8 cores, so **~1.7 ps/h**, and 105 ps a window is **~62 h**. Twenty-six windows in parallel is therefore ~62 h of wall time and **~13,000 core-hours**, each window inside the 72 h limit but not by much. **Before committing that, one short timed QM/MM MD is needed to replace the 1.7 ps/h figure**, which comes from a cancelled job and includes work that was not MD. **[Measured 2026-11-01, D157: the real rate is 2.57 ps/h, so 40.9 h a window and ~8,500 core-hours. The PMF is affordable; this entry's cost was 1.5x too high. It should still not be run before the pose is rebuilt - D156.]**
 
 An MM umbrella run over the same coordinate would cost under an hour on a GPU and would converge the barrier the histogram cannot - but it would be measuring the force field's answer to a coordination question, which is the thing we have agreed not to trust. It is worth running as a sampling control, not as the result.
 
@@ -3492,7 +3492,7 @@ That is precisely the technique SMB-1 used for its ligand, applied by us to the 
 
 ## 5. The cost, which is a system-size decision and not a core-count one
 
-SMB-1's 9.7 ns of QM/MM MD is the number to match, and at D151's unverified 1.7 ps/h it is **about 240 days**. They could afford it because of their boundary: a **25 A TIP3P sphere centred on Zn2, everything beyond 25 A deleted**, 22-25 A under Langevin dynamics, free inside 22 A, and 114 QM atoms. That is a few thousand atoms against our periodic box.
+SMB-1's 9.7 ns of QM/MM MD is the number to match, and at the measured 2.57 ps/h (D157; this entry first said 240 days from D151's unverified 1.7) it is **about 157 days**. They could afford it because of their boundary: a **25 A TIP3P sphere centred on Zn2, everything beyond 25 A deleted**, 22-25 A under Langevin dynamics, free inside 22 A, and 114 QM atoms. That is a few thousand atoms against our periodic box.
 
 So reaching the literature's equilibration length means changing the model, not the allocation. Three ways, in order of how much they concede:
 
@@ -3575,6 +3575,62 @@ Measured in `CSR_wt`'s own frame (fit RMSD 0.622 A, transferred L1 carbonyl at 2
 2. **The transferred L1 pose is itself the candidate start**, not a pose to score against. `refstruct.py transfer --out` already writes it; what it needs is meropenem grafted onto the moxalactam core (`site.py graft` does bond-graph matching), a clash check, and then the equilibration D155 set out.
 3. **One honest caveat, the same one as D155.** L1 is di-zinc, and in 7UHI the C3 carboxylate is held by **Zn2**, which CSR-1 does not have. The 2.82 A in the table is that carboxylate measured against our *single* Zn1 after transfer, so it is where the carboxylate sits, not a bond we should expect to form. What CSR-1 offers that end is Arg229 and Lys226 (D148, D150), and whether they can hold it there is exactly the question the rebuilt complex would answer.
 4. **Nothing is yet rebuilt and nothing was submitted.** The two jobs from D153 (31277149 `q93`, 31277150 `qmrate`) were still running when this was written.
+
+
+**D157 - Gln93's whole electrostatic contribution is -0.87 kcal/mol, fifty times smaller than Arg229's and the last word on the Q of RQK. QM/MM MD runs at 2.57 ps/h, not 1.7, which makes the Asp92 PMF affordable - about 8,500 core-hours, every window inside the walltime limit. The PMF was never the blocker; the pose is.** (2026-11-01, jobs 31277149 and 31277150, both COMPLETED)
+
+## 1. Gln93, measured
+
+| run | job | energy (Eh) |
+| --- | --- | --- |
+| `sp_qmmm_ref` | 31185324 | -5076.869006116424 |
+| `sp_qmmm_q93` (A:93 deleted) | 31277149 | **-5076.867618573601** |
+
+**E(with Gln93's charges) - E(without) = -0.00138754 Eh = -0.87 kcal/mol**, stabilising. Against Arg229's **+44.34** (D153), that is a factor of **51**, and the sign is opposite.
+
+The record: `atoms: 17`, **`charge_removed: 0.0`**, `verified_after_run: true`, same two point-charge lists, no warning. Seventeen atoms is ff14SB's GLN and zero is its net charge, so the residue the key found is the neutral amide it should be - the check the brief asked for, passed.
+
+**And a point worth keeping: the energies differ although the charge removed is zero.** A net-neutral residue still has a dipole, and deleting it changes the QM region's energy; if the method only ever registered monopoles, these two numbers would have been identical. So the -0.87 is evidence the measurement sees the field rather than the formal charge.
+
+**What it settles.** D150 said the Q of RQK "is a vestigial metal ligand, not a catalytic one" on geometry alone - 6.2-11.1 A from the carbonyl, 0% occupancy over 5,000 frames. The electrostatics now agrees from the other direction: **0.87 kcal/mol is below the error of everything else in this project**, and no mechanism rests on a residue contributing that. Gln93 is where Zn2's Asp-His-His set lost its histidine, and it has not acquired a new job.
+
+**The decomposition is therefore complete and it has two entries**, which is all this method can ever give here: Arg229 **+44.34**, Gln93 **-0.87**. Arg90 and Lys226 are inside the QM region and permanently out of reach (D153); not attempted, and not to be made reachable by moving them out, which would be a different model.
+
+## 2. The QM/MM MD rate, measured at last
+
+3 ps on 8 cores, `skip_equilibrate: false` this time, trajectory and last frame both written: **4204.1 s, so 2.57 ps/h** - about **1.5x faster** than the 1.7 ps/h D151 took from a cancelled job.
+
+**What that does to the umbrella cost** (26 windows, 105 ps each - 45 ps equilibration plus 60 ps data, SMB-1's protocol):
+
+| | per window | 26 windows, 8 cores |
+| --- | --- | --- |
+| D151, from the cancelled job | 61.8 h | ~12,800 core-hours |
+| **measured** | **40.9 h** | **~8,500 core-hours** |
+
+**That is affordable, and D151's framing was wrong.** Every window fits inside a single 72 h allocation with 31 h to spare, and the 26 run in parallel, so the wall-clock cost of the whole PMF is **about two days**, not a quarter. The entry treated ~13,000 core-hours as the reason the Asp92 free energy was out of reach; it is not, and the figure that said so came from a job that was stopped before it had run long enough to be timed.
+
+**This does not mean the PMF should be run now.** D156 measured the start structure 5.15 A from the only experimental Michaelis complex in the family: a PMF on the Asp92 coordinate computed from that pose would be an accurate free energy for the wrong complex, and 8,500 core-hours is only cheap if the answer means something. The order is the rebuilt pose first, this second.
+
+## 3. A free result: 3 ps of unrestrained QM/MM MD
+
+The timing run is also **the first unrestrained QM/MM MD of the current system**, and `run.slurm`'s own `sphere` report on its last frame says:
+
+| ligand | scan_08 start | after 3 ps |
+| --- | --- | --- |
+| Asp92 OD1 | 1.90 | **2.17** |
+| hydroxide O01 | 1.94 | 1.98 |
+| His88 NE2 | 2.04 | 2.07 |
+| HOH485 | 2.19 | 2.12 |
+| His164 NE2 | 2.19 | 2.16 |
+| ligands within 2.8 A | 5 | **5** |
+
+**Asp92 stays on the metal at xTB/MM with nothing restraining it**, which is D102, D134 and D138 again at a third level of theory, and it is the control the `asph` result of D153 needed: the carboxylate leaves when it is protonated and stays when it is not, in the same code, from the same structure, over comparable relaxation. The substrate stays out (O1x 3.70, carbonyl 5.30, O01-C4x 4.20 against 3.48 at the start) - drifting further in 3 ps, consistent with D156.
+
+## 4. Where this leaves the open question
+
+The brief this shift ran from asked for the charge deletions to be written up as needing a reaction coordinate. That framing is **superseded by D155 and D156**, written since: the deletions and the PMF are both instruments pointed at a complex whose ligand is in the wrong place, and the reaction-coordinate question cannot be answered before the pose is. The decision in front of the user is D156's, not this one's: graft meropenem onto the transferred L1 pose and rebuild, or re-dock with the template as the validation target.
+
+**Nothing submitted, nothing queued, and no further wakeup scheduled** - there is nothing left running to read. Scratch is **264 of 300 GB** (up 8 GB on the two jobs, mostly the 3 ps trajectory and two sets of cubes); nothing pruned, since every candidate is named by a `results` path in `config.yaml`.
 
 
 ## Resources (see `running-on-bunya.md`)
