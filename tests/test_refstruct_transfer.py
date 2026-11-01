@@ -276,3 +276,78 @@ class TestSimilarity:
         pairs = [(i, i) for i in range(40)]
         full, core, core_rmsd = rs.superpose_pairs(a, b, pairs)
         assert full > 2.0 and core == 35 and core_rmsd < 0.01
+
+
+class TestMatch:
+    """Our ligand's names on a deposited ligand's coordinates. LMP and our
+    `hyd` are the same 27 heavy atoms named completely differently, so the
+    mapping has to come from bonding; a mapping that is wrong in one place
+    writes a scrambled molecule that still looks like a PDB (D159)."""
+
+    def ethanol(self, rs, names, origin=(0.0, 0.0, 0.0)):
+        """C-C-O, named as the caller likes, so only the graph can match them."""
+        ox, oy, oz = origin
+        return [atom(names[0], "LIG", "L", 1, (ox, oy, oz), "C"),
+                atom(names[1], "LIG", "L", 1, (ox + 1.5, oy, oz), "C"),
+                atom(names[2], "LIG", "L", 1, (ox + 2.4, oy + 1.1, oz), "O")]
+
+    def test_a_chain_matches_despite_different_names(self, rs):
+        a = self.ethanol(rs, ["C1x", "C2x", "O1x"])
+        b = self.ethanol(rs, ["CAA", "CAB", "OAC"], (10.0, 0.0, 0.0))
+        ah, aadj = rs.heavy_graph(a)
+        bh, badj = rs.heavy_graph(b)
+        maps = rs.isomorphisms([x[7] for x in ah], aadj, [x[7] for x in bh], badj)
+        assert len(maps) == 1 and maps[0] == {0: 0, 1: 1, 2: 2}
+
+    def test_the_mapping_is_not_the_identity_when_the_order_differs(self, rs):
+        a = self.ethanol(rs, ["C1x", "C2x", "O1x"])
+        b = [atom("OAC", "LIG", "L", 1, (12.4, 1.1, 0.0), "O"),
+             atom("CAB", "LIG", "L", 1, (11.5, 0.0, 0.0), "C"),
+             atom("CAA", "LIG", "L", 1, (10.0, 0.0, 0.0), "C")]
+        ah, aadj = rs.heavy_graph(a)
+        bh, badj = rs.heavy_graph(b)
+        maps = rs.isomorphisms([x[7] for x in ah], aadj, [x[7] for x in bh], badj)
+        assert maps[0] == {0: 2, 1: 1, 2: 0}
+
+    def test_a_different_molecule_has_no_mapping(self, rs):
+        a = self.ethanol(rs, ["C1x", "C2x", "O1x"])
+        b = [atom("N1", "LIG", "L", 1, (0.0, 0.0, 0.0), "N"),
+             atom("C1", "LIG", "L", 1, (1.5, 0.0, 0.0), "C"),
+             atom("O1", "LIG", "L", 1, (2.4, 1.1, 0.0), "O")]
+        ah, aadj = rs.heavy_graph(a)
+        bh, badj = rs.heavy_graph(b)
+        assert rs.isomorphisms([x[7] for x in ah], aadj,
+                               [x[7] for x in bh], badj) == []
+
+    def test_a_symmetric_group_reports_more_than_one_mapping(self, rs):
+        """A carboxylate's two oxygens are interchangeable, and the caller has
+        to be told so rather than shown one answer."""
+        lig = [atom("C", "LIG", "L", 1, (0.0, 0.0, 0.0), "C"),
+               atom("O1", "LIG", "L", 1, (1.25, 0.0, 0.0), "O"),
+               atom("O2", "LIG", "L", 1, (-0.6, 1.1, 0.0), "O"),
+               atom("CB", "LIG", "L", 1, (-0.7, -1.3, 0.0), "C")]
+        h, adj = rs.heavy_graph(lig)
+        maps = rs.isomorphisms([x[7] for x in h], adj, [x[7] for x in h], adj)
+        assert len(maps) == 2
+
+    def test_hydrogens_take_no_part(self, rs):
+        a = self.ethanol(rs, ["C1x", "C2x", "O1x"]) + [
+            atom("H1x", "LIG", "L", 1, (0.0, 1.0, 0.0), "H")]
+        heavy, _ = rs.heavy_graph(a)
+        assert [x[0] for x in heavy] == ["C1x", "C2x", "O1x"]
+
+    def test_a_sulfur_bond_is_long_enough_to_be_found(self, rs):
+        """C-S is 1.81 A, past the 1.75 that works for C, N and O."""
+        lig = [atom("C1", "LIG", "L", 1, (0.0, 0.0, 0.0), "C"),
+               atom("S1", "LIG", "L", 1, (1.81, 0.0, 0.0), "S")]
+        _, adj = rs.heavy_graph(lig)
+        assert adj[0] == {1}
+
+    def test_different_heavy_counts_are_refused(self, rs, tmp_path, capsys):
+        a = tmp_path / "a.pdb"
+        b = tmp_path / "b.pdb"
+        a.write_text("".join(rs.pdb_lines(self.ethanol(rs, ["C1", "C2", "O1"]))))
+        b.write_text("".join(rs.pdb_lines(self.ethanol(rs, ["C1", "C2", "O1"])[:2])))
+        with pytest.raises(SystemExit) as exc:
+            rs.mode_match([str(a), str(b)])
+        assert "not the same molecule" in str(exc.value)

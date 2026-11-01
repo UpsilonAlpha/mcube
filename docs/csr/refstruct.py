@@ -3,6 +3,9 @@
     python refstruct.py shell    <pdb> [pdb ...]      what is on each metal
     python refstruct.py centre   <pdb> <resname> <resseq>
                                         a transition-state analogue's geometry
+    python refstruct.py match <ours.pdb> <template.pdb> [--out=f.pdb]
+                                        our atom names on a deposited ligand's
+                                        coordinates, matched by bonding
     python refstruct.py similarity <a.pdb>[:CHAIN] <b.pdb>[:CHAIN] ...
                                         identity and CA RMSD for every pair
     python refstruct.py transfer <template.pdb> <target.pdb> --ligand=X --zn=...
@@ -502,8 +505,138 @@ def mode_similarity(args):
                   % (core, len(pairs), core_rmsd))
 
 
+
+# Covalent cutoffs, generous enough for a crystal ligand at 1.4-1.6 A
+# resolution and tight enough not to bond across a ring.
+_BOND_MAX = {("S", "C"): 1.95, ("S", "O"): 1.75, ("S", "N"): 1.85}
+_BOND_DEFAULT = 1.75
+
+
+def bond_max(e1, e2):
+    return _BOND_MAX.get((e1, e2)) or _BOND_MAX.get((e2, e1)) or _BOND_DEFAULT
+
+
+def heavy_graph(atoms):
+    """(heavy atoms, adjacency sets) by distance, for a ligand with no CONECT.
+
+    Hydrogens are left out: a crystal ligand has none, and the match only has
+    to be unambiguous over the heavy-atom skeleton.
+    """
+    heavy = [a for a in atoms if a[7] != "H"]
+    adj = [set() for _ in heavy]
+    for i in range(len(heavy)):
+        for j in range(i + 1, len(heavy)):
+            if dist(heavy[i], heavy[j]) <= bond_max(heavy[i][7], heavy[j][7]):
+                adj[i].add(j)
+                adj[j].add(i)
+    return heavy, adj
+
+
+def isomorphisms(a_el, a_adj, b_el, b_adj, limit=64):
+    """Every mapping a->b preserving element and bonding, up to `limit`.
+
+    Backtracking with the most-connected atom first, which prunes hard on a
+    fused bicycle. The count matters as much as the mapping: two carboxylate
+    oxygens are interchangeable, and a caller that is told there are several
+    mappings knows which parts of the molecule its choice was arbitrary for.
+    """
+    n = len(a_el)
+    if n != len(b_el) or sorted(a_el) != sorted(b_el):
+        return []
+    order = sorted(range(n), key=lambda i: -len(a_adj[i]))
+    found, mapping, used = [], {}, set()
+
+    def step(k):
+        if len(found) >= limit:
+            return
+        if k == n:
+            found.append(dict(mapping))
+            return
+        i = order[k]
+        for j in range(n):
+            if j in used or b_el[j] != a_el[i] or len(b_adj[j]) != len(a_adj[i]):
+                continue
+            ok = True
+            for nb, jj in mapping.items():
+                if (nb in a_adj[i]) != (jj in b_adj[j]):
+                    ok = False
+                    break
+            if ok:
+                mapping[i] = j
+                used.add(j)
+                step(k + 1)
+                del mapping[i]
+                used.discard(j)
+
+    step(0)
+    return found
+
+
+def mode_match(args):
+    """Put our ligand's atom names on a deposited ligand's coordinates.
+
+        python refstruct.py match <ours.pdb> <template.pdb> [--out=f.pdb]
+
+    Both files must hold one ligand and the same molecule. The heavy atoms are
+    matched by graph isomorphism - element and bonding, never by name, because
+    LMP and our `hyd` name the same 27 atoms completely differently - and the
+    output is **our** atom names and order at the **template's** coordinates.
+
+    Hydrogens are dropped rather than moved: the template has none, and a
+    hydrogen left at its old position after the heavy atoms have moved is a
+    bond stretched across the molecule. `preprocess` adds them back.
+
+    The number of distinct mappings is printed. More than one means a symmetric
+    group - the two oxygens of a carboxylate, the two methyls of an amide - and
+    says which names were assigned arbitrarily.
+    """
+    opts = {k.lstrip("-").split("=")[0]: k.split("=", 1)[1]
+            for k in args if k.startswith("--")}
+    paths = [a for a in args if not a.startswith("--")]
+    ours, template = rows(paths[0]), rows(paths[1])
+    a_heavy, a_adj = heavy_graph(ours)
+    b_heavy, b_adj = heavy_graph(template)
+    print("  ours %d heavy atoms, template %d" % (len(a_heavy), len(b_heavy)))
+    if len(a_heavy) != len(b_heavy):
+        raise SystemExit(
+            "different heavy-atom counts (%d and %d), so these are not the "
+            "same molecule. Nothing was written." % (len(a_heavy), len(b_heavy)))
+
+    maps = isomorphisms([a[7] for a in a_heavy], a_adj,
+                        [b[7] for b in b_heavy], b_adj)
+    if not maps:
+        raise SystemExit(
+            "no mapping preserves element and bonding, so the two ligands are "
+            "not the same molecule - or one of them has a bond the distance "
+            "cutoff did not find. Nothing was written.")
+    print("  %d mapping%s found; using the first"
+          % (len(maps), "" if len(maps) == 1 else "s"))
+    best = maps[0]
+
+    # Which names the symmetry left arbitrary, if any.
+    varying = sorted({a_heavy[i][0] for m in maps[1:] for i in m
+                      if m[i] != best[i]})
+    if varying:
+        print("  interchangeable under the symmetry: %s" % ", ".join(varying))
+
+    moved = []
+    for i, a in enumerate(a_heavy):
+        t = b_heavy[best[i]]
+        print("     %-5s <- %-5s" % (a[0], t[0]))
+        moved.append((a[0], a[1], a[2], a[3], t[4], t[5], t[6], a[7]))
+
+    if opts.get("out"):
+        resname = moved[0][1]
+        with open(opts["out"], "w") as fh:
+            fh.writelines(pdb_lines(moved, resname,
+                                    moved[0][2] or "L", int(moved[0][3] or 1)))
+            fh.write("END\n")
+        print("  written to %s (heavy atoms only - preprocess adds hydrogens)"
+              % opts["out"])
+
+
 if __name__ == "__main__":
-    if len(sys.argv) < 3 or sys.argv[1] not in ("shell", "centre", "transfer",
+    if len(sys.argv) < 3 or sys.argv[1] not in ("shell", "centre", "transfer", "match",
                                             "similarity"):
         raise SystemExit(__doc__)
     if sys.argv[1] == "shell":
@@ -512,6 +645,8 @@ if __name__ == "__main__":
         mode_transfer(sys.argv[2:])
     elif sys.argv[1] == "similarity":
         mode_similarity(sys.argv[2:])
+    elif sys.argv[1] == "match":
+        mode_match(sys.argv[2:])
     else:
         if len(sys.argv) != 5:
             raise SystemExit("centre needs <pdb> <resname> <resseq>")
