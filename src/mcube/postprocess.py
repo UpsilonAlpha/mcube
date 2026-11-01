@@ -21,6 +21,8 @@ from .preprocess import (
     load_section,
     ligand_resname,
     config_relative,
+    coordination_rows,
+    coordination_from_rows,
 )
 from .md import md_membrane
 from .membrane_analysis import report as membrane_report, options_from_config
@@ -70,6 +72,87 @@ def resolve_overlaps(pos, min_dist=0.08, max_iter=100):
 # Main pipeline
 # =========================
 
+def coordination_occupancy(pdb_file, trajectory, inputs, radius=None,
+                           per_residue=False, margin=1.0, stride=1):
+    """Per-ligand occupancy and the coordination-number distribution.
+
+    `md` reports the sphere before and after a run, which is two frames, and a
+    single frame cannot tell a ligand that is bound from one that happens to be
+    close at that instant. The coordination *number* is also the quantity
+    semiempirical methods are known to get wrong (D114: AM1/d out by 7.55
+    kcal/mol on a 4 -> 5 change), so it is reported as a distribution and not
+    as a mean - a site flipping between 4 and 5 and a site sitting at 4.5 are
+    different things.
+
+    The rule comes from `coordination_from_rows`, so the cutoff, the donor
+    elements and the minimum image are the ones `preprocess` used to build the
+    restraints rather than a second set chosen here. `per_residue` defaults to
+    False, unlike the restraint path: a carboxylate binding with both oxygens
+    is a different sphere from one binding with one, and collapsing to the
+    residue hides exactly that (D166 measured it in two runs).
+
+    Donors just past the cutoff are counted too, because a ligand at 2.7 A with
+    a 2.6 cutoff is a borderline call about the site and not an absence.
+    """
+    import numpy as np
+
+    rows, cell = coordination_rows(pdb_file)
+    u = mda.Universe(pdb_file, trajectory)
+    if len(u.atoms) != len(rows):
+        raise ValueError(
+            f"{pdb_file} has {len(rows)} atoms but {trajectory} has "
+            f"{len(u.atoms)}. The topology must be the structure the "
+            "trajectory was produced from, so the rows and the frames agree.")
+
+    cutoff = float(radius if radius is not None else (inputs.get("cutoff") or 2.8))
+    seen, counts, frames = {}, [], 0
+    for _ in u.trajectory[::stride]:
+        xyz = u.atoms.positions
+        frame_rows = [r[:5] + (tuple(map(float, xyz[i])),)
+                      for i, r in enumerate(rows)]
+        shell = coordination_from_rows(frame_rows, cell, inputs,
+                                       cutoff + margin, per_residue)
+        frames += 1
+        inside = 0
+        for row in shell:
+            key = (row["metal"], row["donor"], row["resname"])
+            rec = seen.setdefault(key, {"n": 0, "d": []})
+            rec["d"].append(row["distance"])
+            if row["distance"] <= cutoff:
+                rec["n"] += 1
+                inside += 1
+        counts.append(inside)
+
+    out = []
+    for (metal, donor, resname), rec in seen.items():
+        d = np.array(rec["d"])
+        out.append({"metal": metal, "donor": donor, "resname": resname,
+                    "occupancy": round(100.0 * rec["n"] / frames, 1),
+                    "min": round(float(d.min()), 2),
+                    "mean": round(float(d.mean()), 2),
+                    "max": round(float(d.max()), 2)})
+    out.sort(key=lambda r: (-r["occupancy"], r["mean"]))
+    hist = {n: counts.count(n) for n in sorted(set(counts))}
+    return {"frames": frames, "cutoff": cutoff, "margin": margin,
+            "per_residue": per_residue, "ligands": out,
+            "coordination_number": {str(k): v for k, v in hist.items()}}
+
+
+def report_coordination_occupancy(rep, label: str) -> None:
+    print("
+===== Metal coordination over %d frames: %s ====="
+          % (rep["frames"], label))
+    print("  cutoff %.2f A, +%.1f A margin shown, per_residue=%s"
+          % (rep["cutoff"], rep["margin"], rep["per_residue"]))
+    for row in rep["ligands"]:
+        mark = "" if row["occupancy"] > 0 else "   (never inside the cutoff)"
+        print("  %-12s %-16s %-4s %6.1f%%  %4.2f /%4.2f /%4.2f%s"
+              % (row["metal"], row["donor"], row["resname"], row["occupancy"],
+                 row["min"], row["mean"], row["max"], mark))
+    print("  coordination number: "
+          + ", ".join("%s in %d frames" % (k, v)
+                      for k, v in rep["coordination_number"].items()))
+
 def run(args):
 
     result: Dict[str, Any] = {}
@@ -114,6 +197,31 @@ def run(args):
         pdbfile = given_pdb or md["results"]["lastframe"]
         trajectory = given_traj or md["results"]["trajfile"]
         csv = md["results"]["csv"]
+
+        # The coordination sphere over the whole trajectory, by the same rule
+        # that built the restraints. Its settings come from `preprocess.inputs`
+        # and what it measured is saved into `postprocess.results`, so the
+        # config records the analysis as well as the run - which `--cutoff` and
+        # `--metals` on the command line never did (D167).
+        coord_spec = pp_inputs.get("coordination")
+        if coord_spec is not False:
+            spec = coord_spec if isinstance(coord_spec, dict) else {}
+            pre_inputs = preprocess.get("inputs") or {}
+            if not (pre_inputs.get("metals") or []):
+                print("[INFO] No `preprocess.inputs.metals`: no coordination "
+                      "analysis. Set it, or `postprocess.inputs.coordination: "
+                      "false` to say so deliberately.")
+            else:
+                rep = coordination_occupancy(
+                    pdbfile, trajectory, pre_inputs,
+                    radius=spec.get("cutoff"),
+                    per_residue=bool(spec.get("per_residue", False)),
+                    margin=float(spec.get("margin", 1.0)),
+                    stride=int(spec.get("stride", 1)))
+                report_coordination_occupancy(rep, Path(trajectory).name)
+                result["coordination"] = rep
+                result["coordination_trajectory"] = Path(trajectory).resolve().as_posix()
+                save_result(result, filename=args.config, section="postprocess")
 
         df = pl.read_csv(csv)
 

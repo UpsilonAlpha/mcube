@@ -501,10 +501,18 @@ def coordination_shell(pdb_file: str, inputs, radius=None, per_residue: bool = T
     being inherited silently. An MD frame is wrapped into the periodic cell, so
     the minimum image is applied when the file carries an orthorhombic CRYST1.
     """
-    metals = {m.upper() for m in (inputs.get("metals") or [])}
-    donors = {e.upper() for e in (inputs.get("donor_elements") or ["N", "O", "S"])}
-    cutoff = float(radius if radius is not None else (inputs.get("cutoff") or 2.8))
+    rows, cell = coordination_rows(pdb_file)
+    return coordination_from_rows(rows, cell, inputs, radius, per_residue)
 
+
+def coordination_rows(pdb_file: str):
+    """`(rows, cell)` for `coordination_from_rows`, read from a PDB file.
+
+    Split out so a trajectory frame can be measured by the same rule as a file:
+    `postprocess` substitutes the frame's coordinates into these rows rather
+    than reimplementing the detection, which is how its cutoff, donor elements
+    and minimum image stay the ones that built the restraints (D167).
+    """
     rows, cell = [], None
     for line in open(pdb_file):
         if line.startswith(("ATOM", "HETATM")):
@@ -515,6 +523,20 @@ def coordination_shell(pdb_file: str, inputs, radius=None, per_residue: bool = T
         elif line.startswith("CRYST1"):
             if all(abs(float(line[c:c + 7]) - 90.0) < 1e-3 for c in (33, 40, 47)):
                 cell = [float(line[6:15]), float(line[15:24]), float(line[24:33])]
+    return rows, cell
+
+
+def coordination_from_rows(rows, cell, inputs, radius=None,
+                           per_residue: bool = True) -> list:
+    """The coordination rule itself, over `rows` from `coordination_rows`.
+
+    A row is (chain, resseq, atom name, resname, element, xyz). Only the xyz
+    changes from frame to frame, so a caller analysing a trajectory swaps those
+    in and gets the same rule, cutoff and minimum image as the file path does.
+    """
+    metals = {m.upper() for m in (inputs.get("metals") or [])}
+    donors = {e.upper() for e in (inputs.get("donor_elements") or ["N", "O", "S"])}
+    cutoff = float(radius if radius is not None else (inputs.get("cutoff") or 2.8))
 
     found = []
     for mi, metal in enumerate(rows):
