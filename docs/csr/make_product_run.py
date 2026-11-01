@@ -62,7 +62,7 @@ def product_protein(src: Path, dst: Path, ligand_resname: str = "mer",
     water_chain = waters[0][21] if waters else None
     next_water = max((int(l[22:26]) for l in waters), default=0) + 1
 
-    kept, dropped, converted = [], 0, 0
+    kept, dropped, converted, carried = [], 0, 0, None
     for line in src.read_text().splitlines(keepends=True):
         if not line.startswith(("ATOM", "HETATM")):
             if not line.startswith("END"):
@@ -81,10 +81,17 @@ def product_protein(src: Path, dst: Path, ligand_resname: str = "mer",
             if water_chain:
                 moved = (moved[:21] + water_chain + "%4d" % next_water
                          + moved[26:])
-            kept.append(moved)
+            carried = moved
             converted += 1
             continue
         kept.append(line)
+    # After the other waters, not where the hydroxide sat: the numbering check
+    # walks the file in order, so a chain whose residues appear 2 then 1 reads
+    # as "starts at 2" and is refused (D162).
+    if carried is not None:
+        last = max((i for i, l in enumerate(kept)
+                    if l.startswith(("ATOM", "HETATM"))), default=len(kept) - 1)
+        kept.insert(last + 1, carried)
     kept.append("END\n")
     dst.write_text("".join(kept))
     return {"dropped": dropped, "converted": converted, "kept": len(kept) - 1}

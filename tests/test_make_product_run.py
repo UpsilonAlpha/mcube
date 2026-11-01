@@ -40,8 +40,8 @@ def start(tmp_path):
         "CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1           1\n"
         + line(1, "NE2", "HIS", "A", 88)
         + line(2, "ZN", "ZN", "B", 1, 2.2)
-        + line(3, "O", "HOH", "W", 1, 1.9)
-        + line(4, "O01", "OH", "C", 2, 2.14)
+        + line(3, "O01", "OH", "C", 2, 2.14)
+        + line(4, "O", "HOH", "W", 1, 1.9)
         + line(5, "H03", "OH", "C", 2, 3.0)
         + line(6, "C4x", "mer", "C", 1, 5.0)
         + line(7, "O2x", "mer", "C", 1, 6.0)
@@ -233,3 +233,12 @@ class TestTheConvertedWaterJoinsTheWaterChain:
         assert counts["converted"] == 1
         assert [l for l in out.read_text().splitlines()
                 if l.startswith("HETATM")][0][21] == "C"
+
+    def test_it_is_written_after_the_existing_waters(self, mod, start, tmp_path):
+        """The numbering check walks the file in order, so a chain whose
+        residues appear 2 then 1 reads as "starts at 2" and is refused."""
+        out = tmp_path / "p.pdb"
+        mod.product_protein(start, out)
+        seqs = [int(l[22:26]) for l in out.read_text().splitlines()
+                if l.startswith(("ATOM", "HETATM")) and l[21] == "W"]
+        assert seqs == sorted(seqs)
