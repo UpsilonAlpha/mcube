@@ -3950,6 +3950,39 @@ The first version of the report had a `print("\n...")` whose escape had collapse
 
 `tests/test_modules_compile.py` now parses every module in `src/mcube` and every `docs/csr` helper with `compile()`, which imports nothing and needs nothing installed. 632 pass locally (8 skipped, all ASH-gated), **707 pass on Bunya with nothing skipped.**
 
+**D168 - `contacts` is now part of `postprocess`, and promoting it turned up something worse than a missing feature: OpenFF's parameterizer renames ligand atoms, so 15 of the product's 53 atom names in the simulated system are not the names the graft wrote - `O01`, the nucleophile oxygen this whole log calls `O01`, is `O6x` in `finalsystem.pdb`.** (2026-11-01, user: "contacts probably belongs in preprocess or postprocess.py - use your judgement")
+
+## Where it went, and why
+
+**`postprocess`, with one piece in `preprocess`.** The analysis is a trajectory question, and `postprocess` is the stage for those: it already iterates frames, and the result belongs in that section's `results` beside the coordination report. What belongs in `preprocess` is the *vocabulary*, and it was already there - `resolve_atoms` is the one parser for `chain:resid:atom`, used by restraints and `zero_charges`, and `contact_occupancy` now calls it rather than carrying its own resolver. So the selectors mean the same thing in a monitor as in a restraint, which is the property worth having.
+
+`postprocess.inputs.monitor` is `{name: [selector, selector]}` - the same shape `site.yaml` already used, so `sections.py` carries it across unchanged. A contact is reported because the config names it.
+
+Two behaviours carried over deliberately. A pair that does not resolve is **reported as missing, not skipped**: D120 is the entry where the oxygen that migrated onto the metal was in no monitor at all, and a selector that silently matches nothing is the same failure with extra steps. And `-RT ln P(r)` came too (`contacts.profile`), because the histogram of a 100 ns trajectory is already a PMF over the range it visited - with the per-bin count printed beside the energy, since a bin with a handful of frames is noise wearing a number.
+
+## The renaming, which is the real finding
+
+`merge_ligand` parameterises through `small_molecule_parameterizer`, which writes its own `hyd.pdb` from the SDF - and **re-derives the atom names**. Matching the two files by coordinate (all 53 atoms within 0.05 A) gives the map:
+
+| graft (`hyd_crystal.pdb`) | simulated (`finalsystem.pdb`) |
+| --- | --- |
+| O5x | O4x |
+| O6x | O5x |
+| **O01** | **O6x** |
+| H01, H02, H1x-H4x, H6x-H10x, H03 | H1x-H11x, H26x |
+
+Everything else, `C4x` and `N1x` among them, is unchanged - which matters, because those two are the bond the reactant build re-forms.
+
+**Cross-checked rather than assumed:** D159 measured our `O6x`/`O5x` at 2.92/2.94 A from the zinc in `prod_start.pdb`; the final system reports `O5x`/`O4x` at the same two distances. The map is consistent with both.
+
+**What this breaks.** Any config selector naming a ligand atom was written against the ligand file and means a *different atom* in the system that runs. Nothing records the map, nothing warns, and the failure is silent: `D:1:O01` simply does not resolve, while `D:1:O5x` resolves to the wrong oxygen. There are now three naming systems in play - the reactant's substrate, the grafted product, and the simulated product - and a selector has to say which.
+
+**Proposed, not built:** `preprocess` should record the input-to-parameterised name map in `preprocess.results` (and warn when it is non-empty), so a config can be checked against it. Preserving the input names instead would be better still, if the parameterizer can be made to.
+
+`prodpost` therefore carries 23 pairs written in **final-system names**, with pairs named by atom rather than by chemical role wherever the role has not been re-derived from the product's connectivity: the reactant monitor's roles do not carry over.
+
+632 pass locally (9 skipped, MDAnalysis- and ASH-gated), and the compile check now parses `postprocess.py` on every run, which is what would have caught D167's collapsed escape.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

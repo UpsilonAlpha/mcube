@@ -23,6 +23,8 @@ from .preprocess import (
     config_relative,
     coordination_rows,
     coordination_from_rows,
+    resolve_atoms,
+    separation,
 )
 from .md import md_membrane
 from .membrane_analysis import report as membrane_report, options_from_config
@@ -149,6 +151,139 @@ def coordination_occupancy(pdb_file, trajectory, inputs, radius=None,
             "coordination_number": {str(k): v for k, v in hist.items()}}
 
 
+def contact_occupancy(pdb_file, trajectory, monitor, cutoff=3.5, stride=1):
+    """Named atom pairs over a trajectory: occupancy and distance spread.
+
+    `coordination_occupancy` answers what is on the metal. This answers
+    everything else - which residue holds the substrate's carboxylate, whether
+    a glutamine reaches the carbonyl - and it answers it for the pairs the
+    config names, so a contact is reported because the config asked for it and
+    not because someone wrote a one-off script for this protein.
+
+    `monitor` is {name: [selector, selector]}, the selectors being the same
+    `chain:resid:atom` that restraints and `zero_charges` take: `resolve_atoms`
+    is the one parser for them, so a config means the same thing in every
+    stage. Occupancy is the fraction of frames within `cutoff`, 3.5 A by
+    default - the usual polar-contact convention for a heavy-atom pair.
+
+    A pair whose atoms are not in this topology is **reported as missing, not
+    skipped**: a contact absent from the system is a fact about the model, and
+    a selector that silently resolves to nothing is how a monitor goes
+    unwatched (D120, where the oxygen that migrated onto the metal was in no
+    monitor at all).
+    """
+    import numpy as np
+
+    rows, cell = coordination_rows(pdb_file)
+    try:
+        u = mda.Universe(pdb_file, trajectory)
+    except Exception as exc:
+        raise ValueError(
+            f"{trajectory} cannot be read against {pdb_file}: {exc}. The "
+            "topology must be the structure the trajectory was produced "
+            "from.") from exc
+
+    named, idx, missing = [], [], []
+    for name, sel in (monitor or {}).items():
+        if not (isinstance(sel, (list, tuple)) and len(sel) == 2):
+            missing.append({"pair": name,
+                            "why": "needs exactly two selectors, got %r" % (sel,)})
+            continue
+        try:
+            i, j = resolve_atoms(list(sel), pdb_file)
+        except ValueError as exc:
+            missing.append({"pair": name, "why": str(exc)})
+            continue
+        named.append(name)
+        idx.append((int(i), int(j)))
+
+    dist = [[] for _ in named]
+    frames = 0
+    for _ in u.trajectory[::stride]:
+        xyz = u.atoms.positions
+        frames += 1
+        for k, (i, j) in enumerate(idx):
+            dist[k].append(separation(tuple(map(float, xyz[i])),
+                                      tuple(map(float, xyz[j])), cell))
+
+    out = []
+    for k, name in enumerate(named):
+        d = np.array(dist[k])
+        out.append({"pair": name,
+                    "occupancy": round(float((d < cutoff).mean()) * 100.0, 1),
+                    "min": round(float(d.min()), 2),
+                    "mean": round(float(d.mean()), 2),
+                    "max": round(float(d.max()), 2)})
+    out.sort(key=lambda r: (-r["occupancy"], r["mean"]))
+    return {"frames": frames, "cutoff": cutoff, "pairs": out,
+            "missing": missing,
+            "_distances": {name: dist[k] for k, name in enumerate(named)}}
+
+
+def contact_profile(rep, want, width=0.05, temperature=300.0):
+    """-RT ln P(r) for every monitored pair whose name contains `want`.
+
+    Unbiased sampling already carries the free energy along any distance it
+    explored: the histogram of a 100 ns trajectory is a potential of mean force
+    over the range it visited, for nothing but the cost of reading the frames.
+
+    It is only as good as the sampling, so the count per bin is reported beside
+    the energy - a bin with a handful of frames is noise wearing a number, and
+    the top of a profile like this is always the thin end. This is not a
+    substitute for umbrella sampling, which is what reaches the range the
+    molecule does not visit on its own; it is the part already paid for.
+    """
+    import numpy as np
+
+    rt = 0.0019872041 * float(temperature)        # kcal/mol
+    out = []
+    for name, values in (rep.get("_distances") or {}).items():
+        if want.lower() not in name.lower():
+            continue
+        d = np.array(values)
+        lo = np.floor(d.min() / width) * width
+        hi = np.ceil(d.max() / width) * width
+        counts, edges = np.histogram(d, bins=np.arange(lo, hi + width, width))
+        centres = 0.5 * (edges[:-1] + edges[1:])
+        keep = counts > 0
+        # Jacobian: a distance shell grows as r^2, so the radial density is
+        # divided by it before the log, or every profile tilts outward.
+        p = counts[keep] / (centres[keep] ** 2)
+        g = -rt * np.log(p / p.max())
+        bins = [{"r": round(float(c), 3), "frames": int(n),
+                 "dG": round(float(e), 2)}
+                for c, n, e in zip(centres[keep], counts[keep], g)]
+        out.append({"pair": name, "temperature": float(temperature),
+                    "bin": width, "minimum": round(float(
+                        centres[keep][int(np.argmin(g))]), 2),
+                    "sampled_frames": int(counts.sum()), "bins": bins})
+    return out
+
+
+def report_contacts(rep, label: str) -> None:
+    print("\n===== Monitored contacts over %d frames: %s ====="
+          % (rep["frames"], label))
+    print("  cutoff %.2f A" % rep["cutoff"])
+    print("  %-26s  occ%%    min  mean   max" % "pair")
+    for row in rep["pairs"]:
+        print("  %-26s %5.1f  %5.2f %5.2f  %5.2f"
+              % (row["pair"], row["occupancy"], row["min"], row["mean"],
+                 row["max"]))
+    for row in rep["missing"]:
+        print("  %-26s     -  %s" % (row["pair"], row["why"]))
+
+
+def report_contact_profiles(profiles) -> None:
+    for prof in profiles:
+        print("\n  -- %s: -RT ln P at %.0f K, %.2f A bins, %d frames sampled"
+              % (prof["pair"], prof["temperature"], prof["bin"],
+                 prof["sampled_frames"]))
+        print("     %6s %8s %10s" % ("r", "frames", "dG kcal"))
+        for b in prof["bins"]:
+            print("     %6.2f %8d %10.2f" % (b["r"], b["frames"], b["dG"]))
+        print("     minimum at %.2f A" % prof["minimum"])
+
+
 def report_coordination_occupancy(rep, label: str) -> None:
     print("\n===== Metal coordination over %d frames: %s ====="
           % (rep["frames"], label))
@@ -243,6 +378,35 @@ def run(args):
                 result["coordination"] = rep
                 result["coordination_trajectory"] = Path(trajectory).resolve().as_posix()
                 save_result(result, filename=args.config, section=section)
+
+        # The named pairs, which is everything the metal shell does not cover.
+        # `monitor` sits in this section's inputs rather than being discovered,
+        # so a contact is reported because the config asks for it.
+        monitor = pp_inputs.get("monitor")
+        if monitor:
+            spec = pp_inputs.get("contacts")
+            spec = spec if isinstance(spec, dict) else {}
+            crep = contact_occupancy(
+                pdbfile, trajectory, monitor,
+                cutoff=float(spec.get("cutoff", 3.5)),
+                stride=int(spec.get("stride", 1)))
+            report_contacts(crep, Path(trajectory).name)
+            want = spec.get("profile")
+            profiles = (contact_profile(crep, want,
+                                        width=float(spec.get("bin", 0.05)),
+                                        temperature=float(
+                                            spec.get("temperature", 300.0)))
+                        if want else [])
+            if profiles:
+                report_contact_profiles(profiles)
+            # The per-frame distances are megabytes and the config is read by
+            # hand; the summary is what belongs in it.
+            crep.pop("_distances", None)
+            result["contacts"] = crep
+            if profiles:
+                result["contact_profiles"] = profiles
+            result["contacts_trajectory"] = Path(trajectory).resolve().as_posix()
+            save_result(result, filename=args.config, section=section)
 
         df = pl.read_csv(csv)
 

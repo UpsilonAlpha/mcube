@@ -1299,6 +1299,46 @@ sections:
       coordination:
         per_residue: false
         margin: 1.0
+      contacts:
+        cutoff: 3.5
+      # **These selectors use the names in `finalsystem.pdb`, which are NOT the
+      # names in the ligand file the graft produced.** OpenFF's parameterizer
+      # re-derives atom names from the SDF, so `hyd_crystal.pdb` -> `hyd.pdb`
+      # renamed 15 of 53 atoms: O5x->O4x, O6x->O5x, **O01->O6x**, and the
+      # hydrogens throughout. Verified by matching coordinates (all 53 within
+      # 0.05 A) and cross-checked against two shell measurements: D159 measured
+      # our O6x/O5x at 2.92/2.94 from the zinc, and the final system reports
+      # O5x/O4x at the same two distances (D168).
+      #
+      # So the nucleophile oxygen - the hydroxide the product absorbed, `O01`
+      # everywhere in this log - is **O6x** in the system that is simulated.
+      # Pairs are named by atom rather than by chemical role where the role has
+      # not been re-derived from the product's connectivity; the roles in the
+      # reactant's `monitor` above do not carry over.
+      monitor:
+        Zn-Asp92 OD2: [B:1:ZN, A:92:OD2]
+        Zn-Asp92 OD1: [B:1:ZN, A:92:OD1]
+        Zn-Asp92 CG: [B:1:ZN, A:92:CG]
+        Zn-His88: [B:1:ZN, A:88:NE2]
+        Zn-His164: [B:1:ZN, A:164:NE2]
+        Zn-HOH C1: [B:1:ZN, C:1:O]
+        Zn-HOH C2: [B:1:ZN, C:2:O]
+        Zn-hyd O4x: [B:1:ZN, D:1:O4x]
+        Zn-hyd O5x: [B:1:ZN, D:1:O5x]
+        Zn-hyd O6x: [B:1:ZN, D:1:O6x]
+        Zn-hyd O2x: [B:1:ZN, D:1:O2x]
+        Zn-hyd N1x: [B:1:ZN, D:1:N1x]
+        C4x-N1x: [D:1:C4x, D:1:N1x]
+        O6x-C4x: [D:1:O6x, D:1:C4x]
+        Gln93 NE2-Asp92 OD1: [A:93:NE2, A:92:OD1]
+        Gln93 NE2-hyd O2x: [A:93:NE2, D:1:O2x]
+        Arg90 NH1-hyd O1x: [A:90:NH1, D:1:O1x]
+        Arg90 NH2-hyd O1x: [A:90:NH2, D:1:O1x]
+        Lys226 NZ-hyd O3x: [A:226:NZ, D:1:O3x]
+        Lys226 NZ-hyd O6x: [A:226:NZ, D:1:O6x]
+        Arg229 NH1-hyd O3x: [A:229:NH1, D:1:O3x]
+        Arg229 NH2-hyd O4x: [A:229:NH2, D:1:O4x]
+        Ser186 OG-hyd O4x: [A:186:OG, D:1:O4x]
 
   # 50 ps of GFN2-xTB QM/MM MD from that trajectory's last frame. `charge` is
   # inherited at +2 and that is correct for the product as well as the
