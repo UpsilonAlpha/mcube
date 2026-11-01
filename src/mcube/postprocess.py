@@ -97,12 +97,23 @@ def coordination_occupancy(pdb_file, trajectory, inputs, radius=None,
     import numpy as np
 
     rows, cell = coordination_rows(pdb_file)
-    u = mda.Universe(pdb_file, trajectory)
+    # MDAnalysis notices a topology that does not match the trajectory, but it
+    # reports it from inside its reader, which reads as a corrupt file rather
+    # than as the wrong pair of files. Said here instead: zipping the wrong
+    # topology onto a trajectory would report one atom's distances under
+    # another atom's name, which no later check would catch.
+    try:
+        u = mda.Universe(pdb_file, trajectory)
+    except Exception as exc:
+        raise ValueError(
+            f"{trajectory} cannot be read against {pdb_file} ({len(rows)} "
+            f"atoms): {exc}. The topology must be the structure the trajectory "
+            "was produced from, so its atoms and the frames agree.") from exc
     if len(u.atoms) != len(rows):
         raise ValueError(
-            f"{pdb_file} has {len(rows)} atoms but {trajectory} has "
-            f"{len(u.atoms)}. The topology must be the structure the "
-            "trajectory was produced from, so the rows and the frames agree.")
+            f"{pdb_file} parses as {len(rows)} atoms here but MDAnalysis reads "
+            f"{len(u.atoms)}. The two disagree about the same file, so the "
+            "rows and the coordinates cannot be matched up.")
 
     cutoff = float(radius if radius is not None else (inputs.get("cutoff") or 2.8))
     seen, counts, frames = {}, [], 0
