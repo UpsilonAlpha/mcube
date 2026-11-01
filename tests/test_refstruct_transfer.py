@@ -379,3 +379,61 @@ class TestMatch:
                  if l.startswith("HETATM")][0]
         assert first[12:16].strip() == "C1x"        # our name
         assert float(first[30:38]) == pytest.approx(10.0)   # their coordinate
+
+
+class TestConectIsPreferredToDistance:
+    """Our ligand's CONECT is the topology its force field was built on. A
+    distance rule got 27 atoms and 28 bonds right for hydrolysed meropenem and
+    still placed one of them between the wrong pair, which RDKit caught only
+    as "ligand_smiles does not match the atoms/bonds" (D161)."""
+
+    def write(self, path, lines):
+        path.write_text("".join(lines))
+        return str(path)
+
+    def three(self):
+        return ["HETATM    1  C1  LIG L   1       0.000   0.000   0.000  1.00"
+                "  0.00           C\n",
+                "HETATM    2  C2  LIG L   1       1.500   0.000   0.000  1.00"
+                "  0.00           C\n",
+                "HETATM    3  O1  LIG L   1       3.000   0.000   0.000  1.00"
+                "  0.00           O\n"]
+
+    def test_conect_is_read(self, rs, tmp_path):
+        path = self.write(tmp_path / "a.pdb",
+                          self.three() + ["CONECT    1    2\n", "END\n"])
+        assert rs.conect_bonds(path) == {(0, 1)}
+
+    def test_a_file_without_conect_returns_None(self, rs, tmp_path):
+        path = self.write(tmp_path / "b.pdb", self.three() + ["END\n"])
+        assert rs.conect_bonds(path) is None
+
+    def test_a_multi_neighbour_line_gives_every_pair(self, rs, tmp_path):
+        path = self.write(tmp_path / "c.pdb",
+                          self.three() + ["CONECT    2    1    3\n", "END\n"])
+        assert rs.conect_bonds(path) == {(0, 1), (1, 2)}
+
+    def test_the_graph_uses_conect_over_distance(self, rs, tmp_path):
+        """C2-O1 is 1.5 A apart and bonded; C1-C2 is 1.5 A and NOT, per CONECT.
+        A distance rule would bond both."""
+        path = self.write(tmp_path / "d.pdb",
+                          self.three() + ["CONECT    2    3\n", "END\n"])
+        atoms = rs.rows(path)
+        _, adj = rs.heavy_graph(atoms, rs.conect_bonds(path))
+        assert adj[0] == set() and adj[1] == {2}
+
+    def test_without_conect_it_falls_back_to_distance(self, rs, tmp_path):
+        path = self.write(tmp_path / "e.pdb", self.three() + ["END\n"])
+        atoms = rs.rows(path)
+        _, adj = rs.heavy_graph(atoms, rs.conect_bonds(path))
+        assert adj[0] == {1} and adj[1] == {0, 2}
+
+    def test_hydrogens_in_the_conect_list_are_ignored(self, rs, tmp_path):
+        lines = self.three() + [
+            "HETATM    4  H1  LIG L   1       0.000   1.000   0.000  1.00"
+            "  0.00           H\n",
+            "CONECT    1    2    4\n", "END\n"]
+        path = self.write(tmp_path / "f.pdb", lines)
+        atoms = rs.rows(path)
+        heavy, adj = rs.heavy_graph(atoms, rs.conect_bonds(path))
+        assert len(heavy) == 3 and adj[0] == {1}

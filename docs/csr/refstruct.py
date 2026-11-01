@@ -516,14 +516,57 @@ def bond_max(e1, e2):
     return _BOND_MAX.get((e1, e2)) or _BOND_MAX.get((e2, e1)) or _BOND_DEFAULT
 
 
-def heavy_graph(atoms):
-    """(heavy atoms, adjacency sets) by distance, for a ligand with no CONECT.
 
-    Hydrogens are left out: a crystal ligand has none, and the match only has
-    to be unambiguous over the heavy-atom skeleton.
+def conect_bonds(path):
+    """{(i, j)} over ATOM/HETATM order, from the file's own CONECT records.
+
+    None when the file has none. Our ligands carry them - they are the bonds
+    the force field was built on - and reading them is the difference between
+    using the topology and re-deriving it. A distance rule gets 27 atoms and
+    28 bonds right and can still put one of them between the wrong pair.
     """
-    heavy = [a for a in atoms if a[7] != "H"]
+    index, order, conect = {}, 0, []
+    for line in open(path, errors="replace"):
+        if line.startswith(("ATOM", "HETATM")) and line[16] in (" ", "A"):
+            serial = line[6:11].strip()
+            if serial:
+                index[int(serial)] = order
+            order += 1
+        elif line.startswith("CONECT"):
+            conect.append(line.rstrip())
+    if not conect:
+        return None
+    pairs = set()
+    for line in conect:
+        fields = [line[i:i + 5].strip() for i in range(6, min(len(line), 31), 5)]
+        nums = [int(f) for f in fields if f]
+        if len(nums) < 2:
+            continue
+        a = index.get(nums[0])
+        for other in nums[1:]:
+            b = index.get(other)
+            if a is not None and b is not None and a != b:
+                pairs.add((min(a, b), max(a, b)))
+    return pairs
+
+
+def heavy_graph(atoms, bonds=None):
+    """(heavy atoms, adjacency sets). From `bonds` if given, else by distance.
+
+    `bonds` is {(i, j)} over the full atom order, as `conect_bonds` returns it.
+    Hydrogens are left out either way: a crystal ligand has none, and the match
+    only has to be unambiguous over the heavy-atom skeleton.
+    """
+    keep = [i for i, a in enumerate(atoms) if a[7] != "H"]
+    heavy = [atoms[i] for i in keep]
+    position = {i: k for k, i in enumerate(keep)}
     adj = [set() for _ in heavy]
+    if bonds is not None:
+        for i, j in bonds:
+            if i in position and j in position:
+                adj[position[i]].add(position[j])
+                adj[position[j]].add(position[i])
+        return heavy, adj
     for i in range(len(heavy)):
         for j in range(i + 1, len(heavy)):
             if dist(heavy[i], heavy[j]) <= bond_max(heavy[i][7], heavy[j][7]):
@@ -594,9 +637,16 @@ def mode_match(args):
             for k in args if k.startswith("--")}
     paths = [a for a in args if not a.startswith("--")]
     ours, template = rows(paths[0]), rows(paths[1])
-    a_heavy, a_adj = heavy_graph(ours)
-    b_heavy, b_adj = heavy_graph(template)
-    print("  ours %d heavy atoms, template %d" % (len(a_heavy), len(b_heavy)))
+    # Our ligand's CONECT is the topology its parameters were built on, so it
+    # wins over any distance rule. The template is a crystal ligand with no
+    # CONECT, where distance bonding is reliable - and if the two graphs
+    # disagree, no isomorphism is found, which is the check rather than a
+    # silent reinterpretation.
+    our_bonds = conect_bonds(paths[0])
+    a_heavy, a_adj = heavy_graph(ours, our_bonds)
+    b_heavy, b_adj = heavy_graph(template, conect_bonds(paths[1]))
+    print("  ours %d heavy atoms (bonds from %s), template %d"
+          % (len(a_heavy), "CONECT" if our_bonds else "distance", len(b_heavy)))
     if len(a_heavy) != len(b_heavy):
         raise SystemExit(
             "different heavy-atom counts (%d and %d), so these are not the "
