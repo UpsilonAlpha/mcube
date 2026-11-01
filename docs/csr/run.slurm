@@ -15,11 +15,12 @@
 #
 # One job script for every mcube stage.
 #
-#   sbatch -J <name> [resources] run.slurm <stage> <section>
+#   sbatch -J <name> [resources] run.slurm <stage> [<section>]
 #
 #   stage    preprocess | md | qmmm | sp | scan | neb | ts
-#   section  the config.yaml section, e.g. scan_znco or md_nac. preprocess has
-#            none, so there it just names the output directory
+#   section  the config.yaml section, e.g. scan_znco or md_nac. Optional: it
+#            defaults to the stage name, which is mcube's own default section.
+#            `preprocess` has no section, so there it is never needed.
 #
 # The structure a stage starts from is NOT an argument: it is `pdb_file` in that
 # section's `inputs` (a neb's two endpoints are `reactant_pdb` and
@@ -49,7 +50,13 @@ export OMP_STACKSIZE=1G
 export PYTHONUNBUFFERED=1
 
 STAGE=${1:?stage: preprocess, md, qmmm, sp, scan, neb or ts}
-SECTION=${2:?config.yaml section, or the stage name for preprocess/md}
+# Defaults to the stage name, which is mcube's own default section for every
+# stage that takes one (`qmmm`, `sp`, `scan`, `neb`, `ts`) and is ignored by
+# `preprocess`, which has no section at all. So `run.slurm preprocess` and
+# `run.slurm preprocess preprocess` are the same command, and the second word
+# is only needed when the section is not the default - which is nearly always,
+# but never for preprocess. Requiring it there cost job 31296723 (D160).
+SECTION=${2:-$STAGE}
 
 # This used to be a structure, passed on to --pdb. Refused rather than ignored:
 # an old command line that still carries one would otherwise run on whatever the

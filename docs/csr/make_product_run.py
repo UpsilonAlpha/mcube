@@ -103,8 +103,15 @@ def main(reactant_dir, product_dir, ligand_pdb):
     if not start_path.is_file():
         raise SystemExit("cannot find the reactant's protein_pdb (%s)" % start)
 
-    dst.mkdir(parents=True, exist_ok=True)
-    protein = dst / "product_protein.pdb"
+    # Into preprocess_results/, not the run directory: `run.slurm` does
+    # `cd "$OUT"` before calling mcube, so preprocess reads its `protein_pdb`
+    # and `ligand` relative to **that** directory, not to the config's. It is
+    # why the reactant's own `csr_crystal_start.pdb` lives there too, and
+    # writing them one level up cost job 31299717 an opaque RDKit "Bad input
+    # file" (D161).
+    here = dst / "preprocess_results"
+    here.mkdir(parents=True, exist_ok=True)
+    protein = here / "product_protein.pdb"
     counts = product_protein(start_path, protein)
     print("protein from %s: %d lines kept, %d atoms dropped, hydroxide -> "
           "water on %d atom(s)" % (start_path, counts["kept"],
@@ -116,12 +123,12 @@ def main(reactant_dir, product_dir, ligand_pdb):
             "else was written." % counts["converted"])
 
     ligand = Path(ligand_pdb)
-    (dst / ligand.name).write_text(ligand.read_text())
+    (here / ligand.name).write_text(ligand.read_text())
     out = product_config(cfg, "./%s" % protein.name, "./%s" % ligand.name,
                          "hyd")
     (dst / "config.yaml").write_text(
         yaml.safe_dump(out, sort_keys=False, default_flow_style=False))
-    print("wrote %s, %s and %s" % (protein, dst / ligand.name,
+    print("wrote %s, %s and %s" % (protein, here / ligand.name,
                                    dst / "config.yaml"))
     print("ligand charge -1, smiles %s" % PRODUCT_SMILES)
 

@@ -151,3 +151,38 @@ class TestTheSmiles:
         """The ring N is written bare, so SMILES gives it the implicit H the
         hydrolysis delivers - hyd_zw.pdb's N1x-H03."""
         assert "1NC(" in mod.PRODUCT_SMILES
+
+
+class TestWhereTheInputsLand:
+    """`run.slurm` does `cd "$OUT"` before calling mcube, so preprocess reads
+    `protein_pdb` and `ligand` relative to preprocess_results/, not to the
+    config. Writing them one level up gives RDKit's opaque "Bad input file"
+    six seconds in (D161)."""
+
+    def build(self, mod, tmp_path, start):
+        src = tmp_path / "react"
+        src.mkdir()
+        (src / "config.yaml").write_text(
+            "preprocess:@  inputs:@    protein_pdb: ./start.pdb@".replace("@", "\n"))
+        (src / "start.pdb").write_text(start.read_text())
+        lig = tmp_path / "lig.pdb"
+        lig.write_text(
+            "HETATM    1  C1x mer C   1       0.000   0.000   0.000\n")
+        dst = tmp_path / "prod"
+        mod.main(str(src), str(dst), str(lig))
+        return dst
+
+    def test_both_inputs_go_into_preprocess_results(self, mod, tmp_path, start):
+        dst = self.build(mod, tmp_path, start)
+        assert (dst / "preprocess_results" / "product_protein.pdb").is_file()
+        assert (dst / "preprocess_results" / "lig.pdb").is_file()
+        assert not (dst / "product_protein.pdb").exists()
+
+    def test_the_config_names_them_without_a_directory(self, mod, tmp_path, start):
+        """They are read from the stage's own working directory, so the path in
+        the config must not carry one."""
+        dst = self.build(mod, tmp_path, start)
+        inputs = yaml.safe_load(
+            (dst / "config.yaml").read_text())["preprocess"]["inputs"]
+        assert inputs["protein_pdb"] == "./product_protein.pdb"
+        assert inputs["ligand"] == "./lig.pdb"

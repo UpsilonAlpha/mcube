@@ -722,6 +722,18 @@ def ligand_mol_from_pdb(ligand: str, charge: int, smiles: str = None) -> Chem.Mo
     records (no distance-based bonding, which adds spurious bonds in strained geometries).
     Bond orders come from the `smiles` template if given, else from RDKit DetermineBondOrders.
     """
+    # RDKit answers a missing file with `OSError: Bad input file <name>`, which
+    # reads like a malformed structure and sends you to check the columns. It
+    # is nearly always the directory: `run.slurm` does `cd "$OUT"` before
+    # calling mcube, so preprocess reads its `protein_pdb` and `ligand` from
+    # the stage's working directory, while every other stage reads `pdb_file`
+    # against the config's. Two rules in one file, so say which one applies.
+    if not Path(ligand).is_file():
+        raise FileNotFoundError(
+            f"no ligand at {ligand}. `preprocess.inputs` paths are read from "
+            f"the working directory, which is {Path.cwd()} - not from the "
+            "config's directory, which is where every other stage reads "
+            "`pdb_file`. Move the file there or give an absolute path.")
     mol = Chem.MolFromPDBFile(ligand, removeHs=False, sanitize=False, proximityBonding=False)
     if mol is None:
         raise ValueError(f"RDKit could not read {ligand}")
