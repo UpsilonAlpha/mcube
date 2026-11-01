@@ -1346,10 +1346,152 @@ sections:
   prodqm:
     stage: qmmm
     inputs:
+      # Gln93 is the **Q** of RQK, and the hypothesis under test is what that
+      # triad does to the mechanism - so it has to be described quantum
+      # mechanically here, not just in the sections downstream. Arg90 and
+      # Lys226 are already in the region from preprocess; Gln93 was in neither
+      # preprocess region, reactant or product (D133, D170). It goes in at the
+      # equilibration and not only at the scans because a scan whose first
+      # point has to re-equilibrate a region the MD never had is measuring the
+      # region change, not the reaction. Gln is neutral, so `charge` stays 2.
+      extra_qm_residues: {A: [93]}
       skip_equilibrate: false   # qmmm.inputs sets true; without this there is no MD
       skip_optimize: true       # MD only, as `nacarg` and `ohH` ran
       time: 50
       rigid_water: false
+
+  # ---- The product arm's reaction coordinate (D170) ----
+  #
+  # Order: `prodopt` (a stationary product), then the two scans BACKWARDS along
+  # the reaction, then NEB over each step. Nothing here can be submitted until
+  # `prodqm` has written a frame; the distances each scan starts from are the
+  # ones that frame has, which is why no `start` is set below - `scan` defaults
+  # it to the current distance and records what it used.
+  #
+  # **Why the endpoints must be built this way and cannot be preprocessed.**
+  # `neb` refuses endpoints that differ in atom count OR in atom order, and it
+  # is right to: it interpolates atom i of one toward atom i of the other, so a
+  # mismatched order converges to a path between atoms that are not
+  # counterparts. A reactant built through its own `preprocess` run will not
+  # match this product however carefully prepared - different solvation,
+  # different atom order. `scan` writes every point through THIS system's MM
+  # topology, so every structure it produces is this product in another
+  # geometry. That is the only route to a valid NEB pair on this arm.
+  #
+  # **Two scans, not one.** The hydrolysed product is two steps from the
+  # Michaelis complex, so one coordinate cannot reach it. Shortening C4x-N1x
+  # re-forms the ring and gives the tetrahedral INTERMEDIATE, with the
+  # nucleophile-derived oxygen still on C4x; only then does lengthening
+  # O6x-C4x expel it and give the Michaelis complex. Driving C4x-N1x alone
+  # would force a ring closure onto a carbon that still has four substituents.
+  #
+  # **The atom names are the parameterised ones.** `C4x` and `N1x` happen to be
+  # unchanged, but the nucleophile oxygen this log calls `O01` is `O6x` here
+  # (D168). Check `preprocess.results.ligand_atom_map` before adding any ligand
+  # selector - preprocess now records and warns about the renaming (D169).
+  #
+  # **What this arm buys beyond a second path.** The reactant arm reaches the
+  # intermediate forwards (`attack`) and this one reaches it backwards: two
+  # independent routes to one species, from two different crystal structures.
+  # They should agree, and a disagreement is a result about the model rather
+  # than about CSR-1.
+  prodopt:
+    stage: qmmm
+    inputs:
+      pdb_file: protdft/qmmm_prodqm/lastframe.pdb   # fill in from prodqm
+      extra_qm_residues: {A: [93]}
+      skip_equilibrate: true
+      skip_optimize: false
+      rigid_water: false
+
+  recombine:                   # reverse step 2: close the ring to the intermediate
+    stage: scan
+    inputs:
+      pdb_file: protdft/qmmm_prodopt/QM_MM_optimized.pdb
+      atoms: [D:1:C4x, D:1:N1x]
+      end: 1.39                # as measured in the reactant's optimised complex
+      points: 12               # `start` omitted: scan takes the optimised distance
+      extra_qm_residues: {A: [93]}
+      monitor:
+        - [B:1:ZN, D:1:N1x]    # does the leaving nitrogen re-engage the metal
+        - [A:226:NZ, D:1:N1x]  # Lys226 as the proton's source or sink
+        - [D:1:O6x, D:1:C4x]   # must stay bonded through this scan
+        - [B:1:ZN, A:92:OD2]   # Asp92 must not come onto the metal en route
+      opt_maxiter: 300
+      resume: true
+
+  expel:                       # reverse step 1: push the nucleophile back off
+    stage: scan
+    inputs:
+      pdb_file: protdft/scan_recombine/scan_12.pdb
+      atoms: [D:1:O6x, D:1:C4x]
+      end: 3.00                # where `attack` starts from on the reactant arm
+      points: 16
+      extra_qm_residues: {A: [93]}
+      monitor:
+        - [B:1:ZN, D:1:O6x]    # the oxygen should return to the metal as hydroxide
+        - [B:1:ZN, D:1:O2x]    # and the carbonyl should disengage
+        - [A:226:NZ, D:1:O6x]
+        - [D:1:C4x, D:1:N1x]   # the ring must stay closed
+      opt_maxiter: 300
+      resume: true
+
+  # NEB over each step of this arm, as `step1`/`step2` do for the reactant's.
+  # Endpoints are keys and not arguments for the same reason as there: the two
+  # minima are what the barrier belongs to. Fill each in from the run that
+  # produced it, and check the active-region counts match across both endpoints
+  # and the NEB - `actradius` is measured per structure, so one radius can give
+  # two slightly different regions, and energies over different sets of movable
+  # atoms are not comparable.
+  pstep2:                      # intermediate <-> product
+    stage: neb
+    inputs:
+      reactant_pdb: protdft/scan_recombine/scan_12.pdb
+      product_pdb: protdft/qmmm_prodopt/QM_MM_optimized.pdb
+      images: 12
+      method: nebts
+      interpolation: idpp
+      extra_qm_residues: {A: [93]}
+
+  pstep1:                      # Michaelis complex <-> intermediate
+    stage: neb
+    inputs:
+      reactant_pdb: protdft/scan_expel/scan_16.pdb
+      product_pdb: protdft/scan_recombine/scan_12.pdb
+      images: 12
+      method: nebts
+      interpolation: idpp
+      extra_qm_residues: {A: [93]}
+
+  # A saddle is a transition state only if it has exactly one imaginary mode and
+  # that mode is the reaction coordinate; `ts` checks both, then runs an IRC in
+  # each direction to establish it connects the two minima the NEB was built
+  # from and not some other pair.
+  psaddle2:
+    stage: ts
+    inputs:
+      pdb_file: protdft/neb_pstep2/saddlepoint.pdb
+      hessian_atoms: [D:1:C4x, D:1:N1x, D:1:O6x, A:226:NZ, B:1:ZN]
+      extra_qm_residues: {A: [93]}
+      monitor:
+        - [D:1:C4x, D:1:N1x]
+        - [A:226:NZ, D:1:N1x]
+      tsopt: true
+      freq: true
+      irc_method: mode
+
+  psaddle1:
+    stage: ts
+    inputs:
+      pdb_file: protdft/neb_pstep1/saddlepoint.pdb
+      hessian_atoms: [D:1:O6x, D:1:C4x, D:1:O2x, B:1:ZN]
+      extra_qm_residues: {A: [93]}
+      monitor:
+        - [D:1:O6x, D:1:C4x]
+        - [B:1:ZN, D:1:O2x]
+      tsopt: true
+      freq: true
+      irc_method: mode
 
   # ---- qmrate: what does QM/MM MD actually cost? (D152) ----
   #

@@ -4029,6 +4029,16 @@ The hypothesis is what the **R-Q-K** triad does to the mechanism: Arg90 in place
 
 This also sets up **P2** (switching off the charges of Lys226, Arg90 and Asp92 along each path): the per-residue contributions are the direct test of the hypothesis, and they need a converged path on each arm first.
 
+## Written, not submitted (2026-11-02, 00:3x)
+
+The bridge was not open - no code-server pane, so no way to read job 31327774 or submit anything, and the portal is the user's to open. What could be done without Bunya was done: `site.yaml` gains the product arm's whole path, `prodopt` -> `recombine` -> `expel` -> `pstep2`/`pstep1` -> `psaddle2`/`psaddle1`, each carrying `extra_qm_residues: {A: [93]}`, with the reasoning above in the comments. No `start` is set on either scan: `scan` defaults it to the distance in the structure it is given and records what it used, so there are no invented numbers waiting to be believed. `end` values are the reactant arm's own measurements (1.39 A for the ring, 3.00 A where `attack` begins).
+
+**Two findings, both about Gln93, which is the hypothesis's own residue.**
+
+1. **`prodqm` did not have it.** The QM/MM MD that equilibrates the product was about to run with Arg90 and Lys226 in the QM region and the Q of RQK outside it. Added. It matters at the equilibration and not only at the scans, because a scan whose first point has to re-equilibrate a region the MD never had measures the region change rather than the reaction. Gln is neutral, so the charge stays 2 and nothing about the omission would have looked wrong.
+
+2. **The reactant arm's path sections do not have it either** - `attack`, `ringopen`, `step1`, `step2`, `saddle1`, `saddle2`. `aspout`, `aspin`, `michaelis2d`, `rwoff`, `rwon`, `qmrate` and `asph` all do, because D133 added it when the Asp92 question was the live one. So the sections that would produce the **barriers for the paper** are precisely the ones missing it, on both arms. The product arm is fixed; **the reactant arm is left as it is pending the user's call**, since those sections were planned before D133 and changing them changes work already designed. Left inconsistent, the two arms are not comparable, which is the whole point of building the second one.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
