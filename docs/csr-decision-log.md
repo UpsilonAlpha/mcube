@@ -3677,6 +3677,58 @@ That is not a reason to abandon the transfer; it is the thing the transfer is fo
 **Nothing built or submitted.** `refstruct.py similarity` and the numbers above are the whole of this entry.
 
 
+**D159 - The product complex is grafted and assembled, and the restraint check the user asked for has a clear answer: nothing of the hydrolysed meropenem is within coordination range of the Zn1-site metal in the crystal, so the product gets NO substrate restraint. Not submitted: the ligand's protonation state is ambiguous in our own files, and it sets both the force field and the QM charge.** (2026-11-01, user: "equilibrate the grafted product first with our standard 100ns MD and 50ps GNF2 QM/MM protocol with the correct crystal restraints ... double check the constraints")
+
+## 1. The graft
+
+Two steps, both in `refstruct.py`, both recorded so the structure can be rebuilt from the PDB ID:
+
+```
+$PY $M/refstruct.py transfer refs/5AXO.pdb CSR_wt/preprocess_results/csr_crystal_start.pdb \
+    --ligand=LMP --zn=B:1:ZN --fit=$F2 --out=lmp.pdb
+$PY $M/refstruct.py match CSR_hydrolysed/preprocess_results/hyd_zw.pdb lmp.pdb \
+    --out=hyd_crystal.pdb
+```
+
+`transfer` fits 5AXO on the Zn1 site (RMSD 0.838 A over the four atoms) and moves LMP across. `match` then puts **our** atom names and order on **those** coordinates by graph isomorphism over the heavy atoms - never by name, since LMP and our `hyd` name the same 27 atoms completely differently.
+
+**The mapping is chemically right, which is the check that matters.** Our `C4x`, the electrophile, maps to LMP's `C7`; our `N1x`, the lactam nitrogen, to `N4`; and **our `O2x` and `O01` - the old carbonyl oxygen and the absorbed hydroxide - map to `O71` and `O72`, the two oxygens of the carboxylate the hydrolysis created.** That is the reaction written out in the atom mapping, and it came from the bonding alone.
+
+**8 mappings exist**, differing only in C12x/C13x (the amide's two methyls), O2x/O01 and O3x/O6x (each carboxylate's two oxygens). All three are real symmetries, so the choice is arbitrary - except for O2x/O01, which is not, and that is the problem in part 3.
+
+## 2. The restraints, checked against the crystal as asked
+
+The standing rule is that anything within coordination range is restrained at **the distance it is in the crystal**. Measured in 5AXO itself, against **ZN301, the Zn1-site metal that CSR-1's single zinc occupies**:
+
+| product atom | to Zn1 (5AXO) | to Zn2 (5AXO) |
+| --- | --- | --- |
+| O62 | 3.26 | 3.96 |
+| O32 | **3.41** | **2.26** |
+| N4 | 4.26 | **2.37** |
+| C31 | 4.13 | 2.97 |
+
+**Nothing of the product is within coordination range of Zn1. Everything that binds, binds Zn2 - the metal CSR-1 does not have.** So the correct restraint set for this run has **no substrate term at all**, and writing one would be transplanting a Zn2 bond onto a Zn1 metal. In the assembled structure the nearest product atoms sit at 2.92 and 2.94 A from our zinc, outside the 2.5 A detection cutoff and the 2.6 A analysis cutoff, which agrees with 5AXO's own 3.41 to within the fit error.
+
+The protein restraints are unchanged from D136/D138, at their 6NC5 distances: **His88 NE2 2.22, His164 NE2 2.09, HOH485 1.90**. `constraint_exclude_residues: {C: [1]}` keeps the ligand out of automatic detection, as every reactant run has.
+
+## 3. Assembled, and why it was not submitted
+
+`prod_start.pdb` is `csr_crystal_start.pdb` with the reactant and the hydroxide removed and `hyd_crystal.pdb` appended. `refstruct.py shell` on it:
+
+```
+Zn ZN1 chain B:  1.90 HOH W1 | 2.09 His164 NE2 | 2.22 His88 NE2
+                 2.80 Asp92 OD2 | 2.92 O6x | 2.94 O5x
+```
+
+**Three decisions are open, and each one changes the run rather than the analysis:**
+
+1. **The product's protonation and net charge.** Our own files disagree. `hyd_zw.pdb` - the file this graft takes its topology from - carries **H03 on O01**, so its new carboxylate is a neutral acid; with the protonated pyrrolidine and the deprotonated ring carboxylate that is a net **0**. But D13 states the hydrolysed product is **-1**, and `CSR_hydrolysed` ran at charge -1 with a *non*-zwitterionic SMILES and a neutral amine. Those are three different molecules. This sets the openff parameters and the QM charge, and a run at the wrong one is wrong without looking wrong.
+2. **What fills the hydroxide's place on the zinc.** The nucleophile is now part of the product, and the product does not coordinate. 6NC5 has a crystal water there (HOH493, 2.14 A) and 5AXO keeps a water on Zn1 at 1.82 A, so a restrained water is defensible - but leaving the face open is a different model of the product state and the two will not give the same first shell.
+3. **O2x against O01.** The symmetry that makes the mapping arbitrary is exactly the pair that differ in our topology, because O01 is the one carrying H03. Whichever oxygen the proton ends up on is decided by the mapping unless it is decided deliberately.
+
+**Nothing submitted.** A 100 ns MD and a 50 ps QM/MM on a guessed protonation state would produce a product complex that cannot anchor a reaction coordinate, which is the whole purpose. The graft, the mapping and the restraint finding stand whatever is decided.
+
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
