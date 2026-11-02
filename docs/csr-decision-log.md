@@ -1,5 +1,17 @@
 # CSR mechanism study: decision log
 
+> **Read `csr/state.md` first.** This log is append-only **history**: it
+> records how each conclusion was reached, including the ones later overturned.
+> `csr/state.md` is what is true **now** - the settled facts, the void results,
+> the live plan with status, and the open questions. Looking up a current value
+> here instead of there is how the same facts get rediscovered and how a
+> contradiction sits unnoticed for a week: D145 quoted a distance that D108 had
+> already ruled out, and nobody saw it for eight days (D179).
+>
+> **When something changes, add an entry here AND edit `csr/state.md` in
+> place.** An entry that changes a settled fact or a plan item without editing
+> that file is incomplete.
+
 A running record of the modelling decisions for the QM/MM study of meropenem hydrolysis by the mononuclear (single-Zn) β-lactamase CSR. Each entry gives the decision, why it was made, the evidence, the alternatives, and whether to revisit it. Keep it up to date, so the assumptions can be stated and challenged in the write-up.
 
 **Aim.** Test the "one metal ion is enough" idea (Dupureur, *Metallomics* 2010, 2, 609, doi:10.1039/C0MT00013B) for a mononuclear Zn β-lactamase. Use the approach of Imhof, Fischer & Smith (EcoRV, *Biochemistry* 2009, 48, 9061, doi:10.1021/bi900585m) with modern methods:
@@ -4353,7 +4365,9 @@ Option 3 first, then 1 or 2 on what it says. Nothing is restrained on a number w
 
 `prod100c` is still PENDING with no start time (the GPU queue is backed up), so nothing is committed yet.
 
-**D179 - Item 0 resolved, and it goes the other way: 2.80 A is NOT a modelling error. The 4.20 A figure D145 called "the crystal's Asp92 distance" comes from 6NC5, which is the Q121H/K254H MUTANT with an engineered zinc-binding histidine immediately next to Asp91. The best wild-type structure, 6DN4 at 1.99 A with Asp120 B-factors of 15-16, puts the carboxylate 3.00-3.07 A from His116 NE2 - the close conformer, the one our model has.** (2026-11-02)
+**D179 - Item 0 resolved, and the conclusion was already in the log: D108 established on 25 October that "6NC5 is a beta-site mutant and is not a wild-type reference for that site. 6DN4 is." D145 then quoted 6NC5's Asp distance as "the crystal's" anyway, and that contradiction sat unnoticed for eight days. What is new here is the measurement in the wild-type files: 6DN4 at 1.99 A, Asp120 B-factors 15-16, puts the carboxylate 3.00-3.07 A from His116 NE2 - the close conformer, the one our model has. So 2.80 A is not a modelling error.** (2026-11-02, user: "we already figured this out days ago")
+
+**The lesson is not about aspartate.** This is the third time in a week that something settled in the log was re-derived from scratch instead of read (D165, D171, and now this), and the first time a *contradiction between two entries* was what had to be found. A 180-entry append-only log cannot be the place a current value is looked up. `docs/csr/state.md` now holds the settled facts, the void results, the live plan and the open questions, and the log's header says so.
 
 ## The measurement
 
@@ -4371,7 +4385,7 @@ Option 3 first, then 1 or 2 on what it says. Nothing is restrained on a number w
 
 **The crystals disagree with each other by 2.4 A on this side chain, and the disagreement tracks what each structure is.** The two "far" values come from a *mutant whose Asp120 side chain is disordered* (B 53-66 against a 2.16 A map - that conformer rests on weak density) and from a *mutant that engineers a zinc-binding histidine into the position adjacent to the Asp*. The one "close" value comes from the only well-ordered wild-type carboxylate in the set.
 
-So **D145's correction needs correcting.** D145 was right that 2.80 A had been quoted as crystallographic when it was our model's own Asp-hydroxide hydrogen bond, and right to catch that. But the 4.20 A it offered as the real crystal value is the engineered construct's, and 6NC5's His92 - the engineered mutation - is the residue immediately C-terminal to Asp91. A Zn2-ligating histidine next door is exactly the kind of thing that moves a neighbouring carboxylate.
+So **D145's correction needs correcting, and D108 had the grounds for it already.** D145 was right that 2.80 A had been quoted as crystallographic when it was our model's own Asp-hydroxide hydrogen bond, and right to catch that. But the 4.20 A it offered as the real crystal value is the engineered construct's - and D108 had stated eight days earlier, in those words, that 6NC5 is not a wild-type reference for this residue. 6NC5's His92, the engineered mutation, is the residue immediately C-terminal to Asp91: a Zn2-ligating histidine next door is exactly the kind of thing that moves a neighbouring carboxylate.
 
 **`prod100c`'s restraint at 2.80 A is therefore supported, not an error**, and the entry above it in D178 (item 0, "BLOCKS prod100c") is withdrawn. The run should go.
 

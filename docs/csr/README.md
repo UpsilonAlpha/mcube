@@ -4,6 +4,10 @@ Everything specific to this system lives in `site.yaml`; the scripts stay
 general, so a new calculation is a YAML edit and a new system is a new YAML
 file.
 
+**Start here:** `state.md` - what is true now, the live plan with status, and
+the open questions. The decision log beside it is append-only history; this is
+the file that gets edited in place when something changes.
+
 **The core five:**
 
 | File | What it is |
