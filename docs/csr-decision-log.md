@@ -4437,6 +4437,40 @@ Scratch 272 -> 269 GB. The inode count did not move measurably: ~600 files again
 
 The rule this suggests, and it is worth keeping: **the evidence for a live claim is not redundant, however void the run that produced it.** A trajectory becomes deletable when the claim it supports has been superseded by a better measurement, not when the run is judged bad.
 
+**D181 - The reactant arm is re-based at 3.0 A as `wt100c`, job 31483853. Both arms are now queued with the same treatment, so plan item 3 is in flight on both. And a correction to an assumption made while lowering the walltimes: the `md` stage has no resume. `qmmm` got one in D109; `md` never did.** (2026-11-02, user: "why not rebase it at 3 angstroms?" and "feel free to lower the max time if the job won't take that long - it should be resumable even if it gets cancelled")
+
+## Why it was waiting, and why that was wrong
+
+I had this as the user's call because re-basing invalidates everything descended from `md_wt100`. That was the wrong frame: the arm is **already** invalidated - D177 measured it six-coordinate in 4995 of 5000 frames - so there is nothing left to protect, and the 3.0 A rule is the user's own standing instruction rather than a new decision. The one real argument for waiting was cost, and the GPU queue makes it an argument for the opposite: both jobs now wait in the same queue in parallel instead of one after the other.
+
+## The sweep, measured on the reactant's own structure
+
+At 3.0 A per atom on `CSR_wt/preprocess_results/finalsystem.pdb`, five contacts:
+
+| donor | distance | at the old 2.5 A |
+| --- | --- | --- |
+| HOH D:1:O | 1.90 | held |
+| His164 NE2 | 2.09 | held |
+| hydroxide C:2:O01 | 2.14 | held |
+| His88 NE2 | 2.22 | held |
+| **Asp92 OD2** | **2.80** | **free - and it collapsed to 2.07** |
+
+The next three donors are outside: the substrate's own carboxylate oxygen `mer C:1:O1x` at **3.13**, Asp92 OD1 at **3.81**, and **Arg90 NH1 at 3.89**. That last number is why 3.0 A is a ceiling rather than a floor - nitrogen is in `donor_elements`, so the 4.0 A cutoff this project opened with restrained an arginine to the zinc as though it were a ligand (D8). Between 3.0 and 3.9 there is nothing to gain and an arginine to lose.
+
+`constraint_exclude_residues: {C: [1]}` **stays** on this arm. The reactant's substrate must be free to react, and here it costs nothing either way since its nearest atom is outside the sweep. This is the one place the two arms legitimately differ: on the product arm the ligand's own 2.92/2.94 A contacts are crystallographic, and holding them is the point (D174). Asp92 OD1 is restrained explicitly at 3.81 on both arms, at the user's instruction, because D120 and D130 are the same failure twice - OD2 held with OD1 free, and the carboxylate pivoting OD1 in to 1.99.
+
+**What this run answers:** plan item 3, which is unanswered on either arm - does a site restrained at 3.0 A per atom hold four-coordinate through 100 ns? **What it does not:** give a Michaelis complex. The substrate is still Vina pose 2, 5.15 A from L1's measured pose (D156), and items 1-2 replace it by building the reactant from the product through `recombine`. This is the coordination control, not the reaction's starting structure, and it should not be quoted as the latter.
+
+## The walltimes, and the assumption underneath them
+
+Both jobs are now at **5 h** for a run measured at 3.4-4.1 h (`md_prod100` did 34.14 ns in 68.7 min, 497 ps/min; the earlier figure was 408). `prod100c` (31423830) was lowered in place with `scontrol update`; `wt100c` was submitted at 5 h. An 8 h request only starts when an 8 h window opens, and the h100 nodes are `PLANNED` - held for a higher-priority job - so the window is the binding constraint.
+
+**`scontrol update` prints a Bunya warning on this request:** "This job has requested too much memory and CPU per GPU." It applied the change anyway, and the first product MD ran to 34 ns on exactly `cpu=4, gres/gpu:h100=1, mem=32G`, so the ratio is tolerated in practice. Recorded because it looks like an error and is not.
+
+**The assumption to correct: `md` cannot resume.** `grep -n 'resume|checkpoint|state.xml|loadState|restart' src/mcube/md.py` returns nothing. D109 added resume to `qmmm` - ASH writes `OpenMM_MD_state.xml` and `OpenMM_MD_final_state.xml` as it runs and says in its own output that they can restart a simulation, and `qmmm.py` passes them - but `md.py` never did, even though `md_prod100_results/OpenMM_MD.chk` shows the files are being written. So a cancelled or timed-out `md` job restarts from zero.
+
+With 5 h against a 3.4-4.1 h run that is ~22-47% headroom, which is comfortable, so the lowered limits stand. But the general fix is worth having and is small: `md` should pass the state file the way `qmmm` already does, and a `resume: true` input should mean the same thing in both stages. **Added to the plan as item 12.**
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
