@@ -1384,6 +1384,34 @@ sections:
       time: 50
       rigid_water: false
 
+  # ---- wtpost: the same question asked of the REACTANT arm (D176) ----
+  #
+  # The product's 34 ns had Asp92 OD2 collapse from 2.80 A to 2.03 because it
+  # was outside the 2.5 A detection cutoff and so was never held (D173). The
+  # reactant's `md_wt100` ran under the same cutoff and the same four
+  # restraints - hydroxide, His164, HOH, His88, one donor each - so **Asp92 was
+  # free there too**, at the same crystallographic 2.80 A.
+  #
+  # Whether it moved is a measurement, not an inference, and the trajectory is
+  # still on disk. It decides something that matters more than either run: if
+  # Asp92 collapsed on the reactant arm as well, both arms were equilibrated
+  # with a six-coordinate zinc and both need redoing at 3.0 A - the matched
+  # control would be intact and at the wrong geometry. If it held, the product's
+  # collapse is the product's own, and the reactant's 100 ns stands.
+  #
+  # `per_residue: false` so each oxygen is reported separately; a mean over the
+  # residue would average a bound oxygen with a free one.
+  wtpost:
+    stage: postprocess
+    inputs:
+      md_section: md_wt100
+      coordination:
+        per_residue: false
+        margin: 1.0
+      hydrogens: true
+      # No `monitor`, so no contacts: the coordination sphere is the question,
+      # and the reactant's pairs would have to be rewritten for its own ligand.
+
   # ---- prod100b: WITHDRAWN, do not submit (D173) ----
   #
   # This resumed from frame 1704 on the assumption that the 34 ns before the
