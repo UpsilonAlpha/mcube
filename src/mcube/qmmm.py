@@ -1000,120 +1000,17 @@ def write_pdb(mm, coords, filename: str) -> str:
 
 
 
-# ASH writes these during OpenMM_MD and both can restart it. We read the state
-# file rather than the checkpoint because the checkpoint is an opaque binary blob
-# tied to the platform it was written on, while this one is portable XML whose
-# root element carries the elapsed time - which is the number resume needs.
-RESTART_STATEFILES = ("OpenMM_MD_final_state.xml", "OpenMM_MD_state.xml")
-
-STATE_TAG_RE = re.compile(rb"<State[ \t][^>]*>")
-
-
-def read_state_time(path) -> tuple:
-    """Elapsed simulation time (ps) and step count from an OpenMM XML state file.
-
-    Reads the header only. These files carry every position and velocity in the
-    system, so they run to tens of megabytes and parsing one as XML to reach two
-    root attributes would be wasteful. Requiring the closing `>` of the opening
-    tag also means a half-written file - an over-quota write, or a job killed
-    mid-save - fails here rather than yielding a plausible wrong time.
-    """
-    path = Path(path)
-    with open(path, "rb") as handle:
-        head = handle.read(4096)
-    tag = STATE_TAG_RE.search(head)
-    if tag is None:
-        raise ValueError(
-            f"{path} does not begin with a complete OpenMM <State> element. "
-            "Either it is not a state file, or it was truncated while being "
-            "written (check the disk quota).")
-    time_attr = re.search(rb'[ \t]time="([^"]+)"', tag.group(0))
-    if time_attr is None:
-        raise ValueError(f"{path} has a <State> element with no time attribute, "
-                         "so there is no way to tell how far the run got.")
-    step_attr = re.search(rb'[ \t]stepCount="([^"]+)"', tag.group(0))
-    steps = int(step_attr.group(1)) if step_attr else None
-    return float(time_attr.group(1)), steps
-
-
-def preserve_trajectory(trajfile: str = "QM_MM.dcd"):
-    """Move an existing trajectory aside, returning the new name.
-
-    ASH only ever constructs its DCDReporter inside `if restart is False`, with
-    `append=False`, so restarting from a state file in a fresh process truncates
-    the very trajectory it resumed from. Keeping the segments as
-    `QM_MM_part1.dcd`, `QM_MM_part2.dcd`, ... loses nothing; they concatenate in
-    that order followed by `QM_MM.dcd`.
-    """
-    src = Path(trajfile)
-    if not src.is_file():
-        return None
-    index = 1
-    while Path(f"{src.stem}_part{index}{src.suffix}").exists():
-        index += 1
-    dest = Path(f"{src.stem}_part{index}{src.suffix}")
-    src.rename(dest)
-    print(f"[INFO] Previous trajectory kept as {dest.name} "
-          "(ASH would otherwise overwrite it on restart)")
-    return dest
-
-
-def resolve_resume(inputs: Dict[str, Any], pdb_file: Optional[str] = None):
-    """Decide where the QM/MM MD starts. Returns (statefile, time_to_run_ps).
-
-    `time` is the *total* simulation time wanted, so resuming a 50 ps run that
-    reached 21 ps runs the remaining 29 ps - which makes `resume: true` a
-    one-line addition to a config that already ran, with nothing else to adjust.
-    A statefile of `None` means a fresh run and `inputs["time"]` unchanged; a
-    time of 0.0 means the target is already met and the caller should skip the MD.
-
-    `resume` defaults to false, unlike the scan stage, because there skipping
-    finished points cannot change a result, whereas here it decides whether a
-    rerun continues a trajectory or replaces it.
-    """
-    requested = inputs.get("time")
-    if not inputs.get("resume"):
-        return None, requested
-
-    found = [Path(name) for name in RESTART_STATEFILES if Path(name).is_file()]
-    if not found:
-        print(f"[INFO] resume: true, but no {' or '.join(RESTART_STATEFILES)} in "
-              f"{Path.cwd()} - nothing to resume from, starting a fresh run")
-        return None, requested
-    state = max(found, key=lambda path: path.stat().st_mtime)
-
-    if requested is None:
-        raise ValueError(
-            f"resume: true found {state.name}, but `time` is not set, so there is "
-            "no target to run up to. Set the stage's `time` (in ps) to the total "
-            "simulation time wanted, not the remainder.")
-
-    elapsed, steps = read_state_time(state)
-    step_note = f", {steps} steps" if steps is not None else ""
-    remaining = requested - elapsed
-    # A finished run does not land on its target exactly: OpenMM accumulates the
-    # timestep, so 50000 steps of 1 fs land within ~3e-11 ps of 50 either side.
-    # Job 30598032 finished 2.6e-11 short, which is the direction that matters:
-    # `remaining <= 0` misses, and a 24 h job gets queued to integrate 26 fs.
-    # Anything shorter than one timestep cannot be run at all, so call it done.
-    timestep = inputs.get("timestep") or 0.001
-    if remaining < timestep:
-        print(f"[INFO] Resume: {state.name} is already at {elapsed:.3f} ps"
-              f"{step_note}, within one timestep of the {requested} ps asked "
-              "for. Skipping the MD.")
-        return state, 0.0
-
-    if pdb_file and Path(pdb_file).resolve() == Path("QM_MM_lastframe.pdb").resolve():
-        print("[WARN] The starting structure is this run's own "
-              "QM_MM_lastframe.pdb, which the MD will overwrite. Coordinates come "
-              "from the state file, so the run is unaffected, but the recorded "
-              "pdb_file will no longer hold the coordinates it started from.")
-
-    print(f"[INFO] Resuming from {state.name}: {elapsed:.3f} ps already run"
-          f"{step_note}, running the remaining {remaining:.3f} of {requested} ps. "
-          "Velocities are restored; the thermostat's random stream is not, which "
-          "is immaterial for equilibration.")
-    return state, remaining
+# The OpenMM_MD restart helpers live in `md`: it is the stage that owns
+# OpenMM_MD, and `md` cannot import this module without a cycle. Re-exported
+# here under their old names, because every caller and test in the tree -
+# including this stage's own `resolve_resume(inputs, pdb_file)` call below -
+# reaches them through `qmmm` (D182).
+from .md import (  # noqa: E402
+    RESTART_STATEFILES,
+    read_state_time,
+    preserve_trajectory,
+    resolve_resume,
+)
 
 
 def run(args) -> Dict[str, Any]:

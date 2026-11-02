@@ -4471,6 +4471,22 @@ Both jobs are now at **5 h** for a run measured at 3.4-4.1 h (`md_prod100` did 3
 
 With 5 h against a 3.4-4.1 h run that is ~22-47% headroom, which is comfortable, so the lowered limits stand. But the general fix is worth having and is small: `md` should pass the state file the way `qmmm` already does, and a `resume: true` input should mean the same thing in both stages. **Added to the plan as item 12.**
 
+**D182 - `md` resumes now, and the user was right about the files: ASH writes `OpenMM_MD_state.xml` as it runs whichever stage calls `OpenMM_MD`. What was missing was mcube reading it. The restart helpers move from `qmmm` to `md` and `qmmm` re-exports them, so one implementation serves both stages.** (2026-11-02, user: "I'm pretty sure md writes as it runs and should be resumable - fix if not")
+
+D181 reported that `md` "has no resume" and left it at that. The files were there the whole time - `md_prod100_results/OpenMM_MD.chk`, `OpenMM_MD_final_checkpoint.chk` and `OpenMM_MD_final_state.xml` are all in the listing from the NaN crash - so the gap was never the data, only the wiring. D109 wired it for `qmmm` and nobody carried it across.
+
+**Two things are specific to this stage, and both would have been silent failures.**
+
+*The keys.* `qmmm` reads `time` and `timestep`; `md` reads `nvt_time` and `nvt_timestep`. `resolve_resume` now takes `time_key` and `timestep_key`, defaulting to the `qmmm` names so that stage is untouched. Reading the wrong key finds `None` and the refusal names the key it wanted, rather than resuming against nothing. The timestep matters too: it is the threshold for "already finished", and 4 fs is not 1 fs.
+
+*The phases before the production MD.* `md` minimises and runs NPT first. On a resume both are **skipped**, because the state file carries positions and velocities - re-equilibrating the box would spend exactly the walltime that resuming exists to save, and then hand the MD coordinates it discards. This is decided before the minimisation rather than inside the NVT block, which is why `resolve_resume` is called at the top of `run`.
+
+Both trajectory files are moved aside, not just one: `md` writes a raw and an imaged DCD, and ASH builds its DCDReporter with `append=False`, so a restart truncates whichever it is pointed at. Segments become `NVTtrajectory_part1.dcd`, ... and are listed in `results.trajfile_parts`.
+
+`tests/test_md_resume.py` is 13 tests, including one that pins the re-export - every existing caller and test in the tree reaches these helpers through `qmmm`, and 629 passing stayed 629 before the new file was added. 642 now.
+
+**It does not help the two jobs already queued**, which were submitted without `resume` and cannot be edited. At 5 h against a 3.4 h run that is comfortable. What it does mean is that the next tight walltime is not a gamble, and that a 100 ns equilibration can be a chain of shorter jobs - which also makes it easier to schedule, since a 2 h window opens far more often than a 5 h one on a partition whose nodes are held for higher-priority work.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

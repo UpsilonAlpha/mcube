@@ -111,7 +111,7 @@ Items 1–3 gate everything below them. **Status is maintained here.**
 | 9 | Per-residue roles reaching R, Q and K | **design decision due before item 3's equilibration** |
 | 10 | Di-zinc comparison at identical level | not started — scope decision |
 | 11 | Asp92 free energy | deferred by design — only if the discrepancy survives 1–3 |
-| 12 | **`md` cannot resume** — `qmmm` got it in D109, `md` never did, so a cancelled or timed-out MD restarts from zero | not started; small, and it is what makes a tight walltime safe (D181) |
+| 12 | `md` resume | **done (D182)** — one implementation now serves both stages |
 
 **Item 9's deadline is the non-obvious one.** Arg90 and Lys226 are inside the
 QM region in all eleven systems, so charge deletion can never reach them
@@ -173,7 +173,7 @@ afterwards**. A barrier that moves once the experiment arrives is a fit.
 | Scratch | 272/300 GB and **889k/1M inodes** — the inode count is the tighter one |
 | Local tests | `PYTHONPATH=src <mcube-test python> -m pytest -q tests`; MDAnalysis-gated tests only run in the ASH env on Bunya |
 | Reading the GPU queue | `sinfo -p gpu_cuda` showing `mix-` is **PLANNED**, not draining: Slurm is holding those nodes for a higher-priority pending job, which is why a job can sit at reason `Priority` while the partition looks idle. `scontrol show node <n>` prints the real state. `drain$` is a genuinely unavailable node |
-| `md` has no resume | `qmmm` does (D109). A cancelled or timed-out `md` job restarts from zero, whatever checkpoint files ASH left behind (D181) |
+| `md` resumes | `resume: true`, same as `qmmm`, reading the `OpenMM_MD_state.xml` ASH writes as it runs. `nvt_time` is the total wanted; minimisation and NPT are skipped on a resume (D182). So a long MD can be a chain of short jobs, which schedules far better on a partition whose nodes are held |
 | A long walltime hurts backfill | asking 8 h for a 4.1 h run means it only starts when an 8 h window opens. A pending job's `TimeLimit` can be **lowered** (`scontrol update jobid=... TimeLimit=5:00:00`) but a user generally cannot raise it again, so it is not a free change |
 | **CSR is not where the disk goes** | all eleven run directories are 14.5 GB of the 269 GB in use. Cleaning CSR is for clarity, not quota; the pressure is other projects (D180) |
 | Deleting run output | use `docs/csr/cleanup.sh` - it lists by default, never deletes without `--delete`, and protects every `*_results/` directory. Leave a `DELETED.md` saying what went, when, how much, and which entry to see |
