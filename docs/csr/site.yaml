@@ -1420,6 +1420,59 @@ sections:
       # No `monitor`, so no contacts: the coordination sphere is the question,
       # and the reactant's pairs would have to be rewritten for its own ligand.
 
+  # ---- wt100c: the reactant arm re-based at 3.0 A (D181) ----
+  #
+  # `md_wt100` and `md_wt100b` are void: the zinc was six-coordinate in 4995 of
+  # 5000 frames with Asp92 OD2 bound at 2.07 A in 100% of them, because the
+  # 2.5 A cutoff left the 2.80 A contact unrestrained and MM pulled it in
+  # (D177). This is the same correction `prod100c` applies to the product arm,
+  # and it is applied the same way so the two arms stay a matched pair.
+  #
+  # At 3.0 A on `CSR_wt/preprocess_results/finalsystem.pdb`, per atom, the
+  # sweep is FIVE contacts - measured, not assumed:
+  #
+  #     HOH D:1:O        1.90      His88 NE2        2.22
+  #     His164 NE2       2.09      **Asp92 OD2      2.80**  <- was free at 2.5
+  #     hydroxide O01    2.14
+  #
+  # and the next three donors are outside it: the substrate's own carboxylate
+  # oxygen `mer C:1:O1x` at 3.13, Asp92 OD1 at 3.81, and **Arg90 NH1 at
+  # 3.89**. That last one is why 3.0 is a ceiling and not a floor: nitrogen is
+  # in `donor_elements`, so the 4.0 A cutoff this project started with
+  # restrained an arginine to the zinc as though it were a ligand (D8).
+  #
+  # **`constraint_exclude_residues: {C: [1]}` stays.** The reactant's substrate
+  # must be free to react, which is the documented reason, and here it costs
+  # nothing either way: its nearest atom is 3.13 A, outside the sweep. This is
+  # the one place the product arm and this one legitimately differ - there the
+  # ligand's own 2.92/2.94 A contacts are crystallographic and holding them is
+  # the point.
+  #
+  # **Asp92 OD1 at 3.81 is restrained explicitly**, as on the product arm and
+  # at the user's instruction. It is outside 3.0 so the rule does not reach it,
+  # and D120 and D130 are both the same failure - OD2 held with OD1 free, and
+  # the carboxylate pivoting OD1 onto the metal at 1.99.
+  #
+  # **What this run answers, and what it does not.** It answers plan item 3:
+  # does a site restrained at 3.0 A per atom hold four-coordinate through
+  # 100 ns? That question is currently unanswered on either arm. It does NOT
+  # give a Michaelis complex: the substrate is still Vina pose 2, which is
+  # 5.15 A from L1's measured pose (D156), and items 1-2 replace it by building
+  # the reactant from the product through `recombine`. So this is the
+  # coordination control, not the reaction's starting structure.
+  wt100c:
+    stage: md
+    inputs:
+      pdb_file: preprocess_results/finalsystem.pdb
+      coordination_redetect: true
+      restraints:
+        - [B:1:ZN, A:92:OD1, 3.81, 50.0]
+      nvt_time: 100000
+      traj_frequency: 5000
+      platform: CUDA
+      properties:
+        Precision: mixed
+
   # ---- prod100b: WITHDRAWN, do not submit (D173) ----
   #
   # This resumed from frame 1704 on the assumption that the 34 ns before the
