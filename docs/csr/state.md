@@ -113,7 +113,7 @@ Items 1–3 gate everything below them. **Status is maintained here.**
 | 6 | scan → NEB → TS → frequencies → IRC, ≥3 snapshots | not started — the paper's actual content |
 | 7 | Cluster-model DFT-vs-GFN2 benchmark, Imhof-style | **scoped (D187)**: 37 atoms of site (Zn, two 4-methylimidazoles, acetate, hydroxide, water), net 0, plus a ~15-atom substrate fragment giving −1. The two `sp` additions are **built** (D188): `cluster: true` and `sp_engine: xtb|dft`. Still needs the cluster PDB and reading the ligand's connectivity from `mer_crystal.pdb`'s CONECT records rather than guessing it. Open since **D9** |
 | 8 | Protonation of the leaving nitrogen | not started |
-| 9 | Per-residue roles reaching R, Q and K | **design decision due before item 3's equilibration** |
+| 9 | Per-residue roles reaching R, Q and K | **decided and applied (D190)**: Arg90, Lys226, Arg229 and Gln93 **all in MM**, so charge deletion decomposes the set as one. QM charge 0 on both arms, set explicitly on all nine QM/MM-family sections. Deletions must still be run at **both ends** of the coordinate |
 | 10 | Di-zinc comparison at identical level | not started — scope decision |
 | 11 | Asp92 free energy | deferred by design — only if the discrepancy survives 1–3 |
 | 12 | `md` resume | **done (D182)** — one implementation now serves both stages |

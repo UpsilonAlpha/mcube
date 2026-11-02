@@ -4675,6 +4675,34 @@ The configs match: CSR_ligand and CSR_hydrolysed set only `164: HID, 88: HID` an
 
 **What is not audited:** CSR_crystal, _v2, _v3, CSR_unrestrained, _2, CSR_gln93, CSR_ohH. Their configs all carry the same five assignments as CSR_wt, so the structures will match; they are void runs (D28-D70 laundering) and fetching 4 MB each to confirm a value their configs already state is not worth it. If any of them is ever revived, check it then.
 
+**D190 - Arg90, Lys226, Arg229 and Gln93 all go to MM, so the RQK set can be decomposed by charge deletion as one set. That drops the QM charge from +2 to 0 on both arms, and it is set on every QM/MM-family section rather than inherited.** (2026-11-02, user's decision on the audit's item 9)
+
+## Why the method forced the choice
+
+Charge deletion cannot reach a residue that is already quantum - electrostatic embedding has removed its MM charges, and `zero_charges` refuses it by name (D153). Arg90 and Lys226 were inside the QM region in **all eleven systems**, so of the four cations around the site only Gln93 (-0.87 kcal/mol) and Arg229 (+44.34) were ever measurable. The paper's thesis is what **R, Q and K** do in place of the second zinc, and the method chosen to test it could reach only the Q.
+
+Mixing the two is not an option: a table with two residues done by deletion and two by a parallel all-MM model is not one measurement (D153 says so). So all four go to MM, and the whole set is decomposed the same way.
+
+**What leaves the QM region: Arg90 and Lys226.** What stays: the zinc, its ligands, Asp92 - the subject of the coordination question - and the substrate. Arg229 and Gln93 were never in it.
+
+## The charge, which is the part that fails silently
+
+Both arms were **+2** with the cations inside: Zn(2+), Asp92(-1), the ligand (-1 hydrolysed product, 0 reactant zwitterion), the hydroxide (-1, reactant only), Arg90(+1), Lys226(+1). Remove the two cations and both arms are **0**.
+
+`charge: 0` is therefore written on every affected section, not left to inherit. D152 is the entry where a run left at the inherited value converged its SCF on the wrong species while looking entirely normal, and this is the same shape of mistake one residue larger.
+
+## Where it is applied
+
+Nine sections: `prodqm`, `prodopt`, `recombine`, `expel`, `pstep2`, `pstep1`, `psaddle2`, `psaddle1`, and a new `wtqm` giving the reactant the same QM/MM MD the product gets. **Every section that will produce a barrier now carries the same region as the equilibration that feeds it** - which D170 flagged as a gap when the path sections and the diagnostic sections disagreed about Gln93.
+
+The two regions are YAML anchors under `site.qm_regions` rather than nine copies, because nine copies is nine chances for one to drift. YAML expands them on load, so what `sections.py` writes into a run's config is the literal mapping and nothing depends on the anchor surviving.
+
+**The running MDs are unaffected.** `md` uses restraints, not the QM region, so `prod100c` and `wt100c` keep running and nothing needs resubmitting.
+
+## What this does not settle
+
+Whether the all-MM decomposition is the *right* test, as against computational mutagenesis. The user chose deletion-on-all-four, which is cheap and consistent; the mutants (Arg90->Ala/His, Lys226->Ala/His, and the 6DR8-like triple as a di-zinc control) remain the structural test and a second campaign. And the deletions still have to be run **at both ends of the reaction coordinate**: an absolute QM-MM interaction at one geometry is not a catalytic contribution, which is the error Arg229's +44.34 would be if quoted as one.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

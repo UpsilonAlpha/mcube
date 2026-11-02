@@ -291,6 +291,39 @@ site:
 # NOTE: `forcefields` and `default_forcefields` are the exception - OpenMM
 # resolves those itself, from the directory the stage runs in, which is why they
 # still carry `../` or `../../`.
+# ---- QM regions with the RQK set in MM (D190) ----
+#
+# Charge deletion cannot reach a residue that is already quantum: electrostatic
+# embedding has removed its MM charges and `zero_charges` refuses it by name
+# (D153). Arg90 and Lys226 were inside the QM region in all eleven systems, so
+# only Gln93 and Arg229 were ever measurable - and the paper's thesis is about
+# R, Q and K. The user's decision is to put **all four in MM**, so the whole set
+# is decomposed one way rather than two of it one way and two another.
+#
+# Leaving the QM region: **Arg90 and Lys226**. Staying: the zinc, its ligands,
+# Asp92 (the subject), the substrate. Arg229 and Gln93 were never in it.
+#
+# **The QM charge therefore drops by 2 and is stated on every section.** Both
+# arms were +2 with the cations in - Zn(2+), Asp92(-1), the ligand (-1 for the
+# hydrolysed product, 0 for the reactant's zwitterion), the hydroxide (-1 on
+# the reactant), Arg90(+1), Lys226(+1). Without the two cations both arms are
+# **0**. A section left at the inherited 2 converges its SCF on the wrong
+# species while looking entirely normal (D152).
+#
+# Anchors rather than nine copies: YAML expands them on load, so what
+# `sections.py` writes into a run's config.yaml is the literal mapping.
+qm_regions:
+  product: &qmreg_prod
+    B: {1: ZN}
+    C: {1: HOH, 2: HOH}
+    A: {88: HIS, 164: HIS, 92: ASP}
+    D: {1: hyd}
+  reactant: &qmreg_wt
+    B: {1: ZN}
+    D: {1: HOH}
+    C: {2: OH, 1: mer}
+    A: {88: HIS, 164: HIS, 92: ASP}
+
 sections:
 
   # D42. Each of these is an optimisation only; score the result with a
@@ -1375,6 +1408,8 @@ sections:
   prodqm:
     stage: qmmm
     inputs:
+      qm_residues: *qmreg_prod
+      charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (D190)
       # **No Gln93 here, deliberately** (user, 2026-11-02): "glutamine was left
       # out deliberately because it's probably not involved/functional as it's
       # neutral and far away from everything". It is the Q of RQK by name, but
@@ -1472,6 +1507,24 @@ sections:
       platform: CUDA
       properties:
         Precision: mixed
+
+  # ---- wtqm: the reactant's QM/MM MD, matching prodqm (D190) ----
+  #
+  # Same treatment as the product arm so the two stay comparable: the RQK set in
+  # MM, charge 0, 50 ps of GFN2-xTB QM/MM MD from the equilibrated frame. Gated
+  # on `wtpostc` passing, exactly as `prodqm` is gated on `prodpostc`.
+  #
+  # The region is the reactant's own chains: the hydroxide is `C:2:OH` and the
+  # substrate `C:1:mer`, where the product has `D:1:hyd` and a second water.
+  wtqm:
+    stage: qmmm
+    inputs:
+      qm_residues: *qmreg_wt
+      charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (D190)
+      skip_equilibrate: false   # qmmm.inputs sets true; without this there is no MD
+      skip_optimize: true       # MD only, as prodqm runs
+      time: 50
+      rigid_water: false
 
   # ---- The two radii, and why the analysis sets its own (D186) ----
   #
@@ -1666,6 +1719,8 @@ sections:
   prodopt:
     stage: qmmm
     inputs:
+      qm_residues: *qmreg_prod
+      charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (D190)
       pdb_file: protdft/qmmm_prodqm/lastframe.pdb   # fill in from prodqm
       skip_equilibrate: true
       skip_optimize: false
@@ -1674,6 +1729,8 @@ sections:
   recombine:                   # reverse step 2: close the ring to the intermediate
     stage: scan
     inputs:
+      qm_residues: *qmreg_prod
+      charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (D190)
       pdb_file: protdft/qmmm_prodopt/QM_MM_optimized.pdb
       atoms: [D:1:C4x, D:1:N1x]
       end: 1.39                # as measured in the reactant's optimised complex
@@ -1689,6 +1746,8 @@ sections:
   expel:                       # reverse step 1: push the nucleophile back off
     stage: scan
     inputs:
+      qm_residues: *qmreg_prod
+      charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (D190)
       pdb_file: protdft/scan_recombine/scan_12.pdb
       atoms: [D:1:O6x, D:1:C4x]
       end: 3.00                # where `attack` starts from on the reactant arm
@@ -1711,6 +1770,8 @@ sections:
   pstep2:                      # intermediate <-> product
     stage: neb
     inputs:
+      qm_residues: *qmreg_prod
+      charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (D190)
       reactant_pdb: protdft/scan_recombine/scan_12.pdb
       product_pdb: protdft/qmmm_prodopt/QM_MM_optimized.pdb
       images: 12
@@ -1720,6 +1781,8 @@ sections:
   pstep1:                      # Michaelis complex <-> intermediate
     stage: neb
     inputs:
+      qm_residues: *qmreg_prod
+      charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (D190)
       reactant_pdb: protdft/scan_expel/scan_16.pdb
       product_pdb: protdft/scan_recombine/scan_12.pdb
       images: 12
@@ -1733,6 +1796,8 @@ sections:
   psaddle2:
     stage: ts
     inputs:
+      qm_residues: *qmreg_prod
+      charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (D190)
       pdb_file: protdft/neb_pstep2/saddlepoint.pdb
       hessian_atoms: [D:1:C4x, D:1:N1x, D:1:O6x, A:226:NZ, B:1:ZN]
       monitor:
@@ -1745,6 +1810,8 @@ sections:
   psaddle1:
     stage: ts
     inputs:
+      qm_residues: *qmreg_prod
+      charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (D190)
       pdb_file: protdft/neb_pstep1/saddlepoint.pdb
       hessian_atoms: [D:1:O6x, D:1:C4x, D:1:O2x, B:1:ZN]
       monitor:
