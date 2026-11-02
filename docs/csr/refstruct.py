@@ -311,6 +311,11 @@ def mode_transfer(args):
             --fit=A:72:NE2=A:88:NE2,A:150:NE2=A:164:NE2,... \
             [--poses=meropenem.pdbqt] [--out=transferred.pdb]
 
+    `--ligand` takes a residue name, or `CHAIN:RESSEQ[:RESNAME]` where the name
+    is ambiguous - 6NC5 has six residues called ZN and only one of them is the
+    site. `--zn` is optional: the target may be the metal-free structure, which
+    is the case that makes this worth doing.
+
     The fit is a local one on the zinc site, not a fold alignment: the pairs
     are given explicitly because the two proteins have different numbering and
     guessing the correspondence is exactly the step that must not be guessed.
@@ -334,20 +339,46 @@ def mode_transfer(args):
         print("     %-14s -> %-14s %.3f A"
               % (t, q, math.sqrt(sum((moved[i] - f[i]) ** 2 for i in range(3)))))
 
-    zn = select(qat, opts["zn"])
-    lig = [a for a in tat if a[1] == opts["ligand"]]
+    # `--ligand` by residue NAME, or by `CHAIN:RESSEQ[:RESNAME]` when the name
+    # alone is ambiguous. 6NC5 holds six zincs, all called ZN, and only ZN302
+    # is the site we model - so a name is not enough to name a metal (D184).
+    want = opts["ligand"]
+    if ":" in want:
+        bits = want.split(":")
+        chain, seq = bits[0], bits[1]
+        lig = [a for a in tat if a[2] == chain and a[3] == seq
+               and (len(bits) < 3 or a[1] == bits[2])]
+    else:
+        lig = [a for a in tat if a[1] == want]
     if not lig:
-        raise SystemExit("no %s in %s" % (opts["ligand"], template))
+        raise SystemExit("no %s in %s" % (want, template))
     moved = [a[:4] + tuple(apply_fit(fit, a[4:7])) + (a[7],) for a in lig]
-    ligand_report("%s transferred" % opts["ligand"], moved, zn)
+
+    # `--zn` is optional, because the structure worth transferring INTO may be
+    # the one with no metal: CSR-1's wild-type crystals are metal-free, which
+    # is the whole reason to move 6NC5's zinc into 6DN4's frame. Without it the
+    # group is written out and measured with `pair`, which needs no metal.
+    zn = select(qat, opts["zn"]) if opts.get("zn") else None
+    if zn is not None:
+        ligand_report("%s transferred" % want, moved, zn)
+    else:
+        print("  no --zn in the target: distances are not reported here. "
+              "Write the group with --out, append it to the target, and "
+              "measure with `pair` - which needs no metal.")
 
     if opts.get("out"):
         with open(opts["out"], "w") as fh:
-            fh.writelines(pdb_lines(moved, opts["ligand"]))
+            # The residue's own name, not `--ligand`: that may now be a
+            # selector, and writing `A:302:ZN` into the four-character resname
+            # column produces a file every other tool misparses (D184).
+            fh.writelines(pdb_lines(moved, moved[0][1]))
             fh.write("END\n")
         print("  written to %s" % opts["out"])
 
-    for path in (opts.get("poses") or "").split(",") if opts.get("poses") else []:
+    if opts.get("poses") and zn is None:
+        print("  --poses needs --zn: a pose is compared by how it sits on the "
+              "metal, and the target has none.")
+    for path in (opts.get("poses") or "").split(",") if opts.get("poses") and zn else []:
         print("  -- %s" % path)
         for label, pose in models(path, opts.get("poseres")):
             ligand_report(label or path, pose, zn,

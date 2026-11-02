@@ -504,3 +504,91 @@ class TestHydrogensComeAcross:
                    if l.startswith("HETATM")]
         assert len(written) == 4
         assert [l[12:16].strip() for l in written] == ["C1", "O1", "HC", "HO"]
+
+
+class TestTransferringOneNamedGroup:
+    """`--ligand` used to select by residue NAME only, and `--zn` was required.
+    Both blocked the measurement that mattered: 6NC5 holds six residues called
+    ZN and only ZN302 is the site, and the structure worth transferring INTO is
+    the wild type, which has no metal at all (D184)."""
+
+    TEMPLATE = (
+        "HETATM    1 ZN    ZN A 301      20.000  20.000  20.000  1.00  0.00          ZN\n"
+        "HETATM    2 ZN    ZN A 302       0.000   0.000   0.000  1.00  0.00          ZN\n"
+        "ATOM      3  NE2 HIS A  87       2.100   0.000   0.000  1.00  0.00           N\n"
+        "ATOM      4  ND1 HIS A  87       4.000   0.000   0.000  1.00  0.00           N\n"
+        "ATOM      5  NE2 HIS A 163       0.000   2.100   0.000  1.00  0.00           N\n"
+        "ATOM      6  ND1 HIS A 163       0.000   4.000   0.000  1.00  0.00           N\n"
+        "END\n")
+    # The same site, translated: a fit must find the shift and nothing else.
+    TARGET = (
+        "ATOM      1  NE2 HIS A 116      12.100  10.000  10.000  1.00  0.00           N\n"
+        "ATOM      2  ND1 HIS A 116      14.000  10.000  10.000  1.00  0.00           N\n"
+        "ATOM      3  NE2 HIS A 192      10.000  12.100  10.000  1.00  0.00           N\n"
+        "ATOM      4  ND1 HIS A 192      10.000  14.000  10.000  1.00  0.00           N\n"
+        "END\n")
+    FIT = ("A:87:NE2=A:116:NE2,A:87:ND1=A:116:ND1,"
+           "A:163:NE2=A:192:NE2,A:163:ND1=A:192:ND1")
+
+    def files(self, tmp_path):
+        (tmp_path / "t.pdb").write_text(self.TEMPLATE)
+        (tmp_path / "q.pdb").write_text(self.TARGET)
+        return str(tmp_path / "t.pdb"), str(tmp_path / "q.pdb")
+
+    def test_a_selector_picks_one_of_several_residues_with_one_name(self, rs,
+                                                                    tmp_path):
+        template, target = self.files(tmp_path)
+        out = tmp_path / "moved.pdb"
+        rs.mode_transfer([template, target, "--ligand=A:302:ZN",
+                          "--fit=" + self.FIT, "--out=" + str(out)])
+        lines = [l for l in out.read_text().splitlines() if l.startswith("HETATM")]
+        assert len(lines) == 1
+        x, y, z = (float(lines[0][30:38]), float(lines[0][38:46]),
+                   float(lines[0][46:54]))
+        # ZN302 sat at the origin, 2.1 A from each NE2; the target's site is the
+        # same geometry at (10, 10, 10).
+        assert (x, y, z) == pytest.approx((10.0, 10.0, 10.0), abs=1e-3)
+
+    def test_the_other_copy_is_not_transferred(self, rs, tmp_path):
+        """Selecting by name alone would carry ZN301 as well, and a file with
+        two zincs in it measures as whichever one `pair` is pointed at."""
+        template, target = self.files(tmp_path)
+        out = tmp_path / "moved.pdb"
+        rs.mode_transfer([template, target, "--ligand=ZN",
+                          "--fit=" + self.FIT, "--out=" + str(out)])
+        lines = [l for l in out.read_text().splitlines() if l.startswith("HETATM")]
+        assert len(lines) == 2
+
+    def test_the_written_resname_is_the_residues_own(self, rs, tmp_path):
+        """Not the selector. `A:302:ZN` in the four-character resname column
+        produces a file every other tool misparses."""
+        template, target = self.files(tmp_path)
+        out = tmp_path / "moved.pdb"
+        rs.mode_transfer([template, target, "--ligand=A:302:ZN",
+                          "--fit=" + self.FIT, "--out=" + str(out)])
+        line = [l for l in out.read_text().splitlines() if l.startswith("HETATM")][0]
+        assert line[17:20].strip() == "ZN"
+
+    def test_a_target_with_no_metal_is_allowed_and_says_so(self, rs, tmp_path,
+                                                            capsys):
+        template, target = self.files(tmp_path)
+        rs.mode_transfer([template, target, "--ligand=A:302:ZN",
+                          "--fit=" + self.FIT])
+        out = capsys.readouterr().out
+        assert "no --zn in the target" in out and "pair" in out
+
+    def test_a_selector_that_matches_nothing_is_refused(self, rs, tmp_path):
+        template, target = self.files(tmp_path)
+        with pytest.raises(SystemExit) as exc:
+            rs.mode_transfer([template, target, "--ligand=A:999:ZN",
+                              "--fit=" + self.FIT])
+        assert "A:999:ZN" in str(exc.value)
+
+    def test_poses_without_a_metal_are_declined_not_crashed(self, rs, tmp_path,
+                                                             capsys):
+        """A pose is scored by how it sits on the metal, so there is nothing to
+        compare against in a metal-free target."""
+        template, target = self.files(tmp_path)
+        rs.mode_transfer([template, target, "--ligand=A:302:ZN",
+                          "--fit=" + self.FIT, "--poses=nonexistent.pdbqt"])
+        assert "--poses needs --zn" in capsys.readouterr().out

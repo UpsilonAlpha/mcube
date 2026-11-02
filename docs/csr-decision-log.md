@@ -4505,6 +4505,40 @@ The failure that is left is forgetting the line, and that is now loud rather tha
 
 Three tests. 659 pass.
 
+**D184 - D179's open number, measured: superpose 6NC5's ZN302 into 6DN4 on the two histidine rings alone and the zinc lands 2.68 A from Asp120 OD2. Our model has 2.80. The wild type puts the carboxylate where we have it, to 0.12 A, and the 4.20 A that D145 offered is the Zn2 mutant's own Asp91.** (2026-11-02)
+
+## The measurement, and why the fit is the result
+
+6DN4 is the wild-type reference (D108) and is metal-free, so the Zn-Asp distance cannot be read off it directly - 6NC5's zinc has to be put into its frame. Two things made that honest rather than circular:
+
+**The fit excludes Asp entirely.** It is on the two histidine rings - NE2, ND1 and CE1 of His87/His116 and His163/His192, six atoms - because those are the ligands the metal actually sits on, and including the Asp in the superposition would let the atom under question determine where the zinc goes. **RMSD 0.184 A**, worst pair 0.307 A. A first attempt that did include Asp CG fitted at 0.635 A with that pair the worst at 0.853 A, which is the signature of forcing a correspondence that is not there.
+
+**The histidine distances check the transfer.** In 6DN4's frame the transferred zinc sits 2.34 A from His116 NE2 and 2.18 A from His192 NE2 - both ordinary Zn-N bonds. A bad superposition would show up here first.
+
+| contact, in 6DN4's frame | distance | our model |
+| --- | --- | --- |
+| Zn - His116 NE2 | 2.34 | 2.22 |
+| Zn - His192 NE2 | 2.18 | 2.09 |
+| **Zn - Asp120 OD2** | **2.68** | **2.80** |
+| Zn - Asp120 OD1 | 3.82 | 3.81 |
+| Zn - Arg118 NH1 | 4.00 | 3.89 |
+| Zn - Gln121 NE2 | 7.10 | - |
+
+Every one of our six agrees with the wild-type crystal to within 0.13 A. **The starting structure is right.** `prod100c` and `wt100c` are both restraining Asp92 OD2 at a distance the wild type supports, and the 1.4 A discrepancy I was ready to rebuild the system over was an artefact of comparing against the mutant.
+
+**Gln93 gets a second, independent line.** The user's position was that it is "neutral and far away from everything"; D173 measured 7.95-9.88 A to the ligand over 34 ns of trajectory, and the wild-type crystal now puts its NE2 **7.10 A** from the zinc. Trajectory and crystal agree, and neither is our model's assumption.
+
+## Two defects in `refstruct.py transfer`, both found by using it
+
+`transfer` could not do this, and the reasons were worth fixing rather than working around - these numbers go in a paper and must come from a command, not from arithmetic in a browser console.
+
+1. **`--ligand` selected by residue NAME only.** 6NC5 holds six residues called `ZN` and only ZN302 is the site, so a name cannot name a metal. It now also takes `CHAIN:RESSEQ[:RESNAME]`.
+2. **`--zn` was required**, and the structure worth transferring into is the metal-free one - which is the entire point of the exercise. It is now optional: without it the group is written with `--out` and measured with `pair`, which needs no metal. `--poses` still requires it, because a pose is scored by how it sits on the metal, and that is now said rather than crashed into.
+
+And one defect introduced by the first fix and caught before the numbers were used: with a selector, `--out` was writing `A:302:ZN` into the four-character resname column, producing a file every other tool misparses. It writes the residue's own name.
+
+Seven tests added to `tests/test_refstruct_transfer.py`, including the one that pins the selector against the name - selecting `ZN` by name still returns both copies, which is the behaviour that would have silently measured the wrong zinc.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

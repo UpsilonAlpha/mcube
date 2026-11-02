@@ -42,6 +42,8 @@ one exists, the entry that wrongly contradicted it later.
 | 6NC5 ZN302, four ligands within 2.8 Å | HOH485 1.90, His163 NE2 2.09, HOH493 2.14, His87 NE2 2.22 | D108 |
 | **No aspartate on ZN302** | Asp91 OD2 4.82 / OD1 4.13 Å from His87 NE2 — *in the mutant* | D108, D179 |
 | Asp92's conformer across CSR-1's own three crystals | **6DN4 (WT, 1.99 Å, B 15–16): 3.00/3.07 Å from His116 NE2 — close.** 6DQ2 (mutant S60, B 53–66): 4.28/5.49. 6NC5 (Zn2 mutant): 4.13/4.82 | **D179** |
+| **Zn–Asp92 OD2 in the wild type: 2.68 Å** — 6NC5's ZN302 superposed into 6DN4 on the two histidine rings alone, fit RMSD 0.184 Å. Our model has 2.80, and all six site distances agree to within 0.13 Å | settled — **the starting structure is right**; D145's 4.20 Å was the Zn2 mutant's | **D184** |
+| Gln93 is remote, from the crystal as well as the trajectory | NE2 **7.10 Å** from the zinc in 6DN4; 7.95–9.88 Å from the ligand over 34 ns | D184 + D173 |
 | Therefore: the carboxylate is **mobile**, and the only well-ordered wild-type copy has it close | measured, open | D179 + D151 |
 | L1 7UHI/7UHJ, the only measured B3 Michaelis complex | intact carbonyl **2.53/2.63 Å** from Zn1; ring N and C-carboxylate on Zn2 | D156 |
 | CSR-1 vs L1 similarity | 39.0% identity, 221/249 core, **1.05 Å CA RMSD** — closer than L1 vs SMB-1 | D158 |
@@ -135,7 +137,6 @@ afterwards**. A barrier that moves once the experiment arrives is a fit.
 
 | Question | What would settle it | Blocked by |
 | --- | --- | --- |
-| Zn–Asp92 distance in 6DN4's frame | 6NC5's ZN302 superposed into 6DN4 on the site residues — `refstruct.py transfer`'s machinery pointed at a metal | nothing |
 | Is the nucleophile hydroxide or water, and how does it form with no Zn2? | equilibrate each state, keep the one that holds the crystal's sphere (D113/D114), plus DFT at a larger basis on unconstrained geometries | items 1–3 |
 | Can GFN2-xTB be trusted for coordination number here? | the cluster benchmark — Imhof's own predicts ~7.5 kcal/mol error on 4→5 coordination, which is our contested observation | nothing |
 | Does the re-formed carbonyl land where L1 puts it (2.53–2.63 Å)? | `recombine`, then `refstruct.py transfer` 7UHI as a check | items 1–2 |
