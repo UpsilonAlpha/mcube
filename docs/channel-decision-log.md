@@ -1685,6 +1685,28 @@ blocks 30576666/67 held; the Ca jobs run)
       rules out a Ca-selective ring and a very strong (> ~15) Ln preference. A second calibration point with
       two carboxylates on the ion (a measured Ca/La constant for a dicarboxylate or acetate β₂) would decide
       between the two readings.
+    - **Two-carboxylate target found: succinate (proposed 2026-11-02, not run).** Measured log K₁ at 25 °C,
+      I = 0 (NIST SRD 46.6 as compiled in Visual MINTEQ's `thermo.vdb`; ThermoChimie v12a `sit.dat` and
+      PHREEQC `llnl.dat` as cross-checks; values read from the database files, not the primary papers, which
+      were not reachable):
+
+      | ligand | Ca | La | ΔΔG(La − Ca), kcal/mol |
+      |---|---|---|---|
+      | acetate | 1.18 (ThermoChimie 1.12) | 2.55 | −1.87 |
+      | succinate | 2.00 (ThermoChimie 2.34) | 3.96 | −2.67 (−2.21 with ThermoChimie's Ca) |
+      | glutarate | 2.05 (no reference given) | 3.82 | −2.41 |
+      | malonate (6-ring chelate) | 2.50 (2.43) | 4.94 | −3.33 |
+
+      Experimentally the La − Ca gap grows only from −1.9 (one carboxylate) to −2.2…−2.7 (two, succinate),
+      not to 2 × −1.9. Succinate's carboxylates are the closest measured analogue of two Glu on one ion (7-ring,
+      binding mode mixed). The NIST acetate value also moves the one-Glu calibration offset to −12.0 − (−1.9) ≈
+      −10.1. **What it decides:** run Ca → La for the Ca– and La–succinate complexes in the same 1264-water cube
+      with the same protocol (MM frames of each complex, swaps, LRA, PME through `mcube exchange`). If the
+      computed value is ≈ −12…−13 (the bias does not grow with the second carboxylate), the corrected site is
+      ≈ −9 ± 4 (moderate La preference); if it is ≈ −20 or below, the corrected site is ≈ 0 (no preference).
+      **Cost:** succinate parameters (openff, as mcube does for ligands), two 2 ns CPU MM boxes, then 5 frames ×
+      2 sources × 2 ions = 20 QM/MM jobs (≈ 7–18 h each on 32 cores, ≈ 250–350 CPU-h; the Ca/La water-cube jobs
+      are reused). **Unblocks:** the corrected site value, i.e. whether the ring prefers La over Ca.
   - **Ca vs Ln is the main test (user, 2026-10-30), so the reference moves into the membrane box.** No
     post-hoc correction fixes a 2+ → 3+ swap compared across two differently embedded systems. Comparing the site
     against the ion in the bulk water layer of the same periodic box makes the net-charge and Ewald-convention
