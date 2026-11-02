@@ -4323,7 +4323,7 @@ This also means no cross-ligand graft is needed. Grafting meropenem's substituen
 
 | # | Item | Status |
 | --- | --- | --- |
-| 0 | **Asp92's placement in the starting structure** (below) | **BLOCKS prod100c - user's call** |
+| 0 | **Asp92's placement in the starting structure** (below) | **RESOLVED (D179): 2.80 A is supported; 4.20 A was the mutant's. prod100c unblocked** |
 | 1+2 | Experiment-anchored Michaelis complex, both endpoints on one topology | `prod100c` PENDING (31423830); the rest configured, unrun |
 | 3 | Equilibration that preserves the site, occupancy read over the whole trajectory | method fixed (D174-D176); product arm pending, **reactant arm not started** |
 | 4 | Nucleophile identity, origin and protonation state | not started; blocked on 1-3 |
@@ -4352,6 +4352,40 @@ The zinc in our model is 6NC5's, placed by superposition as a rigid unit (D23, 0
 Option 3 first, then 1 or 2 on what it says. Nothing is restrained on a number whose provenance is unsettled - that is how 2.80 A came to be quoted as crystallographic for ten weeks.
 
 `prod100c` is still PENDING with no start time (the GPU queue is backed up), so nothing is committed yet.
+
+**D179 - Item 0 resolved, and it goes the other way: 2.80 A is NOT a modelling error. The 4.20 A figure D145 called "the crystal's Asp92 distance" comes from 6NC5, which is the Q121H/K254H MUTANT with an engineered zinc-binding histidine immediately next to Asp91. The best wild-type structure, 6DN4 at 1.99 A with Asp120 B-factors of 15-16, puts the carboxylate 3.00-3.07 A from His116 NE2 - the close conformer, the one our model has.** (2026-11-02)
+
+## The measurement
+
+`refstruct.py pair` (added for this: `shell` needs a metal and the wild-type structures have none; an internal distance also needs no superposition, so it cannot be an artefact of a fit). Same two atoms in every structure - the first zinc histidine's NE2 against each carboxylate oxygen of the Asp:
+
+| structure | what it is | resolution | Asp B-factors | His NE2 - OD1 | - OD2 | His-His NE2 |
+| --- | --- | --- | --- | --- | --- | --- |
+| **6DN4** | **wild type**, metal-free | **1.99 A** | **15-16** | **3.00** | **3.07** | 3.63 |
+| 6DQ2 | HARLDQ **mutant S60**, metal-free | 2.16 A | **53-66** | 4.28 | 5.49 | 3.75 |
+| 6NC5 | **Q121H/K254H mutant**, Zn-bound | 1.60 A | - | 4.13 | 4.82 | 3.42 |
+
+(6DN4/6DQ2 are in BBL numbering - His116, Arg118, Asp120, Gln121, Lys254 - so their Asp120 is our Asp92 and their His116/His192 pair is our His88/His164. The 3.42-3.75 A His-His NE2 separation in all three confirms the same site is being measured in each.)
+
+## What it means, and what it corrects
+
+**The crystals disagree with each other by 2.4 A on this side chain, and the disagreement tracks what each structure is.** The two "far" values come from a *mutant whose Asp120 side chain is disordered* (B 53-66 against a 2.16 A map - that conformer rests on weak density) and from a *mutant that engineers a zinc-binding histidine into the position adjacent to the Asp*. The one "close" value comes from the only well-ordered wild-type carboxylate in the set.
+
+So **D145's correction needs correcting.** D145 was right that 2.80 A had been quoted as crystallographic when it was our model's own Asp-hydroxide hydrogen bond, and right to catch that. But the 4.20 A it offered as the real crystal value is the engineered construct's, and 6NC5's His92 - the engineered mutation - is the residue immediately C-terminal to Asp91. A Zn2-ligating histidine next door is exactly the kind of thing that moves a neighbouring carboxylate.
+
+**`prod100c`'s restraint at 2.80 A is therefore supported, not an error**, and the entry above it in D178 (item 0, "BLOCKS prod100c") is withdrawn. The run should go.
+
+**More importantly, the Asp92 question is reframed.** The project has spent ten weeks treating "Asp92 comes onto the metal" as a model-versus-crystal discrepancy. On this evidence it is a **conformational equilibrium that the crystal record itself samples** - a well-ordered close conformer in the wild type, a disordered far one in a mutant. That is consistent with D151's measurement, which found the on and off basins separated by only 1.5-1.9 kcal/mol with populations within 0.2 kcal/mol and correctly withdrew the "the orphaned carboxylate fills the vacancy" claim. Two independent lines now say the same thing: this carboxylate is mobile.
+
+What it does **not** license is the six-coordinate zinc of D173/D177. A mobile second-shell carboxylate at 2.8-3.0 A is not a carboxylate bound at 2.03 A displacing the coordination number to six. Both can be true: the Asp sits close in the wild type, and our MM runs still over-bound it. The restraints in `prod100c` hold it at 2.80, which is now the better-supported distance rather than merely the one our file had.
+
+## What is still open on this
+
+The decisive number - Zn to Asp92 in 6DN4's frame - cannot be measured directly, because 6DN4 has no metal. It needs 6NC5's zinc superposed into 6DN4 on the site residues, which is `refstruct.py transfer`'s machinery pointed at a metal rather than a ligand. Until that is done, "3.00 A from His116 NE2 implies roughly 2.8-3.5 A from the zinc" is geometry, not measurement, and should be written as such.
+
+**Two things for the paper fall out of this**, and both are cheap:
+- The Asp92 conformer comparison across CSR-1's own three crystals, with resolutions and B-factors, is a figure. It is the kind of structural due diligence a referee looks for and it was sitting in the PDB the whole time.
+- It is also the honest frame for the mechanism: if the carboxylate is mobile, the question is not "is Asp92 on or off the metal" but what each conformer does to the nucleophile - which is a mechanistic question with an answer the calculations can give.
 
 ## Resources (see `running-on-bunya.md`)
 

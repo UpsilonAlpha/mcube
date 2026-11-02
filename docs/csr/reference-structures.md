@@ -199,3 +199,34 @@ CSR-1 is represented by 6NC5 chain A: its own sequence with the Q121H/K254H
 mutations, and the only CSR-1 crystal carrying a metal. The identities are the
 ordinary B3 spread; what the table is for is the comparison *between* pairs,
 and L1 is closer to CSR-1 than it is to SMB-1.
+
+## Where Asp92 sits, across CSR-1's own three crystals (D179)
+
+`shell` needs a metal and the wild-type structures have none, so this is
+`pair`: the same two atoms in each file, with no superposition, so the answer
+cannot be an artefact of a fit.
+
+```
+for P in 6NC5 6DN4 6DQ2; do curl -sO https://files.rcsb.org/download/$P.pdb; done
+python refstruct.py pair 6DN4.pdb A:116:NE2-A:192:NE2 A:116:NE2-A:120:OD1 A:116:NE2-A:120:OD2
+python refstruct.py pair 6DQ2.pdb A:116:NE2-A:192:NE2 A:116:NE2-A:120:OD1 A:116:NE2-A:120:OD2
+python refstruct.py pair 6NC5.pdb A:87:NE2-A:163:NE2  A:87:NE2-A:91:OD1   A:87:NE2-A:91:OD2
+```
+
+| structure | what it is | resolution | Asp B | NE2–OD1 | NE2–OD2 | His–His NE2 |
+| --- | --- | --- | --- | --- | --- | --- |
+| **6DN4** | **wild type**, metal-free | **1.99 Å** | **15–16** | **3.00** | **3.07** | 3.63 |
+| 6DQ2 | HARLDQ **mutant S60**, metal-free | 2.16 Å | 53–66 | 4.28 | 5.49 | 3.75 |
+| 6NC5 | **Q121H/K254H mutant**, Zn-bound | 1.60 Å | — | 4.13 | 4.82 | 3.42 |
+
+6DN4 and 6DQ2 are in BBL numbering (His116, Arg118, Asp120, Gln121, Lys254),
+so their Asp120 is our Asp92 and their His116/His192 pair is our
+His88/His164. The 3.42–3.75 Å His–His NE2 separation in all three is the check
+that the same site is being measured in each.
+
+**The carboxylate is in two conformers and the split tracks what each structure
+is:** close in the only well-ordered wild-type copy, far in a mutant whose
+side chain is disordered (B 53–66) and in the construct that engineers a
+zinc-binding histidine into the position next to it. The 4.20 Å figure quoted
+from D145 onward as "the crystal's Asp92 distance" is 6NC5's — the engineered
+one.
