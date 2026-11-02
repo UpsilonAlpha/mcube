@@ -4227,6 +4227,31 @@ Seven restraints, not eight: six detected plus the configured Asp92 OD1 at 3.81.
 
 The pane was closed when this was found, so nothing could be cancelled or verified. The fix is pushed and waiting.
 
+**D176 - No: detection was never per atom for restraints. The per-atom option existed in `coordination_from_rows` from the day it was split out, and `find_coordinators` - the only caller that builds restraints - never passed it. The reactant's four restraints happen to be unaffected, one donor per residue; what is not unaffected is that its Asp92 was free at 2.80 A too, which `wtpost` now measures. Asp92 OD1 kept. prod100c resubmitted as 31423830.** (2026-11-02, user: "detection was always by atom? It should always have been per atom restraints")
+
+## The answer
+
+Per **residue**, always, for restraints. `coordination_shell(pdb_file, inputs, radius=None, per_residue: bool = True)` - and `find_coordinators` called it with two arguments. So the switch was there, documented in the comment beside it, defaulted the wrong way for the one use that needed it, and no test touched any of the three functions. It should always have been per atom, as the user says: a restraint list is the set of distances a run is asked to preserve, and a donor atom inside the cutoff is one of those distances whether or not another atom of its residue is nearer.
+
+## What it did and did not touch
+
+**The product:** it bit. The ligand has O5x at 2.92 A and O4x at 2.94 A in the same residue, so detection held O5x and left O4x free 0.02 A behind it. That was the state of job 31355970, which was still PENDING when this was found - so it was cancelled before using any GPU time, and `prod100c` is resubmitted as **31423830** with the fix in place: seven detected contacts plus the configured Asp92 OD1, eight in all.
+
+**The reactant: the bug did not bite, but the cutoff did.** `md_wt100` and `md_wt100b` both recorded exactly four restraints - `D:1:O` 1.90 (hydroxide), `A:164:NE2` 2.09, `C:2:O01` 2.14, `A:88:NE2` 2.22 - four residues, one donor each, so per-residue and per-atom give the same list. Those runs are not invalidated by D175.
+
+What they do share with the product is the 2.5 A cutoff, and therefore **Asp92 OD2 free at the same crystallographic 2.80 A**. On the product that contact collapsed to 2.03 A at 99.9% occupancy. Whether it did the same on the reactant is a measurement, the trajectory is on disk, and nobody has ever looked: `md`'s before-and-after shell report covers two frames, and D134's table came from `site.py` outside the framework.
+
+**`wtpost` (job 31424060)** asks it: coordination occupancy over `md_wt100`'s full 100 ns, per atom, plus the hydrogen check on its topology. Two outcomes, both worth having:
+
+- **Asp92 held near 2.80.** The product's collapse is the product's own - most likely the ligand's own charge distribution next to the metal - and the reactant's 100 ns stands as the control.
+- **Asp92 collapsed there too.** Then both arms were equilibrated on a six-coordinate zinc, every QM/MM run descended from `md_wt100` inherits it, and both arms need redoing at 3.0 A. That would be the largest single correction in this log, and it would be better to know it from an analysis job than from a referee.
+
+## Asp92 OD1 stays
+
+The user kept the one restraint outside the 3 A sweep (OD1 at 3.81 A). With detection now per atom, its justification is narrower than when I added it - a carboxylate with both oxygens inside the cutoff is now held as a group automatically - but Asp92's OD1 is outside the cutoff at 3.81, so only an explicit row reaches it, and D120 and D130 are both what happens when it is not reached.
+
+8 of the new detection tests pass in the ASH environment as well as locally.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
