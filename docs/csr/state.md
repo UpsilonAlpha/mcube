@@ -48,6 +48,9 @@ one exists, the entry that wrongly contradicted it later.
 | L1 7UHI/7UHJ, the only measured B3 Michaelis complex | intact carbonyl **2.53/2.63 Å** from Zn1; ring N and C-carboxylate on Zn2 | D156 |
 | CSR-1 vs L1 similarity | 39.0% identity, 221/249 core, **1.05 Å CA RMSD** — closer than L1 vs SMB-1 | D158 |
 
+| Histidine tautomers | **The two zinc ligands are HID with NE2 facing the metal in every run** — so the HE2-on-everything source file D21 found never reached a production system. 53 HIE, 150 HIE agree everywhere. **His112 is HIE in CSR_ligand/CSR_hydrolysed and HID everywhere since**, unattributed to any source; it is 15.5 Å from the zinc and mechanistically irrelevant, so set `112: HIE` in future builds and rebuild nothing (D189) |
+| His164 HID vs HIE is still open | a chemistry question, not a parameterisation error: its NE2 is 3.2 Å from the developing oxyanion, so the tautomer decides whether the oxyanion has an H-bond donor (D7, still plan item 5) |
+
 ### Pipeline rules that are now enforced, not merely intended
 
 | Rule | Status | Entry |

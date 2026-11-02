@@ -4647,6 +4647,34 @@ Eight tests, and the two that matter pin the properties rather than the code pat
 
 **What is still needed before the benchmark runs** (D187): the substrate truncation, which needs the ligand's connectivity from `mer_crystal.pdb`'s CONECT records rather than a guess, and the cluster PDB itself. The site part is settled - 37 atoms, net 0, charge -1 with the substrate fragment.
 
+**D189 - Histidine audit: the four that matter are identical in every run, and the one discrepancy is His112, 15.5 A from the zinc. CSR_ligand and CSR_hydrolysed have it HIE; every run from CSR_crystal onward has it HID, including the live CSR_wt and CSR_prod - and `112: HID` does not come from the source D23 attributes it to.** (2026-11-02, user: "csr hydrolysed and csr ligand should have correctly parameterised his in their configs - check all jobs run so far to determine if his is parameterised correctly in them")
+
+## Read off the built structures, not the configs
+
+Which hydrogens each histidine actually carries in `preprocess_results/finalsystem.pdb` - HD1 is HID, HE2 is HIE, both is HIP:
+
+| run | A:53 | **A:88** | A:112 | A:150 | **A:164** |
+| --- | --- | --- | --- | --- | --- |
+| CSR_ligand | HIE | **HID** | **HIE** | HIE | **HID** |
+| CSR_hydrolysed | HIE | **HID** | **HIE** | HIE | **HID** |
+| CSR_wt | HIE | **HID** | **HID** | HIE | **HID** |
+| CSR_prod | HIE | **HID** | **HID** | HIE | **HID** |
+| CSR_nac | HIE | **HID** | **HID** | HIE | **HID** |
+
+The configs match: CSR_ligand and CSR_hydrolysed set only `164: HID, 88: HID` and let the builder assign the rest at pH, which gave HIE at 112. Every config from CSR_crystal onward names all five and says `112: HID` explicitly.
+
+## What this does and does not mean
+
+**The two zinc ligands are HID in every run, with NE2 bare and facing the metal.** That is what the chemistry requires and it is right everywhere - including in the runs built from the file D21 found to have **HE2 on every histidine**, with His164's HE2 sitting **0.76 A from the zinc**. So the thing D21 and D7 warned about never reached a production system: `residue_variants` overrode it, in every single run. That is worth saying plainly, because the log has carried it as an open worry since the first week.
+
+**His112's tautomer is mechanistically irrelevant.** 15.53 A from the zinc, 17.92 A from the substrate, 17.19 A from the nucleophile, in MM in every QM region, no contact with anything in the site. A neutral histidine's tautomer at that range changes nothing in any energy this project computes. **Nothing needs rebuilding over it.**
+
+**But its provenance is wrong, and that is the finding.** D23 records that the tautomers were taken from `CSR_nontruncated_1metal_original.pdb`'s refined hydrogens. D21 records that in that same file *every* histidine carries HE2. A file with HE2 on His112 says **HIE**, not HID - so `112: HID` cannot have come from where D23 says it did, and the two configs that let the tool decide got HIE, agreeing with the file. One of the five assignments is unattributed.
+
+**Recommendation:** set `112: HIE` in any future build, for consistency with the two configs the user confirms are right and with the source file's own hydrogens. Do not rebuild a running system for a residue 15 A away. And **the His164 question D7 raised is still open and is not this**: whether HID is right for a residue whose NE2 sits 3.2 A from the developing oxyanion is a chemistry question needing the sensitivity check, not a parameterisation error.
+
+**What is not audited:** CSR_crystal, _v2, _v3, CSR_unrestrained, _2, CSR_gln93, CSR_ohH. Their configs all carry the same five assignments as CSR_wt, so the structures will match; they are void runs (D28-D70 laundering) and fetching 4 MB each to confirm a value their configs already state is not worth it. If any of them is ever revived, check it then.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
