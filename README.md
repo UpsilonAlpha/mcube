@@ -426,6 +426,45 @@ mcube metadynamics config.yaml fes [--section S]
 - **run** writes `<section>/` and `<section>.results.run`. Every hill is logged to `hills.csv` (time, centre, well-tempered height). Running it again continues: OpenMM reloads the bias from `bias/`, the structure is `lastframe.pdb`, and `cv.csv`/`hills.csv` are appended to (velocities are redrawn).
 - **fes** rebuilds the bias V from `hills.csv` on the run's grid and gives F = −γ/(γ−1) V (kcal/mol) along each CV (`fes_<cv>.csv`, projected in 2D, plus `fes_2d.csv`). A smooth n_COO near the cutoff is not a state, so n_COO is reported as integer states, F_n = −kT ln ∫ exp(−F/kT) over [n − ½, n + ½] (`n_coo_states.csv`, `<section>.results.fes.n_coo_states_kcal`). The state free energies from the hills of the first 50 % and 75 % of the run are given next to them, and the largest change from 75 % to 100 % as `max_state_change_75_100_kcal`.
 
+### `exchange.inputs` (optional section)
+
+Ion-exchange energies from QM/MM "vertical swaps": each MM frame is scored with each ion in
+turn (only the ion's identity changes), at a site and in a water reference, and for M1 → M2
+
+ΔΔE = ⟨E(M2) − E(M1)⟩ over site frames − ⟨E(M2) − E(M1)⟩ over water frames (kcal/mol; negative: the site prefers M2).
+
+It is an energy, not a free energy. Each (frame, ion) job is an ordinary mcube run
+(`preprocess` → `qmmm` optimisation only → `sp`) in its own directory, listed in the run
+directory's `frames.json`. The frames and jobs are still written by
+`docs/channel/qmmm/exchange.py frames`. This stage is the analysis: every setting that changes a
+number is a key below, and every number is saved in `<section>.results`. A `--section`'s
+inputs override `exchange.inputs` key by key, so one config holds several analyses.
+[`config_examples/exchange_config.yaml`](config_examples/exchange_config.yaml) is an example.
+
+| Key | Default | Description |
+| --- | --- | --- |
+| `run_dir` | `.` | Directory with `frames.json` (read against the config's directory) |
+| `level` | `sp` | Energy level for the headline numbers: `sp` (TZVP single point), `sp_disp` (+ D3) or `opt` (optimisation level) |
+| `analyse.electrostatics` | `[direct]` | Treatments to report: `direct` (the non-periodic embedding the jobs ran with) and/or `periodic` (first-order re-referencing to the PME potential at the ion; needs `potential` with `pme`) |
+| `analyse.embed_radii` | `[]` | Diagnostic finite embeddings (Å), first order from `potential.json`. A sharp cut of a non-neutral charge set does not converge, so these are demonstrations, not results |
+| `analyse.lra` | `{}` | `{name: [SRC1, SRC2]}`: two site sources sampled with the two ions of an exchange, reported as a linear-response mean |
+| `analyse.pooling` | `balanced` | Headline ΔΔE: `balanced` (mean over site sources, each referenced to the water of its own ion; error = sd between sources) or `all` (every site frame against every water frame, which weights sources by frame count) |
+| `analyse.include_unconverged` | `false` | Keep frames whose optimisation did not converge |
+| `potential.radii` | `[8, 10, 15, 20, 30]` | Å: MM potential at the ion from charges beyond each radius (whole residues), by component |
+| `potential.pme` | `true` | Also the PME potential at the ion and the full direct sum (for `periodic`) |
+| `potential.components` | `false` | With `pme`: PME and direct potential of lipid, water, protein and ions separately |
+| `structure.cutoff` | 3.1 | Å, ion–O shell read from each optimisation path |
+
+```bash
+mcube exchange config.yaml potential [--section S]   # potential.json, <section>.results.potential
+mcube exchange config.yaml analyse   [--section S]   # report*.json, <section>.results.analyse
+mcube exchange config.yaml structure [--section S]   # structure.json, <section>.results.structure
+```
+
+`<section>.results.analyse` holds, per treatment, the report file and per exchange the headline
+ΔΔE, each source's ΔΔE and the LRA pairs, plus the inputs it used. Rerunning replaces it, so a
+treatment dropped from the inputs does not linger.
+
 ## Outputs by stage
 
 | Stage | Main files |
@@ -440,6 +479,7 @@ mcube metadynamics config.yaml fes [--section S]
 | postprocess | `Temperature.png`, `Density.png`, `BoxVolume.png`, `RMSD.png`, `interaction_network.csv/.png`, `rmsf_bfactor.pdb` |
 | umbrella | `pull/seed_NNN.pdb`, `pull/pull_cv.csv`; per window `<section>_NNN/{start.pdb, cv.csv, window.dcd, window.csv, lastframe.pdb, energies_<level>.csv}`; `<section>_pmf.csv`, `stitched_<section>.csv` |
 | metadynamics | `<section>/{start.pdb, cv.csv, hills.csv, bias/bias_*.npy, run.dcd, lastframe.pdb, fes_<cv>.csv, fes_2d.csv, n_coo_states.csv}` |
+| exchange | in `run_dir`: `report.json`, `report_periodic.json`, `report_R<radius>.json`, `potential.json`, `structure.json` |
 
 ## postprocess
 

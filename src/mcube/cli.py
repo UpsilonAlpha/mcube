@@ -179,6 +179,16 @@ def build_parser():
                      help="Config section; its inputs override metadynamics.inputs")
 
     # =========================================================
+    # ION EXCHANGE (QM/MM vertical swaps), analysis side
+    # =========================================================
+    p12 = subparsers.add_parser("exchange",
+                                help="Ion-exchange energies from QM/MM vertical swaps, from exchange.inputs")
+    p12.add_argument("config", help="Input yaml file")
+    p12.add_argument("action", choices=["analyse", "potential", "structure"])
+    p12.add_argument("--section", default="exchange",
+                     help="Config section; its inputs override exchange.inputs")
+
+    # =========================================================
     # POSTPROCESS
     # =========================================================
     p5 = subparsers.add_parser("postprocess", help="Analyse trajectory")

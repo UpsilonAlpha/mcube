@@ -1,0 +1,26 @@
+# Analysis of QM/MM vertical-swap ion-exchange jobs (README "exchange.inputs").
+# Put this config in (or next to) the run directory that `exchange.py frames` wrote.
+#
+#   mcube exchange config.yaml potential
+#   mcube exchange config.yaml analyse
+#   mcube exchange config.yaml structure
+#   mcube exchange config.yaml analyse --section exchange_diagnostics
+exchange:
+  inputs:
+    run_dir: .                       # holds frames.json
+    level: sp                        # r2SCAN/def2-TZVP single point
+    analyse:
+      electrostatics: [direct, periodic]
+      pooling: balanced              # one vote per site source
+      lra:
+        lasite: [CAla, LA]           # Ca- and La-sampled site frames: linear response for Ca -> La
+    potential:
+      pme: true
+      components: true               # which part of the box makes PME differ from the direct sum
+
+# The finite-embedding diagnostics, kept apart from the results above
+exchange_diagnostics:
+  inputs:
+    analyse:
+      electrostatics: [direct]
+      embed_radii: [15, 20, 30]
