@@ -170,3 +170,37 @@ def test_qmmm_still_exports_the_helpers(md, monkeypatch):
     assert qmmm.preserve_trajectory is md.preserve_trajectory
     assert qmmm.read_state_time is md.read_state_time
     assert qmmm.RESTART_STATEFILES == md.RESTART_STATEFILES
+
+
+class TestItSaysWhenItCouldHaveResumed:
+    """The cost of the missing wiring was a run restarting from zero; leaving
+    `resume` unset reproduces that by hand, so the run says what it is about to
+    discard (D183). `resume` stays opt-in - for a trajectory, continuing and
+    replacing are different things, unlike `scan`, where skipping a finished
+    point cannot change a result."""
+
+    def test_an_unset_resume_with_a_state_file_present_warns(self, md, tmp_path,
+                                                             monkeypatch, capsys):
+        monkeypatch.chdir(tmp_path)
+        write_state(tmp_path / "OpenMM_MD_state.xml", 1000, timestep_ps=0.004)
+        state, remaining = md.resolve_resume(
+            {"nvt_time": 100.0, "nvt_timestep": 0.004},
+            time_key="nvt_time", timestep_key="nvt_timestep")
+        out = capsys.readouterr().out
+        assert state is None and remaining == 100.0
+        assert "4.000 ps of a previous run" in out
+        assert "resume: true" in out and "nvt_time" in out
+
+    def test_a_clean_directory_says_nothing(self, md, tmp_path, monkeypatch, capsys):
+        monkeypatch.chdir(tmp_path)
+        md.resolve_resume({"nvt_time": 100.0}, time_key="nvt_time")
+        assert "WARNING" not in capsys.readouterr().out
+
+    def test_a_truncated_state_file_still_warns(self, md, tmp_path, monkeypatch,
+                                                capsys):
+        """An unreadable state file is the case most worth mentioning, not
+        least worth: something wrote it and then stopped."""
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "OpenMM_MD_state.xml").write_text("<State time=")
+        md.resolve_resume({"nvt_time": 100.0}, time_key="nvt_time")
+        assert "an unreadable amount" in capsys.readouterr().out

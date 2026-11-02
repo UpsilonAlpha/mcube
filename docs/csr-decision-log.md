@@ -4487,6 +4487,24 @@ Both trajectory files are moved aside, not just one: `md` writes a raw and an im
 
 **It does not help the two jobs already queued**, which were submitted without `resume` and cannot be edited. At 5 h against a 3.4 h run that is comfortable. What it does mean is that the next tight walltime is not a gamble, and that a 100 ns equilibration can be a chain of shorter jobs - which also makes it easier to schedule, since a 2 h window opens far more often than a 5 h one on a partition whose nodes are held for higher-priority work.
 
+**D183 - `resume` is a config option and always was: there is no CLI flag, and `grep resume src/mcube/cli.py` returns nothing. It is read from the section's `inputs` like every other setting. What it did lack is a way to notice you forgot it, so an unset `resume` with a state file present now says what the run is about to discard.** (2026-11-02, user: "avoid resume flag but you can probably add it as a config option")
+
+To be concrete, this is the whole of it in `site.yaml`:
+
+    wt100c:
+      stage: md
+      inputs:
+        nvt_time: 100000
+        resume: true
+
+`sections.py` carries it into the run's `config.yaml` with the rest, and `md` reads `inputs.get("resume")`. Nothing was added to the command line - `cli.py` is untouched by D182, and the only flags that stage takes are the ones it already had.
+
+**The default stays false, and the warning is why that is now safe.** `scan` defaults `resume` to **true** (`inputs.get("resume", True)`) because skipping a finished point cannot change a result. For a trajectory, continuing and replacing are genuinely different outcomes, so defaulting it on would mean a deliberate rerun of a section silently appends to the previous attempt - which is the mirror image of the bug just fixed, and harder to notice. So `md` and `qmmm` keep it opt-in.
+
+The failure that is left is forgetting the line, and that is now loud rather than silent: if `resume` is unset and `OpenMM_MD_state.xml` is sitting in the working directory, the run prints how far the previous attempt got, says it is starting from the beginning and overwriting it, and names the one line that would continue instead. A state file too truncated to read is reported too - something wrote it and then stopped, which is the case most worth mentioning rather than least.
+
+Three tests. 659 pass.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

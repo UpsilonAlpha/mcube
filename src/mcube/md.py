@@ -395,6 +395,24 @@ def resolve_resume(inputs: Dict[str, Any], pdb_file: Optional[str] = None,
     """
     requested = inputs.get(time_key)
     if not inputs.get("resume"):
+        # Say so rather than silently starting over. The whole cost of the
+        # missing wiring was that a walltime-limited run restarted from zero,
+        # and leaving `resume` unset reproduces that by hand - so if the files
+        # to continue from are sitting right here, the run says what it is
+        # about to discard and how to not (D183).
+        present = [Path(name) for name in RESTART_STATEFILES if Path(name).is_file()]
+        if present:
+            newest = max(present, key=lambda path: path.stat().st_mtime)
+            try:
+                elapsed, _ = read_state_time(newest)
+                where = f"{elapsed:.3f} ps"
+            except ValueError:
+                where = "an unreadable amount"
+            print(f"[WARNING] {newest.name} in {Path.cwd()} holds {where} of a "
+                  f"previous run, and `resume` is not set, so this run starts "
+                  f"from the beginning and overwrites it. Set `resume: true` in "
+                  f"this section to continue instead ({time_key} stays the total "
+                  "wanted).")
         return None, requested
 
     found = [Path(name) for name in RESTART_STATEFILES if Path(name).is_file()]
