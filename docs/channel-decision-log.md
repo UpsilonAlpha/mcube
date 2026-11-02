@@ -1624,6 +1624,55 @@ blocks 30576666/67 held; the Ca jobs run)
     in TIP3P with a flat-bottom ion–CD wall at 3.6 Å, 2 ns each (31053172–74); the same swaps and LRA then give
     ΔΔE for the complex, to set against acetate (La − Ca ≈ −1.5, Lu − La ≈ −0.2 kcal/mol).
 
+**C23 – After QM/MM: the existing MM PMFs cannot answer Ca vs Ln; the published MM route is alchemical TI
+with the Ch-BE 12-6-4 set, validated first on the lanmodulin EF1 peptide.** (proposed 2026-11-02, not
+approved)
+- **The existing PMFs are not results** (F12, C21): the z-only Ln windows inherit the pull's carboxylate
+  contacts (La and Lu profiles climb 130–150 kcal/mol, overlap < 0.05), and no Ln–carboxylate contact broke
+  in 6–10 ns at z0 = 0 with either C4. The Ca sections are provisional (overlap gaps). None reaches bulk
+  (`bulk-survey`). Running them longer will not fix this: the slow coordinate is n_COO, and for Zn²⁺ in ZIP
+  the Merz/Hu group also found umbrella sampling failed and used ≥ 500 ns of well-tempered metadynamics
+  (c4-tuning.md). A z-PMF also answers permeation, which is out of scope.
+- **Published method that answers the question directly:** Kantakevičius, Mathiah, Johannissen & Hay,
+  *JCTC* 2022, 18, 2367 (doi 10.1021/acs.jctc.1c00898; read in full 2026-11-02). Absolute binding free
+  energies by TI (ion decoupled in the complex and in water; Amber18, ff14SB, TIP3P ≥ 15 Å, PME 10 Å, 300 K;
+  12 λ for electrostatics+polarisation with Gaussian quadrature, triplicate, 2 ns NPT + 5 ns per λ; the vdW
+  leg, ≈ −9 kJ/mol and ion-independent, taken as fixed). No charge-change correction is stated. Their LanM
+  and CaM EF1 loop peptide results (kJ/mol, Table 3):
+
+  | | exp Ca | exp La | exp La − Ca | default 12-6-4 La − Ca | Ch-BE La − Ca |
+  |---|---|---|---|---|---|
+  | LanM EF1 | −18.0 | −64.3 | −46.3 | −75.6 | −40.3 |
+  | CaM EF1 | −33.9 | −45.3 | −11.4 | −55.2 | −35.0 |
+
+  So with Ch-BE the La − Ca gap is right within 1.5 kcal/mol for LanM and too Ln-favouring by 5.6 kcal/mol for
+  CaM; default 12-6-4 over-favours La by 7–10.5 kcal/mol. Absolute binding is too strong for every ion
+  (by 37 / 31 kJ/mol for Ca / La in LanM), and those errors partly cancel in the gap. That gap accuracy
+  (≈ 1.5–6 kcal/mol) is already better than the QM/MM bias (≈ 10 per carboxylate). No later Ca-vs-Ln
+  alchemical study in a protein was found (searched 2026-11-02). No Ch-BE value exists for Lu³⁺.
+- **Charge change (the problem QM/MM hit):** decoupling a 2+ or 3+ ion under PME leaves a box-size and
+  boundary artefact that scales with q², so it differs between Ca and La and between the membrane and water
+  boxes. Published fixes: the Rocklin *et al.* 2013 (J. Chem. Phys. 139, 184103) analytical correction, which
+  removes box-size dependence to within 1.5 kJ/mol, or a co-alchemical counter-ion in the same box (Chen *et
+  al.* JCTC 2018 validated three such schemes, RMSE 1.1 kcal/mol). Mobley's best-practice review (arXiv
+  2008.03067) notes they have not been compared head to head.
+- **Proposal (stages; each answers one thing before the next costs GPU time):**
+  1. **Replicate Kantakevičius on the LanM and CaM EF1 peptides** (Ca, La; default and Ch-BE; their protocol
+     as written). Decides whether our OpenMM 12-6-4 + TI setup reproduces their gaps (−40.3 / −35.0 kJ/mol
+     with Ch-BE) within their error. Small boxes, ≈ 12 λ × 3 × 2 ions × 2 sets × 2 legs ≈ 300 short jobs
+     (≈ 7 ns each on a small box, cheap). Needs an alchemical 12-6-4 driver (λ-scaled charge and C4 on the
+     ion) in mcube, with tests.
+  2. **Charge check on the same peptides:** repeat La − Ca with the Rocklin correction and with a co-alchemical
+     Cl⁻ (two box sizes). Decides whether the charge term moves the gap; if not, the uncorrected published
+     protocol stands.
+  3. **The Glu ring in the membrane box:** Ca and La absolute binding at the site with Ch-BE (flat-bottom
+     restraint on the ion plus its analytical standard-state term, as Panteva *et al.* 2015 did), the water
+     leg in the same box (the ion in the bulk layer, as in `qmmm_inbox`) so the boundary terms cancel, and
+     starts from both La binding modes (LA 4 protein O, LAchbe 2 O) because the contacts do not exchange in
+     10 ns. ≈ 12 λ × 3 × 2 ions × 2 starts, 7 ns each, on 124k atoms (≈ 40–50 ns/day per GPU): ≈ 150 jobs of
+     ≈ 4 h, ≈ 600 GPU-h. Decides Ca vs La at the site, to ≈ 1.5–6 kcal/mol (the stage-1 accuracy).
+  4. La vs Lu stays with the QM result (no preference within ±3) unless a Lu Ch-BE value is fitted (C20).
+
 ## Findings
 
 **F1 – `qmmm` did not apply `metal_parameters`.** (2026-10-22; fixed on branch `umbrella`)
