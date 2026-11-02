@@ -753,6 +753,14 @@ sections:
   #      is 6NC5's ZN302 sphere with Asp92 correctly in the second shell. Every
   #      later frame has OD1 at 1.99-2.07 A, and no detection cutoff undoes an
   #      artefact already in the coordinates.
+  # **FALSIFIED BY MEASUREMENT (D177).** Point 2 below describes what the
+  # DETECTOR does and was read as a statement about what the TRAJECTORY does.
+  # Over this run's 100 ns the zinc is six-coordinate in 4995 of 5000 frames,
+  # Asp92 OD2 bound at 2.07 A mean in 100% of them and OD1 bidentate in 56.7%.
+  # Excluding Asp92 from the restraint list did not keep it in the second
+  # shell; it removed the only thing that could have. Left in place because it
+  # is the reasoning the run was submitted on.
+  #
   #   2. **The detection cutoff is 2.5 A, set in `preprocess.inputs.cutoff` in
   #      the run directory's config.yaml.** At 3.0 (the default this project
   #      ran at) Asp92 OD2 is inside the sphere and gets a restraint, which is

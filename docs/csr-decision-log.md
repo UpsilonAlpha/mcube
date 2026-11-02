@@ -4252,6 +4252,48 @@ The user kept the one restraint outside the 3 A sweep (OD1 at 3.81 A). With dete
 
 8 of the new detection tests pass in the ASH environment as well as locally.
 
+**D177 - The reactant arm has the same artefact, and it is worse. Over `md_wt100`'s 100 ns the zinc is SIX-coordinate in 4995 of 5000 frames, with Asp92 OD2 bound at 2.07 A mean in 100% of them and OD1 joining bidentate in 56.7%. The 2.5 A cutoff never kept Asp92 in the second shell; it only stopped mcube from holding it there. Every QM/MM run descended from this trajectory inherits a six-coordinate zinc.** (2026-11-02, job 31424060)
+
+## The measurement
+
+`postprocess` over `md_wt100`'s 5000 frames, per atom, cutoff 2.50 A with a 1.0 A margin shown:
+
+| donor | occupancy | min / mean / max | restrained? |
+| --- | --- | --- | --- |
+| hydroxide C:2:O01 | 100.0% | 1.82 / 1.94 / 2.12 | yes |
+| HOH D:1:O | 100.0% | 1.92 / 2.07 / 2.27 | yes |
+| **Asp92 OD2** | **100.0%** | **1.91 / 2.07 / 2.32** | **no** |
+| His164 NE2 | 100.0% | 2.01 / 2.20 / 2.46 | yes |
+| His88 NE2 | 100.0% | 2.05 / 2.24 / 2.51 | yes |
+| **Asp92 OD1** | **56.7%** | **1.93 / 2.60 / 3.50** | **no** |
+| **HOH E:6862 O** | **43.2%** | **1.96 / 2.11 / 2.45** | **no** |
+
+**Coordination number: 6 in 4995 frames, 5 in 5.** Never four. Asp92 is on the metal in every frame of the equilibration, and the site alternates between OD1 and a bulk water for its sixth place.
+
+The hydrogens on that topology are clean: meropenem matches `ligand_smiles` as C17H25N3O5S1, Asp92 is unprotonated, His88 and His164 are both HID.
+
+## What this overturns
+
+The reasoning block above `wt100` says the run starts from a structure that is "6NC5's ZN302 sphere with Asp92 correctly in the second shell" and that the 2.5 A cutoff "keeps the crystal's four and excludes the 2.80 contact". The first half is true of `finalsystem.pdb`. The second half describes what the *detector* does, and it was read as a statement about what the *trajectory* does. It is not. The cutoff excluded Asp92 from the restraint list and the MM force field then pulled it in within the first frames, to the same 2.0-2.1 A that D120 and D130 recorded as the artefact to be eliminated.
+
+So the fix for D120 never worked, and nothing since would have revealed it: `md` reports the shell on two frames, and the before-frame is `finalsystem.pdb` where Asp92 is still at 2.80. The occupancy over a whole trajectory did not exist as a stage until yesterday (D167), and nobody had pointed it at this run.
+
+**D134, D165 and D174 all rest on this.** D134's four restraints are correct as a list of what was restrained and silent about what else was bound. D165 defended the 2.5 A cutoff as "defensible"; it is not, and the user said so twice before I measured it. D174 called the cutoff choice mine and the rule theirs, which was right, and still underestimated the damage: it is not only the product arm that was equilibrated wrong.
+
+## What inherits it
+
+Everything whose structure descends from `md_wt100` or `md_wt100b`: `nac` and its successors, `aspout`/`aspin` (which measure the Asp92-on-metal question *from a trajectory where Asp92 is already on the metal*), `michaelis2d`, `rwoff`/`rwon`, `qmrate`, `asph`, and any scan or NEB built on those frames. Their numbers are not wrong as computations - they describe a six-coordinate zinc, which is not the species the paper is about.
+
+`aspin`/`aspout` deserve a separate note: they were built to drive Asp92 on and off the metal and measure the cost. Starting from a frame where it is already bound at 2.07 A, the "off" end is the one that had to be constructed, which inverts what the scan was measuring.
+
+## What has NOT been started
+
+Nothing. The reactant needs the `prod100c` treatment - from `finalsystem.pdb`, detection at 3.0 A, every donor it finds held at the crystal distance, which for the reactant is hydroxide 1.90, His164 2.09, HOH 2.14, His88 2.22, **Asp92 OD2 2.80**, and whatever else 3.0 A reaches that 2.5 A did not. That is a 100 ns run, ~4.1 h, and it re-bases the whole reactant arm - so it is the user's call, not mine. `prod100c` (31423830) is already correct on this point and is still PENDING in the GPU queue.
+
+## Why the pane keeps dying
+
+The code-server session moved from **bun151:20685 to bun157:36073**: it is itself a Slurm job (`sys/dash`) with a walltime, and when it expires the page it served stops existing and the app closes the pane. Two were visible in the queue this morning - one 8 h 37 m into its life on bun151, one 2 minutes into its life on bun157 - so the handover was already in progress while I was reading the old one. A longer walltime on the OnDemand session would reduce it; caching the URL across hours is what makes it bite.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
