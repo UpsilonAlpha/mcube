@@ -28,7 +28,7 @@ from .preprocess import (
     resolve_atoms,
     separation,
 )
-from .md import md_membrane
+from .md import md_membrane, salvage_results
 from .membrane_analysis import report as membrane_report, options_from_config
 
 # =========================
@@ -384,8 +384,39 @@ def run(args):
                 "no trajectory to analyse. Name the run with "
                 f"`{section}.inputs.md_section` (the section the md job was "
                 "submitted as), or give `pdb_file` and `trajectory` outright.")
-        pdbfile = given_pdb or md["results"]["lastframe"]
-        trajectory = given_traj or md["results"]["trajfile"]
+        results = md.get("results") or {}
+        pdbfile = given_pdb or results.get("lastframe")
+        trajectory = given_traj or results.get("trajfile")
+        if not (pdbfile and trajectory):
+            # The run died mid-MD. `md.run` assigns `trajfile` and `lastframe`
+            # only after OpenMM returns, so a NaN leaves good frames on disk
+            # and nothing in the config pointing at them - and the runs most
+            # worth analysing are exactly the ones that crashed. D172 fixed
+            # this for the reporter CSV and stopped one key short, so the next
+            # salvaged run died on `KeyError: 'lastframe'` instead.
+            salvaged = salvage_results(results)
+            if salvaged:
+                pdbfile = pdbfile or salvaged["pdbfile"]
+                trajectory = trajectory or salvaged["trajfile"]
+                missing = " and no ".join(
+                    key for key, value in (("lastframe", results.get("lastframe")),
+                                           ("trajfile", results.get("trajfile")))
+                    if not value)
+                print(f"[WARNING] `{md_section}` records no {missing}: it did "
+                      "not finish. Analysing what it wrote before it stopped, "
+                      "with the trajectory's own first frame as the topology:")
+                print(f"[WARNING]   trajectory {trajectory}")
+                print(f"[WARNING]   topology   {pdbfile}")
+                print("[WARNING] The frame count is whatever the run reached, "
+                      "NOT what its `time` asked for. Read it off the analysis "
+                      "and say so wherever these numbers are used.")
+        if not (pdbfile and trajectory):
+            raise KeyError(
+                f"`{md_section}` in {args.config} has no "
+                f"{'lastframe' if not pdbfile else 'trajfile'}, and no "
+                f"trajectory with a matching first frame was found next to its "
+                f"results, so there is nothing to analyse. Give `pdb_file` and "
+                f"`trajectory` in `{section}.inputs` outright.")
         # Optional, like the two above. A run that CRASHED has a trajectory and
         # no results, so insisting on its reporter CSV refused to analyse the
         # very runs most worth analysing - which is how the product arm's

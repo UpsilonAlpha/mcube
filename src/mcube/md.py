@@ -378,6 +378,47 @@ def preserve_trajectory(trajfile: str = "QM_MM.dcd"):
     return dest
 
 
+# The trajectories `run` writes, each paired with the PDB written beside it by
+# the same writer, best stage first. Only this module knows these names, so the
+# salvage below belongs here rather than in whatever stage wants the frames.
+MD_TRAJECTORIES = (
+    ("NVTtrajectory_imaged.dcd", "NVTtrajectory_firstframe.pdb"),
+    ("NVTtrajectory.dcd", "NVTtrajectory_firstframe.pdb"),
+    ("relaxbox_NPT_imaged.dcd", "relaxbox_NPT_firstframe.pdb"),
+    ("relaxbox_NPT.dcd", "relaxbox_NPT_firstframe.pdb"),
+)
+
+
+def salvage_results(results: Optional[Dict[str, Any]] = None,
+                    directory=None) -> Dict[str, Any]:
+    """Trajectory and matching topology for a run that recorded neither.
+
+    Every `result[...]` assignment in `run` happens after OpenMM returns, so a
+    NaN or a walltime kill leaves a config with no `trajfile` and no
+    `lastframe` while the frames up to the step it died on sit on disk, intact
+    and worth analysing. Returns `{"trajfile": ..., "pdbfile": ...}` for the
+    furthest stage that has both files, or `{}`.
+
+    The topology is the trajectory's OWN first frame, not the minimised or
+    equilibrated structure. They are the same system, but only the first frame
+    is guaranteed to carry the atom order of the writer that wrote the
+    trajectory, and a topology whose order differs reads as plausible nonsense
+    rather than as an error.
+    """
+    if directory is None:
+        for key in ("trajfile", "lastframe", "gentle", "minimized", "csv"):
+            value = (results or {}).get(key)
+            if value:
+                directory = Path(value).parent
+                break
+    base = Path(directory or ".")
+    for traj, topology in MD_TRAJECTORIES:
+        if (base / traj).is_file() and (base / topology).is_file():
+            return {"trajfile": (base / traj).resolve().as_posix(),
+                    "pdbfile": (base / topology).resolve().as_posix()}
+    return {}
+
+
 def resolve_resume(inputs: Dict[str, Any], pdb_file: Optional[str] = None,
                    time_key: str = "time", timestep_key: str = "timestep",
                    lastframe: str = "QM_MM_lastframe.pdb"):
