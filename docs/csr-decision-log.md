@@ -4539,6 +4539,41 @@ And one defect introduced by the first fix and caught before the numbers were us
 
 Seven tests added to `tests/test_refstruct_transfer.py`, including the one that pins the selector against the name - selecting `ZN` by name still returns both copies, which is the behaviour that would have silently measured the wrong zinc.
 
+**D185 - Both runs are live and both restraint lists are exactly right: seven detected on the product, five on the reactant, the ligand's O4x AND O5x both held, and neither the substrate's O1x at 3.13 nor Arg90 at 3.89 anywhere near the list. And a gate I wrote three times is now wrong: "the zinc stays four-coordinate" cannot be the test when the 2.8-2.9 A contacts are deliberately held.** (2026-11-02)
+
+## The detections, verified rather than assumed
+
+`prod100c` (31423830), cutoff 3.00 A, per atom:
+
+    HOH C:1 (O)    1.90      ASP A:92 (OD2)   2.80
+    HIS A:164 (NE2) 2.09     hyd D:1 (O5x)    2.92
+    HOH C:2 (O)    2.14      hyd D:1 (O4x)    2.94
+    HIS A:88 (NE2) 2.22
+
+**Both ligand oxygens**, 0.02 A apart, which is the per-atom fix (D175) doing the one thing per-residue detection could not. Seven detected plus the configured Asp92 OD1 at 3.81 = eight applied. `wt100c` (31483853) has the matching five - hydroxide 2.14 rather than a ligand - plus the same configured OD1, and **neither `mer C:1:O1x` at 3.13 nor Arg90 NH1 at 3.89 appears**, which is the check that the cutoff is 3.0 and not higher.
+
+The long-contact warnings fire on all three contacts beyond 2.50 A, by design (D131), and they are in the config rather than only in stdout - which is why they are being read now rather than in three weeks.
+
+Both on **bun076**, both RUNNING: product 13.6 ns in 29.5 min (460 ps/min, 3.6 h for 100 ns, 4:30 left); reactant 7.6 ns in 18.4 min (413 ps/min, 4.0 h, 4:41 left). Both fit inside 5 h with about an hour spare, and the rates are below the 497 ps/min measured for a run with the node to itself - two jobs on one node contend, which is worth knowing before anyone plans a 5 h run off that figure.
+
+## The gate was wrong, and it would have failed in both directions
+
+Three of my own check prompts say the next step is `prodpost` with "the zinc FOUR-coordinate with Asp92 held near 2.80". **Those two clauses contradict each other.** Coordination occupancy counts donors inside the cutoff, and the cutoff is now 3.0, so a run holding Asp92 OD2 at 2.80 and the ligand's two oxygens at 2.92/2.94 will report **seven** ligands for the product and five for the reactant - by construction, in every frame. Read against a four-coordinate gate that is a failure; read against no gate at all it is a pass for anything.
+
+**The restated gate**, which is what the numbers can actually test:
+
+1. **The four bond-length contacts stay bonds** - two histidines, the hydroxide-derived oxygen and the water, all inside 2.5 A at high occupancy.
+2. **Asp92 OD2 stays near 2.80 and does not collapse toward 2.0.** That collapse was the artefact (D173, D177); it is now restrained, so this tests whether 50 kcal/mol/A^2 is enough to hold it against whatever pulled it in.
+3. **Asp92 OD1 stays near 3.81** rather than pivoting in - the D120/D130 failure, now explicitly restrained.
+4. **Product only: O4x and O5x stay near 2.9, and O2x stays out.** O2x travelling 4.75 A onto the metal was the ligand turnover of D173.
+5. **Nothing new arrives.** The margin report lists donors just past the cutoff, and a bulk water appearing inside it is the thing to look for - in `md_wt100` a water took the sixth place in 43.2% of frames.
+
+So the question is no longer "what is the coordination number" but "did the restraints hold the geometry they were set to, and did anything else join". A coordination number of 7 that is 4 bonds plus 3 held second-shell contacts is the intended state; the same 7 with Asp92 at 2.0 is not.
+
+## Plan item 5: no protonation tool
+
+`import propka` fails and neither `pdb2pqr` nor `propka3` is on the path in the ASH environment. Both are pure-Python pip packages with no compiled dependencies, so `pip install propka pdb2pqr` into that env is the whole of it - a minute, and reversible. It is the user's environment, so it is their call, but this is the item the audit called the cheapest high-value one and it has been open since **D7**.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

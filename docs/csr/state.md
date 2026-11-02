@@ -104,9 +104,9 @@ Items 1–3 gate everything below them. **Status is maintained here.**
 | --- | --- | --- |
 | 0 | Asp92's placement in the starting structure | **settled (D179)** — 2.80 Å supported; `prod100c` unblocked |
 | 1+2 | Experiment-anchored Michaelis complex, both endpoints on one topology | **in flight**: `prod100c` (31423830) queued → `prodqm` → `prodopt` → `recombine`. 7UHI is the *check*, not the source |
-| 3 | Equilibration that preserves the site | **in flight on both arms**: `prod100c` (31423830) and `wt100c` (31483853), both queued at 3.0 Å per atom, both 5 h (D181) |
+| 3 | Equilibration that preserves the site | **RUNNING on both arms** on bun076: `prod100c` (31423830) at 13.6/100 ns, **7 detected restraints + 1 configured**; `wt100c` (31483853) at 7.6/100 ns, **5 + 1**. Both lists verified correct, both fit in 5 h (D185) |
 | 4 | Nucleophile identity, origin, protonation state | not started — blocked on 1–3. D48 and D107 disagree **in sign** |
-| 5 | PROPKA/H++ and the His164 HID/HIE sensitivity check | **not started; depends on nothing.** Open since **D7** — cheapest high-value item |
+| 5 | PROPKA/H++ and the His164 HID/HIE sensitivity check | **blocked on one pip install**: neither `propka` nor `pdb2pqr` is in the ASH env, both are pure Python, so `pip install propka pdb2pqr` is the whole of it — the user's env, so their call (D185). Open since **D7** |
 | 6 | scan → NEB → TS → frequencies → IRC, ≥3 snapshots | not started — the paper's actual content |
 | 7 | Cluster-model DFT-vs-GFN2 benchmark, Imhof-style | **not started; depends on nothing.** Open since **D9** |
 | 8 | Protonation of the leaving nitrogen | not started |
@@ -132,6 +132,29 @@ afterwards**. A barrier that moves once the experiment arrives is a fit.
 **Do not ask for the kinetics.**
 
 ---
+
+## 4a. The gate before any QM/MM — restated (D185)
+
+"The zinc stays four-coordinate" is **no longer the test**, and three earlier
+check prompts had it wrong: occupancy counts donors inside the cutoff, the
+cutoff is 3.0 Å, and the 2.8–2.9 Å contacts are now deliberately held — so the
+product will report **seven** ligands and the reactant five, in every frame, by
+construction. What `postprocess` actually has to show:
+
+1. The **four bond-length contacts stay bonds** — two histidines, the
+   hydroxide-derived oxygen, the water — inside 2.5 Å at high occupancy.
+2. **Asp92 OD2 stays near 2.80** and does not collapse toward 2.0 (D173, D177).
+   This tests whether 50 kcal/mol/Å² holds it against whatever pulled it in.
+3. **Asp92 OD1 stays near 3.81** rather than pivoting in (D120, D130).
+4. **Product only: O4x and O5x stay near 2.9, and O2x stays out** — its 4.75 Å
+   migration onto the metal was the turnover of D173.
+5. **Nothing new arrives.** The margin report lists donors just past the cutoff;
+   a bulk water joining is the thing to look for, since one took the sixth
+   place in 43.2% of `md_wt100`'s frames.
+
+A coordination number of 7 that is 4 bonds plus 3 held second-shell contacts is
+the intended state. The same 7 with Asp92 at 2.0 Å is not. Hydrogens clean and
+an empty `missing` list remain part of the gate.
 
 ## 5. Open questions, with what would settle each
 
