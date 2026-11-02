@@ -171,6 +171,8 @@ afterwards**. A barrier that moves once the experiment arrives is a fit.
 | The browser shell **blocks** while a command runs | typing the next command sends it to the running command's stdin. Wait for the output file |
 | Scratch | 272/300 GB and **889k/1M inodes** — the inode count is the tighter one |
 | Local tests | `PYTHONPATH=src <mcube-test python> -m pytest -q tests`; MDAnalysis-gated tests only run in the ASH env on Bunya |
+| Reading the GPU queue | `sinfo -p gpu_cuda` showing `mix-` is **PLANNED**, not draining: Slurm is holding those nodes for a higher-priority pending job, which is why a job can sit at reason `Priority` while the partition looks idle. `scontrol show node <n>` prints the real state. `drain$` is a genuinely unavailable node |
+| A long walltime hurts backfill | asking 8 h for a 4.1 h run means it only starts when an 8 h window opens. A pending job's `TimeLimit` can be **lowered** (`scontrol update jobid=... TimeLimit=5:00:00`) but a user generally cannot raise it again, so it is not a free change |
 | **CSR is not where the disk goes** | all eleven run directories are 14.5 GB of the 269 GB in use. Cleaning CSR is for clarity, not quota; the pressure is other projects (D180) |
 | Deleting run output | use `docs/csr/cleanup.sh` - it lists by default, never deletes without `--delete`, and protects every `*_results/` directory. Leave a `DELETED.md` saying what went, when, how much, and which entry to see |
 | **The evidence for a live claim is not redundant** | however void the run that produced it. `md_wt100`'s trajectory is void as an equilibration and is the primary evidence for D177, so it stays until a better measurement supersedes the claim (D180) |
