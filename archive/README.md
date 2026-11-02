@@ -5,7 +5,10 @@ rather than deleted because it is referenced in the project's decision log and
 because reviving it is a matter of moving files back, not rewriting them.
 
 Nothing in this directory is imported by `mcube`, and the `tests/` suite does
-not collect it.
+not collect it - so a script's tests move in with it. `test_traj_contacts.py`,
+`test_make_ohH_config.py` and `test_migrate_paths.py` came here on 2026-11-02
+with their subjects; the suite went from 672 to 629 passing, and none of the
+difference is a test that stopped being run against live code.
 
 ## `threads.py` (archived 2026-10-20)
 
@@ -55,3 +58,40 @@ To revive it: move `ramd*.py` back to `src/mcube/`, `test_ramd.py` to `tests/`,
 and restore the `ramd` subparser in `cli.py` (it took `--section`, `--replicas`
 and `--analyse`). It builds its MM system with `build_md_theory` from `md.py`,
 which is still there and unchanged.
+
+## `traj_contacts.py` (archived 2026-11-02)
+
+Named active-site contacts over a QM/MM trajectory, from a pair list hard-coded
+in the script. Its own README row said it was superseded by `site.py contacts`
+and kept "only until D111's numbers are re-derived with it"; `contacts` has
+since been promoted into the `postprocess` stage (D168), which takes its pairs
+from `site.yaml`'s `monitor`, resolves them with the same parser restraints use,
+and saves the result into the section. D111's numbers came from a run that is
+now void (descended from `md_naclong`, D177), so there is nothing left to
+re-derive with the script rather than with the stage.
+
+## `check_ohH_frame.py`, `check_ohH_system.py` (archived 2026-11-02)
+
+Pre-submission validators for the water-nucleophile arm: both arms' systems
+built in full and asserted to differ by exactly one hydrogen. Superseded by
+`preprocess.hydrogen_report` (D172), which runs on **every** system the
+pipeline builds rather than on one arm by hand, and which checks more - the
+protonation state of each state-defining residue, unattached hydrogens,
+hydrogens close to two heavy atoms, and the ligand's formula against its own
+SMILES.
+
+`make_water_nuc.py` and `water_nuc.xml` are NOT archived: they build the water
+arm's structure, and plan item 4 (the nucleophile's identity, still open at
+D179) needs exactly that.
+
+## `make_ohH_config.py` (archived 2026-11-02)
+
+Derived an ohH config from the lysH one, for the fresh-preprocess route that
+D113 abandoned. It was kept as the record of which three preprocess keys
+differ; that record is the file itself, which is what an archive is for.
+
+## `migrate_paths.py` (archived 2026-11-02)
+
+One-shot. Rewrote every config's force-field paths to be config-relative
+(D117) and has had nothing to migrate since; `resolve_forcefields` now does the
+resolution at run time in every stage, `preprocess` included (D163).

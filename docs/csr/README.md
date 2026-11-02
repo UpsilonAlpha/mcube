@@ -56,8 +56,10 @@ bond — that is what the threshold above is for.
 
 | File | What it is |
 | --- | --- |
-| `traj_frame.py` | writes one frame of an xyz trajectory onto a PDB template, validating the atom count and the element-vs-name order |
-| `traj_contacts.py` | **superseded by `site.py contacts`** and kept only until D111's numbers are re-derived with it. Same measurement - min, max, mean and the fraction of frames inside a cutoff - but from a pair list hard-coded in the script rather than from `site.yaml`'s `monitor`, which is the thing this directory exists to avoid |
+| `traj_frame.py` | writes one frame of an xyz trajectory onto a PDB template, validating the atom count and the element-vs-name order. Kept because `postprocess.export_frames` (D172) reads a trajectory through MDAnalysis against a topology, and whether that covers the optimiser's own xyz output has not been checked |
+
+Contacts over a trajectory are a `postprocess` stage now (D168), driven by
+`site.yaml`'s `monitor`; `traj_contacts.py` is in `../../archive/`.
 
 **Building the ohH arm of the protonation test** (D112-D114). Only needed while
 that comparison is open; see `site.yaml`'s `ohHmin` and `ohH` sections.
@@ -66,17 +68,14 @@ that comparison is open; see `site.yaml`'s `ohHmin` and `ohH` sections.
 | --- | --- |
 | `make_water_nuc.py` | turns the hydroxide into a water and Lys226 neutral, in an equilibrated frame: adds H04, renames OH to NUW, removes HZ3 with `--lys A:226`. `--floor` sets the clearance the new hydrogens need |
 | `water_nuc.xml` | the water template. Declares nothing but the residue, borrowing TIP3P's own atom types, so it is parameter-identical to HOH - a template with its own types matches every bulk water by bond graph and OpenMM then refuses the system |
-| `check_ohH_frame.py` | builds **both** arms' systems in full and asserts they differ by one hydrogen: same atom count, same total charge, nucleophile -1 to 0, lysine +1 to 0 |
-| `check_ohH_system.py` | the same checks for a structure that has not been solvated yet, read from the parsed templates rather than a built system |
-| `make_ohH_config.py` | derives an ohH config from the lysH one, for the abandoned fresh-preprocess route (D113). Kept because it is the only record of which three preprocess keys differ |
 
 They are kept in the repo and pulled on Bunya rather than typed into the browser
 terminal, which silently truncates long payloads.
 
-**One-shot, kept only as a record:** `migrate_paths.py` rewrote every config's
-paths to be config-relative (D117) and has nothing left to migrate;
-`make_ohH_config.py` describes an abandoned route. Neither is part of a current
-workflow — do not reach for them when setting up a run.
+The two `check_ohH_*` validators, `make_ohH_config.py` and `migrate_paths.py`
+are in `../../archive/` as of 2026-11-02: the first two are superseded by
+`preprocess.hydrogen_report` (D172), which runs on every system rather than one
+arm by hand, and the others were one-shots whose job is done.
 
 ## Running something
 
