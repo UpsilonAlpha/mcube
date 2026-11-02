@@ -4635,6 +4635,18 @@ The substrate truncation needs the ligand's **connectivity**. `mer C:1` is 51 at
 
 With those two, the whole benchmark is two sections per question on one cluster PDB, and every number is re-derivable from the config - which is the point. **Flagged rather than scripted**, per the standing rule: when a stage cannot do it, propose the addition.
 
+**D188 - The two additions D187 asked for are built: `sp.inputs.cluster` runs a gas-phase model with no MM and no point charges, and `sp_engine: xtb|dft` scores one geometry either way. The cluster benchmark is now two sections on one PDB, differing in one key.** (2026-11-02)
+
+`sp` built `make_mm(...)` and then `QMMMTheory(...)` unconditionally, and its QM side was always PySCF. Neither suits a cluster: there is no MM system, there are no point charges, and the whole question is whether the **semi-empirical method** is right about this chemistry - which cannot be asked of a QM/MM system, because the embedding is part of what would be under test.
+
+`cluster: true` therefore builds the fragment, picks a theory, and calls `Singlepoint` directly. It says out loud that `zero_charges`, `actradius` and the force-field list do not apply, and the result records `cluster: true` with `cluster_atoms`, because **a gas-phase energy and a QM/MM one are not comparable** and the config has to say which it holds - the same reasoning as `coordination_source` in `md` (D134).
+
+`sp_engine: xtb` goes through `make_qm`, the same construction every gradient stage uses, rather than a second `xTBTheory(...)` here. If the xTB method or its SCC options could drift between the benchmark and the production runs, the thing benchmarked would not be the thing run, and a benchmark that does not bind the method it tests is worth nothing. `make_qm`'s refusal of the `library` runmode does not bite: that exists because mcube only ever ran xTB as the QM region of a QMMMTheory and needed a point-charge gradient, and a cluster has neither.
+
+Eight tests, and the two that matter pin the properties rather than the code paths: a cluster builds **no** MM system and **no** QMMMTheory, and the xTB branch reaches `make_qm`. 673 pass.
+
+**What is still needed before the benchmark runs** (D187): the substrate truncation, which needs the ligand's connectivity from `mer_crystal.pdb`'s CONECT records rather than a guess, and the cluster PDB itself. The site part is settled - 37 atoms, net 0, charge -1 with the substrate fragment.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

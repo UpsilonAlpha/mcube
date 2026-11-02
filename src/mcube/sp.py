@@ -39,6 +39,7 @@ from typing import Any, Dict, Optional
 from .preprocess import load_section, resolve_cores, save_result
 from .qmmm import (
     apply_stage_metal_parameters,
+    make_qm,
     apply_zero_charges,
     apply_zero_charges_qm_only,
     d3_energy,
@@ -103,8 +104,52 @@ def run(args) -> Dict[str, Any]:
         args.config, section, inputs, stage="sp", what="geometry to score")
     print(f"[INFO] Geometry: {pdb_file} (from {pdb_source})")
 
-    forcefields, implicit = mm_settings(inputs, md, args.config)
     mult = inputs.get("mult")
+    sp_cores = resolve_cores(inputs.get("sp_cores"), "sp_cores")
+
+    # ---- cluster: a gas-phase model, no MM, every atom in the QM region.
+    # `sp` is otherwise a QM/MM single point on a solvated system, which cannot
+    # answer the question a cluster model is for: whether the SEMI-EMPIRICAL
+    # method itself is right about this chemistry. Imhof's own benchmark - the
+    # paper this project's method follows - found AM1/d made 4->5 coordination
+    # 7.55 kcal/mol too favourable and bidentate->monodentate 7 too costly, and
+    # the only way to know whether GFN2 does the same here is to score one small
+    # model both ways. So this mode also takes `sp_engine` (D187).
+    if inputs.get("cluster"):
+        engine = str(inputs.get("sp_engine", "dft")).lower()
+        fragment = Fragment(pdbfile=pdb_file)
+        if engine == "xtb":
+            # Through `make_qm`, so the xTB method and its SCC options are the
+            # ones every other stage uses rather than a second set here. No
+            # point charges in a cluster, so nothing needs a PC gradient.
+            theory = make_qm({**inputs, "qm_engine": "xtb"}, sp_cores)
+            level = "%s-xTB" % inputs.get("xtb_method", "GFN2")
+        elif engine in ("dft", "pyscf"):
+            theory = make_dft(inputs, sp_cores, mult, "sp")
+            level = f"{inputs.get('sp_functional', 'wb97x-v')}/{inputs.get('sp_basis', 'def2-svp')}"
+        else:
+            raise ValueError(
+                f"sp_engine must be 'xtb' or 'dft', not {engine!r}")
+        print(f"[INFO] Cluster single point: {level}, {fragment.numatoms} atoms, "
+              f"charge {inputs.get('charge')}, mult {mult}, {sp_cores} threads")
+        print("[INFO] No MM system and no point charges: this is a gas-phase "
+              "model, so `zero_charges`, `actradius` and the force fields do "
+              "not apply to it.")
+        sp = Singlepoint(theory=theory, fragment=fragment,
+                         charge=inputs.get("charge"), mult=mult)
+        result = {
+            "pdb_file": Path(pdb_file).resolve().as_posix(),
+            "cluster": True,
+            "cluster_atoms": fragment.numatoms,
+            "sp_energy": float(sp.energy),
+            "sp_level": level,
+            "charge": inputs.get("charge"),
+        }
+        save_result(result, filename=args.config, section=section)
+        print(f"[DONE] E = {result['sp_energy']:.8f} Eh")
+        return result
+
+    forcefields, implicit = mm_settings(inputs, md, args.config)
 
     print("[STEP] Building MM system...")
     # The MM side only supplies point charges here, so it needs no threads of its own.
@@ -132,7 +177,6 @@ def run(args) -> Dict[str, Any]:
 
     # No continuum solvation: ASH's PySCF interface ignores it when point charges
     # are present, so asking for it would quietly do nothing.
-    sp_cores = resolve_cores(inputs.get("sp_cores"), "sp_cores")
     print(f"[INFO] PySCF single point: {sp_cores} threads, "
           f"max_memory {pyscf_memory(inputs, 'sp')} MB")
     pyscf = make_dft(inputs, sp_cores, mult, "sp")

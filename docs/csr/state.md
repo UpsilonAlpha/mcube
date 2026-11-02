@@ -108,7 +108,7 @@ Items 1–3 gate everything below them. **Status is maintained here.**
 | 4 | Nucleophile identity, origin, protonation state | not started — blocked on 1–3. D48 and D107 disagree **in sign** |
 | 5 | PROPKA/H++ and the His164 HID/HIE sensitivity check | **blocked on one pip install**: neither `propka` nor `pdb2pqr` is in the ASH env, both are pure Python, so `pip install propka pdb2pqr` is the whole of it — the user's env, so their call (D185). Open since **D7** |
 | 6 | scan → NEB → TS → frequencies → IRC, ≥3 snapshots | not started — the paper's actual content |
-| 7 | Cluster-model DFT-vs-GFN2 benchmark, Imhof-style | **scoped (D187)**: 37 atoms of site (Zn, two 4-methylimidazoles, acetate, hydroxide, water), net 0, plus a ~15-atom substrate fragment giving −1. Blocked on two small `sp` additions — `cluster: true` (no MM) and `sp_engine: xtb` — and on reading the ligand's connectivity from `mer_crystal.pdb`'s CONECT records rather than guessing it. Open since **D9** |
+| 7 | Cluster-model DFT-vs-GFN2 benchmark, Imhof-style | **scoped (D187)**: 37 atoms of site (Zn, two 4-methylimidazoles, acetate, hydroxide, water), net 0, plus a ~15-atom substrate fragment giving −1. The two `sp` additions are **built** (D188): `cluster: true` and `sp_engine: xtb|dft`. Still needs the cluster PDB and reading the ligand's connectivity from `mer_crystal.pdb`'s CONECT records rather than guessing it. Open since **D9** |
 | 8 | Protonation of the leaving nitrogen | not started |
 | 9 | Per-residue roles reaching R, Q and K | **design decision due before item 3's equilibration** |
 | 10 | Di-zinc comparison at identical level | not started — scope decision |
