@@ -1571,6 +1571,35 @@ blocks 30576666/67 held; the Ca jobs run)
       cube is ≈ −35. That is ≈ 23 more Ln-favourable than the same mean for one Glu in the cube (−11.5). But the
       site sits in the membrane box, so the cube's charge-change term does not cancel and this is not the
       result; the in-box reference decides it. La → Lu on Ca frames (−4.3 / −4.6) is not an La/Lu endpoint.
+    - **In-box result (potential 31416097 done in 14 min; analyse 2026-11-02): the stability test FAILS.**
+      Ca → La, TZVP, linear response over CAla + LA frames against the bulk-layer ion (CAbulk + LAbulk):
+
+      | treatment | LRA ΔΔE | CAla frames | La frames |
+      |---|---|---|---|
+      | direct | −8.1 ± 3.2 | −5.5 ± 5.8 | −10.6 ± 2.4 |
+      | `--periodic` | −19.7 ± 3.1 | −16.5 ± 5.7 | −22.9 ± 2.6 |
+      | `--embed-radius 15` | −24.5 ± 13.7 | −16.2 ± 19.6 | −32.7 ± 19.2 |
+      | `--embed-radius 20` | −11.8 ± 10.3 | −4.0 ± 19.1 | −19.7 ± 8.0 |
+      | `--embed-radius 30` | +39.1 ± 9.7 | +93.4 ± 9.4 | −15.2 ± 16.9 |
+
+      The SVP optimisation energies give the same pattern within 1–2. Direct and periodic differ by 11.6, and
+      the first-order truncation estimates scatter by 60 kcal/mol. The potential at the ion from beyond R
+      fluctuates by 0.3–1.6 V between frames, which is 7–37 kcal/mol per unit of charge change, so a
+      first-order correction for a 2+ → 3+ swap cannot be pinned to ±3. The in-box reference removed the
+      box-shape term, but not the dependence on how far the electrostatics reach.
+    - **Shells (`structure`, in-box):** Ca in the ring holds 2.0 (CAla) / 1.8 (CAlu) non-water O plus 6 waters
+      (CN 8); La holds 4.0 (LA) or 2.0 (LAchbe) plus 6–8 waters (CN 10). Both bulk ions have only water (CN 8 /
+      9.6). With the calibration's ≈ −10 per monodentate carboxylate, the method's own Ln bias at this site is
+      ≈ −20 (two protein O on Ca), and more if La's extra protein O count.
+    - **Conclusion (Ca vs Ln, the main test): not resolved by QM/MM, and no evidence that the Glu ring prefers
+      Ln over Ca.** The two treatments that are not noise-dominated (direct −8, periodic −20) lie inside the
+      method's own Ln bias for two or more protein O (≈ −20 or beyond), and one Glu in water already gives −11.5
+      with the same method. Corrected for that bias, the site is neutral to Ca-favouring. But the test set to
+      decide whether any of these numbers is a result (agreement within ≈ 3) fails, so this is "no detectable Ln
+      preference", not "Ca preferred". La vs Lu (lower priority) stays as before: no preference beyond ±3
+      (pooled +1.7 ± 2.8; calibration −1.7 against −0.2 measured). What could still decide Ca vs Ln: a 2+ → 3+
+      free energy whose finite-size/charge correction is checked on the one-Glu calibration system first, or
+      a charge-conserving swap (Ln³⁺ + Cl⁻ in bulk against Ca²⁺) in the same box.
   - **Ca vs Ln is the main test (user, 2026-10-30), so the reference moves into the membrane box.** No
     post-hoc correction fixes a 2+ → 3+ swap compared across two differently embedded systems. Comparing the site
     against the ion in the bulk water layer of the same periodic box makes the net-charge and Ewald-convention
