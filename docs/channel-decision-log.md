@@ -1600,6 +1600,25 @@ blocks 30576666/67 held; the Ca jobs run)
       (pooled +1.7 ± 2.8; calibration −1.7 against −0.2 measured). What could still decide Ca vs Ln: a 2+ → 3+
       free energy whose finite-size/charge correction is checked on the one-Glu calibration system first, or
       a charge-conserving swap (Ln³⁺ + Cl⁻ in bulk against Ca²⁺) in the same box.
+    - **Corrections after an independent review (2026-11-02; lab report rev 9).**
+      - *La → Lu pooled value withdrawn.* `analyse`'s "all" subtracts all water frames from all site frames
+        (exchange.py:621-622), so with three site sources (two La-sampled) and 5/5 water it is frame-weighted.
+        Each source against its own ion's water: La −1.1 ± 3.2, LAchbe +3.7 ± 3.2, Lu −2.2 ± 1.3; source-balanced
+        mean **+0.1, sd between sources 3.1**. So: no La/Lu preference larger than ≈ ±4 (not ±3). The +1.7 ±
+        2.8 above and in the LAchbe bullet is superseded.
+      - *Calibration is a scale, not a correction.* The ≈ −10 offset was measured with direct embedding on one
+        monodentate Glu, as minimised energies against free energies. Scaling it by carboxylate count is
+        untested, and applying it to the periodic number is out of its conditions. "Corrected, neutral to
+        Ca-favouring" is withdrawn; "no detectable Ln preference" stands.
+      - *Stability test.* The truncation rows (first-order Δq·φ_R cut at a sharp radius) are known not to
+        converge and are a demonstration only. The test is direct vs periodic (12 apart); periodic is the
+        self-consistent one (PME MD, one box).
+      - *Not yet examined:* the bilayer dipole potential's share of φ (0.5 V ≈ 11.5 kcal/mol at Δq = 1; readable
+        from `by_component_V` in qmmm_inbox/potential.json), and an LRA consistency check.
+      - *Literature:* the Kantakevičius "experimental" values are full-protein averages over EF loops, not
+        peptide measurements; Ch-BE errors give the LanM gap ± 2 kcal/mol. The acetate La/Yb values come from a
+        secondary abstract with I unstated, and "Lu" there is Yb. The PME artefact has linear and quadratic
+        terms in q (not "scales with q²", C23).
   - **Ca vs Ln is the main test (user, 2026-10-30), so the reference moves into the membrane box.** No
     post-hoc correction fixes a 2+ → 3+ swap compared across two differently embedded systems. Comparing the site
     against the ion in the bulk water layer of the same periodic box makes the net-charge and Ewald-convention
