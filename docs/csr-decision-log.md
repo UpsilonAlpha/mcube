@@ -4294,6 +4294,65 @@ Nothing. The reactant needs the `prod100c` treatment - from `finalsystem.pdb`, d
 
 The code-server session moved from **bun151:20685 to bun157:36073**: it is itself a Slurm job (`sys/dash`) with a walltime, and when it expires the page it served stops existing and the app closes the pane. Two were visible in the queue this morning - one 8 h 37 m into its life on bun151, one 2 minutes into its life on bun157 - so the handover was already in progress while I was reading the old one. A longer walltime on the OnDemand session would reduce it; caching the URL across hours is what makes it bite.
 
+**D178 - The audit is adopted as the plan of record, and the kinetics are held BLIND. The user has measured kinetics for CSR-1 with meropenem and will not release them until the computation is finished, so the comparison is a genuine prediction. This entry is timestamped before any barrier exists, which is what makes that claim checkable later.** (2026-11-02, user: "I have kinetics for CSR-1 with meropenem - but I won't give them to you until computational analysis is complete, as our method needs to stand up on it's own")
+
+## The blind protocol, recorded before there is anything to compare
+
+There is no published kinetics for CSR-1 with meropenem (D22, D40), and the audit's strongest criticism of the paper's prospects was that a computed barrier would have nothing to be validated against. That gap is now closed in the best possible way: the kinetics exist and are **withheld**.
+
+So the prediction must be made and recorded first. Concretely, before any number is released:
+
+- The computed barrier for the rate-determining step, with its level of theory, its spread over snapshots, and its sign conventions, goes into this log **and is not revised afterwards**. A barrier that moves after the experiment arrives is a fit, not a prediction.
+- The mechanism's qualitative claims - which species is the nucleophile, what protonates the leaving nitrogen, which residues matter - are stated before, not after.
+- Where the computation cannot decide something, this log says so rather than leaving the question to be settled by hindsight.
+
+This is worth more to the paper than any amount of extra compute, and it costs nothing except the discipline not to peek. **Do not ask for the kinetics.** The one thing that would destroy the claim is a revision made with the numbers in hand.
+
+## The plan of record
+
+Adopted from `docs/csr/audit-2026-11-02.md`, with one consolidation of my own. Items are tracked here so that the audit's own closing warning - "a fix that was prescribed and not carried out is indistinguishable, later, from a fix that landed" - has somewhere to be checked against. **Status is written next to each item and updated as it changes, not in a new entry.**
+
+**Items 1 and 2 collapse into one route, which is already half built.** The audit asks (1) for a Michaelis complex anchored to experiment and (2) for both endpoints on one topology, built by reversing the hydrolysis. 5AXO is SMB-1 with **hydrolysed meropenem** - our own substrate, in a B3 enzyme, measured - and `CSR_prod` already transferred it into the CSR-1 frame (D159). So the route is:
+
+    prod100c  ->  prodpost gates  ->  prodqm  ->  prodopt  ->  recombine
+    (100 ns)      (shell + H)        (50 ps)     (opt)        (re-form C4x-N1x)
+
+and the structure `recombine` ends on **is** the Michaelis complex, anchored to experiment through the product rather than through a docking score, and on the product's own topology so it is a valid NEB partner by construction. **7UHI becomes the check, not the source:** does the re-formed carbonyl land at L1's measured 2.53-2.63 A from Zn1? If it does, the pose is independently corroborated. If it does not, that is a real result about CSR-1 rather than a modelling failure.
+
+This also means no cross-ligand graft is needed. Grafting meropenem's substituents onto moxalactam's transferred core was the other way to item 1, and it is strictly harder and less direct than re-forming a bond in a molecule that is already meropenem.
+
+| # | Item | Status |
+| --- | --- | --- |
+| 0 | **Asp92's placement in the starting structure** (below) | **BLOCKS prod100c - user's call** |
+| 1+2 | Experiment-anchored Michaelis complex, both endpoints on one topology | `prod100c` PENDING (31423830); the rest configured, unrun |
+| 3 | Equilibration that preserves the site, occupancy read over the whole trajectory | method fixed (D174-D176); product arm pending, **reactant arm not started** |
+| 4 | Nucleophile identity, origin and protonation state | not started; blocked on 1-3 |
+| 5 | PROPKA/H++ and the His164 HID/HIE sensitivity check | **not started, depends on nothing but a protonation tool** |
+| 6 | scan -> NEB -> TS -> frequencies -> IRC on >=3 snapshots | not started; the paper's actual content |
+| 7 | Cluster-model DFT-vs-GFN2 benchmark, Imhof-style | **not started, depends on nothing - should run in parallel** |
+| 8 | Protonation of the leaving nitrogen | not started |
+| 9 | Per-residue roles, with a method that can reach R, Q and K | **design decision needed before item 3's equilibration** |
+| 10 | Di-zinc comparison at identical level | not started; scope decision |
+| 11 | Asp92 free energy, only if the discrepancy survives 1-3 | deferred by design |
+
+Item 9 is the one with a deadline that is not obvious: Arg90 and Lys226 are inside the QM region in all eleven systems, so charge deletion can never reach them (D153). Whether the production system puts R, K, Arg229 and Q **all in MM** so the set can be decomposed consistently, or whether the roles are done by computational mutagenesis instead, has to be decided **before** the equilibration in item 3, because it changes what is built.
+
+## Item 0, which the audit surfaced and which blocks the run that is queued
+
+D145 established that the **2.80 A "crystallographic" Asp92 distance is our own model's Asp-hydroxide hydrogen bond**. In 6NC5 the equivalent Asp91 is **4.20 A (OD2) and 4.22 A (OD1)** from Zn1. `CSR_prod/preprocess_results/finalsystem.pdb` has Asp92 OD2 at **2.80** and OD1 at **3.81**.
+
+The zinc in our model is 6NC5's, placed by superposition as a rigid unit (D23, 0.58 A over 256 CA). So a 1.4 A difference in the Zn-Asp distance is not a difference in the metal's position - it means **our Asp92 side chain sits 1.4 A closer to the zinc than 6NC5's does**, in the starting structure, before any dynamics.
+
+`prod100c` restrains Asp92 OD2 at 2.80 A. That is faithful to the rule (hold each contact where the structure has it) and it therefore **preserves the discrepancy** for the whole 100 ns and everything downstream. Three options, and it is a modelling decision rather than a pipeline one:
+
+1. **Hold 2.80 and state it.** Internally consistent, cheapest, and every energy downstream carries a 1.4 A departure from the only metal-bearing CSR-1 crystal. The Asp92 question then cannot be asked of this system at all.
+2. **Rebuild the scaffold so Asp92 sits where 6NC5 has it**, then hold it there. Principled - the structure should match the crystal before restraints preserve it - and it means another preprocess and a re-run of the 100 ns.
+3. **Establish first why they differ.** Our protein scaffold is not 6NC5 (6NC5 is the Q121H/K254H mutant; the WT coordinates are the metal-free 6DN4/6DQ2), so Asp92's rotamer may legitimately differ between the mutant and the wild type - in which case 2.80 may be right and 4.20 is the mutant's. This is a measurement, not a judgement, and it is cheap: superpose and compare the side chain directly.
+
+Option 3 first, then 1 or 2 on what it says. Nothing is restrained on a number whose provenance is unsettled - that is how 2.80 A came to be quoted as crystallographic for ten weeks.
+
+`prod100c` is still PENDING with no start time (the GPU queue is backed up), so nothing is committed yet.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
