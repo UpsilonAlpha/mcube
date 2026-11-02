@@ -4401,6 +4401,42 @@ The decisive number - Zn to Asp92 in 6DN4's frame - cannot be measured directly,
 - The Asp92 conformer comparison across CSR-1's own three crystals, with resolutions and B-factors, is a figure. It is the kind of structural due diligence a referee looks for and it was sitting in the PDB the whole time.
 - It is also the honest frame for the mechanism: if the carboxylate is mobile, the question is not "is Asp92 on or off the metal" but what each conformer does to the nucleophile - which is a mechanistic question with an answer the calculations can give.
 
+**D180 - Redundant files removed, and the headline is that CSR is not where the disk goes. All eleven CSR run directories together are 14.5 GB of the 269 GB in use; the pressure is other projects. So this was done for clarity, not quota, and two things were deliberately NOT deleted.** (2026-11-02, user: "remove or archive any redundant files")
+
+## In the repository
+
+Five `docs/csr` scripts moved to `archive/`, **with their tests**, following the convention `threads.py` and `ramd.py` already set:
+
+| File | Why |
+| --- | --- |
+| `traj_contacts.py` | contacts over a trajectory is a `postprocess` stage now (D168), driven by `site.yaml`'s `monitor` and resolved by the same parser restraints use. Its own README row said it was kept "only until D111's numbers are re-derived with it"; D111's run is void (D177), so there is nothing to re-derive with a script rather than the stage |
+| `check_ohH_frame.py`, `check_ohH_system.py` | superseded by `preprocess.hydrogen_report` (D172), which runs on **every** system the pipeline builds rather than one arm by hand, and checks more |
+| `make_ohH_config.py` | the record of a route D113 abandoned; the file is the record, which is what an archive is for |
+| `migrate_paths.py` | one-shot, and `resolve_forcefields` does the resolution at run time in every stage now (D163) |
+
+`test_traj_contacts.py`, `test_make_ohH_config.py` and `test_migrate_paths.py` went with them: 672 passing becomes 629, and **none of the difference is a test that stopped being run against live code.**
+
+**Kept, with the reason stated so it is not re-litigated:** `make_water_nuc.py` and `water_nuc.xml`, because plan item 4 - the nucleophile's identity - is open and needs exactly that build; and `traj_frame.py`, because whether `postprocess.export_frames` covers the optimiser's own xyz output has not been checked, and an unverified claim should not drive a deletion.
+
+## A bug found in the deletion tool, before using it
+
+`cleanup.sh` pruned three literal paths - `preprocess_results`, `md_results`, `qmmm_results` - so only a **default-named** run was protected. A run submitted as `md md_wt100` writes `md_wt100_results/`, which was swept like any working directory. Nothing precious matched the working-file patterns so nothing was lost, but the header promised more than the code did, and that is not a promise to get wrong in a script whose other mode is `--delete`. It now prunes every `*_results` directory.
+
+## On scratch
+
+- **2.2 GB in 346 files** of ASH and geomeTRIC working files from `CSR_wt`, `CSR_nac` and `CSR_crystal_v2`, through `cleanup.sh --delete` after reading each listing. Every input, converged structure, energy table and job log survives by the script's own design. `CSR_prod` was left alone: `prod100c` is queued against it.
+- **264 MB**: two `OpenMMMD_traj_wrapped.xyz` files, which are text copies of the `QM_MM.dcd` kept beside them at 28 MB - 4.7x the size for the same frames. A `DELETED.md` is left in each directory, as `md_wt100b_results` already does.
+- **~500 MB**: three 183 MB job logs gzipped in place rather than deleted. Provenance is cheap at a tenth the size and `zcat` still reads it.
+- **294 loose files** in the scratch root - `o.*`, `out*.txt`, `*.log`, and the mangled `bridge.txtddaatee`, `bridge.txtecho`, `probe.txtdate` left by the terminal-typing failures. The root went from 394 entries to 100. These were shell captures from the browser bridge, and they were actively confusing to read past.
+
+Scratch 272 -> 269 GB. The inode count did not move measurably: ~600 files against 889,000 is noise, which is the point of the headline.
+
+## What was NOT deleted, and why
+
+**`md_wt100` and `md_wt100b`'s imaged NVT trajectories, 2.83 GB each.** Both runs are void as equilibrations (D177), so the instinct is to delete them. Against that: they are the **primary evidence for D177 itself**, the largest correction in this log, established today. The occupancy numbers are recorded in three places, but a recorded number is not a re-checkable one. Deleting 5.7 GB would buy nothing - CSR is 5% of the usage - and would cost the only route to verifying this week's most consequential claim. `md_wt100b` had already been pruned once on 30 October (4.2 GB of raw NVT, NPT and the minimisation path) with the imaged NVT deliberately kept; that decision stands.
+
+The rule this suggests, and it is worth keeping: **the evidence for a live claim is not redundant, however void the run that produced it.** A trajectory becomes deletable when the claim it supports has been superseded by a better measurement, not when the run is judged bad.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
