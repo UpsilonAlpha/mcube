@@ -1664,6 +1664,27 @@ blocks 30576666/67 held; the Ca jobs run)
       (kept in `qmmm_inbox/ref_r2/`): all 963–1787 values of report*.json and structure.json identical, except
       report_periodic.json within 0.02 kcal/mol (the PME potential was recomputed by job 31481345). The stage's
       headline pools by source (`pooling: balanced`).
+    - **Calibration re-referenced to PME (like for like; job 31484374, 48 s, through the stage:
+      `$S/channel/qmmm_cal/config.yaml`, old report in `qmmm_cal/ref_r2/`).** LRA over the one-Glu complexes,
+      TZVP:
+
+      | | direct | periodic |
+      |---|---|---|
+      | Ca → La (acCA + acLA) | −11.46 ± 2.67 | −11.97 ± 2.71 |
+      | Ca → Lu (acCA + acLU) | −10.09 ± 3.03 | −9.39 ± 2.74 |
+      | La → Lu (acLA + acLU) | −1.59 ± 1.77 | −1.59 ± 1.77 |
+
+      In the cube the periodic re-referencing moves Ca → La by only 0.5 (complex and water reference sit alike
+      in the same kind of box with no slab), so the calibration offset is ≈ −10.5 kcal/mol either way (−12.0
+      against ≈ −1.5 measured). **Like for like, the site (periodic LRA −19.7 ± 3.1) is 7.7 ± 4.1 kcal/mol more
+      Ln-favouring than one Glu in water.** What that means depends on how the method's bias scales, which a
+      one-carboxylate calibration cannot tell:
+      - bias per exchange (≈ −10.5 whatever the site): corrected site Ca → La ≈ −9 ± 4, a moderate La preference;
+      - bias per bound carboxylate (Ca holds ~2 protein O, so ≈ −21): corrected ≈ +1 ± 4, no preference.
+      So the QM/MM bounds the answer, it does not resolve it: Ca → La between ≈ +1 and ≈ −9 kcal/mol, which
+      rules out a Ca-selective ring and a very strong (> ~15) Ln preference. A second calibration point with
+      two carboxylates on the ion (a measured Ca/La constant for a dicarboxylate or acetate β₂) would decide
+      between the two readings.
   - **Ca vs Ln is the main test (user, 2026-10-30), so the reference moves into the membrane box.** No
     post-hoc correction fixes a 2+ → 3+ swap compared across two differently embedded systems. Comparing the site
     against the ion in the bulk water layer of the same periodic box makes the net-charge and Ewald-convention
