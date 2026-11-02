@@ -13,6 +13,7 @@
 #
 # What this NEVER touches:
 #   preprocess_results/  md_results/  qmmm_results/  config.yaml
+#   every *_results/ directory, section-named ones included
 #   QM_MM.dcd  QM_MM_lastframe.pdb  QM_MM_optimized.pdb
 #   scan_energies.csv  scan_*.pdb  nac_frame*.pdb  *.slurm  *.out  *.err
 # i.e. every input, every converged structure and every result table survives.
@@ -62,8 +63,16 @@ printf '%-46s %11s %8s\n' "--------" "----" "-----"
 #   SKIP="protdft/cleanR" bash cleanup.sh <run> --delete
 # A running job writes xtb_.*, gradient and geometric_OPTtraj* every step, so
 # sweeping its directory mid-run can crash it or corrupt the optimisation.
-PRUNE=( -path ./preprocess_results -prune -o -path ./md_results -prune -o
-        -path ./qmmm_results -prune -o )
+# Section-named results directories count too. A run submitted as
+# `md md_wt100` writes `md_wt100_results/`, not `md_results/`, so the three
+# literal paths this used to prune protected only a default-named run - and a
+# section-named one was swept like any working directory. Nothing precious
+# matched the working-file patterns, so nothing was lost, but the protection
+# was narrower than the header claimed (2026-11-02).
+PRUNE=()
+for d in ./preprocess_results ./md_results ./qmmm_results          ./*_results ./preprocess_*_results ./md_*_results          ./qmmm_*_results ./postprocess_*_results ./sp_*_results; do
+    [ -d "$d" ] && PRUNE+=( -path "$d" -prune -o )
+done
 for d in ${SKIP:-}; do
     PRUNE+=( -path "./${d#./}" -prune -o )
     echo "skipping (in use): ${d#./}"
