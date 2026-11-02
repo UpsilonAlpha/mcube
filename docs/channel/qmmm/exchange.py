@@ -914,7 +914,15 @@ def potential(args):
                                   for c in sorted(set(comp))}}
         if args.pme:
             row["phi_direct_V"] = phi(np.ones(len(q), bool))
-            row["phi_pme_V"] = round(pme_potential(mod, cfg["qmmm"]["inputs"]["forcefields"], r_ion), 4)
+            if args.components:
+                # which part of the box makes PME differ from the direct sum (membrane dipole or not)
+                masks = {str(c): comp == c for c in sorted(set(comp))}
+                parts = pme_potential(mod, cfg["qmmm"]["inputs"]["forcefields"], r_ion, masks=masks)
+                row["phi_pme_V"] = round(parts["all"], 4)
+                row["phi_pme_by_component_V"] = {c: round(parts[c], 4) for c in masks}
+                row["phi_direct_by_component_V"] = {c: phi(sel) for c, sel in masks.items()}
+            else:
+                row["phi_pme_V"] = round(pme_potential(mod, cfg["qmmm"]["inputs"]["forcefields"], r_ion), 4)
         rows[key] = row
         groups.setdefault((entry["kind"], entry["source"]), []).append(row)
     summary = {}
@@ -927,6 +935,11 @@ def potential(args):
             d = [x["phi_pme_V"] - x["phi_direct_V"] for x in rs]
             summary[f"{kind} {src}"]["pme_minus_direct_V"] = {"mean": round(float(np.mean(d)), 4),
                                                               "sd": round(float(np.std(d)), 4)}
+            if "phi_pme_by_component_V" in rs[0]:
+                summary[f"{kind} {src}"]["pme_minus_direct_by_component_V"] = {
+                    c: {"mean": round(float(np.mean(dc)), 4), "sd": round(float(np.std(dc)), 4)}
+                    for c in rs[0]["phi_pme_by_component_V"]
+                    for dc in [[x["phi_pme_by_component_V"][c] - x["phi_direct_by_component_V"][c] for x in rs]]}
     res = {"note": "phi(R): potential at the ion from MM charges beyond R (V), raw positions as "
                    "the non-periodic embedding sees them; a 1 e change of the ion's charge picks up "
                    f"{EV_KCAL:.2f} kcal/mol per V", "frames": rows, "summary": summary}
@@ -938,15 +951,24 @@ def potential(args):
               + f"   net {s['net_charge']:+.2f} e"
               + (f"   PME - direct {s['pme_minus_direct_V']['mean']:+.3f} ({s['pme_minus_direct_V']['sd']:.3f}) V"
                  if "pme_minus_direct_V" in s else ""))
+    if any("pme_minus_direct_by_component_V" in s for s in summary.values()):
+        print("\nPME - direct by component, V (mean over frames; sd)")
+        for name, s in summary.items():
+            print(f"{name:16s}" + "".join(f"  {c} {v['mean']:+.3f} ({v['sd']:.3f})"
+                                          for c, v in s["pme_minus_direct_by_component_V"].items()))
     print(f"\n{out / 'potential.json'}")
 
 
-def pme_potential(mod, forcefields, r_ion_A, delta=1.0):
+def pme_potential(mod, forcefields, r_ion_A, delta=1.0, masks=None):
     """Potential (V) at r_ion from the MM charges under PME, the periodic electrostatics the MD
     ran with: a probe particle (no LJ) at the ion's position, E(+delta) - E(-delta) over 2 delta.
     The energy is exactly quadratic in the probe charge, so the central difference is exact at
     any delta; 1 e keeps it well above the single-precision noise of a 124k-atom energy. The
-    probe's self and image terms are even in delta and cancel."""
+    probe's self and image terms are even in delta and cancel.
+
+    `masks` ({name: bool array over the MM atoms}): also the potential of each subset alone, the
+    other charges zeroed, returned as {"all": phi, name: phi, ...}. Only probe-particle terms are
+    odd in delta, so exceptions and the subset's own energy cancel, and the parts sum to "all"."""
     import openmm
     from openmm import unit
     from openmm.app import ForceField, PME
@@ -959,19 +981,33 @@ def pme_potential(mod, forcefields, r_ion_A, delta=1.0):
     pos = list(mod.positions.value_in_unit(unit.nanometer)) + [openmm.Vec3(*(np.asarray(r_ion_A) / 10.0))]
     ctx = openmm.Context(system, openmm.VerletIntegrator(0.001), openmm.Platform.getPlatformByName("CPU"))
     ctx.setPositions(pos)
-    energies = []
-    # The total energy: only the NonbondedForce sees the probe (no bonds, no other forces on it).
-    # The first version read the NonbondedForce's force group alone, and getState(groups=...)
-    # returned 0 on this OpenMM, so every frame read 0 V
-    for q in (delta, -delta):
-        nb.setParticleParameters(probe, q, 0.1, 0.0)
-        nb.updateParametersInContext(ctx)
-        energies.append(ctx.getState(getEnergy=True).getPotentialEnergy()
-                        .value_in_unit(unit.kilojoule_per_mole))
-    phi = (energies[0] - energies[1]) / (2 * delta) / 96.4853   # kJ/mol/e -> V
+
+    def probe_phi():
+        energies = []
+        # The total energy: only the NonbondedForce sees the probe (no bonds, no other forces on it).
+        # The first version read the NonbondedForce's force group alone, and getState(groups=...)
+        # returned 0 on this OpenMM, so every frame read 0 V
+        for q in (delta, -delta):
+            nb.setParticleParameters(probe, q, 0.1, 0.0)
+            nb.updateParametersInContext(ctx)
+            energies.append(ctx.getState(getEnergy=True).getPotentialEnergy()
+                            .value_in_unit(unit.kilojoule_per_mole))
+        return (energies[0] - energies[1]) / (2 * delta) / 96.4853   # kJ/mol/e -> V
+
+    phi = probe_phi()
     if phi == 0.0:
         raise RuntimeError("PME probe saw no potential: check the box vectors of the frame")
-    return phi
+    if masks is None:
+        return phi
+    params = [nb.getParticleParameters(i) for i in range(probe)]
+    out = {"all": phi}
+    for name, sel in masks.items():
+        if len(sel) != probe:
+            raise ValueError(f"mask {name} covers {len(sel)} atoms, the system has {probe}")
+        for i, (q, sigma, eps) in enumerate(params):
+            nb.setParticleParameters(i, q if sel[i] else 0.0 * q, sigma, eps)
+        out[name] = probe_phi()
+    return out
 
 
 def print_report(report):
@@ -1071,6 +1107,9 @@ def main():
     pt.add_argument("--radii", nargs="+", default=["8", "10", "15", "20", "30"])
     pt.add_argument("--pme", action="store_true",
                     help="also the PME potential at the ion (OpenMM, CPU), for `analyse --periodic`")
+    pt.add_argument("--components", action="store_true",
+                    help="with --pme: PME and direct potential of each component alone (lipid, water, "
+                         "protein, ions), to see which part of the box makes them differ")
     c = sub.add_parser("clean")
     c.add_argument("--out", required=True)
     c.add_argument("--delete", action="store_true", help="delete (default: dry run)")
