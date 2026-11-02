@@ -1619,6 +1619,27 @@ blocks 30576666/67 held; the Ca jobs run)
         peptide measurements; Ch-BE errors give the LanM gap ± 2 kcal/mol. The acetate La/Yb values come from a
         secondary abstract with I unstated, and "Lu" there is Yb. The PME artefact has linear and quadratic
         terms in q (not "scales with q²", C23).
+    - **Where the direct-vs-periodic gap comes from (qmmm_inbox/potential.json, read 2026-11-02).** Means over
+      frames, V (sd 0.04–0.08 V for PME − direct):
+
+      | frames | φ direct | φ PME | PME − direct |
+      |---|---|---|---|
+      | site CAla / CAlu | −16.68 / −16.64 | −15.13 / −15.14 | +1.55 / +1.50 |
+      | site LA / LAchbe / LU | −21.71 / −21.36 / −22.38 | −20.44 / −20.10 / −21.14 | +1.27 / +1.25 / +1.23 |
+      | bulk CAbulk / LAbulk | −16.75 / −21.28 | −14.73 / −19.48 | +2.02 / +1.80 |
+
+      Site minus bulk of (PME − direct) is −0.48 V (Ca frames) and −0.53 V (La frames), i.e. 11–12 kcal/mol at
+      Δq = 1: the whole direct-vs-periodic gap. It is the same for every frame source and barely varies between
+      frames, so it is a box-level term, not noise. In the direct sum the site and bulk potentials agree
+      (Ca −16.7 vs −16.7; La −21.7 vs −21.3); PME makes the site 0.5 V more negative than bulk, which favours the
+      3+ ion. **The lipid share cannot be read from the stored data:** `by_component_V` exists only for the
+      direct sum (beyond R), where the components are several volts each and cancel (R > 8 Å, site vs bulk:
+      lipid −1.3…−2.9 vs +0.4…+0.9; ions +2.2…+3.9 vs −2.3…−4.5; protein −0.3…−3.4 vs −0.7; water −1.3…+0.3
+      vs −0.8…−3.0), and the ion set is not neutral, so single components are not meaningful on their own.
+      One sign argument: a positive membrane-interior dipole potential (the usual over-estimated quantity) would
+      push toward Ca, but PME moves the result toward La, so an inflated bilayer dipole potential is not an
+      obvious explanation. Settling it needs the PME potential per component (lipid charges alone, and the rest),
+      a small CPU job.
   - **Ca vs Ln is the main test (user, 2026-10-30), so the reference moves into the membrane box.** No
     post-hoc correction fixes a 2+ → 3+ swap compared across two differently embedded systems. Comparing the site
     against the ion in the bulk water layer of the same periodic box makes the net-charge and Ewald-convention
