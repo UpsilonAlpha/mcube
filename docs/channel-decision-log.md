@@ -1640,6 +1640,30 @@ blocks 30576666/67 held; the Ca jobs run)
       push toward Ca, but PME moves the result toward La, so an inflated bilayer dipole potential is not an
       obvious explanation. Settling it needs the PME potential per component (lipid charges alone, and the rest),
       a small CPU job.
+    - **Settled: the gap is the counter-ions, not the membrane** (`exchange.py potential --pme --components`,
+      c76223e, job 31481345, 22 min; each component's PME potential with all other charges zeroed; the parts
+      sum to the totals above within 0.001 V). Site minus bulk of (PME − direct), V:
+
+      | frames | ions | lipid | protein | water | total |
+      |---|---|---|---|---|---|
+      | CAla / CAlu vs CAbulk | −1.16 / −0.80 | +0.67 / +0.47 | +0.04 / −0.01 | −0.03 / −0.19 | −0.48 / −0.53 |
+      | LA / LAchbe vs LAbulk | −0.79 / −0.83 | +0.50 / +0.31 | −0.02 / 0.00 | −0.23 / −0.02 | −0.53 / −0.55 |
+
+      The Na⁺/Cl⁻ set, the one non-neutral component, carries the gap (−0.8 to −1.2 V); the lipids push the
+      other way (+0.3 to +0.7 V, toward Ca), so the bilayer dipole potential does not make the periodic value
+      Ln-favouring, it partly offsets it. What the direct sum misses is the long-range field of the counter-ions
+      and their images, which the MD equilibrated under PME. So the periodic value (LRA Ca → La −19.7 ± 3.1) is
+      the self-consistent one, and the direct −8.1 is the finite-droplet artefact. That makes the in-box result
+      ≈ 8 kcal/mol more Ln-favouring than one Glu in water (−11.5), but that calibration used direct embedding in
+      a cube, so the like-for-like comparison needs the calibration re-referenced too (`potential --pme` on
+      qmmm_cal, then `analyse` periodic). Until then the conclusion stays "no detectable Ln preference beyond the
+      method's bias".
+    - **The analysis is now an mcube stage** (`mcube exchange analyse|potential|structure`, f83bae3; README
+      "exchange.inputs"). `$S/channel/qmmm_inbox/config.yaml` holds the inputs (direct + periodic, embed radii
+      15/20/30, `lra: {lasite: [CAla, LA]}`, components) and every result. Regression against the reports above
+      (kept in `qmmm_inbox/ref_r2/`): all 963–1787 values of report*.json and structure.json identical, except
+      report_periodic.json within 0.02 kcal/mol (the PME potential was recomputed by job 31481345). The stage's
+      headline pools by source (`pooling: balanced`).
   - **Ca vs Ln is the main test (user, 2026-10-30), so the reference moves into the membrane box.** No
     post-hoc correction fixes a 2+ → 3+ swap compared across two differently embedded systems. Comparing the site
     against the ion in the bulk water layer of the same periodic box makes the net-charge and Ewald-convention
