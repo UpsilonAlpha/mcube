@@ -1563,7 +1563,14 @@ blocks 30576666/67 held; the Ca jobs run)
       swaps, 31277506; every site source linked, CAla/CAlu included). The bulk frames sit 38–54 Å from the
       protein, 16–21 Å from the nearest lipid P and 45–50 Å from the nearest face of the atoms'
       bounding box (`edge_min_A`, any axis). In-box swaps 31277506: all 20 done (2026-11-02); `potential --pme`
-      submitted as 31353792.
+      31353792 failed in 7 s (`conda activate` inside `--wrap` did not run; the env is now loaded in the
+      submitting shell with `--export=ALL`, as `round2.sh` does) and was resubmitted once as 31416097.
+    - **Ca site swaps 31277233 done (all 10 converged, 2026-11-02).** Against the water cube (TZVP): Ca → La
+      −36.6 ± 5.7 on CAla frames and −33.1 ± 4.0 on CAlu frames, against −33.6 ± 3.2 on La frames; Ca → Lu
+      −40.9 / −37.8 against −34.6. Both endpoints agree within error, so the linear-response mean against the
+      cube is ≈ −35. That is ≈ 23 more Ln-favourable than the same mean for one Glu in the cube (−11.5). But the
+      site sits in the membrane box, so the cube's charge-change term does not cancel and this is not the
+      result; the in-box reference decides it. La → Lu on Ca frames (−4.3 / −4.6) is not an La/Lu endpoint.
   - **Ca vs Ln is the main test (user, 2026-10-30), so the reference moves into the membrane box.** No
     post-hoc correction fixes a 2+ → 3+ swap compared across two differently embedded systems. Comparing the site
     against the ion in the bulk water layer of the same periodic box makes the net-charge and Ewald-convention
