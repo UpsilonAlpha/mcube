@@ -133,28 +133,39 @@ afterwards**. A barrier that moves once the experiment arrives is a fit.
 
 ---
 
-## 4a. The gate before any QM/MM — restated (D185)
+## 4a. Two radii, and the gate before any QM/MM (D186)
 
-"The zinc stays four-coordinate" is **no longer the test**, and three earlier
-check prompts had it wrong: occupancy counts donors inside the cutoff, the
-cutoff is 3.0 Å, and the 2.8–2.9 Å contacts are now deliberately held — so the
-product will report **seven** ligands and the reactant five, in every frame, by
-construction. What `postprocess` actually has to show:
+**They answer different questions and must not share a number.**
 
-1. The **four bond-length contacts stay bonds** — two histidines, the
-   hydroxide-derived oxygen, the water — inside 2.5 Å at high occupancy.
-2. **Asp92 OD2 stays near 2.80** and does not collapse toward 2.0 (D173, D177).
-   This tests whether 50 kcal/mol/Å² holds it against whatever pulled it in.
-3. **Asp92 OD1 stays near 3.81** rather than pivoting in (D120, D130).
-4. **Product only: O4x and O5x stay near 2.9, and O2x stays out** — its 4.75 Å
-   migration onto the metal was the turnover of D173.
-5. **Nothing new arrives.** The margin report lists donors just past the cutoff;
-   a bulk water joining is the thing to look for, since one took the sixth
-   place in 43.2% of `md_wt100`'s frames.
+| radius | key | question |
+| --- | --- | --- |
+| **3.0 Å** | `preprocess.inputs.cutoff` | what is close enough to be **affected** by the metal, and so must be held at its crystal distance. Wider than the sphere on purpose: 2.5–3.0 Å is where a non-bond becomes a bond if nothing holds it |
+| **2.5 Å** | `postprocess.coordination.cutoff` | what is **bonded** — the coordination number. `LIGAND_MAX`, the longest Zn–O that is still a bond |
 
-A coordination number of 7 that is 4 bonds plus 3 held second-shell contacts is
-the intended state. The same 7 with Asp92 at 2.0 Å is not. Hydrogens clean and
-an empty `missing` list remain part of the gate.
+At 2.5 Å the site is **four**: two histidines, the hydroxide-derived oxygen,
+one water. Asp92 OD2 at 2.80 and the product ligand's O4x/O5x at 2.92/2.94 are
+outside it — restrained second-shell contacts, not ligands.
+
+`postprocess.coordination` with no `cutoff` falls back to
+`preprocess.inputs.cutoff`, which is now the restraint radius — so **always set
+`coordination.cutoff: 2.5` in an analysis section.** `prodpostc` and `wtpostc`
+do. `margin: 1.0` still shows everything out to 3.5 Å, which is how the held
+contacts stay visible without being counted.
+
+**The gate:**
+
+1. **Four-coordinate at 2.5 Å**, at high occupancy.
+2. **Asp92 OD2 near 2.80, not collapsed toward 2.0** — the artefact of D173/D177,
+   now restrained, so this tests whether 50 kcal/mol/Å² holds it.
+3. **Asp92 OD1 near 3.81**, not pivoted in (D120, D130).
+4. **Product only: O4x/O5x near 2.9, O2x away** — its 4.75 Å migration onto the
+   metal was the turnover of D173.
+5. Hydrogens clean, `missing` list empty.
+
+**Not a gate: a transient bulk water.** MM cannot be trusted for coordination —
+that is why the restraints exist — and water comes and goes. What the MM
+occupancy tests is whether the *restrained* contacts held. The coordination
+behaviour that counts is QM/MM's.
 
 ## 5. Open questions, with what would settle each
 

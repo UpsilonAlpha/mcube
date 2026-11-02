@@ -1473,6 +1473,90 @@ sections:
       properties:
         Precision: mixed
 
+  # ---- The two radii, and why the analysis sets its own (D186) ----
+  #
+  # `preprocess.inputs.cutoff` is **3.0 A** and it answers one question: what
+  # is close enough to the metal to be AFFECTED by it, and therefore has to be
+  # held at the distance the crystal has rather than left for the force field
+  # to pull in. That set is not the coordination sphere. It is deliberately
+  # wider than it, because the contacts between 2.5 and 3.0 A are exactly the
+  # ones that are not bonds and will become bonds if nothing holds them (D174,
+  # D177).
+  #
+  # **The coordination number is a different measurement and takes a stricter
+  # radius: 2.5 A**, the longest Zn-O distance that is still a bond
+  # (`LIGAND_MAX`). At 2.5 A the product's site is two histidines, the
+  # hydroxide-derived oxygen and one water - FOUR - with Asp92 OD2 at 2.80 and
+  # the ligand's O4x/O5x at 2.92/2.94 correctly outside it, restrained in the
+  # second shell where the crystal puts them.
+  #
+  # So these sections set `coordination.cutoff: 2.5` explicitly. Without it the
+  # stage falls back to `preprocess.inputs.cutoff`, which is now the restraint
+  # radius, and the report would count seven "ligands" on a site that has four
+  # - the same number read against two different questions. `margin: 1.0` then
+  # still SHOWS everything out to 3.5 A, which is what makes the held contacts
+  # visible without counting them.
+  #
+  # And a transient bulk water inside 2.5 A is not a failure: MM cannot be
+  # trusted for coordination at all, which is why the restraints exist, and
+  # water comes and goes. The coordination behaviour that counts is QM/MM's.
+  prodpostc:
+    stage: postprocess
+    inputs:
+      md_section: md_prod100c
+      hydrogens: true
+      coordination:
+        cutoff: 2.5
+        per_residue: false
+        margin: 1.0
+      contacts:
+        cutoff: 3.5
+      monitor:
+        Zn-Asp92 OD2: [B:1:ZN, A:92:OD2]
+        Zn-Asp92 OD1: [B:1:ZN, A:92:OD1]
+        Zn-His88: [B:1:ZN, A:88:NE2]
+        Zn-His164: [B:1:ZN, A:164:NE2]
+        Zn-HOH C1: [B:1:ZN, C:1:O]
+        Zn-HOH C2: [B:1:ZN, C:2:O]
+        Zn-hyd O4x: [B:1:ZN, D:1:O4x]
+        Zn-hyd O5x: [B:1:ZN, D:1:O5x]
+        Zn-hyd O2x: [B:1:ZN, D:1:O2x]
+        Zn-hyd O6x: [B:1:ZN, D:1:O6x]
+        Zn-hyd N1x: [B:1:ZN, D:1:N1x]
+        C4x-N1x: [D:1:C4x, D:1:N1x]
+        O6x-C4x: [D:1:O6x, D:1:C4x]
+        Gln93 NE2-Asp92 OD1: [A:93:NE2, A:92:OD1]
+        Lys226 NZ-hyd O6x: [A:226:NZ, D:1:O6x]
+        Arg229 NH2-hyd O4x: [A:229:NH2, D:1:O4x]
+
+  wtpostc:
+    stage: postprocess
+    inputs:
+      md_section: md_wt100c
+      hydrogens: true
+      coordination:
+        cutoff: 2.5
+        per_residue: false
+        margin: 1.0
+      contacts:
+        cutoff: 3.5
+      # The reactant's own names: its substrate is `mer` in chain C, its
+      # nucleophile the hydroxide `OH C:2:O01`, and the second water is `D:1:O`
+      # - the chains are not the product's (D181).
+      monitor:
+        Zn-Asp92 OD2: [B:1:ZN, A:92:OD2]
+        Zn-Asp92 OD1: [B:1:ZN, A:92:OD1]
+        Zn-His88: [B:1:ZN, A:88:NE2]
+        Zn-His164: [B:1:ZN, A:164:NE2]
+        Zn-hydroxide O01: [B:1:ZN, C:2:O01]
+        Zn-HOH D1: [B:1:ZN, D:1:O]
+        Zn-mer O1x: [B:1:ZN, C:1:O1x]
+        Zn-mer O2x: [B:1:ZN, C:1:O2x]
+        Zn-Arg90 NH1: [B:1:ZN, A:90:NH1]
+        O01-mer C4x: [C:2:O01, C:1:C4x]
+        Lys226 NZ-O01: [A:226:NZ, C:2:O01]
+        Gln93 NE2-Asp92 OD1: [A:93:NE2, A:92:OD1]
+
   # ---- prod100b: WITHDRAWN, do not submit (D173) ----
   #
   # This resumed from frame 1704 on the assumption that the 34 ns before the

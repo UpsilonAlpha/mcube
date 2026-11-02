@@ -4574,6 +4574,30 @@ So the question is no longer "what is the coordination number" but "did the rest
 
 `import propka` fails and neither `pdb2pqr` nor `propka3` is on the path in the ASH environment. Both are pure-Python pip packages with no compiled dependencies, so `pip install propka pdb2pqr` into that env is the whole of it - a minute, and reversible. It is the user's environment, so it is their call, but this is the item the audit called the cheapest high-value one and it has been open since **D7**.
 
+**D186 - Two radii, two questions, and D185 conflated them. The 3.0 A set is "what is affected by the metal and must be held at its crystal distance" - deliberately wider than the coordination sphere. The coordination number is a separate measurement at the stricter 2.5 A, and at 2.5 A the site is FOUR. So the four-coordinate gate was never wrong; measuring it at the restraint radius was.** (2026-11-02, user: "the 3 angstrom restraints aren't exclusively for coordinators - they're for anything affected by the metal - a different set. The metal could still be 4-coordinate you'd just use a stricter coordination radius for that like 2.5")
+
+## The distinction
+
+`preprocess.inputs.cutoff` = **3.0 A** answers: what is close enough to the zinc to be *affected* by it, and therefore has to be held where the crystal has it rather than left for a point-charge force field to pull in. That set is wider than the coordination sphere **on purpose** - the contacts between 2.5 and 3.0 A are precisely the ones that are not bonds and that become bonds when nothing holds them. Asp92 OD2 at 2.80 is the worked example: free, it collapsed to 2.03-2.07 on both arms (D173, D177).
+
+**Coordination number is a different question with its own radius: 2.5 A**, the longest Zn-O distance that is still a bond - the same `LIGAND_MAX` the code already warns above. At 2.5 A the product's site is two histidines, the hydroxide-derived oxygen and one water. **Four.** Asp92 OD2 at 2.80 and the ligand's O4x/O5x at 2.92/2.94 sit outside it, restrained in the second shell where the crystal puts them, and are correctly not counted as ligands.
+
+## What D185 got wrong, and what it got right
+
+D185 declared "the zinc stays four-coordinate" unusable as a gate because occupancy at 3.0 A would report seven. The premise was right and the conclusion was backwards: the fix is to measure coordination at 2.5 A, not to abandon the test. **The four-coordinate gate stands exactly as it was.**
+
+What makes this more than bookkeeping: `postprocess.coordination` with no `cutoff` falls back to `preprocess.inputs.cutoff`, which is now the *restraint* radius. So `prodpost`'s existing section would have counted seven ligands on a four-coordinate site - one number answering the other question - and D185's restated gate would have told the next check to expect that and call it intended. Both wrong, from one missing key.
+
+`prodpostc` and `wtpostc` therefore set **`coordination.cutoff: 2.5` explicitly**, with `margin: 1.0` still showing everything out to 3.5 A - which is what makes the held second-shell contacts visible without counting them. The margin is how you see that Asp92 is at 2.80 and not at 2.07, which is the actual question.
+
+Note this also means **D173 and D177 stand unchanged**: both were measured at 2.50 A with a 1.0 A margin, so their six-coordinate findings were already the strict count. Asp92 OD2 really was inside the bond radius at 2.07 A, in 100% of `md_wt100`'s frames. That was a genuine artefact and remains one.
+
+## Bulk water is not a gate
+
+The user's second point: "bulk water will come and go, QM/MM should give us the correct coordination behaviour." So a transient water inside 2.5 A in an MM trajectory is not a failure, and D185's fifth gate item - "nothing new arrives" - was too strict. MM with point charges cannot be trusted for coordination at all; that is the reason the restraints exist in the first place. What the MM occupancy can tell us is whether the *restrained* contacts held where they were set. The coordination behaviour that counts is QM/MM's, which is what `prodqm` is for.
+
+That also puts the 43.2% bulk water of `md_wt100` in its place: it was the sixth ligand of a site whose fifth was an unrestrained Asp92, and with the carboxylate held the question is whether anything stays rather than whether anything visits.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
