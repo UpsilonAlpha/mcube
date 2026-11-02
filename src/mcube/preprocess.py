@@ -1166,7 +1166,22 @@ def find_coordinators(
 
     print("\n===== Metal Coordination Analysis =====")
     print(f"Cutoff: {cutoff:.2f} Å")
-    shell = coordination_shell(pdb_file, inputs)
+    # PER ATOM, not per residue. `coordination_from_rows` has said since it was
+    # written that the QM region wants residues and restraints want atoms, and
+    # this - the one caller that builds restraints - took the per-residue
+    # default anyway. So only the closest donor of each residue was ever held,
+    # and a group with two donors inside the cutoff had one pinned and the other
+    # free: exactly the geometry D120 and D130 record failing, where Asp92's OD2
+    # was held at 2.80 and OD1 pivoted onto the metal at 1.99.
+    #
+    # It bit again on the product, whose ligand has O5x at 2.92 and O4x at 2.94.
+    # Per residue, detection holds O5x and leaves O4x free, 0.02 A further out.
+    # A restraint list is not a description of which residues touch the metal;
+    # it is the set of distances the run is asked to preserve (D175).
+    #
+    # The QM region below is unaffected: it is keyed by residue, so naming one
+    # twice sets the same entry twice.
+    shell = coordination_shell(pdb_file, inputs, per_residue=False)
 
     for m in metal_idx:
         print(f"\nMetal {elems[m]} at {chains[m]}:{resids[m]} (atom index {m})")

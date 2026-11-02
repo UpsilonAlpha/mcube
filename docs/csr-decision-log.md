@@ -4185,6 +4185,48 @@ Plus **one restraint beyond the sweep, flagged in the config as a judgement: Asp
 
 `prod100b` is withdrawn in place, and the void run's 1.0 GB trajectory, its checkpoint and its optimiser trajectory are deleted - `nvtsim.csv`, the first frame and `restart_1704.pdb` are kept, which is everything D173's numbers were read from. Scratch 272/300 GB, 889k/1M inodes.
 
+**D175 - Detection restrained one donor per RESIDUE, not per atom, so a group with two donors inside the cutoff always had one pinned and the other free. That is the mechanism of D120 and D130 both, and it is in the code, not in the configs. `prod100c` as submitted holds seven contacts, not the eight its comment claims: the ligand's O4x at 2.94 A is free.** (2026-11-02)
+
+## The bug
+
+`coordination_from_rows` carries this comment, and has since it was split out:
+
+> Per residue for the QM region, which takes whole residues anyway. Per atom for restraints: a carboxylate can rotate its second oxygen in while the first is held.
+
+`find_coordinators` is the only caller that builds restraints, and it called `coordination_shell(pdb_file, inputs)` - taking the **per-residue default**. So the rule the comment states was never the rule that ran. Only the closest donor of each residue was ever restrained.
+
+That is not a subtle mismatch. It is exactly the failure D120 and D130 record: Asp92's OD2 held at 2.80 A while OD1, in the same residue, was free and pivoted onto the metal at 1.99 A. Both entries blamed the cutoff; both wrote the remedy as a cutoff change; and the cause was that the restraint list could not contain two atoms of one residue however the cutoff was set. D174 - mine, an hour ago - repeated the same blame.
+
+## What it means for the run in flight
+
+`prod100c` (job 31355970) was submitted and the pane closed before the restraint list could be read, so this is from the distances rather than from the job. At 3.0 A on `finalsystem.pdb`, per residue:
+
+| donor | distance | restrained per residue? |
+| --- | --- | --- |
+| HOH C:1 O | 1.90 | yes |
+| His164 NE2 | 2.09 | yes |
+| HOH C:2 O | 2.14 | yes |
+| His88 NE2 | 2.22 | yes |
+| Asp92 OD2 | 2.80 | yes - closest in ASP A:92 |
+| **hyd O5x** | **2.92** | yes - closest in hyd D:1 |
+| **hyd O4x** | **2.94** | **NO - same residue, 0.02 A further** |
+
+Seven restraints, not eight: six detected plus the configured Asp92 OD1 at 3.81. **The ligand oxygen 0.02 A behind its neighbour is free**, which is the same hole that let O2x travel 4.75 A onto the metal, narrowed but not closed. With O5x held the ligand is far better anchored than in `md_prod100`, so the run may well produce a usable trajectory - but it is not the run the config describes, and `prodpost` would have to decide it after the fact rather than the restraint list deciding it in advance.
+
+## The fix
+
+`find_coordinators` now detects with `per_residue=False`. The QM region is unaffected: it is keyed by residue, so naming one twice sets the same entry twice.
+
+**It changes behaviour for every project**, which is the right direction - a restraint list is not a description of which residues touch the metal, it is the set of distances the run is asked to preserve - but the channel work should know that a run redetecting coordination will now hold more contacts than before.
+
+`tests/test_coordination_detection.py` is 8 tests, and the two that matter were confirmed to FAIL against the old per-residue call before the fix went in: both oxygens of a carboxylate restrained, each at its own distance. **Nothing had ever tested `find_coordinators`** - no test in the suite referenced it, `coordination_shell` or `coordination_from_rows` - which is how a comment and its implementation disagreed through two decision entries about the consequence.
+
+## What has to happen to the run
+
+`scancel 31355970` and resubmit after this fix, so the detection finds all seven and the configured OD1 makes eight. The cost is the GPU hours already spent; the alternative is a 100 ns equilibration with one zinc contact free and no record in the config saying so.
+
+The pane was closed when this was found, so nothing could be cancelled or verified. The fix is pushed and waiting.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
