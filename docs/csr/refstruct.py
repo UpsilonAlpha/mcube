@@ -6,6 +6,8 @@
     python refstruct.py match <ours.pdb> <template.pdb> [--out=f.pdb]
                                         our atom names on a deposited ligand's
                                         coordinates, matched by bonding
+    python refstruct.py pair <pdb> <sel>-<sel> [<sel>-<sel> ...]
+                                        named distances, e.g. A:91:OD2-A:87:NE2
     python refstruct.py similarity <a.pdb>[:CHAIN] <b.pdb>[:CHAIN] ...
                                         identity and CA RMSD for every pair
     python refstruct.py transfer <template.pdb> <target.pdb> --ligand=X --zn=...
@@ -119,6 +121,32 @@ def mode_centre(args):
         if len(oxy) >= 2:
             print("     O...O %.2f" % dist(oxy[0][1], oxy[1][1]))
 
+
+
+def mode_pair(args):
+    """Distances between named atoms of one deposited structure.
+
+    `shell` answers what is on a metal, which needs a metal; this answers what
+    is near what, which does not. It exists because the reference a wild-type
+    model should be compared against may have no metal at all - CSR-1's own
+    wild-type crystals (6DN4, 6DQ2) are metal-free, so the only way to ask
+    where their Asp92 sits is against its own neighbours.
+
+    An internal distance also needs no superposition, which is the point: two
+    structures can be compared on it without a fit, so the answer cannot be an
+    artefact of how they were aligned.
+    """
+    if len(args) < 2:
+        raise SystemExit("pair needs <pdb> <chain:resseq:name>-<chain:resseq:name> ...")
+    atoms = rows(args[0])
+    print("%s (%d atoms read)" % (args[0], len(atoms)))
+    for spec in args[1:]:
+        if spec.count("-") != 1:
+            raise SystemExit("%r is not <sel>-<sel>" % spec)
+        left, right = spec.split("-")
+        a, b = select(atoms, left), select(atoms, right)
+        print("  %-22s %-22s %6.2f A   (%s %s / %s %s)"
+              % (left, right, dist(a, b), a[1], a[3], b[1], b[3]))
 
 
 def select(atoms, spec):
@@ -784,10 +812,12 @@ def mode_match(args):
 
 if __name__ == "__main__":
     if len(sys.argv) < 3 or sys.argv[1] not in ("shell", "centre", "transfer", "match",
-                                            "similarity"):
+                                            "similarity", "pair"):
         raise SystemExit(__doc__)
     if sys.argv[1] == "shell":
         mode_shell(sys.argv[2:])
+    elif sys.argv[1] == "pair":
+        mode_pair(sys.argv[2:])
     elif sys.argv[1] == "transfer":
         mode_transfer(sys.argv[2:])
     elif sys.argv[1] == "similarity":
