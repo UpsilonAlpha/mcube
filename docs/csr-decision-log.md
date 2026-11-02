@@ -4598,6 +4598,43 @@ The user's second point: "bulk water will come and go, QM/MM should give us the 
 
 That also puts the 43.2% bulk water of `md_wt100` in its place: it was the sixth ligand of a site whose fifth was an unrestrained Asp92, and with the carboxylate held the question is whether anything stays rather than whether anything visits.
 
+**D187 - Plan item 7 scoped: the cluster is 37 atoms of site plus a substrate fragment, net charge -1 with it and 0 without, and `mcube` cannot run it. `sp` is hard-wired to `QMMMTheory` and to DFT, so a gas-phase cluster at GFN2 vs DFT needs two small additions rather than a script around the framework. The substrate truncation is NOT settled: it needs the ligand's connectivity, which is the one thing not to guess.** (2026-11-02, open since D9)
+
+## Why this matters more than anything else not yet done
+
+Imhof's own benchmark - the paper this project's method is modelled on - found AM1/d made 4->5 coordination **7.55 kcal/mol too favourable**, made bidentate->monodentate carboxylate **7 kcal/mol too costly**, and missed a water->Asp proton transfer that DFT finds (D114). Our model is the one showing a contested coordination number and a mobile carboxylate, every gradient in the project is GFN2-xTB, and the only DFT checks that exist are single points on xTB geometries answering conditional questions - which D59 and D64 both say is not the test. If GFN2 is wrong about coordination here by the amount Imhof measured, it is wrong by more than any barrier this project will compute.
+
+## The cluster, from `CSR_wt/preprocess_results/finalsystem.pdb`
+
+Read off the structure, not assumed. **His88 and His164 both carry HD1 and no HE2**, so both are HID with NE2 bare and facing the metal, as `residue_variants` asks; Asp92 has no HD2, so it is ionised; the nucleophile is `OH C:2` = O01 + H03, a hydroxide with its proton; the second ligand is `HOH D:1`.
+
+| piece | truncation | atoms | charge |
+| --- | --- | --- | --- |
+| Zn | whole | 1 | +2 |
+| His88 -> 4-methylimidazole | cut CA-CB, cap CB with H; keep CB HB2 HB3 CG CD2 HD2 ND1 HD1 CE1 HE1 NE2 | 11 + 1 | 0 |
+| His164 -> 4-methylimidazole | the same | 11 + 1 | 0 |
+| Asp92 -> acetate | cut CA-CB, cap CB with H; keep CB HB2 HB3 CG OD1 OD2 | 6 + 1 | **-1** |
+| hydroxide | whole (O01, H03) | 2 | **-1** |
+| water | whole (O, H1, H2) | 3 | 0 |
+| **site subtotal** | | **37** | **0** |
+
+Methylimidazole rather than bare imidazole because cutting at CA-CB and capping keeps the ring's electronics and the CB substitution pattern; acetate rather than formate for the same reason. That leaves **~15 atoms** of D54's 50-55 for the substrate, which is about right for the beta-lactam ring plus the C3 carboxylate - the group that binds Zn2 in the di-zinc enzymes and has nothing to bind here.
+
+**Net charge: 0 for the site alone, -1 with a substrate fragment carrying the C3 carboxylate.** Stated before anything runs because D152 is the entry where a run left at the inherited charge converged its SCF on the wrong species while looking entirely normal.
+
+## What is not settled, and will not be guessed
+
+The substrate truncation needs the ligand's **connectivity**. `mer C:1` is 51 atoms and the attack is O01 -> C4x with O2x the carbonyl and N1x the leaving nitrogen, but which atoms close the four-membered ring cannot be read off the names, and `finalsystem.pdb` is an OpenMM product with no CONECT records for the ligand. Inferring bonding by distance is what put a spurious O-O bond in a strained geometry once already (`running-on-bunya.md`, "Bond orders for PDB ligands"). The connectivity is available - `mer_crystal.pdb` has CONECT records, and `refstruct.py` already has `conect_bonds` and `heavy_graph` - so this is a lookup, not a judgement, and it is the next step rather than a blocker.
+
+## What mcube needs, which is two small things
+
+`sp.run` builds `make_mm(...)` and then `QMMMTheory(qm_theory=pyscf, mm_theory=mm, ...)` unconditionally, and its QM side is always PySCF DFT. A gas-phase cluster is neither: no MM system, no point charges, every atom in the QM region, and it has to be scored at **both** GFN2-xTB and DFT to be a benchmark at all.
+
+1. **`sp.inputs.cluster: true`** - no MM, the whole fragment is QM, `Singlepoint(theory=..., fragment=...)` directly. One branch.
+2. **`sp.inputs.sp_engine: dft|xtb`** - `qmmm` already has exactly this as `qm_engine` for its gradient stages; `sp` is DFT-only, so the same geometry cannot currently be scored both ways through the framework.
+
+With those two, the whole benchmark is two sections per question on one cluster PDB, and every number is re-derivable from the config - which is the point. **Flagged rather than scripted**, per the standing rule: when a stage cannot do it, propose the addition.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
