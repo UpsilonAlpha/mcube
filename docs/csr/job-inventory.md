@@ -15,11 +15,15 @@ usually right and for a completed run is a gap worth closing.
 
 ## Where the run directories are, since 2026-11-03
 
-All of them now live under `/scratch/user/uquadhik/CSR/`, not at the top of
-scratch: `CSR/CSR_wt`, `CSR/CSR_crystal_v2`, `CSR/CSR_nac` and so on. The one
-exception is **`CSR_mich`**, still at `/scratch/user/uquadhik/CSR_mich`, because
-its MD (31721717) was running when the move happened and Slurm had recorded the
-old `WorkDir`; it goes in once that job is done.
+All thirteen now live under `/scratch/user/uquadhik/CSR/`, and **nothing** is
+left at the top of scratch: `CSR/CSR_wt`, `CSR/CSR_crystal_v2`, `CSR/CSR_nac`,
+`CSR/CSR_mich` and so on.
+
+Twelve moved at 20:50. **`CSR_mich` followed at 22:25**, once its MD (31721717)
+and then its postprocess (31736226) had both finished - Slurm records a
+`WorkDir` at submit time, so moving a running job's directory breaks it, and
+that gate was checked before each attempt rather than assumed from an expected
+finish time.
 
 Paths written in the entries below, and in the decision log, are the paths as
 they were when the work ran. They have not been rewritten - a record of what was

@@ -56,13 +56,11 @@ from pathlib import Path
 import yaml
 
 SCRATCH = Path("/scratch/user/uquadhik")
-# The finished run directories were moved into `CSR/` on 2026-11-03 to clear the
-# top of scratch. `CSR_mich` is the one that stayed out, because its MD was
-# running at the time and Slurm had recorded the old WorkDir; move it in once
-# that job is done and then RUNS is the only line that has to change.
+# Every run directory lives under `CSR/` since 2026-11-03, which is why the
+# paths below go through RUNS: it is the one line to change if they move again.
 RUNS = SCRATCH / "CSR"
 SRC = RUNS / "CSR_crystal_v2"
-DST = SCRATCH / "CSR_mich"
+DST = RUNS / "CSR_mich"
 STRUCTURE = "csr_crystal_restrained_end.pdb"
 LIGAND_XML = "openff_MER.xml"
 
