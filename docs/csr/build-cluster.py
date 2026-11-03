@@ -169,9 +169,44 @@ def scan():
         d, frame = best[key]
         u.trajectory[frame]
         path = OUT / f"frame_o1x_{label}.pdb"
-        u.atoms.write(str(path))
+        write_frame(u.atoms.positions, path)
         print(f"[OK] Zn-O1x {d:.2f} A at frame {frame} -> {path.name}")
     return 0
+
+
+def write_frame(positions, out_path):
+    """Write one frame by substituting coordinates into the topology PDB.
+
+    **Not MDAnalysis's PDB writer.** It renumbers the waters - a PDB `resSeq`
+    field is four characters and this box has ~14,500 of them - so thousands end
+    up sharing a `(chain, resSeq)`. OpenMM's PDB reader then treats same-named
+    atoms in the same residue as duplicates and **silently drops them**: a frame
+    written that way built a 34,311-atom system where the MD's is 47,979, which
+    is 4,556 waters missing from a run that otherwise looks completely normal
+    (job 31738823, killed). Nothing downstream checks the atom count, the
+    energies are all relative, and the geometry is fine - so this would have
+    produced 50 ps of QM/MM on a different system from the one equilibrated.
+
+    Substituting into the template keeps ASH's own formatting and numbering
+    byte-for-byte, and the DCD's atom order is the topology's by construction,
+    so a positional swap is exact rather than a best effort.
+    """
+    template = Path(TOPOLOGY).read_text().splitlines(keepends=True)
+    out, i = [], 0
+    for line in template:
+        if line.startswith(("ATOM", "HETATM")):
+            x, y, z = positions[i]
+            out.append("%s%8.3f%8.3f%8.3f%s" % (line[:30], x, y, z, line[54:]))
+            i += 1
+        else:
+            out.append(line)
+    if i != len(positions):
+        raise SystemExit(
+            f"build-cluster: {TOPOLOGY.name} has {i} ATOM/HETATM records but the "
+            f"frame has {len(positions)} atoms. The template and the trajectory "
+            "must be the same system, or coordinates land on the wrong atoms.")
+    Path(out_path).write_text("".join(out))
+    print(f"[INFO]   {i} atoms written from the topology template")
 
 
 def cut(frame_path, out_path):
