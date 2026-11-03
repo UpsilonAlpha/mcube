@@ -176,8 +176,9 @@ not):
 
 **500 kcal/mol/Å², not 50.** D191 measured a 2.80 Å restraint sitting at a mean
 of 2.44 Å — a 0.36 Å offset is a systematic ~36 kcal/mol/Å force, not thermal
-spread, and offset goes as F/k. At 500 the restrained mode's period is ~53 fs,
-53 steps at this project's 1 fs timestep, so it integrates cleanly. The MM site
+spread, and offset goes as F/k. At 500 the restrained mode's period is ~53 fs, so
+`eq5` sets `nvt_timestep: 0.002` — 26 steps per period, where the 4 fs this
+run directory inherits would give 13. The MM site
 is deliberately rigid: MM cannot be trusted for coordination (D174), and QM/MM
 is what decides it (confirmed in D195).
 

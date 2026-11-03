@@ -1567,8 +1567,9 @@ sections:
   # offset, which is a systematic force of order 36 kcal/mol/A pulling the
   # carboxylate in, not thermal spread. Offset goes as F/k, so 500 puts it
   # under 0.04 A. The cost is stiffness: at 500 and a 15 amu reduced mass the
-  # restrained mode has a ~53 fs period, which is 53 steps at this project's
-  # 1 fs timestep, so it integrates cleanly. This is deliberately a rigid MM
+  # restrained mode has a ~53 fs period. That is 26 steps at the 2 fs this
+  # section sets, which integrates cleanly; at the 4 fs this run directory
+  # otherwise inherits it would be 13, which is not enough. This is deliberately a rigid MM
   # site - MM cannot be trusted for coordination (D174), the MD's job is to
   # equilibrate the protein and solvent AROUND a site held where the crystal
   # has it, and QM/MM is what then decides the coordination.
@@ -1600,15 +1601,26 @@ sections:
   #
   # 10 ns, not 100. Every 100 ns run in D195's inventory is in the rejected
   # list, and nothing was learned at 100 that was not visible at 10.
+  #
+  # **2 fs, not 4.** The timestep is stated here because this run directory
+  # inherits `nvt_timestep: 0.004` from CSR_crystal_v2, and 4 fs against a
+  # ~53 fs restrained period is 13 steps per period - below the >=20 that keeps
+  # a stiff harmonic integrating cleanly. At 2 fs it is 26.
+  #
+  # `pdb_file` is given so `sections.py` can CHECK these five selectors against
+  # the real solvated system before the MD starts. Run it after `preprocess`,
+  # not before: with no structure named, the selector check silently passes.
   eq5:
     stage: md
     inputs:
+      pdb_file: preprocess_results/finalsystem.pdb
       coordination_redetect: true
       restraints:
         - [C:2:O01, C:1:C4x, 3.47]
         - [B:1:ZN, C:1:O2x, 2.60, 500.0]
         - [B:1:ZN, A:92:OD1, 3.81, 500.0]
       nvt_time: 10000
+      nvt_timestep: 0.002
       traj_frequency: 500
       platform: CUDA
       properties:

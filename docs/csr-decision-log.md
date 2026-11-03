@@ -5113,8 +5113,11 @@ rather than 5.43 -> 2.60 - and carries:
 mean of 2.44 with a maximum of 2.97 over 100 ns. A 0.36 A mean offset is a
 systematic force of order 36 kcal/mol/A, not thermal spread, and offset goes as
 F/k - so 500 puts it under 0.04 A. At 500 and a 15 amu reduced mass the
-restrained mode's period is about 53 fs, which is 53 steps at this project's
-1 fs timestep, so it still integrates cleanly. The site is deliberately rigid
+restrained mode's period is about 53 fs. `eq5` therefore sets
+`nvt_timestep: 0.002`, which is 26 steps per period: the run directory it is
+built from uses 4 fs, and 13 steps per period is not enough to integrate a
+restraint this stiff. (An earlier draft of this entry said 1 fs, which is the
+library default and not what this config inherits.) The site is deliberately rigid
 in MM: MM cannot be trusted for coordination (D174), the MD's job is to
 equilibrate protein and solvent AROUND a site held where the crystal has it,
 and QM/MM is what decides the coordination afterwards (confirmed in D195).
