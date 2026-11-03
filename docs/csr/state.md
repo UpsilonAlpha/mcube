@@ -264,6 +264,44 @@ it is not. Not an imaging artefact - the imaged and unimaged last frames agree
 to three decimals. `postprocess` has `per_residue: false` for this; the `md`
 reporter has no such option.
 
+**Measured over all 10,000 frames (31736226), which settles the contamination
+question.** At the 2.5 A radius: hydroxide **100%** (mean 2.03), His164 100%
+(2.13), His88 100% (2.21), **mer O1x 97.9%** (2.18), Asn225 OD1 17.9% (2.81),
+**mer O2x 0.3%** (2.60), Asp92 OD2 0.0% (2.77). Coordination number 4 in 8328
+frames, 5 in 1638.
+
+**O1x was there from the start, so no frame of this run is usable** - there is
+no early clean window to take to QM/MM. And **the carbonyl is inside 2.5 A in
+0.3% of frames**: its mean sits exactly at the 2.60 it was restrained to, and
+2.60 is outside the 2.5 A bond radius *by construction*. By this project's own
+standard the lactam carbonyl is not a ligand at any point in the run, while an
+unrestrained alcohol is one for 97.9% of it.
+
+**That is a conflict between two settled numbers, and a criterion question.**
+The 2.60 target came from L1's 2.53/2.63 and GFN2's own 2.56 (D196); the bond
+radius is 2.5 (D186). A carbonyl held where the crystal and the QM both put it
+is **guaranteed** to score as non-coordinating. Either a dative carbonyl O->Zn
+belongs at the 3.0 A "affected" radius, or 2.5 is too tight for this donor.
+**Do not change it quietly** - every earlier coordination verdict in the log was
+measured at 2.5.
+
+It also explains how `site.py` reports `PASS coordination number 4`: the four
+are hydroxide + 2 His + **O1x**, with the carbonyl outside. Correct number,
+wrong membership, and the criterion cannot see it because it counts donors
+without requiring the carbonyl to be one. Testing properties one at a time can
+pass a composition that would be rejected if asked directly.
+
+**Asn225 OD1 is a second uninvited donor** - 17.9% occupancy, min 2.02 A,
+unrestrained, and on no earlier arm's monitor list.
+
+**Everything restrained behaved, across the whole run.** O01-C4x mean 3.47
+(target 3.47), Asp92 OD1 mean 3.80 (3.81), Asp92 OD2 mean 2.77 against the
+crystal's 2.80 at **0.0%** inside 2.5. **No ligand turnover**: the carboxylate
+stayed at 5.93/7.05, so unlike `prod100b` this is one intramolecular donor, not
+a reorientation. Incidentally, Lys226 NZ-O01 is inside 3.5 A in only 10.3% of
+frames (mean 4.93), and Gln93 NE2-Asp92 OD1 averages 7.74 A - the Q of RQK has
+no contact to decompose on this arm.
+
 **Operational.** `postprocess` takes the **full config key** as its section
 (`run.slurm postprocess postprocess_michpost`, not `michpost`); with the short
 name the section is silently not found, the stage uses the plain `postprocess`

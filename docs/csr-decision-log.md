@@ -5367,6 +5367,78 @@ rather than donating one group. Its occupancies are what say whether O1x came
 on early and stayed - which decides whether the whole 10 ns is contaminated or
 only the end of it.
 
+**D197, measured over the trajectory. The hydroxyethyl held the fourth
+coordination site for the whole 10 ns, and the carbonyl was never a ligand by
+the project's own criterion.**
+
+`postprocess_michpost` (31736226) over all **10,000 frames** at the 2.5 A
+coordination radius:
+
+    donor                       occupancy    min   mean    max
+    hydroxide O01                   100.0    1.91   2.03   2.16
+    His164 NE2                      100.0    2.01   2.13   2.23
+    His88 NE2                       100.0    2.09   2.21   2.33
+    mer O1x  (1-hydroxyethyl)        97.9    1.92   2.18   3.19
+    Asn225 OD1                       17.9    2.02   2.81   3.50
+    mer O2x  (lactam carbonyl)        0.3    2.47   2.60   2.74
+    Asp92 OD2                         0.0    2.63   2.77   2.89
+
+    coordination number:  3: 33    4: 8328    5: 1638    6: 1
+
+**O1x is not a late arrival: 97.9% of frames inside 2.5 A, 100% inside 3.5,
+mean 2.18 A.** It was on the metal essentially from the start. So **no window
+of this trajectory is usable** - there are no early clean frames to take to
+QM/MM, which was the one thing worth checking before discarding the run.
+
+**And the carbonyl is inside 2.5 A in 0.3% of frames.** Its mean is 2.60,
+which is exactly where it was restrained, with a spread of only +/-0.14 - the
+restraint was never in difficulty. The reason the occupancy is 0.3% is that
+**the 2.60 A target is outside the 2.5 A bond radius by construction.**
+
+So, by this project's own measurement standard, the lactam carbonyl is **not a
+ligand at any point in this run**, while an unrestrained secondary alcohol is
+one for 97.9% of it.
+
+**This exposes a conflict between two settled numbers, and it is a criterion
+question rather than a modelling one.** The carbonyl restraint target of 2.60
+was chosen in D196 to match L1's crystallographic 2.53/2.63 and GFN2's own
+relaxed 2.56. The coordination radius is 2.5 (D186). A carbonyl held where the
+crystal and the QM both put it is therefore **guaranteed** to be scored as
+non-coordinating. Either a dative carbonyl O->Zn needs the 3.0 A "affected"
+radius rather than the 2.5 A "bonded" one, or the bond radius is too tight for
+this donor type. Nothing should be changed silently: the same 2.5 A figure is
+what every earlier coordination verdict in the log was measured at.
+
+**Consequence for how D197's `site.py` result reads.** `PASS Zn coordination
+number 4` is composed of hydroxide + His164 + His88 + **O1x**. The carbonyl is
+not in the four. The number is correct and its membership is wrong, and the
+coordination criterion cannot see that because it counts donors without
+requiring the carbonyl to be one of them. The separate `closest substrate O`
+test is what caught it. A hypothesis set that tests properties one at a time
+can pass on composition it would reject if asked directly.
+
+**A second uninvited donor, not previously tracked: Asn225 OD1, 17.9%
+occupancy, min 2.02 A.** Next to Lys226, unrestrained, and inside the sphere
+for about a sixth of the run. It is not in `wtpostc`'s monitor list and so has
+not been looked for on any earlier arm.
+
+**Everything that was restrained behaved.** O01-C4x mean 3.47 against a 3.47
+target, 82.8% inside 3.5. Asp92 OD1 held out at mean 3.80 against 3.81, never
+inside 3.5. Asp92 OD2 mean 2.77 against the crystal's 2.80, and **0.0%**
+inside 2.5 - the two-radii design doing exactly what D186 built it to do,
+holding a second-shell contact without ever counting it as a bond.
+
+**No ligand turnover.** The C3 carboxylate stayed away throughout - O4x mean
+5.93, O3x mean 7.05 - so this is not `prod100b`'s whole-ligand reorientation
+(D173). It is one specific intramolecular donor, the 6-(1-hydroxyethyl) OH,
+chelating the metal while the rest of the substrate stays put.
+
+**Two incidental numbers worth having.** Lys226 NZ-O01 is inside 3.5 A in only
+**10.3%** of frames, mean 4.93 - Lys226 is not holding the hydroxide in this
+build, which bears on P6 and D41. And Gln93 NE2-Asp92 OD1 has mean **7.74 A**:
+Gln93 is nowhere near Asp92 here, so the Q of RQK has no contact to decompose
+on this arm.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
