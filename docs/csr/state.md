@@ -210,6 +210,48 @@ question, and holding a mean within ~0.05 Å of 2.80 needs of order 500.**
 to submit on a pass: 50 ps of QM/MM MD from a frame with no substrate in the
 site is an expensive converged meaningless number (the D152 failure mode).
 
+### Is the dissociation real, or a periodic-image artefact? NOT YET SETTLED
+
+The claim above rests entirely on `wtpostc`'s monitored-contacts table:
+`O01-mer C4x` 0.2% inside 3.5 A, min 3.14 / mean 19.95 / max 50.69 A, with
+`Zn-mer O1x` and `Zn-mer O2x` saying the same thing. **It was written up as
+settled before the obvious check was done, and that was wrong.**
+
+`contact_occupancy` computes every distance as `separation(..., cell)`, and
+`separation` applies the minimum image **only when `cell` is not None**.
+`cell` comes from `coordination_rows(pdb_file)` -> `_coords_and_cell`, which
+returns a cell only if the topology PDB carries a `CRYST1` whose three angles
+are all 90 within 1e-3; anything non-orthorhombic or missing yields `None` and
+**no wrapping correction at all**. Whether
+`md_wt100c_results/NVTtrajectory_firstframe.pdb` satisfies that has not been
+checked. If it does not, a ligand that never left the site but sits near a box
+face reads as tens of Angstrom, which is exactly what maxima clustered at
+50.69 / 51.25 / 51.62 A look like.
+
+The maxima cannot discriminate. For a cubic box of side L the largest possible
+minimum-image distance is L*sqrt(3)/2; this system is ~10,000 waters, so
+L ~ 70 A and the ceiling is ~61 A. 51.6 A is therefore consistent with genuine
+diffusion **and** with an uncorrected wrap.
+
+**What does corroborate dissociation, independently of the ligand's absolute
+position:** the reactant's coordination listing contains **twenty-plus bulk
+waters at 3.1-3.5 A from the zinc** and `mer O1x`/`O2x` nowhere in it. That
+scan examines every atom within cutoff+margin of the metal, so the substrate is
+absent from a neighbourhood that bulk solvent has filled. A periodic wrap
+displaces the ligand; it does not put water into the ligand's pocket.
+
+**The test that settles it, in one read:** the per-frame series, which
+`contact_occupancy` already returns as `_distances` and writes to the CSV.
+Dissociation gives a smooth random walk away from 3.14 A; a periodic-image
+artefact gives instantaneous jumps between ~3 A and ~50 A with no density in
+between. Check the `CRYST1` angles of the topology PDB at the same time.
+
+**Until that is done, treat "the substrate dissociates" as PROVISIONAL**, and
+with it criterion 6 and the blocked status of plan items 1+2 and 3. What is
+*not* provisional: the NaN at 22.68 ns, Asp92 OD2's mean at 2.37/2.44 against a
+2.80 A restraint, the resident bulk water at 89.3%/97.0%, and Lys226 NZ-O01 at
+2.72 A in 100% of frames - none of those depend on a long-range distance.
+
 ## 5. Open questions, with what would settle each
 
 | Question | What would settle it | Blocked by |
