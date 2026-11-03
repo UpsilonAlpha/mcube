@@ -4855,6 +4855,35 @@ Unaffected, because neither depends on the substrate: **Lys226 NZ-O01 at 2.72 A
 mean in 100% of 5000 frames** stands as an observation about the nucleophile's
 anchoring, and the His88/His164 HID assignment stands.
 
+**D193 - The reactant's ligand was excluded from the coordination sweep by `constraint_exclude_residues: {C: [1]}`, which I kept deliberately and documented as costing nothing. It cost the run. mcube was already built to restrain anything within 3.0 A of the metal; the exclusion switched that off for the one molecule the experiment is about. The control is the product arm, where the exclusion was REMOVED: same code, same cutoff, and the ligand's O4x/O5x were detected, restrained at 2.92/2.94 A, and HELD at 3.11/3.15 A mean for the whole run.** (2026-11-03, user)
+
+## What the exclusion was for, and why each half of the reason fails
+
+`site.yaml` line 1479, written when `wt100c` was set up: *"`constraint_exclude_residues: {C: [1]}` stays. The reactant's substrate must be free to react, which is the documented reason, and here it costs nothing either way: its nearest atom is 3.13 A, outside the sweep."*
+
+**"Must be free to react" is a QM/MM concern applied to an MM stage.** MM cannot form or break a bond, so nothing reacts during equilibration and a restraint there biases no reaction coordinate - it is released before QM/MM regardless. The earlier and better-posed version of the reason (line 394, from `nac`) was *"for a mono-Zn B3 site it is not established that the carbonyl coordinates the same zinc that carries the nucleophile"*, which is a real open question, but it fails for a different reason: **omitting the restraint is not neutrality.** It does not leave the question open, it guarantees the ligand leaves, which removes the ability to ask the question at all. The neutral act is to hold the pose the structure was given and let QM/MM decide the coordination - which is the user's own standing position ("bulk water will come and go, QM/MM should give us the correct coordination behaviour").
+
+**"Costs nothing either way" was circular.** It appealed to O1x being 3.13 A - to the pose - while the pose was the unexamined thing (D192: the carbonyl `O2x` was 5.43 A out and the nearest atom was the wrong oxygen). Two independent errors pointed the same way and each was used to excuse the other.
+
+## The thing that makes this unambiguous
+
+The product arm had the ligand taken OFF the exclusion list. Identical code, identical 3.0 A cutoff:
+
+| | reactant `wt100c` (ligand excluded) | product `prod100c` (ligand not excluded) |
+| --- | --- | --- |
+| ligand atoms restrained | **none** | `D:1:O5x` 2.92, `D:1:O4x` 2.94 |
+| where the ligand ended up | **gone: mean 19.95 A, max 50.69 A** | **held: 3.11 / 3.15 A mean, 100% inside 3.5 A** |
+
+Where mcube was allowed to do what it was built to do, it worked.
+
+## The correction that makes it worse, not better
+
+**Removing the exclusion alone would not have saved the reactant run.** With the pose as built, the 3.0 A sweep still finds nothing of the ligand: O1x misses by 0.13 A and `O2x`, the atom that should have been caught, is 5.43 A away. So the sequence was: mcube built to restrain it, the exclusion switched that off, and the pose left nothing to grab even with it on. **Both have to change**, and the pose has to change first, because a restraint can only hold the geometry it is given (D192).
+
+## The rule, so this is not re-derived
+
+**`constraint_exclude_residues` is for atoms that are near the metal by accident, not for molecules whose relationship to the metal is the question.** D8's arginine - restrained to the zinc as though it were a ligand - is what the key exists for. A substrate carbonyl is the opposite case: being affected by the metal is the entire point, and "we are not sure it coordinates" is an argument for holding it where the structure puts it and asking QM/MM, never for letting it go.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
