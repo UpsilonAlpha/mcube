@@ -212,3 +212,35 @@ already in the log.
 | `CSR_nac/md_naclong_results/` | the 500 ps NAC MD whose last frame fed `nacqm`, `nacarg` and `ohH` | 30421166 (D101/D102) |
 | `CSR_wt/md_wt100b_results/` | 100 ns with the substrate tethered, first and last frames kept | 31016877 (D138) |
 
+## Trajectories deleted on 2026-11-03, and what is left in their place
+
+Scratch was at 275/300 GB with `mich_eq5` queued and about 6 GB of trajectory
+still to write, so ten `.dcd` files were deleted. Every one of them had its
+`*_lastframe.pdb` (and `*_lastframe_imaged.pdb`) on disk first, which is what
+was checked before anything was removed: the frames the decision log quotes are
+all still here, only the frames between them are gone. 6 GB recovered,
+269/300 GB after.
+
+| deleted | why it was redundant |
+| --- | --- |
+| `CSR_wt/md_wt100c_results/NVTtrajectory.dcd` | the same trajectory as `NVTtrajectory_imaged.dcd`, which is kept and is what `postprocess` reads |
+| `CSR_wt/md_wt100c_results/relaxbox_NPT{,_imaged}.dcd` | box equilibration; nothing is measured on it and its last frame is kept |
+| `CSR_prod/md_prod100c_results/relaxbox_NPT{,_imaged}.dcd` | as above |
+| `CSR_crystal/md_restrained/NVTtrajectory_imaged.dcd` | superseded by `CSR_crystal_v2` |
+| `CSR_unrestrained/md_results/NVTtrajectory_imaged.dcd` | unrestrained, so invalid for coordination by the project's own rule |
+| `CSR_unrestrained2/md_results/NVTtrajectory_imaged.dcd` | as above |
+| `CSR_ligand/md_results/NVTtrajectory_imaged.dcd` | superseded build, Sep 24 |
+| `CSR_hydrolysed/md_results/NVTtrajectory_imaged.dcd` | superseded build, Sep 24 |
+
+Three were kept deliberately:
+
+- `CSR_wt/md_wt100c_results/NVTtrajectory_imaged.dcd` - the 100 ns gate run.
+- `CSR_prod/md_prod100c_results/NVTtrajectory.dcd` - the product arm's NaN at
+  22.68 ns is still unexplained, and this run has **no** last frame precisely
+  because it died, so the trajectory is the only record of it.
+- `CSR_crystal_v2/md_results/NVTtrajectory_imaged.dcd` - the parent of
+  `CSR_mich`, cheap at 0.29 GB.
+
+So the ten D195 verdicts can be re-read but not re-measured frame by frame. If
+a revision needs the distributions rather than the endpoints, those runs have
+to be repeated, and that is a deliberate trade for the headroom.
