@@ -4703,7 +4703,7 @@ The two regions are YAML anchors under `site.qm_regions` rather than nine copies
 
 Whether the all-MM decomposition is the *right* test, as against computational mutagenesis. The user chose deletion-on-all-four, which is cheap and consistent; the mutants (Arg90->Ala/His, Lys226->Ala/His, and the 6DR8-like triple as a di-zinc control) remain the structural test and a second campaign. And the deletions still have to be run **at both ends of the reaction coordinate**: an absolute QM-MM interaction at one geometry is not a catalytic contribution, which is the error Arg229's +44.34 would be if quoted as one.
 
-**D191 (dissociation claim PROVISIONAL, see the amendment at the end) - The gate FAILS on both arms, and the reason is not the coordination number: the SUBSTRATE APPEARS TO DISSOCIATE. Over the reactant's 100 ns, O01-C4x has mean 19.95 A and max 50.69 A, inside 3.5 A in 0.2% of 5000 frames - meropenem leaves the active site in roughly the first 0.2 ns and diffuses across the periodic box. `wt100c` is therefore not a Michaelis complex and cannot supply a reactant structure. The product's hydrolysed ligand goes the same way (O6x 6.44-8.10 A from the zinc). Separately, a 50 kcal/mol/A^2 restraint cannot hold a carboxylate against a bare Zn(2+): Asp92 OD2 restrained at 2.80 A has mean 2.37 A (product) and 2.44 A (reactant), and a BULK water takes the free site in 89.3% / 97.0% of frames. `prodqm` and `wtqm` were NOT submitted.** (2026-11-03, jobs 31423830 FAILED / 31483853 COMPLETED, analysed by 31528586 / 31528410)
+**D191 (the provisional dissociation claim is CONFIRMED by D192; the periodic-image doubt is closed) - The gate FAILS on both arms, and the reason is not the coordination number: the SUBSTRATE APPEARS TO DISSOCIATE. Over the reactant's 100 ns, O01-C4x has mean 19.95 A and max 50.69 A, inside 3.5 A in 0.2% of 5000 frames - meropenem leaves the active site in roughly the first 0.2 ns and diffuses across the periodic box. `wt100c` is therefore not a Michaelis complex and cannot supply a reactant structure. The product's hydrolysed ligand goes the same way (O6x 6.44-8.10 A from the zinc). Separately, a 50 kcal/mol/A^2 restraint cannot hold a carboxylate against a bare Zn(2+): Asp92 OD2 restrained at 2.80 A has mean 2.37 A (product) and 2.44 A (reactant), and a BULK water takes the free site in 89.3% / 97.0% of frames. `prodqm` and `wtqm` were NOT submitted.** (2026-11-03, jobs 31423830 FAILED / 31483853 COMPLETED, analysed by 31528586 / 31528410)
 
 ## What was measured
 
@@ -4787,6 +4787,73 @@ with it criterion 6 and the blocked status of plan items 1+2 and 3. What is
 ## The decision this leaves
 
 The substrate needs a restraint, and its distance cannot be read off a CSR-1 structure because none with a ligand exists. **7UHI/7UHJ (L1 + moxalactam) is the only measured B3 Michaelis complex** (D96), so it is the only defensible source for a Zn-substrate target distance - which makes this a decision about what the reactant model *is*, not a parameter to pick quietly. The alternative is to stop asking classical MD for the site at all: minimise, equilibrate the protein and solvent briefly with the whole site held stiff, and let QM/MM MD do the equilibration it is the arbiter of anyway.
+
+**D192 - The substrate was NEVER coordinated in the starting pose, so there was never a Michaelis complex to lose. Nearest substrate atom to the zinc: `mer O1x` at 3.13 A - the 1-hydroxyethyl SIDE-CHAIN hydroxyl, not the beta-lactam carbonyl. `O2x`, the carbonyl oxygen that must sit on Zn1 in a B3 Michaelis complex, was 5.43 A away; the C3 carboxylate 8.05/8.44 A. The only thing holding the ligand was a 2.25 A hydrogen bond from its own side-chain hydroxyl to the hydroxide nucleophile. AND the periodic-image doubt of D191's amendment is resolved AGAINST me: CRYST1 is 79.028 A cubic at 90/90/90, so the minimum image WAS applied and the dissociation is real.** (2026-11-03, measured from `CSR_wt/preprocess_results/finalsystem.pdb`)
+
+## The starting geometry, measured rather than recalled
+
+| pair | A |
+| --- | --- |
+| Zn-O01, the hydroxide nucleophile | **2.14** |
+| **Zn-O1x**, the 1-hydroxyethyl hydroxyl | **3.13** (nearest substrate atom) |
+| Zn-C4x, the beta-lactam carbonyl carbon | 5.28 |
+| **Zn-O2x, the beta-lactam carbonyl oxygen** | **5.43** |
+| Zn-N1x, the leaving nitrogen | 6.03 |
+| Zn-O4x / Zn-O3x, the C3 carboxylate | 8.05 / 8.44 |
+| O01-C4x, the attack distance | 3.47 |
+| **O01-O1x** | **2.25** |
+
+`O1x-H5x` is 0.99 A, so O1x is a protonated hydroxyl, which fixes its identity:
+meropenem's C6 (R)-1-hydroxyethyl substituent. Nothing of the substrate was
+inside 3.0 A, let alone the 2.5 A bonding radius. D186's restraint logic
+excluded `mer O1x` at 3.13 A correctly and by its own rule - the mistake was
+never in the restraint list, it was upstream of it.
+
+## Why this reframes D191 completely
+
+A B3 Michaelis complex has the beta-lactam carbonyl oxygen **on Zn1**, at
+roughly 2.0-2.3 A: that coordination is the mechanism, because it is what
+polarises the carbonyl for attack. In 7UHI/7UHJ (L1 + moxalactam, D96), the
+only measured B3 Michaelis complex there is, that is what the density shows.
+Our pose instead put the **wrong oxygen** nearest the metal, 1 A too far out to
+be a contact, with the reactive carbonyl 5.43 A away pointing elsewhere.
+
+So the 100 ns did not break a complex. **There was no complex.** The ligand sat
+in the pocket held by one hydrogen bond (O01-O1x, 2.25 A) between its own
+side-chain hydroxyl and the nucleophile, and when that broke it diffused off,
+which is the behaviour of a weakly docked ligand and not a finding about
+CSR-1. An attack distance of 3.47 A at t=0 is loose for a near-attack
+conformation on top of that.
+
+## The periodic-image doubt is closed
+
+D191's amendment raised it and was right to; it resolves against me.
+`md_wt100c_results/NVTtrajectory_firstframe.pdb` carries
+`CRYST1 79.028 79.028 79.028 90.00 90.00 90.00`, so `_coords_and_cell` returns
+a cell, `separation` applies the minimum image, and the ceiling for a cubic box
+is L*sqrt(3)/2 = **68.4 A**. The observed max of 50.69 A is a legitimate
+minimum-image distance well inside it. **The dissociation numbers are real and
+the claim is no longer provisional.** The per-frame time series is no longer
+needed to settle it.
+
+## What this does and does not change
+
+Still true, and now the *secondary* problems rather than the main one: 50
+kcal/mol/A^2 cannot hold Asp92 OD2 at 2.80 A (mean 2.44 / 2.37), and a bulk
+water holds the free site for 97.0% / 89.3% of the two runs. Both still need
+fixing; neither is why the substrate left.
+
+Now the primary problem: **the reactant structure itself.** It cannot be
+repaired by restraining the pose it has, because restraining a wrong pose
+harder only freezes the wrong pose. The carbonyl has to be placed on the zinc
+first, from 7UHI/7UHJ, and only then restrained. That makes 7UHI the **source**
+for the Michaelis geometry, not merely the check D178 scoped it as - which is
+exactly the decision D191 said this leaves, now with the reason stated
+properly.
+
+Unaffected, because neither depends on the substrate: **Lys226 NZ-O01 at 2.72 A
+mean in 100% of 5000 frames** stands as an observation about the nucleophile's
+anchoring, and the His88/His164 HID assignment stands.
 
 ## Resources (see `running-on-bunya.md`)
 

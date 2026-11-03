@@ -210,7 +210,7 @@ question, and holding a mean within ~0.05 Å of 2.80 needs of order 500.**
 to submit on a pass: 50 ps of QM/MM MD from a frame with no substrate in the
 site is an expensive converged meaningless number (the D152 failure mode).
 
-### Is the dissociation real, or a periodic-image artefact? NOT YET SETTLED
+### Is the dissociation real, or a periodic-image artefact? SETTLED: REAL (D192)
 
 The claim above rests entirely on `wtpostc`'s monitored-contacts table:
 `O01-mer C4x` 0.2% inside 3.5 A, min 3.14 / mean 19.95 / max 50.69 A, with
@@ -246,11 +246,23 @@ Dissociation gives a smooth random walk away from 3.14 A; a periodic-image
 artefact gives instantaneous jumps between ~3 A and ~50 A with no density in
 between. Check the `CRYST1` angles of the topology PDB at the same time.
 
-**Until that is done, treat "the substrate dissociates" as PROVISIONAL**, and
-with it criterion 6 and the blocked status of plan items 1+2 and 3. What is
-*not* provisional: the NaN at 22.68 ns, Asp92 OD2's mean at 2.37/2.44 against a
-2.80 A restraint, the resident bulk water at 89.3%/97.0%, and Lys226 NZ-O01 at
-2.72 A in 100% of frames - none of those depend on a long-range distance.
+**Checked, and it resolves against the doubt (D192).**
+`md_wt100c_results/NVTtrajectory_firstframe.pdb` carries
+`CRYST1 79.028 79.028 79.028 90.00 90.00 90.00` — orthorhombic, so
+`_coords_and_cell` returns a cell and `separation` applies the minimum image.
+The ceiling for a cubic box is L·√3/2 = **68.4 Å**, and the observed maximum of
+50.69 Å sits well inside it. **The dissociation is real and no longer
+provisional**, and the per-frame series is not needed to establish it.
+
+**But D192 also found the cause, and it is upstream of the MD.** The substrate
+was never coordinated in the starting pose: nearest atom `mer O1x` at 3.13 Å,
+which is the 1-hydroxyethyl **side-chain** hydroxyl, while `O2x` — the
+β-lactam carbonyl oxygen that must sit on Zn1 in a B3 Michaelis complex — was
+**5.43 Å** away and the C3 carboxylate 8.05/8.44 Å. The ligand was held by one
+2.25 Å hydrogen bond, `O01···O1x`, between its own hydroxyl and the
+nucleophile. So the 100 ns did not break a Michaelis complex; **there was never
+one to break**, and restraining this pose harder would only freeze the wrong
+pose.
 
 ## 5. Open questions, with what would settle each
 
