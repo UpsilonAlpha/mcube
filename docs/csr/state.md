@@ -567,7 +567,7 @@ built; offered.
 | Question | What would settle it | Blocked by |
 | --- | --- | --- |
 | Is the nucleophile hydroxide or water, and how does it form with no Zn2? | equilibrate each state, keep the one that holds the crystal's sphere (D113/D114), plus DFT at a larger basis on unconstrained geometries | items 1–3 |
-| Can GFN2-xTB be trusted for coordination number here? | the cluster benchmark — Imhof's own predicts ~7.5 kcal/mol error on 4→5 coordination, which is our contested observation | nothing |
+| Can GFN2-xTB be trusted for coordination number here? | **partly answered (D198)**: on the O1x contact, dd = GFN2 - DFT = **-5.92 kcal/mol**, i.e. GFN2 *under*-binds the hydroxyethyl - the opposite sign to the worry. Same magnitude as Imhof's 7.55 for AM1/d, so still a real error, and still one contact on one geometry pair rather than a statement about coordination number in general. Single points on MM geometries, not binding energies | the cluster benchmark — Imhof's own predicts ~7.5 kcal/mol error on 4→5 coordination, which is our contested observation | nothing |
 | Does the re-formed carbonyl land where L1 puts it (2.53–2.63 Å)? | `recombine`, then `refstruct.py transfer` 7UHI as a check | items 1–2 |
 | What protonates the leaving nitrogen? | step 3 as its own scan/NEB, proton source as a hypothesis set | item 6 |
 | Does meropenem's 1-hydroxyethyl OH really coordinate the zinc, or is the 2.06 A an MM collapse? | QM/MM from this frame and let GFN2 choose, OR restrain O1x out and re-run `eq5` to see whether OH-Zn-O2x opens past 107 degrees. The two answers differ in what the paper's Michaelis complex IS, so this is not a tuning question (D197) | nothing |

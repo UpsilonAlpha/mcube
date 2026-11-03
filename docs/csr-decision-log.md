@@ -5634,6 +5634,84 @@ to be a donor until D197. No `D:1:HOH`, which this build does not have. Charge
 resubmits the same section - one line, and a walltime-limited batch never
 restarts from zero.
 
+**D198, the benchmark result. GFN2 does NOT over-coordinate here - it
+under-binds the hydroxyethyl by 5.92 kcal/mol relative to DFT, which is the
+opposite sign to the worry this has been blocked on since D9.**
+
+    geometry pair: frames 414 and 4374 of md_eq5, 51 atoms, charge 0
+    Zn-O1x 1.92 A (on) vs 3.74 A (off); Zn-O2x 2.58 A in BOTH
+
+    GFN2-xTB            on -80.274541064236   off -80.297915594550   Eh
+    wb97x-v/def2-svp    on -3014.167570288007 off -3014.181518200444 Eh
+
+    E_off - E_on   GFN2  -14.67 kcal/mol
+                   DFT    -8.75 kcal/mol
+    dd = GFN2 - DFT      **-5.92 kcal/mol**
+
+**Both methods put the O1x-off geometry lower**, and GFN2 exaggerates that
+preference by 5.92 kcal/mol. So:
+
+1. **The 97.9% O1x occupancy cannot be blamed on xTB.** It was an MM result in
+   the first place, and GFN2 is *less* inclined to hold that contact than DFT
+   is. The standing question - "does xTB over-coordinate the zinc?" - is
+   answered **no, on this contact**: it under-coordinates it.
+2. **DFT also says the contact is unfavourable**, by 8.75 kcal/mol on these
+   geometries. That is consistent with the O1x contact being an MM artefact of a
+   non-bonded Zn(2+) with no Pauli repulsion, which is what the chemistry
+   suggested (a neutral alcohol closer than an anionic hydroxide).
+3. The magnitude is comparable to Imhof's **7.55 kcal/mol** for AM1/d on a
+   4 -> 5 coordination change, so the error is the same size as the one that
+   paper found disqualifying; what differs is its direction.
+
+**What this does NOT license.** These are single points on MM-sampled
+geometries, so -8.75 is **not** a binding energy: the two frames are 3,960
+apart and differ thermally across all 51 atoms. The `dd` cancels geometry to
+first order because both methods see the same pair, but not exactly - each
+method evaluates the same thermal distortions slightly differently. And it is
+**one contact on one geometry pair**, not a general statement about coordination
+number. The optimisations that would turn this into a binding energy are a
+separate, larger job.
+
+## A near-miss worth recording: the QM/MM ran on a system missing 4,556 waters
+
+Job 31738823 started cleanly, placed its link atoms, built a correct 90-atom QM
+region - and built the MM system with **34,311 atoms where the MD's has
+47,979**. `frame_o1x_off.pdb` had been written by MDAnalysis's PDB writer, which
+renumbers the waters; `resSeq` is four characters and this box has ~14,500 of
+them, so thousands shared a `(chain, resSeq)` and OpenMM's reader **silently
+dropped the duplicates**.
+
+**Nothing in the pipeline would have caught this.** No stage checks that the
+system it builds matches the one that was equilibrated, the energies are all
+relative, the QM region and the link atoms were right, and the geometry looked
+normal. The only symptom was one line in the log that had to be compared by hand
+against the MD's. It was caught because the duplicate-atom warnings in the
+`.err` prompted a check, not because anything failed.
+
+Fixed by writing extracted frames as **coordinate substitution into the topology
+PDB**, which keeps ASH's own numbering byte-for-byte; the DCD's atom order is
+the topology's by construction, so the swap is exact. The writer refuses if the
+template and the frame disagree on count. Both frames now come out at 47,979,
+and **31738904** builds 47,979 atoms / 14,888 residues / 33,421 bonds, matching
+`md_eq5`.
+
+**The cluster benchmark is unaffected** - the clusters keep only the metal, the
+hydroxide, two histidines, Asp92 and the ligand fragment, none of which were
+renumbered, and the re-extracted frames give the identical frame numbers and
+distances (414/1.92, 4374/3.74).
+
+**Two other setup faults, both cheap and both from the same cause - a run
+directory built for two stages being asked to run a third.** `qmmm` layers
+`qmmm.inputs` under the section's, and `build-mich.py` writes only
+`preprocess:` and `md:`, so 31738709 died in 5 s on `No qmmm.inputs section`.
+`docs/csr/add-qmmm-base.py` now writes that base, taking the force fields from
+the run's **own** `md.inputs` rather than a template, because a QM/MM run whose
+MM differs from its MD's is the same class of silent error as the missing
+waters. Its first run then failed on `_locked` being handed a `str` instead of a
+`Path` - and the chained `sbatch` fired anyway, submitting 31738807 which was
+bound to die. That is the **second** time this session a failed script did not
+stop a chained command; submits are now gated with `&&`.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
