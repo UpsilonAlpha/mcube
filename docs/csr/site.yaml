@@ -342,6 +342,28 @@ qm_regions:
     C: {2: OH, 1: mer}
     A: {88: HIS, 164: HIS, 92: ASP}
 
+  # The Michaelis rebuild's own region. Two differences from `reactant`, both
+  # forced by what the system is rather than chosen:
+  #
+  # **No `D: {1: HOH}`.** That water was removed to vacate the carbonyl's
+  # position (D196), so naming it here would refuse the section - which is the
+  # check working, not an obstacle.
+  #
+  # **Asn225 is IN.** D197 found Asn225 OD1 coordinating the zinc in 17.9% of
+  # `md_eq5`'s frames, and at **2.19 A** in the frame this run starts from -
+  # inside the 2.5 A bond radius by any reading. A donor that close left in MM
+  # would have a coordinate bond represented by point charges, which is the one
+  # thing electrostatic embedding cannot do. It was not in any earlier arm's
+  # region because it was not known to be a donor until D197.
+  #
+  # Charge is unchanged at **0**: Zn(2+) -1 (Asp92) -1 (hydroxide) + 0 (the
+  # reactant's zwitterionic ligand) + 0 (neutral Asn225, two neutral His), with
+  # Arg90 and Lys226 in MM per D190. Stated on the section regardless (D152).
+  michaelis: &qmreg_mich
+    B: {1: ZN}
+    C: {2: OH, 1: mer}
+    A: {88: HIS, 164: HIS, 92: ASP, 225: ASN}
+
 sections:
 
   # D42. Each of these is an optimisation only; score the result with a
@@ -1646,6 +1668,49 @@ sections:
       skip_equilibrate: false   # qmmm.inputs sets true; without this there is no MD
       skip_optimize: true       # MD only, as prodqm runs
       time: 50
+      rigid_water: false
+
+  # ---- michqm: the production QM/MM, 300 ps in 50 ps batches (user, D198) ----
+  #
+  # What it is for: a GFN2-xTB QM/MM trajectory long enough to seed the charge
+  # deletion and the NEB. 300 ps total, run as six 50 ps batches by raising
+  # `time` and resubmitting - `time` is the **total** wanted and `resume: true`
+  # continues from `OpenMM_MD_state.xml`, so a batch is a one-line change and a
+  # walltime-limited run never restarts from zero (D182/D183).
+  #
+  # **300 ps, not 300 ns.** The user asked for ns and the arithmetic rules it
+  # out: at the ~1 s per fs step these runs cost, 300 ns is of order 9 years of
+  # walltime. 300 ps is 6x the longest QM/MM run in the project and is what was
+  # agreed.
+  #
+  # **It starts from `cluster/frame_o1x_off.pdb`, frame 4374 of `md_eq5`, and
+  # that is a deliberate selection that has to be declared.** It is the frame of
+  # 10,000 with the longest Zn-O1x (3.74 A), found while building the cluster
+  # benchmark, and it is the **only structure in the project where the carbonyl
+  # is the substrate oxygen nearest the zinc** - `site.py check` passes five of
+  # seven criteria on it, against four on the last frame, failing only the
+  # attack angle (68 deg) and the Asp92 OD1-O01 H-bond (5.67 A).
+  #
+  # Choosing it over the last frame matters because QM/MM here is hysteretic:
+  # no run in this project has crossed the coordination boundary in either
+  # direction (D197 corrections), so whichever donor is on the metal at the
+  # start is the one that will be on it at the end. Starting from the last frame
+  # would bake in O1x at 2.06 A and answer nothing. Starting from an extremum of
+  # a distribution is still a selection, and anything measured here describes
+  # the reactant state we chose, not an equilibrium average.
+  #
+  # Treatment matches `prodqm` and `wtqm` so the arms stay comparable: RQK set
+  # in MM, charge 0, MD only, flexible water.
+  michqm:
+    stage: qmmm
+    inputs:
+      pdb_file: cluster/frame_o1x_off.pdb
+      qm_residues: *qmreg_mich
+      charge: 0            # Arg90 and Lys226 are MM (D190); stated, not inherited (D152)
+      skip_equilibrate: false   # qmmm.inputs sets true; without this there is no MD
+      skip_optimize: true       # MD only, as prodqm runs
+      time: 50                  # TOTAL ps wanted; raise to 100/150/200/250/300 per batch
+      resume: true              # continue rather than overwrite on the next batch
       rigid_water: false
 
   # ---- The two radii, and why the analysis sets its own (D186) ----
