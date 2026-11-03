@@ -5197,6 +5197,48 @@ so it is left to happen on its own; the 4.76 is a consequence of the frozen
 pose rather than evidence against it. If `eq5` comes back with it long, it
 becomes a fourth restraint.
 
+**D196, submitted.** `CSR_mich` built by `docs/csr/build-mich.py` and both
+stages launched on 2026-11-03.
+
+**31721628 `mich_pre` - preprocess, COMPLETED.** `remove_residues` did exactly
+what it was added for:
+
+    [STEP] Removing residues...
+    [INFO]   removed D:1:HOH (3 atoms)
+
+and the detected sphere at the 3.0 A radius is
+
+    mer C:1 (O2x)  1.94    His164 NE2  2.09    OH C:2 (O01)  2.14
+    His88  NE2     2.22    Asp92  OD2  2.79
+
+**This is the first build in the project whose resting sphere IS the Michaelis
+sphere**: 2 His + hydroxide + the beta-lactam carbonyl, with Asp92 OD2 as the
+second-shell contact the crystal has at 2.80 (detected at 2.79, and the
+`not a bond` warning fires on it exactly as D186 intends). Four donors inside
+2.5 A, five inside 3.0.
+
+**No bulk water took the vacated position.** That was the risk in deleting a
+water, and the reason it is done before solvation; here there was no vacancy
+to fill, because the carbonyl was already in it at 1.94. 47,979 atoms,
+31,231 of them hydrogens.
+
+`sections.py` then wrote `md_eq5` with **6 selectors checked** against
+`preprocess_results/finalsystem.pdb` - the point of giving the section a
+`pdb_file`, since with none named the selector check passes silently.
+
+**31721717 `mich_eq5`** - 10 ns NVT at 2 fs, `-p gpu_cuda --qos=gpu
+--gres=gpu:1`, 16 cores, 32 GB. At the 750-760 ns/day measured for this
+49k-atom system on an H100 at 4 fs, 10 ns at 2 fs is of order 40 minutes of
+compute plus the queue.
+
+What to read when it lands, in order: whether the three restraints held (the
+carbonyl near 2.60 rather than collapsing to 1.94 or leaving), the
+coordination number at the 2.5 A radius over the trajectory, and then
+`site.py check` on the last frame under `carbonyl_on_metal` at
+`--at=reactant`. The criteria it has to pass are the ones every frame in D195
+failed: a coordinated carbonyl AND a near-attack nucleophile AND four-or-five
+coordination, in the same structure.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
