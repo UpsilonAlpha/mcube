@@ -4855,7 +4855,7 @@ Unaffected, because neither depends on the substrate: **Lys226 NZ-O01 at 2.72 A
 mean in 100% of 5000 frames** stands as an observation about the nucleophile's
 anchoring, and the His88/His164 HID assignment stands.
 
-**D193 - The reactant's ligand was excluded from the coordination sweep by `constraint_exclude_residues: {C: [1]}`, which I kept deliberately and documented as costing nothing. It cost the run. mcube was already built to restrain anything within 3.0 A of the metal; the exclusion switched that off for the one molecule the experiment is about. The control is the product arm, where the exclusion was REMOVED: same code, same cutoff, and the ligand's O4x/O5x were detected, restrained at 2.92/2.94 A, and HELD at 3.11/3.15 A mean for the whole run.** (2026-11-03, user)
+**D193 (CAUSAL CLAIM WITHDRAWN the same day - see the correction below) - The reactant's ligand was named in `constraint_exclude_residues: {C: [1]}`, which I kept deliberately and documented as costing nothing. The documented reasoning was wrong, but the line was INERT and cost nothing: `constraint_exclude` is tested inside the loop over `shell`, which is already filtered to within the cutoff, so the key can only act on residues inside it - and `mer`'s nearest atom was 3.13 A, outside 3.0. Neither run's log contains a single `No restraint for ... (constraint_exclude_residues)` line. mcube restrained everything within 3.0 A on both arms, exactly as built. The sole cause is the pose (D192).** (2026-11-03, user)
 
 ## What the exclusion was for, and why each half of the reason fails
 
@@ -4879,6 +4879,48 @@ Where mcube was allowed to do what it was built to do, it worked.
 ## The correction that makes it worse, not better
 
 **Removing the exclusion alone would not have saved the reactant run.** With the pose as built, the 3.0 A sweep still finds nothing of the ligand: O1x misses by 0.13 A and `O2x`, the atom that should have been caught, is 5.43 A away. So the sequence was: mcube built to restrain it, the exclusion switched that off, and the pose left nothing to grab even with it on. **Both have to change**, and the pose has to change first, because a restraint can only hold the geometry it is given (D192).
+
+## CORRECTION, same day: the exclusion was inert and did not cause this
+
+Written after the user asked why a warning for excluding atoms inside the
+cutoff would be needed, "since you'd only be excluding atoms inside the cutoff
+anyway". That is right, and following it refutes this entry's own headline.
+
+`find_coordinators` tests `resid in constraint_exclude.get(chain)` **inside the
+loop over `shell`**, and `shell` comes from `coordination_shell(..., per_residue=False)`,
+already filtered to `r <= cutoff`. So the key is only ever consulted for
+residues inside the cutoff. Checked against both logs:
+
+| | reactant `wt100c` | product `prod100c` |
+| --- | --- | --- |
+| `No restraint for ... (constraint_exclude_residues)` lines | **none** | **none** |
+| restraints applied | 6 (5 detected + 1 configured), no ligand atom | 8 (7 + 1), including O5x 2.92 and O4x 2.94 |
+
+**The reactant's exclusion never fired.** `mer`'s nearest atom was 3.13 A, so
+`C:1` never entered `shell` and the exclusion was never reached. Its restraint
+list lacks the ligand because nothing was **found**, not because anything was
+**excluded**. The product's list contains the ligand because 2.92 and 2.94 A
+are inside the cutoff. Same code, same key, and the only thing that differed
+was the geometry.
+
+So the causal claim in this entry's first version - "it cost the run" - is
+**withdrawn**. The reasoning recorded in `site.yaml` was still wrong, and the
+rule at the end of this entry still stands, but the line was dead config and
+cannot have caused anything. **D192 remains the sole cause**: the wrong oxygen
+nearest the metal, 0.13 A outside the cutoff, the carbonyl 5.43 A away.
+
+The proposed warning - "you excluded something inside the cutoff" - is
+**withdrawn too, and was worse than redundant**: it would fire on every
+exclusion that does anything at all, D8's arginine included, which is the
+legitimate use the key exists for. A warning that fires on correct usage is
+noise that teaches people to skip the log.
+
+**The guard that would have helped is the inverse: warn when an excluded
+residue has NO atom inside the cutoff** - dead config that reads as
+load-bearing. That is the trap this entry fell into: a `site.yaml` comment
+asserting the exclusion "stays" and "costs nothing either way" about a line
+doing nothing, which is what stopped the obvious question of why the ligand was
+outside the cutoff at all. Not built; offered.
 
 ## The rule, so this is not re-derived
 

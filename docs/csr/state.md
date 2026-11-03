@@ -266,16 +266,17 @@ pose.
 
 ### `constraint_exclude_residues` is not for the molecule under study (D193)
 
-The reactant's ligand was excluded from the 3.0 Å sweep by
-`constraint_exclude_residues: {C: [1]}`, kept deliberately and documented as
-costing nothing. **mcube was already built to restrain anything within 3.0 Å of
-the metal; the exclusion switched that off for the one molecule the experiment
-is about.**
-
-The control is the product arm, which had the ligand taken off that list. Same
-code, same cutoff: its `O4x`/`O5x` were detected, restrained at 2.92/2.94 Å,
-and **held at 3.11/3.15 Å mean, 100% inside 3.5 Å** for the whole run, while
-the reactant's ligand reached a mean of 19.95 Å.
+The reactant's ligand was named in `constraint_exclude_residues: {C: [1]}`,
+kept deliberately and documented as costing nothing. **The reasoning was wrong
+but the line was inert**, and the first version of D193 wrongly blamed it.
+`constraint_exclude` is tested inside the loop over `shell`, which is already
+filtered to within the cutoff, so the key can only act on residues inside it —
+and `mer`'s nearest atom was 3.13 Å. **Neither run's log contains a single
+`No restraint for ... (constraint_exclude_residues)` line.** The reactant's
+restraint list lacks the ligand because nothing was *found*, not because
+anything was *excluded*; the product's contains `O4x`/`O5x` because 2.92/2.94 Å
+are inside the cutoff. mcube restrained everything within 3.0 Å on both arms,
+exactly as built. **D192 is the sole cause.**
 
 **The rule:** this key is for atoms near the metal *by accident* — D8's
 arginine, restrained as though it were a ligand, is why it exists. A substrate
@@ -283,9 +284,11 @@ carbonyl is the opposite case. "We are not sure it coordinates" is an argument
 for holding it where the structure puts it and letting QM/MM decide, never for
 letting it go; omitting a restraint is not neutrality.
 
-**Removing the exclusion alone would not have saved the run** — with the pose as
-built the sweep finds nothing of the ligand anyway (D192). Pose first, then the
-restraint.
+**And a warning for "you excluded something inside the cutoff" is worse than
+redundant**: it would fire on every exclusion that does anything, D8's arginine
+included. The useful guard is the inverse — warn when an excluded residue has
+*no* atom inside the cutoff, i.e. dead config that reads as load-bearing. Not
+built; offered.
 
 ## 5. Open questions, with what would settle each
 
