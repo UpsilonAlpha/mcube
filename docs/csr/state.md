@@ -322,6 +322,36 @@ inputs, and the error reads `` `md` has no results `` as though the MD were
 missing. The run wrote **12.7 GB** because every trajectory is kept twice, raw
 and imaged, taking scratch from 269 to 286/300 GB.
 
+## 2e. Frame 4374 is the best starting structure in the project (D198, measured)
+
+**Status: measured, open.** Found while building the cluster benchmark, not
+looked for: it is the frame of `md_eq5`'s 10,000 with the longest Zn-O1x
+(3.74 A), and `site.py check` passes **five of seven** criteria on it against
+four on the last frame.
+
+**It is the first structure in the project to pass `closest substrate O`** -
+carbonyl O2x at 2.58 A with O1x out at 3.74 - which is the criterion that
+encodes what `carbonyl_on_metal` actually claims. Also passing: carbonyl 2.58,
+nucleophile 2.07, coordination 5, attack distance 3.50. Still REJECTED on the
+attack angle (68 deg) and Asp92 OD1-O01 (5.67 A).
+
+**The attack angle tracks O1x across three independent frames** - 1.92 A/39
+deg, 2.06 A/56 deg, 3.74 A/68 deg - so D197's crowding mechanism is confirmed.
+**It is also not sufficient.** In frame 4374 the five donors are hydroxide 2.07,
+His164 2.13, **Asn225 OD1 2.19**, His88 2.23, carbonyl 2.58: Asn225 took the
+site O1x vacated, the sphere stayed five-coordinate, and the angle opened by
+only 12 deg. So what closes the angle is not O1x specifically but that this site
+keeps a **fifth donor** in MM whatever is done, and a five-coordinate zinc puts
+the nucleophile and the carbonyl too close together. Getting into the 95-120
+window needs a genuinely four-coordinate sphere, which no MM run has produced.
+
+**The production QM/MM starts here, and that is a selection, not a sample.**
+31738709, `qmmm_michqm`, 50 ps of 300. Because QM/MM is hysteretic in this
+project (see 2b), the starting donor set is what the run will report, so the
+frame was chosen rather than taken from the end of the MD - and an extremum of a
+distribution describes the reactant state we chose, not an equilibrium average.
+Say so wherever this run is quoted.
+
 ## 3. Contradictions caught late — the failure mode this file exists to stop
 
 | The contradiction | Days unnoticed | How it was caught |

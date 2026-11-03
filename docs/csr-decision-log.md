@@ -5520,6 +5520,120 @@ this file is the single source of truth and the log is history - only works if a
 claim is read where it is written, not recalled. Both corrections here came from
 the user asking twice, not from the check.
 
+**D198 - The cluster benchmark is built and running, and building it turned up
+a better starting structure than the one we had. Frame 4374 is the only
+structure in the project where the carbonyl is the substrate oxygen nearest the
+zinc.** (2026-11-03, user: "ok run that, and then run proper QM/MM 300ns with
+GFN2 to set up for the charge deletion and NEB steps")
+
+**300 ps, not 300 ns.** Flagged before anything was submitted and agreed by the
+user: at the ~1 s per fs step these runs cost, 300 ns is of order 9 years of
+walltime. The MM 100 ns runs are affordable only because MM is thousands of
+times cheaper per step. Six 50 ps batches, checking in after the first.
+
+## The benchmark (P1, open since D9)
+
+`docs/csr/build-cluster.py` plus four `sp` sections. The question is narrow:
+**does GFN2 hold O1x on the zinc when DFT would not?** The quantity is a
+difference of differences, `[E_off - E_on](GFN2) - [E_off - E_on](DFT)`, so
+strain and thermal noise enter both brackets and cancel while the method does
+not. Imhof's own benchmark found AM1/d out by 7.55 kcal/mol on a 4 to 5
+coordination change; the GFN2 number has never been measured.
+
+**The truncation came from CONECT, as D187 insisted.** `mer_crystal.pdb`'s 51
+records give the real topology, which cannot be read off the atom names: the
+beta-lactam ring is **C4x-C3x-C17x-N1x** with O2x on C4x, the pyrroline ring is
+N1x-C5x-C7x-C15x-C17x fused at N1x-C17x, the C3 carboxylate is C6x on C5x, and
+O1x is the hydroxyl of the 1-hydroxyethyl on C2x. So the fragment carrying both
+oxygens of interest is the intact beta-lactam ring plus the hydroxyethyl.
+
+**Two departures from D187's scope, both deliberate.** The C3 carboxylate is
+left out - it is 5.93 to 7.05 A from the zinc throughout `md_eq5`, and a bare
+carboxylate 6 A from a dication in gas phase makes a 1-10 kcal/mol effect ride
+on a far larger charge-separation term. That makes the cluster **neutral**
+rather than D187's -1. And both geometries are **real frames of one
+trajectory** - the shortest and longest Zn-O1x - not one frame displaced by
+hand, which would put strain into one bracket only and report it as chemistry.
+
+Both clusters came out at **51 atoms, C15 H25 N5 O5 Zn, charge 0, mult 1**, with
+the same five bonds capped (Asp92 CB-CA, His88 CB-CA, His164 CB-CA, N1x-C5x,
+C17x-C15x). The script refuses to finish if the two differ in atom count, since
+the comparison is only a method comparison if both methods see the same system.
+
+**The pair is better conditioned than expected: the carbonyl is at 2.58 A in
+BOTH frames**, to two decimals, because the 500 kcal/mol/A^2 restraint held it
+there all run. So Zn-O1x (1.92 vs 3.74) is very nearly the only large
+difference between the brackets.
+
+    GFN2-xTB   on  -80.274541064236 Eh     off  -80.297915594550 Eh
+               E_off - E_on = -14.67 kcal/mol
+
+Taken alone that says GFN2 prefers O1x **off** by 14.67 kcal/mol, but it must
+not be read alone: the two frames are 3,960 apart and differ thermally across
+all 51 atoms. Only the difference against DFT isolates the method.
+**31738632/31738633 (DFT) were still in SCF at 6.5 minutes; that number is
+pending and this entry is incomplete without it.**
+
+## What fell out of it: frame 4374
+
+`site.py check` on the two extracted frames, which cost nothing since both were
+already on disk:
+
+    criterion                 frame 4374 (off)   last frame      frame 414 (on)
+    closest substrate O       PASS O2x 2.58      FAIL O1x 2.06   FAIL O1x 1.92
+    Zn - carbonyl O2x         PASS 2.58          PASS 2.65       PASS 2.58
+    Zn - nucleophile O01      PASS 2.07          PASS 2.04       PASS 2.04
+    Zn coordination number    PASS 5             PASS 4          PASS 5
+    O01 - C4x (attack)        PASS 3.50          PASS 3.46       PASS 3.50
+    O01 - C4x - O2x angle     FAIL 68            FAIL 56         FAIL 39
+    Asp92 OD1 - O01           FAIL 5.67          FAIL 5.81       FAIL 5.25
+
+**Frame 4374 passes five of seven, and is the first structure in the project to
+pass `closest substrate O`** - the criterion that encodes what
+`carbonyl_on_metal` actually claims. It is still REJECTED, on the attack angle
+and the Asp92 H-bond.
+
+**The angle tracks O1x monotonically, which is the D197 mechanism confirmed on
+three independent points:**
+
+    Zn-O1x  1.92 A  ->  attack angle 39 deg
+    Zn-O1x  2.06 A  ->  attack angle 56 deg
+    Zn-O1x  3.74 A  ->  attack angle 68 deg
+
+So the crowding account is right. **But it is not sufficient**: 68 deg is still
+far from 95, and the reason is visible in the sphere of frame 4374 - the five
+donors are hydroxide 2.07, His164 2.13, **Asn225 OD1 2.19**, His88 2.23,
+carbonyl 2.58. **Asn225 took the site O1x vacated.** One uninvited donor
+replaced the other, the sphere stayed five-coordinate, and the angle opened by
+only 12 deg. Whatever closes this angle is not O1x specifically; it is that this
+site holds a fifth donor in MM whatever we do, and a five-coordinate zinc puts
+the nucleophile and the carbonyl too close together.
+
+## The production run
+
+**31738709 `mich_qm1`**, `qmmm_michqm`, 50 ps of the 300, 16 cores, 48 GB, 24 h.
+
+**It starts from frame 4374, and that is a declared selection.** QM/MM here is
+hysteretic - no run in this project has crossed the coordination boundary in
+either direction (D197 corrections) - so whichever donor is on the metal at the
+start is the one on it at the end. Starting from the last frame would bake in
+O1x at 2.06 A and settle nothing. Starting from the extremum of a distribution
+is still a selection, and anything measured from this run describes the reactant
+state we chose rather than an equilibrium average. That has to be said in any
+write-up.
+
+**`qmreg_mich` is a new QM region and Asn225 is in it.** Not a preference: at
+2.19 A it is inside the bond radius by any reading, and a coordinate bond left
+in MM is represented by point charges, which is the one thing electrostatic
+embedding cannot do. It was in no earlier arm's region because it was not known
+to be a donor until D197. No `D:1:HOH`, which this build does not have. Charge
+0, stated.
+
+**Batching.** `time` is the **total** wanted and `resume: true` continues from
+`OpenMM_MD_state.xml` (D182/D183), so each batch raises `time` by 50 and
+resubmits the same section - one line, and a walltime-limited batch never
+restarts from zero.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
