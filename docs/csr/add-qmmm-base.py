@@ -134,7 +134,9 @@ def main(argv):
         print("[WARNING] mcube not importable, so this was written WITHOUT the "
               "config lock. Safe only because no job is writing this config.")
     else:
-        with _locked(str(config)):
+        # `_locked` takes a Path and derives the lock file with `with_name`, so
+        # a str gets an AttributeError three frames down.
+        with _locked(config.resolve()):
             fresh = yaml.safe_load(config.read_text(encoding="utf-8")) or {}
             config.write_text(
                 yaml.safe_dump(edit(fresh), sort_keys=False,
