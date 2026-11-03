@@ -13,6 +13,27 @@ derived by matching job numbers against `docs/csr-decision-log.md`, so an
 empty cell means the log never cites that job - which for a setup failure is
 usually right and for a completed run is a gap worth closing.
 
+## Where the run directories are, since 2026-11-03
+
+All of them now live under `/scratch/user/uquadhik/CSR/`, not at the top of
+scratch: `CSR/CSR_wt`, `CSR/CSR_crystal_v2`, `CSR/CSR_nac` and so on. The one
+exception is **`CSR_mich`**, still at `/scratch/user/uquadhik/CSR_mich`, because
+its MD (31721717) was running when the move happened and Slurm had recorded the
+old `WorkDir`; it goes in once that job is done.
+
+Paths written in the entries below, and in the decision log, are the paths as
+they were when the work ran. They have not been rewritten - a record of what was
+done should say what was done - so prefix a `CSR_*/...` path with `CSR/` when
+following it, `CSR_mich` aside.
+
+What *was* rewritten is the 508 absolute `/scratch/user/uquadhik/CSR_*` paths
+inside the 13 moved `config.yaml` and `.slurm` files, which are read by the
+pipeline rather than by a person, so a stale one is a silent failure. Each of
+those files has a `.premove` copy beside it. `.out` logs were deliberately left
+alone, for the same reason the entries below were. `site.yaml`'s `aspout`
+already used `../CSR_nac/...` and so needed nothing: the runs moved together, so
+a sibling is still a sibling.
+
 A COMPLETED state means Slurm's accounting was happy, **not** that the job
 produced anything: job 31186038 is in this table as COMPLETED and computed
 nothing at all (D153). That is why `mcube.cli.confirm_produced` now exits

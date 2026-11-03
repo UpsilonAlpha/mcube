@@ -56,7 +56,12 @@ from pathlib import Path
 import yaml
 
 SCRATCH = Path("/scratch/user/uquadhik")
-SRC = SCRATCH / "CSR_crystal_v2"
+# The finished run directories were moved into `CSR/` on 2026-11-03 to clear the
+# top of scratch. `CSR_mich` is the one that stayed out, because its MD was
+# running at the time and Slurm had recorded the old WorkDir; move it in once
+# that job is done and then RUNS is the only line that has to change.
+RUNS = SCRATCH / "CSR"
+SRC = RUNS / "CSR_crystal_v2"
 DST = SCRATCH / "CSR_mich"
 STRUCTURE = "csr_crystal_restrained_end.pdb"
 LIGAND_XML = "openff_MER.xml"
@@ -91,7 +96,7 @@ def main() -> int:
     structure = SRC / "preprocess_results" / STRUCTURE
     ligand_xml = SRC / "preprocess_results" / LIGAND_XML
     hydroxide = SRC / "hydroxide.xml"
-    slurm = SCRATCH / "CSR_wt" / "run.slurm"
+    slurm = RUNS / "CSR_wt" / "run.slurm"
     for path in (structure, ligand_xml, hydroxide, slurm, SRC / "config.yaml"):
         if not path.is_file():
             print(f"missing: {path}")

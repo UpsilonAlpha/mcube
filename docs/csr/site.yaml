@@ -613,9 +613,9 @@ sections:
   # hydroxide carrying no hydrogen, an earlier meropenem variant with no O4x and
   # 41,371 atoms against this system's 49,424. So take the ligand placement only:
   #
-  #   python site.py graft /scratch/user/uquadhik/CSR_ligand/meropenem.pdbqt \
+  #   python site.py graft /scratch/user/uquadhik/CSR/CSR_ligand/meropenem.pdbqt \
   #          <docking-frame ligand.pdb> \
-  #          /scratch/user/uquadhik/CSR_ligand/CSR_nontruncated_1metal.pdb \
+  #          /scratch/user/uquadhik/CSR/CSR_ligand/CSR_nontruncated_1metal.pdb \
   #          md_naclong_results/NVTtrajectory_lastframe.pdb 2
   #
   # which aligns on the residues within 12 A of the metal and writes pose 2 into
@@ -929,6 +929,10 @@ sections:
   aspout:
     stage: scan
     inputs:
+      # `../` and not an absolute path, which is what let this survive the
+      # 2026-11-03 move: the run directories went into `CSR/` together, so a
+      # sibling is still a sibling. It resolves against the run directory
+      # this section is used from, which for `aspout` is the wt arm.
       pdb_file: ../CSR_nac/md_naclong_results/NVTtrajectory_lastframe_imaged.pdb
       atoms: [B:1:ZN, A:92:OD1]
       start: 1.90
