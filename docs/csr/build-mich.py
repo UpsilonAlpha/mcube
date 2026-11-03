@@ -10,11 +10,17 @@ against the real solvated system, and that file does not exist until
 `preprocess` has run. The order is therefore
 
     1. this script
-    2. sbatch the preprocess stage
+    2. sbatch -J mich_pre --cpus-per-task=2 --mem=8G run.slurm preprocess preprocess
     3. read the coordination report - Asp92 OD2 near 2.80, the carbonyl near
        2.60, and `removed_residues` naming D:1:HOH
-    4. sections.py site.yaml eq5      (checks the selectors)
-    5. sbatch the md stage
+    4. python sections.py site.yaml eq5      (checks the five selectors)
+    5. sbatch -J mich_eq5 -p gpu_cuda --qos=gpu --gres=gpu:1 \
+              --cpus-per-task=16 --mem=32G run.slurm md md_eq5
+
+`run.slurm` requires the section as its second argument even for
+preprocess, where it only names the output directory, and it writes its
+own output to `protdft/`, so that directory has to exist before the
+first sbatch. Both are done here.
 
 Why a script rather than typed commands: this directory's provenance is part
 of the result. The config it writes says which structure it came from, what
@@ -104,6 +110,10 @@ def main() -> int:
     md = dict(src_config["md"]["inputs"])
 
     DST.mkdir(parents=True, exist_ok=True)
+    # run.slurm's --output is protdft/%x-%j.out, and sbatch fails
+    # outright if that directory is missing.
+    (DST / "protdft").mkdir(exist_ok=True)
+    (DST / "preprocess_results").mkdir(exist_ok=True)
     for path in (structure, ligand_xml, hydroxide, slurm):
         shutil.copy2(path, DST / path.name)
         print(f"[COPY] {path.name}")
@@ -123,9 +133,9 @@ def main() -> int:
     out = DST / "config.yaml"
     out.write_text(yaml.safe_dump(config, sort_keys=False))
     print(f"[WRITE] {out}")
-    print("\nNext, from this directory:")
-    print("  mkdir -p preprocess_results")
-    print("  sbatch -J mich_pre run.slurm preprocess")
+    print(f"\nNext, from {DST}:")
+    print("  sbatch -J mich_pre --cpus-per-task=2 --mem=8G "
+          "run.slurm preprocess preprocess")
     return 0
 
 
