@@ -269,3 +269,27 @@ Three were kept deliberately:
 So the ten D195 verdicts can be re-read but not re-measured frame by frame. If
 a revision needs the distributions rather than the endpoints, those runs have
 to be repeated, and that is a deliberate trade for the headroom.
+
+### The second prune, later the same evening
+
+`md_eq5` alone wrote **13 GB**, because `md` keeps every trajectory twice, raw
+and imaged. Once D197's analysis had been collected, three more files went:
+
+| deleted | size | why redundant |
+| --- | --- | --- |
+| `CSR/CSR_mich/md_eq5_results/NVTtrajectory.dcd` | 5.4 G | identical to `NVTtrajectory_imaged.dcd`, which is what `postprocess` actually read - `results.coordination_trajectory` names the imaged copy explicitly, so this was checked rather than assumed |
+| `CSR/CSR_mich/md_eq5_results/relaxbox_NPT.dcd` | 550 M | box equilibration; nothing is measured on it |
+| `CSR/CSR_mich/md_eq5_results/relaxbox_NPT_imaged.dcd` | 550 M | as above |
+
+`md_eq5_results` went from 13 G to **5.7 G** and scratch from 286 to
+**280/300 GB**. Kept: the imaged NVT trajectory, `NVTtrajectory_lastframe.pdb`
+and `..._lastframe_imaged.pdb` - the frame every D197 number was measured on -
+and `relaxbox_NPT_lastframe.pdb`. The three `warmup_MD_cycle*` pairs were left
+alone, about 180 MB between them.
+
+**The cost, stated because unlike the first prune this run backs a live open
+question.** The 97.9% occupancy, the coordination distribution and the sphere
+angles can all be recomputed from the imaged copy, so nothing in D197 is
+unreproducible. What is gone is the unwrapped coordinates: any property that
+imaging destroys - diffusion, or a distance measured across a periodic
+boundary - would mean re-running the 10 ns.
