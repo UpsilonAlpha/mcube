@@ -255,11 +255,17 @@ is inside the radius when it looks**, and a donor arriving from outside during
 the MD is the one case detection-time restraints cannot cover. Same failure as
 `prod100b` (D173), and `wtpostc` was already watching `Zn-mer O1x`.
 
-**Whether O1x on the metal is real is NOT settled, and MM cannot settle it.** A
-neutral alcohol at 2.06 A, closer than an anionic hydroxide at 2.035, on a
-non-bonded Zn(2+) with no Pauli repulsion, is the textbook MM collapse; a
-carbapenem's 1-hydroxyethyl genuinely chelating the metal is also not absurd.
-QM/MM decides it, per the standing rule.
+**Whether O1x on the metal is real is NOT settled, and MM cannot settle it.**
+Not for the reason given here before (corrected in D199): the MD **did** apply
+the Li/Merz IOD parameters, so 2.06 A is not a collapse past a missing
+repulsion - it is close to the 1.89 A minimum those fitted parameters define,
+i.e. **the fitted Zn-O distance applied to the wrong oxygen**. `ions.py` says
+why: a 12-6 term knows only distance and atom type, so it cannot tell an
+alcohol from a hydroxide and rewards every oxygen in reach; only the
+coordination restraints can, and O1x sat 0.13 A outside the 3.0 A detection
+radius so none was placed on it. A carbapenem's 1-hydroxyethyl genuinely
+chelating the metal is also not absurd. QM/MM decides it, per the standing
+rule.
 
 **Asp92 OD1-O01 needs its own restraint.** 5.81 A here against 4.76 in the
 QM/MM frame. Pinning OD1 3.81 A from the **zinc** fixes the distance and not the
@@ -606,6 +612,7 @@ built; offered.
 | Scratch | 269/300 GB and 655k/1M inodes on 2026-11-03, after ten redundant `.dcd` files were deleted (6 GB). Both have headroom now; the inode count had been the tighter one at 889k |
 | Local tests | `PYTHONPATH=src <mcube-test python> -m pytest -q tests`; MDAnalysis-gated tests only run in the ASH env on Bunya |
 | Reading the GPU queue | `sinfo -p gpu_cuda` showing `mix-` is **PLANNED**, not draining: Slurm is holding those nodes for a higher-priority pending job, which is why a job can sit at reason `Priority` while the partition looks idle. `scontrol show node <n>` prints the real state. `drain$` is a genuinely unavailable node |
+| **`resume: true` + a killed run in the same output directory** | resumes the **dead run's system**, because a state file carries its own particle count. 31738904 built the right 47,979-atom system then died on `Called setPositions() on a Context with the wrong number of positions`, loading the cancelled 34,311-atom run's `OpenMM_MD_state.xml`. Clear `protdft/<section>/` before the first batch of anything with `resume` pre-set. Loud, but the message names positions, not the state file's provenance (D199) |
 | `md` resumes | `resume: true` **in the section's inputs** - a config option, not a CLI flag; `cli.py` has no such flag. Same as `qmmm`, reading the `OpenMM_MD_state.xml` ASH writes as it runs. Opt-in on purpose (for a trajectory, continuing and replacing differ), but an unset `resume` with a state file present now warns rather than silently starting over (D183). `nvt_time` is the total wanted; minimisation and NPT are skipped on a resume (D182). So a long MD can be a chain of short jobs, which schedules far better on a partition whose nodes are held |
 | A long walltime hurts backfill | asking 8 h for a 4.1 h run means it only starts when an 8 h window opens. A pending job's `TimeLimit` can be **lowered** (`scontrol update jobid=... TimeLimit=5:00:00`) but a user generally cannot raise it again, so it is not a free change |
 | **CSR is not where the disk goes** | all eleven run directories are 14.5 GB of the 269 GB in use. Cleaning CSR is for clarity, not quota; the pressure is other projects (D180) |

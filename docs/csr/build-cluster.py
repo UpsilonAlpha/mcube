@@ -8,9 +8,12 @@ the zinc when DFT would not?** `md_eq5` found O1x coordinated in 97.9% of
 close as the anionic hydroxide, and nothing in the MM or QM/MM machinery can
 say whether that is real:
 
-- MM cannot, because a non-bonded Zn(2+) with no Pauli repulsion pulls any lone
-  pair in, and MM MD is documented to overfavour octahedral zinc (PMID
-  34748329).
+- MM cannot, because a 12-6 potential knows only distance and atom type and so
+  cannot tell an alcohol oxygen from a hydroxide: every oxygen in reach is
+  rewarded for approaching, and the Li/Merz IOD parameters the run DOES apply
+  move the Zn-O minimum to ~1.89 A rather than removing the problem
+  (`ions.py`'s own note; corrected in D199). MM MD is also documented to
+  overfavour octahedral zinc (PMID 34748329).
 - QM/MM MD cannot, because **no QM/MM run in this project has ever crossed the
   coordination boundary in either direction** (D197 corrections): held in, a
   donor stays in; left out, it goes further out. Ligand exchange at Zn(II) is

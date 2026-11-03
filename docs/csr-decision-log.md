@@ -5712,6 +5712,102 @@ waters. Its first run then failed on `_locked` being handed a `str` instead of a
 bound to die. That is the **second** time this session a failed script did not
 stop a chained command; submits are now gated with `&&`.
 
+**D199 - QM/MM batch 1 runs at 1.04 fs/s. The resume trap that cost two
+submissions, and the real reason O1x sits at 2.06 A - which is not the one I
+gave in D197 and D198.** (2026-11-04)
+
+**31740139 `mich_qm1`, RUNNING.** 47,979 atoms / 14,888 residues / 33,421 bonds
+matching `md_eq5`, 90 QM atoms, four boundaries. Step 107 at about 103 s of MD:
+**1.04 fs/s = 3.7 ps/hour**, so 50 ps is **13.3 h** and batch 1 should land
+about 13:40 on 4 Nov, inside its 24 h walltime. That is the ~1 s/step the 300 ns
+arithmetic assumed, so the six batches cost about **80 h** of compute.
+
+## The resume trap
+
+31738904 built the **correct** 47,979-atom system and then died in 14 s:
+
+    openmm.OpenMMException: Called setPositions() on a Context with the
+    wrong number of positions          (at simulation.loadState(statefile))
+
+`michqm` carries `resume: true` from the start so batches 2-6 need only `time`
+raised. But `protdft/qmmm_michqm/` still held the `OpenMM_MD_state.xml` of the
+**cancelled 34,311-atom run**, and a state file carries its own particle count,
+so the section resumed a system that no longer existed. Clearing the output
+directory fixed it, and mcube then says the right thing by itself:
+
+    [INFO] resume: true, but no OpenMM_MD_final_state.xml or
+    OpenMM_MD_state.xml in ... - nothing to resume from, starting a fresh run
+
+**No library change needed** - D183's wiring already covers it. What to remember
+is the interaction: **`resume: true` plus a killed run in the same output
+directory resumes the dead run's system.** It fails loudly, but the message
+names positions rather than the state file's provenance, so it reads like a
+system-building bug instead of a leftover.
+
+## Correction: "a non-bonded Zn with no Pauli repulsion" is wrong, and the right
+## answer is in `ions.py`
+
+I used that phrase in D197, in D198 and in `build-cluster.py` to explain O1x at
+2.06 A. **It is not what the code does, and I should have read the code rather
+than quote the warning.** The phrase itself is mcube's own text, printed by
+`md.py` when the sphere changes - so it is the library's loose wording that I
+adopted, but checking it was still mine to do.
+
+What actually happens, verified in both logs and in the config:
+
+    [INFO] IOD parameters for ZN B:1: sigma 0.2265 -> 0.2486 nm,
+                                      epsilon 0.0138 -> 0.0624 kJ/mol
+    md_eq5.results.metal_parameters: iod
+
+**`md` applies the Li/Merz IOD set by default and so does every QM/MM stage** -
+`ions.apply_metal_parameters` is "the one place this happens, for md and every
+QM/MM stage alike, so a metal cannot be parameterised one way in MM and another
+in QM/MM". So the 10 ns ran on **fitted** ion-oxygen parameters, not stock Amber
+ones, and a draft of this entry claiming otherwise - and proposing an IOD re-run
+as a cheap test - was wrong on both counts and was deleted before it was
+committed. (It survived one check only because `/iod/i` matches
+"per**iod**icity"; the real grep is `IOD parameters`.)
+
+**`ions.py` states the correct explanation and predicted this exactly:**
+
+> "It does not solve over-coordination. A 12-6 potential knows only distance and
+> atom type, so it cannot tell a ligand from a non-ligand and every oxygen in
+> reach is still rewarded for approaching; only something that knows which atoms
+> are ligands can stop that, which is what the coordination restraints do."
+
+So the chain is:
+
+1. The inherited pose puts O1x at **3.13 A** (D123).
+2. That is **outside** `preprocess`'s 3.0 A detection radius - by 0.13 A - so
+   `fill_restraints` never saw it and no restraint was placed on it.
+3. IOD moves the Zn-O minimum to about **1.89 A** and rewards *any* oxygen for
+   approaching, because a 12-6 term cannot tell an alcohol from a hydroxide.
+4. O1x therefore settles at **2.06 A**, which is near that minimum and inside
+   the 2.0-2.1 A IOD is fitted to reproduce.
+
+**This is not a collapse to an absurd distance; it is the fitted distance,
+applied to the wrong oxygen.** The artefact is not a missing repulsion but a
+potential with no concept of which atoms are ligands, and the only thing in the
+pipeline that does have that concept - the coordination restraints - was blind to
+O1x because of where the pose put it. That makes the D197/D198 conclusions about
+O1x *stronger*, not weaker: the contact appeared despite fitted parameters, so it
+is a property of the pose plus the restraint radius, not of sloppy MM.
+
+It also sharpens what the D198 benchmark showed: DFT puts the O1x-bound form
+8.75 kcal/mol higher, and GFN2 a further 5.92 on top of that, while MM gives it
+the fitted bond distance. Three methods, three answers, and only the two quantum
+ones know what kind of oxygen it is.
+
+**`md.py`'s warning text should be fixed** - "no Pauli repulsion" in a codebase
+that ships fitted LJ parameters and applies them by default is misleading to
+exactly the reader the warning is for. Not changed here, because the live run
+reads that code; it is P8.
+
+**Third correction of my own claims this session**, after the carbonyl
+"criterion conflict" and the QM/MM hysteresis argument. All three were in the
+record already. Two were caught because the user pushed back; this one because
+the standing instruction to check the record is now a memory.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
@@ -5727,4 +5823,5 @@ stop a chained command; submits are now gated with `&&`.
 - P4: Δ1 tautomer pathway (D19).
 - P5: DFT/MM energies along the converged xTB paths.
 - P6: establish whether the Lys226 -> OH- transfer survives in a clean four-coordinate sphere (D41). Blocks all scans.
+- P8: fix `md.py`'s sphere-change warning, which says a non-bonded metal has "no Pauli repulsion" in a codebase that ships fitted Li/Merz LJ parameters and applies them by default. It misled this project's own write-ups three times (D199). The accurate wording is that a 12-6 term cannot tell a ligand from a non-ligand, which is `ions.py`'s own explanation.
 - P7: preserve the input ligand atom names through OpenFF parameterisation, so `preprocess.results.ligand_atom_map` is always empty (D169).
