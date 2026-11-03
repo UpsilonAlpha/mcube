@@ -2105,3 +2105,71 @@ sections:
     inputs:
       <<: *sp_only
       pdb_file: protdft/coscan/scan_08.pdb   # Zn-O2x 4.00 A
+
+  # ---- The GFN2-vs-DFT cluster benchmark (P1, open since D9; built D188) ----
+  #
+  # The question: does GFN2-xTB hold meropenem's 6-(1-hydroxyethyl) oxygen O1x
+  # on the zinc when DFT would not? `md_eq5` found O1x coordinated in 97.9% of
+  # 10,000 frames at 2.18 A mean, closer than the restrained carbonyl and as
+  # close as the anionic hydroxide (D197), and neither MM nor QM/MM MD can
+  # adjudicate it - MM overfavours octahedral zinc, and no QM/MM run here has
+  # ever crossed the coordination boundary in either direction, because ligand
+  # exchange at Zn(II) is slower than the affordable trajectory.
+  #
+  # The quantity is a **difference of differences**, which is Imhof's protocol:
+  #
+  #     dd = [E_off - E_on](GFN2) - [E_off - E_on](DFT)
+  #
+  # Negative `dd` means GFN2 stabilises the O1x-bound form relative to DFT, and
+  # `dd` is the size of the error. Both methods see the SAME two geometries, so
+  # strain and thermal noise cancel in the difference and the method does not.
+  # Imhof measured 7.55 kcal/mol for AM1/d on a 4 -> 5 coordination change; the
+  # GFN2 number is what these four sections produce.
+  #
+  # Geometries from `docs/csr/build-cluster.py`: the shortest and longest
+  # Zn-O1x frames of the same trajectory, so neither bracket carries a build
+  # difference or a hand displacement. 51 atoms, `charge: 0` **stated** and not
+  # inherited (D152), mult 1 for d10 Zn(II).
+  #
+  # These are single points, so they are NOT binding energies - `sp` is a
+  # single-point stage by construction and optimising both clusters at both
+  # levels is a separate job. Say so wherever the number is quoted.
+  clus_on_xtb:
+    stage: sp
+    inputs:
+      cluster: true
+      pdb_file: cluster/cluster_o1x_on.pdb
+      charge: 0
+      mult: 1
+      sp_engine: xtb
+      sp_cores: 8
+
+  clus_off_xtb:
+    stage: sp
+    inputs:
+      cluster: true
+      pdb_file: cluster/cluster_o1x_off.pdb
+      charge: 0
+      mult: 1
+      sp_engine: xtb
+      sp_cores: 8
+
+  clus_on_dft:
+    stage: sp
+    inputs:
+      cluster: true
+      pdb_file: cluster/cluster_o1x_on.pdb
+      charge: 0
+      mult: 1
+      sp_engine: dft
+      sp_cores: 32
+
+  clus_off_dft:
+    stage: sp
+    inputs:
+      cluster: true
+      pdb_file: cluster/cluster_o1x_off.pdb
+      charge: 0
+      mult: 1
+      sp_engine: dft
+      sp_cores: 32
