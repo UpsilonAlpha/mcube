@@ -270,6 +270,110 @@ def atom_names(pdb_file: str) -> list:
             for line in open(pdb_file) if line.startswith(("ATOM", "HETATM"))]
 
 
+def parse_residue_selectors(selectors) -> list:
+    """`["D:1:HOH", {"D": {1: "HOH"}}]` -> `[("D", 1, "HOH"), ...]`.
+
+    The residue NAME is part of the selector and is required. A selector that
+    named only a chain and a number would delete whatever occupies that number
+    in the structure it is run against, and solvating renumbers everything
+    after the solute - so the name is what makes a stale selector fail loudly
+    instead of removing the wrong residue.
+    """
+    rows = []
+    if isinstance(selectors, dict):
+        selectors = ["%s:%s:%s" % (chain, resid, name)
+                     for chain, residues in selectors.items()
+                     for resid, name in (residues.items()
+                                         if isinstance(residues, dict)
+                                         else [(r, "") for r in residues])]
+    for entry in selectors or []:
+        if isinstance(entry, (list, tuple)):
+            parts = [str(x).strip() for x in entry]
+        else:
+            parts = [x.strip() for x in str(entry).split(":")]
+        if len(parts) != 3 or not all(parts):
+            raise ValueError(
+                "remove_residues takes `CHAIN:RESSEQ:RESNAME` selectors, not "
+                f"{entry!r}. The residue name is required: without it the "
+                "selector would delete whatever now sits at that number.")
+        chain, resid, name = parts
+        try:
+            resid = int(resid)
+        except ValueError:
+            raise ValueError(
+                f"remove_residues: {entry!r} has no integer residue number.")
+        rows.append((chain, resid, name.upper()))
+    return rows
+
+
+def remove_residues(pdb_file: str, selectors, out: str = None) -> tuple:
+    """Delete whole residues from a PDB and return `(new_file, removed_rows)`.
+
+    This runs on the INPUT structure, before solvation. A water deleted after
+    the box exists is simply replaced by the solvent, so the only point at
+    which a coordinating substrate can be given the position it occupies is
+    before there is any solvent to fill it (D196).
+
+    Every atom of the named residue goes, along with its ANISOU records and any
+    CONECT record that refers to one of them - a CONECT naming a serial that no
+    longer exists is what makes OpenMM's reader fail several steps later, with
+    an error about the bond rather than about the deletion.
+    """
+    wanted = parse_residue_selectors(selectors)
+    if not wanted:
+        return Path(pdb_file).resolve().as_posix(), []
+
+    targets = {(chain, resid): name for chain, resid, name in wanted}
+    found = {}                      # (chain, resid) -> set of resnames present
+    kept, removed_serials, counts = [], set(), {}
+
+    for line in open(pdb_file):
+        if line.startswith(("ATOM", "HETATM")):
+            key = (line[21], pdb_resseq(line[22:26]))
+            resname = line[17:20].strip().upper()
+            if key in targets:
+                found.setdefault(key, set()).add(resname)
+                if resname == targets[key]:
+                    removed_serials.add(line[6:11].strip())
+                    counts[key] = counts.get(key, 0) + 1
+                    continue
+        elif line.startswith("ANISOU"):
+            key = (line[21], pdb_resseq(line[22:26]))
+            if key in targets and line[17:20].strip().upper() == targets[key]:
+                continue
+        elif line.startswith("CONECT"):
+            serials = [line[i:i + 5].strip() for i in range(6, len(line.rstrip()), 5)]
+            if any(serial in removed_serials for serial in serials):
+                continue
+        kept.append(line)
+
+    problems = []
+    for chain, resid, name in wanted:
+        present = found.get((chain, resid))
+        if not present:
+            problems.append(f"  {chain}:{resid}:{name} - chain {chain} has no "
+                            f"residue {resid}")
+        elif name not in present:
+            problems.append(f"  {chain}:{resid}:{name} - {chain}:{resid} is "
+                            f"{'/'.join(sorted(present))}, not {name}")
+    if problems:
+        raise ValueError(
+            "remove_residues named residues that are not in "
+            f"{pdb_file}:\n" + "\n".join(problems) +
+            "\nNothing was removed. Selectors are checked against the "
+            "structure this stage is given, which for a ligand run is the "
+            "MERGED structure, not the original protein PDB.")
+
+    out = out or (Path(pdb_file).with_name(
+        Path(pdb_file).stem + "_removed.pdb").as_posix())
+    Path(out).write_text("".join(kept))
+    rows = ["%s:%d:%s (%d atom%s)" % (chain, resid, targets[(chain, resid)],
+                                      counts[(chain, resid)],
+                                      "" if counts[(chain, resid)] == 1 else "s")
+            for chain, resid in sorted(counts)]
+    return Path(out).resolve().as_posix(), rows
+
+
 def to_selectors(entries, pdb_file: str) -> list:
     """Rewrite each entry's first two atoms as "chain:resid:atom", leaving any
     trailing numbers (a target distance, a force constant) alone.
@@ -1447,6 +1551,20 @@ def run(args) -> Dict[str, Any]:
     if ligand_xmlfile:
         forcefields.append(ligand_xmlfile)
 
+    # Before solvation, and before any check reads the structure: a residue
+    # removed here was never in the box, where a water deleted afterwards is
+    # just replaced by the solvent (D196).
+    removed_residues = []
+    if inputs.get("remove_residues"):
+        print("[STEP] Removing residues...")
+        pdb_file, removed_residues = remove_residues(
+            pdb_file, inputs["remove_residues"])
+        for row in removed_residues:
+            print(f"[INFO]   removed {row}")
+        print(f"[INFO] Continuing from {pdb_file}. The coordination detector "
+              "below therefore reports the site WITHOUT them, which is the "
+              "point: the position is left for whatever displaces them.")
+
     check_residue_numbering(pdb_file)
     check_his_variants(pdb_file, inputs)
 
@@ -1561,6 +1679,7 @@ def run(args) -> Dict[str, Any]:
                       {"ligand_formula_check": hyd["ligand_formula_check"]}
                       if hyd.get("ligand_formula_check") else {}),
         "processed_pdb": Path(pdb_file).resolve().as_posix(),
+        "removed_residues": removed_residues,
         "qm_residues": qm_residues,
         "qm_atoms": qm_atoms,
         "boundary_excluded": boundary_excluded,

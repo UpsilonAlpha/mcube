@@ -66,6 +66,37 @@ def selectors_in(inputs):
     return found
 
 
+# Whole-residue selectors, which are `chain:resid:RESNAME` and so look exactly
+# like an atom selector to `walk` - three fields, two colons - while resolving
+# against a different index. They are checked here for the same reason the atom
+# ones are: `remove_residues` DELETES what it names, so a selector written
+# against an earlier build is the one mistake that cannot be noticed by reading
+# the output (D196).
+RESIDUE_KEYS = ("remove_residues",)
+
+
+def residues_in(inputs):
+    """Every whole-residue selector in a section's inputs."""
+    found = []
+    for key in RESIDUE_KEYS:
+        value = inputs.get(key)
+        if isinstance(value, dict):
+            for chain, residues in value.items():
+                items = (residues.items() if isinstance(residues, dict)
+                         else [(r, "") for r in residues])
+                found += ["%s:%s:%s" % (chain, r, n) for r, n in items]
+        elif isinstance(value, (list, tuple)):
+            found += [v if isinstance(v, str) else ":".join(str(x) for x in v)
+                      for v in value]
+    return found
+
+
+def residue_index(pdb_path):
+    return {"%s:%s:%s" % (line[21], line[22:26].strip(), line[17:20].strip())
+            for line in open(pdb_path)
+            if line.startswith(("ATOM", "HETATM"))}
+
+
 def atom_index(pdb_path):
     index = {}
     for i, line in enumerate(l for l in open(pdb_path)
@@ -139,7 +170,18 @@ def main(site_file, names):
             if missing:
                 problems.append("%s: selectors not in %s: %s"
                                 % (name, given[0][1], ", ".join(missing)))
-        planned[section] = (inputs, given[0][1] if given else None, sels)
+        resids = residues_in(inputs)
+        if start and resids:
+            present = residue_index(start)
+            missing = [r for r in resids if r.upper() not in
+                       {x.upper() for x in present}]
+            if missing:
+                problems.append(
+                    "%s: residues not in %s: %s. These are deleted by name, so "
+                    "the name has to match what is there."
+                    % (name, given[0][1], ", ".join(missing)))
+        planned[section] = (inputs, given[0][1] if given else None,
+                            sels + resids)
 
     if problems:
         print("NOT WRITING. Problems:")

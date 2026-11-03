@@ -244,3 +244,39 @@ class TestADoubledStagePrefix:
             "pdb_file": "md_results/last.pdb", "atoms": ["B:1:ZN"]}}})
         mod.main(file, ["aspout"])
         assert written(home, "scan_aspout") is not None
+
+
+class TestWholeResidueSelectors:
+    """`remove_residues` names residues, not atoms, and DELETES what it names -
+    so a selector written against an earlier build is the one mistake that
+    cannot be caught by reading the run's output afterwards (D196)."""
+
+    def test_a_residue_selector_that_resolves_is_written(self, mod, home):
+        file = site(home, {"build": {"stage": "preprocess", "inputs": {
+            "pdb_file": "md_results/last.pdb",
+            "remove_residues": ["A:88:HIS"]}}})
+        mod.main(file, ["build"])
+        assert written(home, "preprocess_build")["remove_residues"] == ["A:88:HIS"]
+
+    def test_the_wrong_residue_name_stops_everything(self, mod, home):
+        file = site(home, {"build": {"stage": "preprocess", "inputs": {
+            "pdb_file": "md_results/last.pdb",
+            "remove_residues": ["A:88:HOH"]}}})
+        with pytest.raises(SystemExit):
+            mod.main(file, ["build"])
+        assert written(home, "preprocess_build") is None
+
+    def test_a_missing_residue_number_stops_everything(self, mod, home):
+        file = site(home, {"build": {"stage": "preprocess", "inputs": {
+            "pdb_file": "md_results/last.pdb",
+            "remove_residues": ["D:1:HOH"]}}})
+        with pytest.raises(SystemExit):
+            mod.main(file, ["build"])
+        assert written(home, "preprocess_build") is None
+
+    def test_a_mapping_is_accepted_as_everywhere_else(self, mod, home):
+        file = site(home, {"build": {"stage": "preprocess", "inputs": {
+            "pdb_file": "md_results/last.pdb",
+            "remove_residues": {"A": {88: "HIS"}}}}})
+        mod.main(file, ["build"])
+        assert written(home, "preprocess_build")["remove_residues"] == {"A": {88: "HIS"}}

@@ -130,7 +130,7 @@ six-coordinate zinc with Asp92 OD2 at 2.04 Å and an attack angle of 26°.
 | --- | --- |
 | attack geometry (3.0–3.5 Å, 95–120°) | `naclong` 3.33/101°, `wt100b` 3.65/102° |
 | carbonyl coordination (2.4–3.0 Å) | **only** `CSR_crystal_v2`, and only after QM/MM (2.56 Å) |
-| four-coordinate zinc | **none** — every frame is 5 or 6, via Asp92, a bulk water, or Gln93 |
+| four- or five-coordinate zinc | every frame is 5 or 6; **5 is now allowed** once the substrate is bound (D196), so what disqualifies these frames is the 6, via Asp92 OD2, a bulk water, or Gln93 |
 
 **Confirmed: a carbonyl held coordinated through MM stays under QM/MM.**
 `CSR_crystal_v2` went in at 1.94 Å and xTB *relaxed it to* **2.56 Å** — inside
@@ -144,6 +144,55 @@ structure`. The user's own builds predate the current chain naming, so no
 `site.yaml` selector resolves. Remapping their chains makes them checkable
 without re-running anything, and they are the only frames whose pose has the
 carbonyl near the metal with no frozen MM constraint.
+
+## 2c. The coordination number, and the rebuild (D196, the user's decision)
+
+**Five is allowed once the substrate is bound. The target is still four.** The
+resting site is four-coordinate — 2 His + 2 waters (D120). On binding, the
+substrate **displaces** one of those waters; the other becomes the nucleophilic
+hydroxide, and the carbonyl takes the vacated position: 2 His + hydroxide +
+carbonyl = **four**. Five is not rejected, for two separate reasons:
+
+- GOB-18's B3 site expands four- to five-coordinate on substrate binding
+  (`reference-structures.md`), so a retained second water is a real
+  possibility, not a build error.
+- Asp92 OD2 sits at **2.80 Å** in the crystal as a second-shell contact (D120).
+  A frame where it drifts inside the 2.5 Å measurement radius counts as five
+  here while being nothing of the kind chemically.
+
+Both `michaelis_hypotheses` coordination criteria are now `[4, 5]`. The old
+`[4, 4]` was rejecting correct structures for being correct.
+
+**`eq5` is the rebuild that follows.** D195's finding was that each run had ONE
+of the three Michaelis properties, so `eq5` restrains all three at once, from
+`CSR_crystal_v2`'s input pose (1.94 → 2.60 Å is a small move; 5.43 → 2.60 is
+not):
+
+| restraint | why |
+| --- | --- |
+| `[C:2:O01, C:1:C4x, 3.47]` | the attack coordinate, which `wt100c` **replaced** rather than added to (D194) |
+| `[B:1:ZN, C:1:O2x, 2.60, 500]` | the carbonyl on the metal. Within 0.04 Å of what GFN2 chose for itself (2.56) and 0.03 Å of L1's 2.53/2.63. **Not 1.94** — nothing measures that, and holding it there is what made crystal_v2's attack angle 26–30° |
+| `[B:1:ZN, A:92:OD1, 3.81, 500]` | OD1 pinned out, as on every arm since D130 |
+
+**500 kcal/mol/Å², not 50.** D191 measured a 2.80 Å restraint sitting at a mean
+of 2.44 Å — a 0.36 Å offset is a systematic ~36 kcal/mol/Å force, not thermal
+spread, and offset goes as F/k. At 500 the restrained mode's period is ~53 fs,
+53 steps at this project's 1 fs timestep, so it integrates cleanly. The MM site
+is deliberately rigid: MM cannot be trusted for coordination (D174), and QM/MM
+is what decides it (confirmed in D195).
+
+**A rebuild is a new run directory.** `preprocess` takes no `--section`, so
+`remove_residues: [D:1:HOH]` and `coordination_force: 500` go in the new
+directory's own `preprocess.inputs`, with `eq5` as the `md` section on top. The
+water selector must be checked against the **merged input**, not the final
+system — preprocess refuses a name mismatch rather than deleting the wrong
+residue.
+
+**`preprocess.inputs.remove_residues` is new in the library** (D196). There was
+no config route to displacing a water; the only way was to edit the input PDB
+by hand. It takes `CHAIN:RESSEQ:RESNAME`, runs before solvation (deleting a
+water afterwards just lets the solvent refill the position), takes ANISOU and
+CONECT records with it, and refuses the whole request if any selector misses.
 
 ## 3. Contradictions caught late — the failure mode this file exists to stop
 

@@ -180,11 +180,25 @@ site:
         required_at: [reactant]
         source: tight; thermolysin 2.01, CPA 2.19 (D124) - crystal values
 
+      # FIVE is allowed here, and only here, and the target is still four.
+      # The resting site is four-coordinate - 2 His + 2 waters (D120). On
+      # binding, the substrate DISPLACES one of those waters and the other
+      # becomes the nucleophilic hydroxide, so the complex this project is
+      # trying to build is **2 His + hydroxide + carbonyl = four**.
+      #
+      # Five is not rejected, for two reasons. GOB-18's B3 site expands four-
+      # to five-coordinate on substrate binding (reference-structures.md), so
+      # a retained second water is a real possibility rather than a build
+      # error. And Asp92 OD2 sits at 2.80 A in the crystal as a second-shell
+      # contact (D120): a frame where it drifts inside the 2.5 A measurement
+      # radius counts as five here while not being five-coordinate in any
+      # chemical sense. Demanding exactly four would reject both of those for
+      # the wrong reason (user's decision, D196).
       - name: Zn coordination number
         coordination: B:1:ZN
-        range: [4, 4]
+        range: [4, 5]
         required_at: [reactant]
-        source: 2 His + hydroxide + carbonyl (D41); the crystal is 4 (D120)
+        source: 2 His + hydroxide + carbonyl = 4; 5 tolerated, see above (D196)
 
       - name: O01 - C4x (attack)
         atoms: [C:2:O01, C:1:C4x]
@@ -267,11 +281,15 @@ site:
         required_at: [start, reactant]
         source: D126 measured 106 deg; this is why the hypothesis is listed
 
+      # Five for the same reason as the other hypothesis (D196): the
+      # substituent oxygen displaces a water rather than filling a vacancy
+      # the resting site does not have, and a retained second water or a
+      # drifting Asp92 OD2 should not fail the frame on its own.
       - name: Zn coordination number
         coordination: B:1:ZN
-        range: [4, 4]
+        range: [4, 5]
         required_at: [reactant]
-        source: 2 His + hydroxide + O1x; remove HOH485 and pin Asp92 OD1 out
+        source: 2 His + hydroxide + O1x = 4; 5 tolerated, see above (D196)
 
       - name: Asp92 OD1 - O01
         atoms: [A:92:OD1, C:2:O01]
@@ -1504,6 +1522,94 @@ sections:
         - [B:1:ZN, A:92:OD1, 3.81, 50.0]
       nvt_time: 100000
       traj_frequency: 5000
+      platform: CUDA
+      properties:
+        Precision: mixed
+
+  # ---- eq5: the Michaelis rebuild - all three properties at once (D196) ----
+  #
+  # D195 measured 84 equilibrated frames against the Michaelis criteria and
+  # every one of them failed. Not for one reason: each run had ONE of the three
+  # properties and never the other two.
+  #
+  #   CSR_crystal_v2   carbonyl on the metal (1.94, frozen), attack angle 30 deg
+  #   CSR_nac          attack geometry (3.33 A, 101 deg), carbonyl 5.16 A away
+  #   CSR_wt/wt100c    four-coordinate-ish zinc, carbonyl 16.82 A away
+  #
+  # So this is not a pose problem or a restraint problem on its own. It is that
+  # no run has ever restrained all three coordinates together. This section
+  # does, and it starts from CSR_crystal_v2's input pose rather than Vina pose
+  # 2, because that pose already has the carbonyl on the metal and the move
+  # asked for here is 1.94 -> 2.60 rather than 5.43 -> 2.60.
+  #
+  # **The three restraints.**
+  #
+  #   [C:2:O01, C:1:C4x, 3.47]        the attack coordinate. `nac` and `wt100b`
+  #                                   carried this and `wt100c` REPLACED it
+  #                                   rather than adding to it, which is why
+  #                                   the substrate left the site (D194).
+  #   [B:1:ZN, C:1:O2x, 2.60, 500]    the carbonyl ON the metal. 2.60 is the
+  #                                   middle of the criterion's 2.4-3.0 window
+  #                                   and within 0.04 A of what GFN2 chose for
+  #                                   itself when QM/MM relaxed crystal_v2's
+  #                                   1.94 (it went to 2.56), and of L1's
+  #                                   measured 2.53/2.63 (D121). Not 1.94:
+  #                                   that number came from a build decision,
+  #                                   nothing measures it, and holding it there
+  #                                   is what made crystal_v2's attack angle
+  #                                   26-30 deg.
+  #   [B:1:ZN, A:92:OD1, 3.81, 500]   OD1 pinned out, as on every arm since
+  #                                   D130. Outside the 3.0 A sweep, so the
+  #                                   rule does not reach it.
+  #
+  # **500 kcal/mol/A^2, not 50.** D191 measured a contact restrained at 2.80 A
+  # sitting at a MEAN of 2.44 over 100 ns with a maximum of 2.97 - a 0.36 A
+  # offset, which is a systematic force of order 36 kcal/mol/A pulling the
+  # carboxylate in, not thermal spread. Offset goes as F/k, so 500 puts it
+  # under 0.04 A. The cost is stiffness: at 500 and a 15 amu reduced mass the
+  # restrained mode has a ~53 fs period, which is 53 steps at this project's
+  # 1 fs timestep, so it integrates cleanly. This is deliberately a rigid MM
+  # site - MM cannot be trusted for coordination (D174), the MD's job is to
+  # equilibrate the protein and solvent AROUND a site held where the crystal
+  # has it, and QM/MM is what then decides the coordination.
+  #
+  # **What the run directory must set, which no section can.** `preprocess`
+  # takes no `--section`, so two of this build's changes belong in the new run
+  # directory's own `preprocess.inputs`:
+  #
+  #   remove_residues: [D:1:HOH]   the water the substrate displaces. The
+  #                                resting site is four-coordinate, 2 His + 2
+  #                                waters (D120); one water becomes the
+  #                                nucleophilic hydroxide and the carbonyl
+  #                                takes the other's place. Deleting it after
+  #                                solvation would do nothing - the solvent
+  #                                refills the position - so it goes before
+  #                                the box exists. Check the selector against
+  #                                the MERGED input, not the final system:
+  #                                preprocess refuses a name that does not
+  #                                match rather than deleting the wrong thing.
+  #   coordination_force: 500      the swept 3.0 A restraints, for the same
+  #                                reason as above. Asp92 OD2 at 2.80 is the
+  #                                contact this is for.
+  #
+  # **What it decides.** Whether a coordinated carbonyl, a near-attack
+  # nucleophile and a four- or five-coordinate zinc can coexist in one
+  # equilibrated structure at all. If they can, items 1-2 are answered and
+  # `wtqm` has a start. If they cannot, the pose itself is wrong and that is a
+  # result rather than a failure.
+  #
+  # 10 ns, not 100. Every 100 ns run in D195's inventory is in the rejected
+  # list, and nothing was learned at 100 that was not visible at 10.
+  eq5:
+    stage: md
+    inputs:
+      coordination_redetect: true
+      restraints:
+        - [C:2:O01, C:1:C4x, 3.47]
+        - [B:1:ZN, C:1:O2x, 2.60, 500.0]
+        - [B:1:ZN, A:92:OD1, 3.81, 500.0]
+      nvt_time: 10000
+      traj_frequency: 500
       platform: CUDA
       properties:
         Precision: mixed

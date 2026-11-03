@@ -5074,6 +5074,80 @@ four-coordinate zinc. The D191 force-constant finding (50 kcal/mol/A^2 loses to
 a bare Zn2+) and D194's restraint list are both prerequisites, and on this
 evidence the carbonyl needs restraining too - at 2.4-3.0 A, not at 1.94.
 
+**D196 - Five-coordinate is allowed once the substrate is bound, and the
+rebuild that follows from it.**
+
+The user's decision, settling the one question D195 left: the substrate
+DISPLACES a zinc water, and the zinc may be five-coordinate once it has.
+
+This matters because the criterion it replaces was rejecting correct structures
+for being correct. `carbonyl_on_metal` demanded a coordination number of
+exactly 4, on the reasoning that the resting site is four-coordinate - 2 His +
+2 waters (D120) - and the complex should be 2 His + hydroxide + carbonyl. That
+target is unchanged and is still four. What was wrong was treating five as a
+failure. GOB-18's B3 site expands four- to five-coordinate on substrate
+binding (`reference-structures.md`), so a retained second water is a real
+possibility rather than a build error; and Asp92 OD2 sits at 2.80 A in the
+crystal as a second-shell contact, so a frame where it drifts inside the 2.5 A
+measurement radius scores as five while being nothing of the kind. Both
+hypotheses' coordination criteria are now `[4, 5]`, with the reasoning written
+where the criterion is.
+
+**What the rebuild is.** D195's finding was that each run had ONE of the three
+Michaelis properties and never the other two, so `eq5` restrains all three
+together. It starts from CSR_crystal_v2's input pose - the only pose that has
+ever had the carbonyl on the metal, so the move asked for is 1.94 -> 2.60 A
+rather than 5.43 -> 2.60 - and carries:
+
+- the attack coordinate `[C:2:O01, C:1:C4x, 3.47]`, which `wt100c` replaced
+  rather than added to (D194);
+- the carbonyl `[B:1:ZN, C:1:O2x, 2.60, 500]`. 2.60 is the middle of the
+  criterion's window, within 0.04 A of what GFN2 chose for itself when QM/MM
+  relaxed crystal_v2's frozen 1.94 to 2.56, and within 0.03 A of L1's measured
+  2.53/2.63 (D121). **Not 1.94** - that number came from a build decision,
+  nothing measures it, and holding it there is what made crystal_v2's attack
+  angle 26-30 degrees;
+- `[B:1:ZN, A:92:OD1, 3.81, 500]`, OD1 pinned out as on every arm since D130.
+
+**500 kcal/mol/A^2, not 50.** D191 measured a 2.80 A restraint sitting at a
+mean of 2.44 with a maximum of 2.97 over 100 ns. A 0.36 A mean offset is a
+systematic force of order 36 kcal/mol/A, not thermal spread, and offset goes as
+F/k - so 500 puts it under 0.04 A. At 500 and a 15 amu reduced mass the
+restrained mode's period is about 53 fs, which is 53 steps at this project's
+1 fs timestep, so it still integrates cleanly. The site is deliberately rigid
+in MM: MM cannot be trusted for coordination (D174), the MD's job is to
+equilibrate protein and solvent AROUND a site held where the crystal has it,
+and QM/MM is what decides the coordination afterwards (confirmed in D195).
+
+**The library gained `preprocess.inputs.remove_residues`.** There was no config
+route to displacing a water at all - the only way was to edit the input PDB by
+hand, which is what this project's rules say a general library must not
+require. It takes `CHAIN:RESSEQ:RESNAME` selectors, runs BEFORE solvation
+(a water deleted after the box exists is simply replaced by the solvent),
+takes every atom of the residue with its ANISOU and CONECT records, and refuses
+the whole request if any selector does not match - including the case that
+matters, a real residue of the wrong name at the right number, which is what a
+selector written against an earlier build hits once solvation has renumbered
+everything after the solute. `sections.py` checks these selectors too, as
+whole-residue selectors against a residue index rather than as atoms. 19 new
+tests; the suite is 704 passed, 10 skipped.
+
+**What the run directory must set, which no section can.** `preprocess` takes
+no `--section`, so a rebuild is a new run directory, as `CSR_crystal_v2` was.
+Its `preprocess.inputs` carries `remove_residues: [D:1:HOH]` and
+`coordination_force: 500`; `eq5` is the `md` section on top. The water selector
+has to be checked against the MERGED input structure rather than the final
+system, and preprocess refuses a mismatch rather than deleting the wrong
+residue.
+
+**What `eq5` decides.** Whether a coordinated carbonyl, a near-attack
+nucleophile and a four- or five-coordinate zinc can coexist in one equilibrated
+structure at all. If they can, plan items 1-2 are answered and `wtqm` finally
+has a start. If they cannot, the pose itself is wrong, and that is a result
+rather than a failure. 10 ns, not 100: every 100 ns run in D195's inventory is
+in the rejected list, and nothing was visible at 100 ns that was not visible at
+10.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
