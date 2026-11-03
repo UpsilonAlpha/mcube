@@ -5439,6 +5439,87 @@ build, which bears on P6 and D41. And Gln93 NE2-Asp92 OD1 has mean **7.74 A**:
 Gln93 is nowhere near Asp92 here, so the Q of RQK has no contact to decompose
 on this arm.
 
+**D197, two corrections to my own reading, both on the user's challenge
+(2026-11-03). The "criterion conflict" was not one, and the QM/MM run I
+recommended could not have answered the question.**
+
+**1. The carbonyl at 2.60 A is not in conflict with anything. It is D124's
+design criterion being met.** I wrote that the 2.60 restraint target and the
+2.5 A coordination radius could not both be satisfied and called it a conflict
+between two settled numbers. That is wrong, and D124 already settled it:
+thermolysin and carboxypeptidase A hold the nucleophile and the carbonyl on
+**one** zinc, and the condition is that the carbonyl is **loosely** coordinated
+- one oxygen tight (2.01, 2.19), the other loose (2.41, 2.98). A carbonyl at
+2.60 A that is NOT counted as a bond at 2.5 A is exactly that loose oxygen, and
+**D186's two radii exist to express precisely this distinction**. The 0.3%
+occupancy is the design working, not a contradiction. Nothing needs changing.
+
+**The user's recollection that the carbonyl was thought "polarised, not
+coordinated" is correct as history**, and the record is explicit about its fate:
+that position (D53, and the user's own instruction that "a polarised carbonyl
+should be enough") was **withdrawn on 2026-10-28** by D123/D121, on L1's
+7UHI/7UHJ putting the carbonyl at 2.53-2.63 A from Zn1, and then sharpened by
+D124 into "loosely coordinated". Worth saying plainly: at 2.60 A the difference
+between "loosely coordinated" and "polarised" is not a distinction this
+project's measurements can resolve, and no conclusion here depends on the name.
+The caveat on the withdrawal still stands - L1 is **di-zinc** and moxalactam is
+an oxacephem, so the one measured Michaelis complex differs from CSR-1 in both
+metal count and substrate class.
+
+**2. My argument for QM/MM was unsupported, and the experiment cannot
+adjudicate O1x.** I claimed GFN2 would push off an artefactual contact, citing
+`crystal_v2` going in at 1.94 A and relaxing to 2.56. That is a bond-length
+relaxation **within** the coordinated basin, not a rejection, and state.md
+section 2b already says what it means in its own words: *"a carbonyl held
+coordinated through MM stays under QM/MM"*, with every frame whose carbonyl was
+uncoordinated in MM losing the substrate instead (5.16 -> 6.20, D111; the one
+inward move on record is 5.16 -> 4.37, which never approaches the sphere).
+
+**So in this project QM/MM has never crossed the coordination boundary in
+either direction.** Held in, stays in; left out, goes further out. Starting a
+QM/MM run from a frame with O1x at 2.06 A would therefore almost certainly end
+with O1x at ~2.1 A, and that outcome is uninformative - it is the starting state
+preserved.
+
+**There is a mechanistic reason, already in the record at D96's analysis, and it
+is decisive.** Classical MM MD "overfavors octahedral geometries" by pulling
+extra ligands into the zinc shell (Yang et al., PMID 34748329, Spencer and
+Mulholland among the authors); DFTB3 QM/MM MD rectifies it; **our xTB QM/MM MD
+did not**, and the likely reason given there is that tens of ps starting from an
+already-crowded sphere is far too short, because **ligand exchange at Zn(II) is
+slow**. A 50 ps QM/MM MD cannot expel O1x on that timescale whatever GFN2
+prefers. The proposed run would have measured the timescale of our trajectory,
+not the chemistry.
+
+**3. And O1x is not a stray artefact - it is the pose's own nearest oxygen.**
+D123 records that the pose inherited from `CSR_crystal` "presents the
+6-alpha-hydroxyethyl **O1x at 3.13 A** and leaves the carbonyl at **5.43 A**".
+So in the pose everything descends from, the hydroxyethyl is the group near the
+metal and the carbonyl is nowhere near it. `eq5` dragged the carbonyl from 5.43
+to 2.60 and left O1x unrestrained at 3.13, from which it fell in to 2.06. **The
+10 ns did not introduce a contaminant; it added the carbonyl alongside the
+contact the pose already had.** That is a sharper statement of the problem than
+"an unrestrained donor crept in", and it is about the pose, which D194 settled
+as not to be re-litigated by reverting.
+
+**What would actually adjudicate it.** Not a dynamics run, because the event
+needed is slower than the affordable trajectory. A **thermodynamic** comparison
+instead: optimise with O1x on the metal and with it displaced, and compare
+energies, at GFN2 and at DFT on the same geometries. That is the cluster
+benchmark - **P1 / plan item 7, open since D9**, the `sp` cluster mode built for
+it in D187/D188, and the standing blocker recorded in this project's memory as
+"whether xTB over-coordinates the zinc". Imhof's own benchmark, the paper this
+method follows, found AM1/d made 4->5 coordination **7.55 kcal/mol** too
+favourable; the same number for GFN2 is unmeasured, and no GFN2 benchmark for
+zinc coordination number in enzymes appears to exist. Until it is measured, a
+QM/MM verdict on a fifth donor is not interpretable either way.
+
+**The lesson, since this is the second time.** I quoted a sentence from this
+file as support for the opposite of what it says. The rule in the header - that
+this file is the single source of truth and the log is history - only works if a
+claim is read where it is written, not recalled. Both corrections here came from
+the user asking twice, not from the check.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

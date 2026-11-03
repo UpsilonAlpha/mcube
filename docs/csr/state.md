@@ -144,6 +144,17 @@ in MM lost the substrate under QM/MM (naclong 5.16→6.20, D111). So GFN2 is not
 overbinding or expelling it, and **the carbonyl needs restraining in MM** — at
 2.4–3.0 Å, not at 1.94.
 
+**Read the previous paragraph as hysteresis, not as adjudication (D197).** Held
+in, it stays in; left out, it goes further out. The one inward move on record is
+5.16→4.37, which never approaches the sphere. **No QM/MM run in this project has
+crossed the coordination boundary in either direction**, so 1.94→2.56 is a
+bond-length relaxation *within* the coordinated basin and is **not** evidence
+that GFN2 would reject a wrongly-placed donor. The mechanism is in D96's
+analysis: MM MD overfavours octahedral zinc (PMID 34748329), DFTB3 QM/MM MD
+rectifies it, ours did not, and the reason is that **ligand exchange at Zn(II)
+is slower than tens of ps**. A QM/MM MD therefore cannot settle whether a fifth
+donor belongs on the metal; only a thermodynamic comparison can, which is P1.
+
 **`CSR_ligand` and `CSR_hydrolysed` cannot be checked:** `B:1:ZN not in the
 structure`. The user's own builds predate the current chain naming, so no
 `site.yaml` selector resolves. Remapping their chains makes them checkable
@@ -277,13 +288,15 @@ no early clean window to take to QM/MM. And **the carbonyl is inside 2.5 A in
 standard the lactam carbonyl is not a ligand at any point in the run, while an
 unrestrained alcohol is one for 97.9% of it.
 
-**That is a conflict between two settled numbers, and a criterion question.**
-The 2.60 target came from L1's 2.53/2.63 and GFN2's own 2.56 (D196); the bond
-radius is 2.5 (D186). A carbonyl held where the crystal and the QM both put it
-is **guaranteed** to score as non-coordinating. Either a dative carbonyl O->Zn
-belongs at the 3.0 A "affected" radius, or 2.5 is too tight for this donor.
-**Do not change it quietly** - every earlier coordination verdict in the log was
-measured at 2.5.
+**[WITHDRAWN 2026-11-03, D197 corrections, on the user's challenge. I called
+this a conflict between two settled numbers; it is not one.** D124 already
+settled it: thermolysin and CPA hold the nucleophile and the carbonyl on one
+zinc, and the condition is that the carbonyl is **loosely** coordinated - one
+oxygen tight (2.01, 2.19), the other loose (2.41, 2.98). A carbonyl at 2.60 Å
+that is not counted as a bond at 2.5 Å **is** that loose oxygen, and D186's two
+radii exist to express exactly this. The 0.3% occupancy is the design working.
+Nothing needs changing, and at 2.60 Å "loosely coordinated" and "polarised" are
+not a distinction these measurements can resolve.]
 
 It also explains how `site.py` reports `PASS coordination number 4`: the four
 are hydroxide + 2 His + **O1x**, with the carbonyl outside. Correct number,
