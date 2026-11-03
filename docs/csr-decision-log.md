@@ -5239,6 +5239,134 @@ coordination number at the 2.5 A radius over the trajectory, and then
 failed: a coordinated carbonyl AND a near-attack nucleophile AND four-or-five
 coordination, in the same structure.
 
+**D197 - `mich_eq5` ran clean, every restraint held, and the structure is
+still REJECTED. The cause is one unrestrained atom.**
+
+**31721717, COMPLETED 0:0.** 35.1 minutes of walltime, 10 ns at 2 fs, no NaN
+and no walltime trouble. It drew an **L40S**, not an H100, so about 370 ns/day
+rather than the 750-760 D196 estimated from - the estimate was for the wrong
+card, and the run still finished inside the hour.
+
+**All seven restraints held, to better than 0.11 A.** The three configured:
+
+    Zn - mer O2x (carbonyl)   2.645   set 2.60
+    Zn - Asp92 OD1 (held out) 3.782   set 3.81
+    O01 - C4x (attack)        3.458   set 3.47
+
+and the four redetected: hydroxide O01 2.035 (2.14), His164 2.166 (2.09),
+His88 2.193 (2.22), Asp92 OD2 2.743 (2.79). Nothing collapsed and nothing
+dissociated. On the restraints alone this is the best-behaved MD in the
+project.
+
+**But an eighth donor arrived, and nothing was restraining it.** `mer`'s
+**O1x at 2.06 A** - closer to the zinc than the restrained carbonyl at 2.645,
+and as close as the anionic hydroxide at 2.035.
+
+**What O1x is, established from the bond lengths in the frame rather than
+assumed from the name.** O1x-C2x is **1.39 A**, a single C-O bond, and C2x
+carries C1x (1.51) and C3x (1.51): O1x is the alcohol oxygen of meropenem's
+**6-(1-hydroxyethyl)** group. For contrast, in the same frame O2x-C4x is
+**1.24** with C4x-N1x **1.35**, which is the beta-lactam carbonyl and its
+amide nitrogen, and O3x/O4x sit on C6x at 1.22/1.24 - the C3 carboxylate,
+which stayed away at 6.07 and 7.43. So the atom on the metal is the
+hydroxyethyl OH, not the carboxylate and not a second carbonyl contact.
+
+O1x was at 3.13 A in the October pose (D123) and **outside the 3.0 A detection
+sphere at preprocess**, which is why nothing restrained it: `fill_restraints`
+can only restrain what is inside the radius when it looks. It came in from
+outside during the MD. **That is the one failure mode detection-time restraints
+cannot prevent**, and it is the same failure the `prod100b` note records for
+the product arm, where an unrestrained ligand oxygen came from 6.76 A onto the
+metal at 2.01 (D173). `wtpostc` was already monitoring `Zn-mer O1x` for that
+reason.
+
+**`site.py check ... --at=reactant --hypothesis=carbonyl_on_metal`: REJECTED.**
+
+    PASS  Zn - carbonyl O2x       2.65   want 2.4-3.0
+    PASS  Zn - nucleophile O01    2.04   want 1.9-2.2
+    PASS  Zn coordination number     4   want 4-5
+    PASS  O01 - C4x (attack)      3.46   want 3.0-3.5
+    FAIL  closest substrate O      O1x 2.06, want O2x
+    FAIL  O01 - C4x - O2x angle     56   want 95-120
+    FAIL  Asp92 OD1 - O01         5.81   want 2.5-3.2
+
+**The three criteria D196 named are passed except the angle**: carbonyl
+distance, attack distance and coordination number are all inside their
+windows, in one structure, for the first time in the project. D195's blocker is
+gone. What replaced it is the **direction** of the approach, not any distance.
+
+**The angle failure follows from O1x, and the arithmetic says so.** O1x sits
+between the nucleophile and the carbonyl - the sphere angles are
+
+    OH-Zn-O1x  131.3    OH-Zn-O2x   76.8    O1x-Zn-O2x  76.8
+    OH-Zn-H164  89.8    OH-Zn-H88   96.3    H164-Zn-H88 91.7
+    O2x-Zn-H164 133.4   O2x-Zn-H88 133.5    O1x-Zn-H164 79.8
+
+so the hydroxide and the carbonyl are squeezed to **76.8 degrees** with O1x
+wedged in between them. Holding Zn-O01 2.035, Zn-O2x 2.645, O2x-C4x 1.24 and
+O01-C4x 3.458 fixed, the O01-C4x-O2x angle is then determined: 56 degrees, which
+is what was measured. To land in the 95-120 window the **OH-Zn-O2x angle would
+have to be 106.7-128 degrees**.
+
+This matters because **107 degrees is simply tetrahedral**. The Burgi-Dunitz
+window and `carbonyl_on_metal` are therefore NOT mutually exclusive, which was
+worth checking before blaming the criterion: a four-coordinate zinc holding the
+nucleophile and the carbonyl at a normal tetrahedral angle gives a legal attack
+geometry. It is the fifth donor crowding the sphere that closes the angle. One
+unrestrained atom accounts for the one remaining geometric failure.
+
+**Asp92 OD1 - O01 is 5.81 A, against 4.76 in the QM/MM frame (D195).** The
+fourth restraint D196 anticipated is needed, and it has to be an **OD1-O01
+distance**: pinning OD1 3.81 A from the zinc fixes how far the carboxylate is
+from the metal and says nothing about which way it points, and it pointed away.
+
+**A reporting bug found on the way, which matters beyond this run.** The
+pipeline printed
+
+    APPEARED  B:1:ZN - C:1:O1x at 2.06 A
+    LEFT      B:1:ZN - C:1:O2x (was 1.94 A)
+
+and O2x had **not** left: it is at 2.645 A, inside the 3.0 A sphere, exactly
+where it was restrained. The detector keys the sphere by **residue, reporting
+one closest atom each**, so when O1x became `mer`'s closest atom O2x vanished
+from the table and the diff called it a departure. Consequences: the printed
+"after MD" sphere **omits a genuine donor**, the coordination count it implies
+is short by one, and a change report can announce that a restrained contact
+broke when it did not. Both `NVTtrajectory_lastframe.pdb` and
+`...lastframe_imaged.pdb` give identical distances to three decimals, so
+imaging is not involved - this is the per-residue keying, the same flaw D166
+and the `wtpost` note already call out for averaging, now showing up in the
+change report as well. The fix is the one `per_residue: false` already applies
+to `postprocess`; the `md` stage's own before/after reporter does not take it.
+
+**What this does NOT settle.** Whether O1x on the zinc is real. MM cannot say:
+a **neutral** alcohol at 2.06 A, closer than an **anionic** hydroxide at 2.035,
+on a non-bonded Zn(2+) with no Pauli repulsion, is the textbook MM collapse,
+and the stage's own warning says exactly that. The competing reading is that a
+carbapenem's 1-hydroxyethyl genuinely chelates the metal, which is not absurd.
+Deciding it is QM/MM's job, per the standing rule that MM cannot be trusted for
+coordination.
+
+**Disk.** The run wrote **12.7 GB** - every trajectory is stored twice, raw and
+imaged, so NVTtrajectory.dcd and NVTtrajectory_imaged.dcd are 5.76 GB each -
+taking scratch from 269 to **286/300 GB**. The D196 estimate of 6 GB counted
+one copy.
+
+**31736155 `mich_post` FAILED, 31736226 resubmitted.** `postprocess` takes the
+**full config key** as its section: `run.slurm postprocess postprocess_michpost`,
+not `michpost`. With the short name the section is not found, the stage falls
+back to the plain `postprocess` inputs, `md_section` defaults to `md` and the
+error is `` `md` has no results `` - which reads like a missing MD rather than a
+mistyped section. D152's lesson in a new place: a section that is not found is
+not an error, it is a silent fallback to defaults.
+
+`michpost` added to `site.yaml`, **26 selectors checked**, at an explicit
+`cutoff: 2.5` so the analysis does not inherit the 3.0 A restraint radius
+(D186), and monitoring O3x and O4x as well in case the ligand is turning over
+rather than donating one group. Its occupancies are what say whether O1x came
+on early and stayed - which decides whether the whole 10 ns is contaminated or
+only the end of it.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

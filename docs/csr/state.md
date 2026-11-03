@@ -118,7 +118,12 @@ is the blocking scientific question (D89) and it is to be settled on evidence,
 **And a substrate leaving an MM run is a statement about the restraint list,
 not about the pose.** Mistaken for the latter twice — D89, then D192.
 
-## 2b. Is there a usable QM/MM starting structure? NO (D195, measured)
+## 2b. Is there a usable QM/MM starting structure? NOT YET, but the blocker has moved (D195 measured, superseded in part by D197)
+
+**Read 2d first.** `mich_eq5` now has the carbonyl distance, the attack
+distance and the coordination number in ONE structure, which nothing in the
+table below does. What it fails is the attack ANGLE. The table remains the
+record for the 84 pre-rebuild frames.
 
 `site.py check` over all 84 last frames. **One frame in the project is
 accepted** — `CSR_crystal_v2/qmmm_results/QM_MM_lastframe.pdb` — and it has a
@@ -205,6 +210,66 @@ no config route to displacing a water; the only way was to edit the input PDB
 by hand. It takes `CHAIN:RESSEQ:RESNAME`, runs before solvation (deleting a
 water afterwards just lets the solvent refill the position), takes ANISOU and
 CONECT records with it, and refuses the whole request if any selector misses.
+
+## 2d. `mich_eq5`: every restraint held and the structure is still rejected (D197, measured)
+
+**Status: measured, open.** 31721717 COMPLETED in 35.1 min, 10 ns at 2 fs on an
+L40S, no NaN.
+
+**All seven restraints held to better than 0.11 A** - carbonyl O2x 2.645 (set
+2.60), Asp92 OD1 3.782 (3.81), O01-C4x 3.458 (3.47), hydroxide 2.035, His164
+2.166, His88 2.193, Asp92 OD2 2.743. Nothing collapsed, nothing dissociated.
+
+**`site.py check` under `carbonyl_on_metal` at `--at=reactant`: REJECTED.**
+Four pass - carbonyl 2.65 (2.4-3.0), nucleophile 2.04 (1.9-2.2), coordination
+**4** (4-5), attack distance 3.46 (3.0-3.5). **This is the first structure in
+the project to hold all three of D196's criteria at once**, so D195's blocker is
+gone. Three fail: the closest substrate oxygen is O1x 2.06 where O2x is wanted,
+the **O01-C4x-O2x angle is 56 degrees against a 95-120 window**, and Asp92
+OD1-O01 is 5.81 A against 2.5-3.2.
+
+**One unrestrained atom explains the angle.** `mer`'s **O1x** - the
+6-(1-hydroxyethyl) alcohol oxygen, identified from O1x-C2x 1.39 A with C2x
+bonded to two carbons, against O2x-C4x 1.24 with C4x-N1x 1.35 for the lactam
+carbonyl - coordinated the zinc at **2.06 A**, closer than the restrained
+carbonyl and as close as the anionic hydroxide. It sits between them, both at
+76.8 degrees from it, squeezing the OH-Zn-O2x angle to 76.8 where **106.7-128
+degrees** is needed for a legal attack angle. 107 degrees is merely tetrahedral,
+so `carbonyl_on_metal` and Burgi-Dunitz are **not** mutually exclusive - the
+fifth donor is what closes the angle.
+
+O1x was at 3.13 A in the October pose and outside the 3.0 A sphere at
+preprocess, so nothing restrained it: **`fill_restraints` can only restrain what
+is inside the radius when it looks**, and a donor arriving from outside during
+the MD is the one case detection-time restraints cannot cover. Same failure as
+`prod100b` (D173), and `wtpostc` was already watching `Zn-mer O1x`.
+
+**Whether O1x on the metal is real is NOT settled, and MM cannot settle it.** A
+neutral alcohol at 2.06 A, closer than an anionic hydroxide at 2.035, on a
+non-bonded Zn(2+) with no Pauli repulsion, is the textbook MM collapse; a
+carbapenem's 1-hydroxyethyl genuinely chelating the metal is also not absurd.
+QM/MM decides it, per the standing rule.
+
+**Asp92 OD1-O01 needs its own restraint.** 5.81 A here against 4.76 in the
+QM/MM frame. Pinning OD1 3.81 A from the **zinc** fixes the distance and not the
+direction, and it pointed away; the restraint has to be OD1-O01 itself.
+
+**The `md` stage's before/after coordination report is keyed per residue and so
+can mislead.** It announced `LEFT B:1:ZN - C:1:O2x (was 1.94)` when O2x is at
+2.645 A, inside the sphere and exactly where it was restrained: O1x became
+`mer`'s closest atom and displaced O2x from a table that shows one atom per
+residue. So the printed "after MD" sphere **omits a genuine donor**, the implied
+count is short by one, and a restrained contact can be reported as broken when
+it is not. Not an imaging artefact - the imaged and unimaged last frames agree
+to three decimals. `postprocess` has `per_residue: false` for this; the `md`
+reporter has no such option.
+
+**Operational.** `postprocess` takes the **full config key** as its section
+(`run.slurm postprocess postprocess_michpost`, not `michpost`); with the short
+name the section is silently not found, the stage uses the plain `postprocess`
+inputs, and the error reads `` `md` has no results `` as though the MD were
+missing. The run wrote **12.7 GB** because every trajectory is kept twice, raw
+and imaged, taking scratch from 269 to 286/300 GB.
 
 ## 3. Contradictions caught late — the failure mode this file exists to stop
 
@@ -424,6 +489,8 @@ built; offered.
 | Can GFN2-xTB be trusted for coordination number here? | the cluster benchmark — Imhof's own predicts ~7.5 kcal/mol error on 4→5 coordination, which is our contested observation | nothing |
 | Does the re-formed carbonyl land where L1 puts it (2.53–2.63 Å)? | `recombine`, then `refstruct.py transfer` 7UHI as a check | items 1–2 |
 | What protonates the leaving nitrogen? | step 3 as its own scan/NEB, proton source as a hypothesis set | item 6 |
+| Does meropenem's 1-hydroxyethyl OH really coordinate the zinc, or is the 2.06 A an MM collapse? | QM/MM from this frame and let GFN2 choose, OR restrain O1x out and re-run `eq5` to see whether OH-Zn-O2x opens past 107 degrees. The two answers differ in what the paper's Michaelis complex IS, so this is not a tuning question (D197) | nothing |
+| Is the 56 degree attack angle fixable by geometry alone? | an OD1-O01 restraint plus O1x held out; if the angle still will not open with the carbonyl at 2.6, `carbonyl_on_metal` itself is in doubt rather than the structure | the question above |
 | Is the N-terminal truncation question material? | residues 1–14 are modelled from no experimental coordinates, 9–13 Å from the zinc | unresolved, a referee will ask |
 
 ---
