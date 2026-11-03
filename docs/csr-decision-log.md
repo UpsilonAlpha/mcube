@@ -4703,6 +4703,49 @@ The two regions are YAML anchors under `site.qm_regions` rather than nine copies
 
 Whether the all-MM decomposition is the *right* test, as against computational mutagenesis. The user chose deletion-on-all-four, which is cheap and consistent; the mutants (Arg90->Ala/His, Lys226->Ala/His, and the 6DR8-like triple as a di-zinc control) remain the structural test and a second campaign. And the deletions still have to be run **at both ends of the reaction coordinate**: an absolute QM-MM interaction at one geometry is not a catalytic contribution, which is the error Arg229's +44.34 would be if quoted as one.
 
+**D191 - The gate FAILS on both arms, and the reason is not the coordination number: the SUBSTRATE DISSOCIATES. Over the reactant's 100 ns, O01-C4x has mean 19.95 A and max 50.69 A, inside 3.5 A in 0.2% of 5000 frames - meropenem leaves the active site in roughly the first 0.2 ns and diffuses across the periodic box. `wt100c` is therefore not a Michaelis complex and cannot supply a reactant structure. The product's hydrolysed ligand goes the same way (O6x 6.44-8.10 A from the zinc). Separately, a 50 kcal/mol/A^2 restraint cannot hold a carboxylate against a bare Zn(2+): Asp92 OD2 restrained at 2.80 A has mean 2.37 A (product) and 2.44 A (reactant), and a BULK water takes the free site in 89.3% / 97.0% of frames. `prodqm` and `wtqm` were NOT submitted.** (2026-11-03, jobs 31423830 FAILED / 31483853 COMPLETED, analysed by 31528586 / 31528410)
+
+## What was measured
+
+`prod100c` (31423830) NaN'd at **22.68 ns** - the product arm's second NaN, after 34.14 ns on `prod100` under the old 2.5 A cutoff, so it is not caused by the D186 restraint change. `wt100c` (31483853) completed its 100 ns in 3:18:43.
+
+| | reactant `wt100c`, 5000 frames | product `prod100c`, 1134 frames |
+| --- | --- | --- |
+| frames analysed | 100 ns, complete | 22.68 ns, salvaged from the NaN |
+| Zn-His88 NE2 | 100%, 2.22 mean | 99.6%, 2.29 |
+| Zn-His164 NE2 | 100%, 2.17 | 100%, 2.19 |
+| nucleophile | O01 100%, 1.92 | - |
+| structural water(s) | D:1 100%, 2.04 | C:1 100%, 2.04; C:2 100%, 2.09 |
+| **resident BULK water** | **E:2920, 97.0%, 2.10** | **E:3189, 89.3%, 2.10** |
+| **Zn-Asp92 OD2** (restrained 2.80) | **70.5%, min 2.06 / mean 2.44 / max 2.97** | **86.1%, 2.00 / 2.37 / 2.75** |
+| Zn-Asp92 OD1 | 0.3%, 3.73 | 0.3%, 3.82 |
+| coordination number (2.5 A) | 6 in 3523, 5 in 1477 | 6 in 852, 5 in 281, 4 in 1 |
+| **substrate at the metal** | **O01-C4x 0.2%, 3.14 / 19.95 / 50.69** | **Zn-O6x 0%, 6.44 / 7.44 / 8.10** |
+| Lys226 NZ-O01 | **100%, 2.45 / 2.72 / 3.40** | - |
+| Gln93 OE1 on the zinc | **3.0%, 1.98 / 2.16 / 2.76** | 0%, 3.44 |
+
+## Three distinct failures, in order of how much they matter
+
+**1. Nothing holds the substrate, so it leaves.** At MM level there is no bond from the zinc to meropenem; its closest zinc contact, `mer O1x` at 3.13 A, is outside the 3.0 A restraint radius and was correctly excluded by D186's own rule. With neither a bond nor a restraint, the only thing keeping a substrate in a pocket is the force field's non-covalent binding free energy, and here it is not enough: ~10 of 5000 frames inside 3.5 A, then 50 A of box. **A Michaelis complex cannot be produced by unrestrained MM MD and was not.** Everything downstream of the reactant arm - NAC frames, the attack geometry, the scan, the NEB - needs a structure this run does not contain.
+
+**2. 50 kcal/mol/A^2 is too soft for this site.** Asp92 OD2 is restrained harmonically at 2.80 A and its distribution's *maximum* over 100 ns is 2.97 while its mean is 2.44: the distance barely ever reaches the restraint's own minimum. The restraining force at 2.44 A is 2 x 50 x 0.36 = 36 kcal/mol/A and it is still losing, which is what a formal +2 point charge against a carboxylate oxygen at 2.4 A looks like in a non-bonded model. D186 fixed *which* atoms are restrained; this is *how hard*, and 50 was never tested against the question it is being asked. Holding a mean within ~0.05 A of a 2.80 A target needs of order 500 kcal/mol/A^2, or a flat-bottomed restraint, or a bonded zinc model.
+
+**3. A bulk water takes the open site and stays.** The user's position is that "bulk water will come and go, QM/MM should give us the correct coordination behaviour" - but E:2920 and E:3189 are not coming and going, they are resident for 97% and 89% of their runs, and they are what makes the zinc six-coordinate. An MM zinc is a naked point charge with no ligand-field preference, so this is the expected behaviour of the model rather than a finding about the enzyme. It is also the third time this project has concluded that MM MD cannot be trusted for this coordination sphere (D120, D130, D186).
+
+## What survives, and it is not nothing
+
+**Lys226 NZ-O01 at 2.45 / 2.72 / 3.40 A in 100% of 5000 frames.** The lysine holds the nucleophile through the entire 100 ns, which is a direct, converged, classical-MD observation bearing on the RQK thesis and does not depend on the coordination number. **Gln93 OE1 reaches the zinc in 3.0% of frames (min 1.98 A)**, which is worth recording precisely because the working assumption (user, 2026-11-01) is that Gln93 is neutral, remote and non-functional: in the WT crystal it is 7.10 A from the metal, and this says the MD lets it approach. Both want re-measuring once the site is actually held, since both could be artefacts of the same naked-+2 problem.
+
+Also confirmed again, independently of the above: **His88 and His164 are HID with NE2 on the metal in 100% of frames in both arms**, and the hydrolysed topology is right - O6x-C4x 1.23 A (the new acid C=O) and C4x-N1x 3.81 A (the ring is open).
+
+## Why `prodqm` and `wtqm` were not submitted
+
+The user's standing authority was to submit them **if the gate passes**. It does not. Running 50 ps of QM/MM MD from a frame with no substrate in the site would produce a converged, expensive, meaningless number, which is the D152 failure mode in a different costume.
+
+## The decision this leaves
+
+The substrate needs a restraint, and its distance cannot be read off a CSR-1 structure because none with a ligand exists. **7UHI/7UHJ (L1 + moxalactam) is the only measured B3 Michaelis complex** (D96), so it is the only defensible source for a Zn-substrate target distance - which makes this a decision about what the reactant model *is*, not a parameter to pick quietly. The alternative is to stop asking classical MD for the site at all: minimise, equilibrate the protein and solvent briefly with the whole site held stiff, and let QM/MM MD do the equilibration it is the arbiter of anyway.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

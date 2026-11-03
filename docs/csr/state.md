@@ -106,9 +106,9 @@ Items 1–3 gate everything below them. **Status is maintained here.**
 | # | Item | Status |
 | --- | --- | --- |
 | 0 | Asp92's placement in the starting structure | **settled (D179)** — 2.80 Å supported; `prod100c` unblocked |
-| 1+2 | Experiment-anchored Michaelis complex, both endpoints on one topology | **in flight**: `prod100c` (31423830) queued → `prodqm` → `prodopt` → `recombine`. 7UHI is the *check*, not the source |
-| 3 | Equilibration that preserves the site | **RUNNING on both arms** on bun076: `prod100c` (31423830) at 13.6/100 ns, **7 detected restraints + 1 configured**; `wt100c` (31483853) at 7.6/100 ns, **5 + 1**. Both lists verified correct, both fit in 5 h (D185) |
-| 4 | Nucleophile identity, origin, protonation state | not started — blocked on 1–3. D48 and D107 disagree **in sign** |
+| 1+2 | Experiment-anchored Michaelis complex, both endpoints on one topology | **BLOCKED on a decision (D191)**: there is no Michaelis complex yet — the substrate dissociates in ~0.2 ns of unrestrained MM MD. It needs a restraint, and no CSR-1 structure has a ligand, so the Zn–substrate target has to come from **7UHI/7UHJ** (L1 + moxalactam, D96) — which makes 7UHI the *source* after all, not only the check. User's call |
+| 3 | Equilibration that preserves the site | **FAILED, both arms (D191).** `wt100c` finished its 100 ns; `prod100c` NaN'd at 22.68 ns, the product arm's second NaN (34.14 ns on `prod100`), so the NaN predates the D186 cutoff change. Neither preserved the site: substrate gone, resident bulk water on the metal, Asp92 OD2 0.36–0.43 Å inside its restraint. The restraint *lists* were right; 50 kcal/mol/Å² is not strong enough |
+| 4 | Nucleophile identity, origin, protonation state | not started — blocked on 1–3. D48 and D107 disagree **in sign**. One datum arrived anyway: **Lys226 NZ–O01 at 2.72 Å mean in 100% of 5000 frames** (D191) |
 | 5 | PROPKA/H++ and the His164 HID/HIE sensitivity check | **blocked on one pip install**: neither `propka` nor `pdb2pqr` is in the ASH env, both are pure Python, so `pip install propka pdb2pqr` is the whole of it — the user's env, so their call (D185). Open since **D7** |
 | 6 | scan → NEB → TS → frequencies → IRC, ≥3 snapshots | not started — the paper's actual content |
 | 7 | Cluster-model DFT-vs-GFN2 benchmark, Imhof-style | **scoped (D187)**: 37 atoms of site (Zn, two 4-methylimidazoles, acetate, hydroxide, water), net 0, plus a ~15-atom substrate fragment giving −1. The two `sp` additions are **built** (D188): `cluster: true` and `sp_engine: xtb|dft`. Still needs the cluster PDB and reading the ligand's connectivity from `mer_crystal.pdb`'s CONECT records rather than guessing it. Open since **D9** |
@@ -169,6 +169,46 @@ contacts stay visible without being counted.
 that is why the restraints exist — and water comes and goes. What the MM
 occupancy tests is whether the *restrained* contacts held. The coordination
 behaviour that counts is QM/MM's.
+
+### The gate was run on 2026-11-03 and BOTH ARMS FAILED (D191)
+
+| criterion | reactant `wt100c` (100 ns) | product `prod100c` (22.68 ns, NaN'd) |
+| --- | --- | --- |
+| 1. four-coordinate at 2.5 Å | **FAIL** — 6 in 3523/5000, 5 in 1477 | **FAIL** — 6 in 852/1134, 5 in 281 |
+| 2. Asp92 OD2 near 2.80 | **FAIL** — mean 2.44, max 2.97 | **FAIL** — mean 2.37, max 2.75 |
+| 3. Asp92 OD1 near 3.81 | pass — 3.73, 0.3% | pass — 3.82, 0.3% |
+| 4. product O4x/O5x near 2.9 | — | pass — 3.11 / 3.15, never inside 2.5 |
+| 5. hydrogens clean | pass | pass |
+
+**And the criterion nobody wrote down, which is the one that matters: the
+substrate has to still be there.** It is not. `O01–mer C4x` is inside 3.5 Å in
+**0.2% of 5000 frames**, with mean 19.95 Å and max 50.69 Å — meropenem leaves
+in roughly the first 0.2 ns and diffuses across the box. The product's ligand
+goes the same way (`Zn–O6x` 6.44–8.10 Å). Nothing restrains the substrate,
+because its closest zinc contact (`mer O1x`, 3.13 Å) is outside the 3.0 Å
+radius and was correctly excluded by this section's own rule.
+
+**Criterion 6, from now on: the substrate's attack distance must stay inside
+3.5 Å in ≥90% of frames, or the run is not a Michaelis complex and nothing
+downstream of it means anything.**
+
+**The bulk water was not transient either.** E:2920 sits on the reactant's zinc
+for **97.0%** of 100 ns and E:3189 on the product's for **89.3%** — resident,
+not passing through, and the reason both arms read six-coordinate. The
+paragraph above excuses a water that comes and goes; it does not excuse these.
+
+**Why criterion 2 failed is now quantitative, and it is the force constant.**
+Asp92 OD2 is restrained harmonically at 2.80 Å with k = 50 kcal/mol/Å², and
+over 100 ns its distribution's *maximum* is 2.97 while its mean is 2.44: the
+distance hardly ever reaches the restraint's own minimum. At 2.44 Å the
+restraint pulls with 2·50·0.36 = 36 kcal/mol/Å and still loses, which is what a
+formal +2 point charge against a carboxylate oxygen at 2.4 Å looks like without
+a bond. D186 settled *which* atoms are restrained; **50 kcal/mol/Å² is the open
+question, and holding a mean within ~0.05 Å of 2.80 needs of order 500.**
+
+`prodqm` and `wtqm` were **not** submitted, although the standing authority was
+to submit on a pass: 50 ps of QM/MM MD from a frame with no substrate in the
+site is an expensive converged meaningless number (the D152 failure mode).
 
 ## 5. Open questions, with what would settle each
 
