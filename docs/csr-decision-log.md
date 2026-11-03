@@ -5148,6 +5148,52 @@ rather than a failure. 10 ns, not 100: every 100 ns run in D195's inventory is
 in the rejected list, and nothing was visible at 100 ns that was not visible at
 10.
 
+**D196, measured.** The criterion was re-run over all ten NVT production
+frames and over CSR_crystal_v2's QM/MM frame, at `--at=reactant`
+(`.cc/i196.log`, `.cc/j196.log`, 2026-11-03). Two things came out of it.
+
+**The relaxation changes four coordination verdicts and no overall verdict.**
+`crystal_v2`, `nacgpu`, `unrestrained` and `unrestrained2` now PASS the
+coordination number at 5 where `[4, 4]` failed them; `naclong`, `wt100`,
+`wt100b` and `wt100c` are 6 and still fail. All ten are still rejected, every
+one of them on `Zn - carbonyl O2x`:
+
+| frame | CN | Zn-O2x | attack | angle |
+| --- | --- | --- | --- | --- |
+| `crystal_v2` NVT | **5 PASS** | 1.94 FAIL | 3.99 | 30 |
+| `nacgpu` | **5 PASS** | 5.47 FAIL | 3.55 | 80 |
+| `unrestrained` | **5 PASS** | 6.89 FAIL | 4.45 | 100 PASS |
+| `unrestrained2` | **5 PASS** | 7.71 FAIL | 5.31 | 107 PASS |
+| `naclong` | 6 | 5.16 FAIL | **3.33 PASS** | **101 PASS** |
+| `wt100b` | 6 | 5.98 FAIL | 3.65 | 102 PASS |
+| `wt100` | 6 | 7.80 FAIL | 5.56 | 119 PASS |
+| `wt100c` | 6 | 16.82 FAIL | 14.75 | 114 PASS |
+| `CSR_ligand`, `CSR_hydrolysed` | - | - | - | - (`B:1:ZN not in the structure`) |
+
+So the decision removes a false barrier rather than producing a start
+structure, which is the honest reading: the blocker was never the coordination
+number, it is the carbonyl, and `eq5` is what restrains the carbonyl.
+
+**The water to displace is confirmed by measurement, not assumed.** The QM/MM
+frame's sphere is
+
+    D:1:HOH:O 1.98, A:92:ASP:OD2 2.04, A:88:HIS:NE2 2.06,
+    A:164:HIS:NE2 2.08, C:2:OH:O01 2.21, C:1:mer:O2x 2.56
+
+Six, and removing `D:1:HOH` leaves exactly the five of D196 - 2 His +
+hydroxide + carbonyl + a second-shell Asp92 OD2 inside the measurement radius.
+That frame then passes both the carbonyl distance (2.56) and the coordination
+number, and what is left failing is only the attack geometry: O01-C4x 3.70 and
+26 degrees, which is what the frozen 1.94 A pose produced and what `eq5`'s
+attack restraint addresses. `remove_residues: [D:1:HOH]` is therefore the right
+selector for this system, measured in the structure it will be applied to.
+
+One criterion `eq5` does NOT restrain: `Asp92 OD1 - O01` at 2.5-3.2 A, which
+the QM/MM frame has at 4.76. D119 measured it at 2.82-2.94 in 100% of frames,
+so it is left to happen on its own; the 4.76 is a consequence of the frozen
+pose rather than evidence against it. If `eq5` comes back with it long, it
+becomes a fourth restraint.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

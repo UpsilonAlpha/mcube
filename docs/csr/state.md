@@ -181,6 +181,17 @@ spread, and offset goes as F/k. At 500 the restrained mode's period is ~53 fs,
 is deliberately rigid: MM cannot be trusted for coordination (D174), and QM/MM
 is what decides it (confirmed in D195).
 
+**Measured, not assumed (2026-11-03).** Re-running the criterion over all ten
+NVT frames moved four coordination verdicts to PASS (`crystal_v2`, `nacgpu`,
+`unrestrained`, `unrestrained2` — all 5) and **changed no overall verdict**:
+every one still fails `Zn - carbonyl O2x`. The blocker was never the
+coordination number. And `CSR_crystal_v2`'s QM/MM sphere is `D:1:HOH 1.98,
+Asp92 OD2 2.04, His88 2.06, His164 2.08, hydroxide 2.21, carbonyl 2.56` —
+removing `D:1:HOH` leaves exactly five, and that frame then passes both the
+carbonyl distance and the coordination number, failing only the attack
+geometry. So `remove_residues: [D:1:HOH]` is the right selector for this
+system, measured in the structure it will be applied to.
+
 **A rebuild is a new run directory.** `preprocess` takes no `--section`, so
 `remove_residues: [D:1:HOH]` and `coordination_force: 500` go in the new
 directory's own `preprocess.inputs`, with `eq5` as the `md` section on top. The
