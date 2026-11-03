@@ -5007,6 +5007,73 @@ list, not about the pose.** It has been mistaken for the latter twice.
    *"GFN2, or the pose"*. Re-running `wt100c` with the attack restraint
    restored gives a valid MM equilibration; it does not answer that.
 
+**D195 - INVENTORY, measured with `site.py check` over all 84 last frames. There is NO correctly equilibrated structure for a QM/MM start. Exactly ONE frame in the project is accepted - `CSR_crystal_v2/qmmm_results/QM_MM_lastframe.pdb` - and it has a six-coordinate zinc with Asp92 OD2 at 2.04 A and an attack angle of 26 deg. AND the user's hypothesis is CONFIRMED by the only frame that can test it: a carbonyl held coordinated through MM (1.94 A) STAYED under QM/MM and relaxed to 2.56 A, inside 0.07 A of 7UHI/7UHJ's 2.53/2.63; every frame whose carbonyl was uncoordinated in MM lost the substrate under QM/MM.** (2026-11-03, user: "If the substrate is held coordinated in MM then it'll stay in QM, if it's not it won't")
+
+## The hypothesis test
+
+| MM frame | Zn-O2x in MM | Zn-O2x after QM/MM | substrate |
+| --- | --- | --- | --- |
+| `CSR_crystal_v2` (carbonyl frozen in MM) | **1.94** | **2.56** | **stayed** |
+| `CSR_nac/md_naclong` | 5.16 | 6.20 (D111) | left |
+| `CSR_unrestrained` | 6.89 | - | left in MM already |
+| `CSR_unrestrained2` | 7.71 | - | left in MM already |
+| `CSR_wt/md_wt100c` | 16.82 | - | left in MM already |
+
+**xTB chose 2.56 A.** The MM value of 1.94 A is outside the criterion window
+(2.4-3.0) and QM/MM *corrected it upward* to the experimental distance rather
+than holding the MM artefact - which is D67's point measured again, and is
+positive evidence that **GFN2 is not overbinding the substrate**. It also
+retroactively vindicates the carbonyl restraint the user set originally and
+which D40 argued out on a premise D123 withdrew.
+
+## Every candidate, with its disqualifier
+
+| frame | Zn-O2x | Zn-O01 | O01-C4x | angle | CN | verdict / issue |
+| --- | --- | --- | --- | --- | --- | --- |
+| `CSR_crystal_v2/qmmm_results/QM_MM_lastframe` | **2.56** | 2.21 | 3.70 | **26** | **6** | **ACCEPTED**, but CN 6 with Asp92 OD2 **2.04**, angle 26 deg, and D29's Lys226 proton transfer |
+| `CSR_crystal_v2/md_results` NVT | 1.94 | 2.14 | 3.99 | 30 | 5 | carbonyl too tight (frozen constraint), angle 30 |
+| `CSR_nac/md_naclong` NVT | 5.16 | 1.86 | **3.33** | **101** | **6** | chemistry right, coordination wrong: Asp92 OD1 **1.99**, bulk water 2.27. Wrong resting state (D112); condemned shell (state.md rule 7) |
+| `CSR_nac/md_nacgpu` NVT | 5.47 | 1.95 | 3.55 | 80 | 5 | Asp92 OD1 1.98; angle 80 |
+| `CSR_wt/md_wt100b` NVT | 5.98 | 1.93 | 3.65 | 102 | **6** | Asp92 fully **bidentate**, OD2 2.06 AND OD1 2.12 - D120/D130 undiluted |
+| `CSR_wt/md_wt100` NVT | 7.80 | 1.90 | 5.56 | 119 | **6** | Asp92 OD2 2.02 + bulk water 2.14; void (D186) |
+| `CSR_wt/md_wt100c` NVT | **16.82** | 1.91 | 14.75 | 114 | **6** | substrate dissociated (D194); bulk water E:2920 2.06 |
+| `CSR_unrestrained` NVT | 6.89 | 2.14 | 4.45 | 100 | 5 | **Gln93 OE1 on the zinc at 1.79** |
+| `CSR_unrestrained2` NVT | 7.71 | 2.14 | 5.31 | 107 | 5 | substrate out by design (D69) |
+| `CSR_ligand/md_results` NVT | - | - | - | - | - | **UNUSABLE: `B:1:ZN not in the structure`** |
+| `CSR_hydrolysed/md_results` NVT | - | - | - | - | - | **UNUSABLE: same** |
+
+All ten MD frames are rejected under `substituent_on_metal` as well, so this is
+not an artefact of assuming one mechanism (D127's point).
+
+## `CSR_ligand` and `CSR_hydrolysed` cannot be checked at all
+
+Every selector in `site.yaml` fails against them: `B:1:ZN not in the
+structure`, `C:2:O01` likewise. These are the user's own builds and predate the
+current chain naming, so the site description does not address them. **This is
+why the hypothesis could not be tested on them**, which is what the user
+expected to be possible. Remapping their chains would make them checkable
+without re-running anything - worth doing, because they are the only frames
+whose pose has the carbonyl near the metal *without* a frozen MM constraint.
+
+## The conclusion, which is the answer to "do we have one"
+
+**No.** The two halves of a Michaelis complex exist in different structures and
+never in the same one:
+
+- **attack geometry** (O01-C4x 3.0-3.5 A, angle 95-120 deg): `naclong` 3.33/101,
+  `wt100b` 3.65/102, `unrestrained2` 5.31/107.
+- **carbonyl coordination** (2.4-3.0 A): only `CSR_crystal_v2`, and only after
+  QM/MM.
+- **a four-coordinate zinc**: **none of them.** Every frame is five- or
+  six-coordinate, always because Asp92 has collapsed onto the metal, a bulk
+  water has taken a site, or Gln93 has.
+
+So the blocking problem is not the pose alone and not the restraints alone: no
+run has yet combined a coordinated carbonyl, a near-attack nucleophile and a
+four-coordinate zinc. The D191 force-constant finding (50 kcal/mol/A^2 loses to
+a bare Zn2+) and D194's restraint list are both prerequisites, and on this
+evidence the carbonyl needs restraining too - at 2.4-3.0 A, not at 1.94.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

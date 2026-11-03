@@ -118,6 +118,33 @@ is the blocking scientific question (D89) and it is to be settled on evidence,
 **And a substrate leaving an MM run is a statement about the restraint list,
 not about the pose.** Mistaken for the latter twice — D89, then D192.
 
+## 2b. Is there a usable QM/MM starting structure? NO (D195, measured)
+
+`site.py check` over all 84 last frames. **One frame in the project is
+accepted** — `CSR_crystal_v2/qmmm_results/QM_MM_lastframe.pdb` — and it has a
+six-coordinate zinc with Asp92 OD2 at 2.04 Å and an attack angle of 26°.
+
+**The two halves of a Michaelis complex are never in the same structure:**
+
+| what | best frame |
+| --- | --- |
+| attack geometry (3.0–3.5 Å, 95–120°) | `naclong` 3.33/101°, `wt100b` 3.65/102° |
+| carbonyl coordination (2.4–3.0 Å) | **only** `CSR_crystal_v2`, and only after QM/MM (2.56 Å) |
+| four-coordinate zinc | **none** — every frame is 5 or 6, via Asp92, a bulk water, or Gln93 |
+
+**Confirmed: a carbonyl held coordinated through MM stays under QM/MM.**
+`CSR_crystal_v2` went in at 1.94 Å and xTB *relaxed it to* **2.56 Å** — inside
+0.07 Å of 7UHI/7UHJ's 2.53/2.63 Å. Every frame whose carbonyl was uncoordinated
+in MM lost the substrate under QM/MM (naclong 5.16→6.20, D111). So GFN2 is not
+overbinding or expelling it, and **the carbonyl needs restraining in MM** — at
+2.4–3.0 Å, not at 1.94.
+
+**`CSR_ligand` and `CSR_hydrolysed` cannot be checked:** `B:1:ZN not in the
+structure`. The user's own builds predate the current chain naming, so no
+`site.yaml` selector resolves. Remapping their chains makes them checkable
+without re-running anything, and they are the only frames whose pose has the
+carbonyl near the metal with no frozen MM constraint.
+
 ## 3. Contradictions caught late — the failure mode this file exists to stop
 
 | The contradiction | Days unnoticed | How it was caught |
