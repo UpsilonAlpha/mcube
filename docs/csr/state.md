@@ -85,6 +85,39 @@ intermediate. (Audit headline, confirmed against D144.)
 
 ---
 
+## 2a. The substrate pose — settled, and not to be re-litigated by reverting (D194)
+
+**There are two poses in this project and the project chose the second one.**
+
+| pose | Zn–O1x (side-chain OH) | Zn–O2x (carbonyl) | builds |
+| --- | --- | --- | --- |
+| hand-built near-attack, **the user's own** (D20) | 13.3–14.0 | **2.34–2.55** | `CSR_ligand`, `CSR_hydrolysed` |
+| docked pose 2 **pulled onto the metal** by two hand restraints (D68) | 3.82 | 1.94 | `CSR_crystal_v2` |
+| **Vina docked pose 2, as docked — chosen deliberately** (`model: 2`, D68) | 3.13 | **5.43** | `CSR_crystal`, `CSR_nac`, `CSR_unrestrained2`, **`CSR_wt`** |
+
+`CSR_ligand`/`CSR_hydrolysed` are the user's own builds and the pose used for
+most of the early work. **It was then deliberately set aside for the docked
+pose.** Transferring it back is undoing a decision, not fixing a regression —
+proposed on 2026-11-03 and withdrawn the same day.
+
+**The carbonyl is unrestrained on purpose.** D98: *"the substrate gets one
+restraint on the attack coordinate at the distance the docked pose already has.
+Nothing asserts the carbonyl coordinates the zinc."*
+
+**The one restraint that holds the substrate is on the attack coordinate**,
+`[C:2:O01, C:1:C4x, 3.47]`. With it, the substrate held through 100 ns
+(D100/D101, Zn–O2x 5.47 Å). Without it, it leaves.
+
+**What is still open:** whether the docked pose is right at all. 7UHI/7UHJ put
+L1's carbonyl at **2.53/2.63 Å from Zn1** (D123, which withdrew D40's claim
+that inner-sphere coordination was unestablished), and the docked pose never
+makes the carboxylate–Arg contact every other MBL substrate complex shows. That
+is the blocking scientific question (D89) and it is to be settled on evidence,
+**not** by reverting to an older build.
+
+**And a substrate leaving an MM run is a statement about the restraint list,
+not about the pose.** Mistaken for the latter twice — D89, then D192.
+
 ## 3. Contradictions caught late — the failure mode this file exists to stop
 
 | The contradiction | Days unnoticed | How it was caught |
@@ -94,6 +127,8 @@ intermediate. (Audit headline, confirmed against D144.)
 | D48 settled the resting state as Zn-OH₂; the whole `CSR_nac` chain ran in the other state | 8 | D112 |
 | `coordination_from_rows` said restraints are per atom; `find_coordinators` called it per residue | ~6 weeks | D175 |
 | A design decision (Gln93 out of the QM region) inferred from config files instead of read from the log | — | user, twice: D165, D171 |
+| D89's "dissociation implies a bad pose" was examined and **discarded** as an artefact of my own restraint set; **D192 re-derived it** from the same observation | ~3 weeks | user, D194 |
+| `wt100c` **replaced** `wt100b`'s attack-coordinate restraint instead of adding to it; the `site.yaml` comment says "**One** restraint beyond the sweep" and never names what it overwrote | 1 | user, D194 |
 
 Every one of these was a *reading* failure, not a computing failure.
 
@@ -106,8 +141,8 @@ Items 1–3 gate everything below them. **Status is maintained here.**
 | # | Item | Status |
 | --- | --- | --- |
 | 0 | Asp92's placement in the starting structure | **settled (D179)** — 2.80 Å supported; `prod100c` unblocked |
-| 1+2 | Experiment-anchored Michaelis complex, both endpoints on one topology | **BLOCKED on a decision (D191)**: there is no Michaelis complex yet — the substrate dissociates in ~0.2 ns of unrestrained MM MD. It needs a restraint, and no CSR-1 structure has a ligand, so the Zn–substrate target has to come from **7UHI/7UHJ** (L1 + moxalactam, D96) — which makes 7UHI the *source* after all, not only the check. User's call |
-| 3 | Equilibration that preserves the site | **FAILED, both arms (D191).** `wt100c` finished its 100 ns; `prod100c` NaN'd at 22.68 ns, the product arm's second NaN (34.14 ns on `prod100`), so the NaN predates the D186 cutoff change. Neither preserved the site: substrate gone, resident bulk water on the metal, Asp92 OD2 0.36–0.43 Å inside its restraint. The restraint *lists* were right; 50 kcal/mol/Å² is not strong enough |
+| 1+2 | Experiment-anchored Michaelis complex, both endpoints on one topology | **open as a scientific question, not blocked on tooling (D194).** The docked pose binds with the carbonyl at 5.43 Å and one attack restraint; 7UHI/7UHJ put L1's at 2.53/2.63 Å (D123). Deciding between them is the blocking question (D89) and needs evidence, not a revert to `CSR_ligand` (§2a) |
+| 3 | Equilibration that preserves the site | **FAILED, both arms (D191), cause found (D194): the attack-coordinate restraint was replaced, not added to.** Re-run needs `[C:2:O01, C:1:C4x, 3.47]` **and** `[B:1:ZN, A:92:OD1, 3.81, 50.0]` in the list. Still to fix alongside: 50 kcal/mol/Å² does not hold Asp92 OD2 at 2.80 (mean 2.44/2.37), a bulk water holds the free site 97.0%/89.3%, and `prod100c` NaN'd at 22.68 ns — the product arm's second NaN, so it predates D186 |
 | 4 | Nucleophile identity, origin, protonation state | not started — blocked on 1–3. D48 and D107 disagree **in sign**. One datum arrived anyway: **Lys226 NZ–O01 at 2.72 Å mean in 100% of 5000 frames** (D191) |
 | 5 | PROPKA/H++ and the His164 HID/HIE sensitivity check | **blocked on one pip install**: neither `propka` nor `pdb2pqr` is in the ASH env, both are pure Python, so `pip install propka pdb2pqr` is the whole of it — the user's env, so their call (D185). Open since **D7** |
 | 6 | scan → NEB → TS → frequencies → IRC, ≥3 snapshots | not started — the paper's actual content |
@@ -254,15 +289,18 @@ The ceiling for a cubic box is L·√3/2 = **68.4 Å**, and the observed maximum
 50.69 Å sits well inside it. **The dissociation is real and no longer
 provisional**, and the per-frame series is not needed to establish it.
 
-**But D192 also found the cause, and it is upstream of the MD.** The substrate
-was never coordinated in the starting pose: nearest atom `mer O1x` at 3.13 Å,
-which is the 1-hydroxyethyl **side-chain** hydroxyl, while `O2x` — the
-β-lactam carbonyl oxygen that must sit on Zn1 in a B3 Michaelis complex — was
-**5.43 Å** away and the C3 carboxylate 8.05/8.44 Å. The ligand was held by one
-2.25 Å hydrogen bond, `O01···O1x`, between its own hydroxyl and the
-nucleophile. So the 100 ns did not break a Michaelis complex; **there was never
-one to break**, and restraining this pose harder would only freeze the wrong
-pose.
+**The cause is one line of config, not the pose (D194).** `nac` and `wt100b`
+carried `restraints: [['C:2:O01', 'C:1:C4x', 3.47]]` — the attack coordinate —
+and with it the substrate held through 100 ns. **`wt100c` and `prod100c`
+replaced it** with `[['B:1:ZN', 'A:92:OD1', 3.81, 50.0]]`. `restraints` is a
+list and it was treated as a slot; both belong in it. The Asp92 OD1 restraint
+was itself sound (D120/D130, the bidentate pivot twice), it simply went in
+*instead of* rather than *beside*.
+
+D192's geometry is right — carbonyl `O2x` 5.43 Å, `O1x` 3.13 Å nearest,
+confirmed by connectivity — but **its diagnosis is withdrawn**: 5.43 Å is
+docked pose 2 as docked, chosen deliberately, with the carbonyl unrestrained on
+purpose (§2a).
 
 ### `constraint_exclude_residues` is not for the molecule under study (D193)
 

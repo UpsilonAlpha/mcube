@@ -4788,7 +4788,7 @@ with it criterion 6 and the blocked status of plan items 1+2 and 3. What is
 
 The substrate needs a restraint, and its distance cannot be read off a CSR-1 structure because none with a ligand exists. **7UHI/7UHJ (L1 + moxalactam) is the only measured B3 Michaelis complex** (D96), so it is the only defensible source for a Zn-substrate target distance - which makes this a decision about what the reactant model *is*, not a parameter to pick quietly. The alternative is to stop asking classical MD for the site at all: minimise, equilibrate the protein and solvent briefly with the whole site held stiff, and let QM/MM MD do the equilibration it is the arbiter of anyway.
 
-**D192 - The substrate was NEVER coordinated in the starting pose, so there was never a Michaelis complex to lose. Nearest substrate atom to the zinc: `mer O1x` at 3.13 A - the 1-hydroxyethyl SIDE-CHAIN hydroxyl, not the beta-lactam carbonyl. `O2x`, the carbonyl oxygen that must sit on Zn1 in a B3 Michaelis complex, was 5.43 A away; the C3 carboxylate 8.05/8.44 A. The only thing holding the ligand was a 2.25 A hydrogen bond from its own side-chain hydroxyl to the hydroxide nucleophile. AND the periodic-image doubt of D191's amendment is resolved AGAINST me: CRYST1 is 79.028 A cubic at 90/90/90, so the minimum image WAS applied and the dissociation is real.** (2026-11-03, measured from `CSR_wt/preprocess_results/finalsystem.pdb`)
+**D192 (DIAGNOSIS WITHDRAWN by D194: the 5.43 A pose is docked pose 2, chosen deliberately, and the cause was a dropped attack restraint) - The substrate was never coordinated in the starting pose. Nearest substrate atom to the zinc: `mer O1x` at 3.13 A - the 1-hydroxyethyl SIDE-CHAIN hydroxyl, not the beta-lactam carbonyl. `O2x`, the carbonyl oxygen that must sit on Zn1 in a B3 Michaelis complex, was 5.43 A away; the C3 carboxylate 8.05/8.44 A. The only thing holding the ligand was a 2.25 A hydrogen bond from its own side-chain hydroxyl to the hydroxide nucleophile. AND the periodic-image doubt of D191's amendment is resolved AGAINST me: CRYST1 is 79.028 A cubic at 90/90/90, so the minimum image WAS applied and the dissociation is real.** (2026-11-03, measured from `CSR_wt/preprocess_results/finalsystem.pdb`)
 
 ## The starting geometry, measured rather than recalled
 
@@ -4925,6 +4925,87 @@ outside the cutoff at all. Not built; offered.
 ## The rule, so this is not re-derived
 
 **`constraint_exclude_residues` is for atoms that are near the metal by accident, not for molecules whose relationship to the metal is the question.** D8's arginine - restrained to the zinc as though it were a ligand - is what the key exists for. A substrate carbonyl is the opposite case: being affected by the metal is the entire point, and "we are not sure it coordinates" is an argument for holding it where the structure puts it and asking QM/MM, never for letting it go.
+
+**D194 - CONSOLIDATION of the pose history, because I have now re-derived a discarded argument for the third time. The cause of `wt100c`/`prod100c` losing the substrate is NOT the pose: it is that I REPLACED the attack-coordinate restraint `[C:2:O01, C:1:C4x, 3.47]`, which `nac` and `wt100b` carried and which held the substrate through 100 ns, with `[B:1:ZN, A:92:OD1, 3.81, 50.0]`. One line, and my own `site.yaml` comment calls it "**One** restraint beyond the sweep" without mentioning what it overwrote. D192's "there was never a Michaelis complex" is withdrawn as a claim about error, and my proposal to revert to `CSR_ligand`'s pose is withdrawn outright - that pose is the one the project moved away from on purpose.** (2026-11-03, user: "CSR_ligand and CSR_hydrolysed were the ones I set up personally, and it's the pose we used for most simulations before deciding it wasn't correct")
+
+## The two poses, and which is which
+
+| pose | Zn-O1x (side-chain OH) | Zn-O2x (carbonyl) | builds | provenance |
+| --- | --- | --- | --- | --- |
+| **hand-built near-attack** | 13.3-14.0 | **2.34-2.55** | `CSR_ligand`, `CSR_hydrolysed` | **the user's own**, D20: "pose from the processed model ... rigid-body shift towards OH- with C4x 3.0-3.2 A at 100-115 deg; contacts down to ~2.2 A left for MM minimisation (user)" |
+| pulled-in docked | 3.82 | 1.94 | `CSR_crystal_v2` | docked pose 2 **pulled onto the metal** by two hand restraints, `[4203, 4209, 2.2, 20.0]` and `[4255, 4208, 3.0, 20.0]` (D68) |
+| **Vina docked pose 2** | 3.13 | **5.43** | `CSR_crystal`, `CSR_nac`, `CSR_unrestrained2`, **`CSR_wt`** | `model: 2` in all three configs, **chosen deliberately** (D68, correcting D66's "nobody chose this") |
+
+`CSR_ligand`/`CSR_hydrolysed` are the reference runs whose `MM.slurm` defined the
+pipeline order (D44), they are the two the user set up personally, and their
+pose was used for most of the early work **and then deliberately set aside** in
+favour of the docked pose. **So "transfer the pose from `CSR_ligand`" is a
+proposal to undo a decision, not to fix a regression. Withdrawn.**
+
+## What D192 got wrong
+
+D192 measured the `CSR_wt` pose correctly - carbonyl `O2x` 5.43 A, side-chain
+`O1x` 3.13 A nearest, confirmed by connectivity (C4x-O2x 1.21 A, C4x-N1x
+1.37 A) - and then drew the wrong conclusion from it. **The 5.43 A is not an
+accident and not a regression.** It is docked pose 2 as docked, and the
+decision not to restrain the carbonyl was equally deliberate: D98 set up
+`CSR_nac` with exactly one substrate restraint, on the attack coordinate, and
+said so in terms - *"the substrate gets one restraint on the attack coordinate
+at the distance the docked pose already has. **Nothing asserts the carbonyl
+coordinates the zinc.**"* That was the point of it.
+
+So D192's "there was never a Michaelis complex to lose" stands as a *description*
+of the geometry and is **withdrawn as a diagnosis**. The complex was always a
+docked pose with an uncoordinated carbonyl, held by one restraint, and that is
+what the project decided to study.
+
+## The actual cause, which is one line of config
+
+| section | `restraints` | outcome |
+| --- | --- | --- |
+| `nac` | `[['C:2:O01', 'C:1:C4x', 3.47]]` | substrate held; Zn-O2x 5.47 at 1 ns (D100/D101) |
+| `wt100b` | `[['C:2:O01', 'C:1:C4x', 3.47]]` | held |
+| **`wt100c`** | `[['B:1:ZN', 'A:92:OD1', 3.81, 50.0]]` | **O01-C4x mean 19.95, max 50.69 A** |
+| **`prod100c`** | `[['B:1:ZN', 'A:92:OD1', 3.81, 50.0]]` | **Zn-O6x 6.44-8.10 A** |
+| `wt100`, `prod100` | none | the original void pair |
+
+`restraints` is a list and I treated it as a slot. The Asp92 OD1 restraint was
+a sound judgement on its own terms - D120 and D130 are the same bidentate
+pivot twice - but it went in **instead of** the attack restraint rather than
+beside it. Both belong in the list. **That is the whole of it.**
+
+## The pattern this entry exists to stop
+
+**D89** observed the substrate dissociating in an unrestrained run and
+concluded the pose was wrong. That argument was examined and **discarded**:
+*"dissociation-implies-bad-pose (an artefact of my own restraint set)"*, and
+again *"The substrate dissociating unrestrained (run 1, D89) is evidence of an
+MM artefact, not evidence against the docked pose."* **D192 re-derived the same
+argument from the same observation and did not find the discard.** D145
+contradicting D108 unnoticed for 8 days is why `state.md` exists; this is the
+same failure with the pose instead of the zinc sphere.
+
+The rule: **the substrate leaving an MM run is a statement about the restraint
+list, not about the pose.** It has been mistaken for the latter twice.
+
+## What this does NOT settle, and must not be read as settling
+
+1. **Whether the docked pose is right remains the blocking scientific
+   question**, exactly as the log already says: *"The binding pose is the
+   blocking scientific question"* (D89), and the carboxylate-Arg interaction
+   every other MBL substrate complex shows is one the docked pose never makes.
+2. **7UHI/7UHJ is live evidence against 5.43 A.** D123 withdrew D40's claim
+   that inner-sphere carbonyl coordination is unestablished, because L1's
+   time-resolved Michaelis complexes put the carbonyl at **2.53/2.63 A from
+   Zn1**. That is a real argument that the docked pose has the carbonyl too far
+   out - and it is an argument to be had on the evidence, not something to
+   settle by reverting to an older build.
+3. **Restoring the attack restraint fixes MM and not QM/MM.** D119 took the
+   `nac` frame into QM/MM at O01-C4x 3.49 A and it never came back under
+   3.5 A in 50 ps, mean 5.31, max 6.20, on both protonation arms. So the
+   substrate drifts under QM/MM regardless, and the cause there is still open -
+   *"GFN2, or the pose"*. Re-running `wt100c` with the attack restraint
+   restored gives a valid MM equilibration; it does not answer that.
 
 ## Resources (see `running-on-bunya.md`)
 
