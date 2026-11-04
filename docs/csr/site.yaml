@@ -2391,6 +2391,112 @@ sections:
           atoms: [C:2:O01, B:1:ZN, C:1:O2x]
           window: [150, 180]
 
+  # ---- michrkpost: the same analysis, for the batch where K can act ----
+  #
+  # Every key michqmpost has, pointing at `qmmm_michrk` instead, so the two
+  # reports are comparable line for line and a difference between them is a
+  # difference between the two regions rather than between two analyses. What
+  # is added is the set of pairs that answer D202, and nothing is removed.
+  #
+  # This section is the reason `postprocess` gained a per-pair cutoff. A
+  # proton-transfer coordinate is a BOND length, and the section cutoff is a
+  # polar-contact convention: 3.5 A scores a 1.0 A O-H pair at 100% occupancy
+  # in a trajectory where nothing moved at all. `{atoms: [...], cutoff: 1.2}`
+  # is the same override `monitor_angles` already had for a window, for the
+  # same reason - one section's measurements are not all the same question.
+  #
+  # Run it with the batch's OWN first frame as topology, as michqmpost does.
+  michrkpost:
+    stage: postprocess
+    inputs:
+      pdb_file: protdft/qmmm_michrk/QM_MM_firstframe.pdb
+      trajectory: protdft/qmmm_michrk/QM_MM.dcd
+      hydrogens: true
+      coordination:
+        cutoff: 2.5
+        per_residue: false
+        margin: 1.0
+      contacts:
+        cutoff: 3.5
+      monitor:
+        Zn-Asp92 OD2: [B:1:ZN, A:92:OD2]
+        Zn-Asp92 OD1: [B:1:ZN, A:92:OD1]
+        Zn-His88: [B:1:ZN, A:88:NE2]
+        Zn-His164: [B:1:ZN, A:164:NE2]
+        Zn-Asn225 OD1: [B:1:ZN, A:225:OD1]
+        Zn-hydroxide O01: [B:1:ZN, C:2:O01]
+        Zn-mer O1x: [B:1:ZN, C:1:O1x]
+        Zn-mer O2x: [B:1:ZN, C:1:O2x]
+        Zn-mer O3x: [B:1:ZN, C:1:O3x]
+        Zn-mer O4x: [B:1:ZN, C:1:O4x]
+        Zn-Arg90 NH1: [B:1:ZN, A:90:NH1]
+        O01-mer C4x: [C:2:O01, C:1:C4x]
+        Asp92 OD1-O01: [A:92:OD1, C:2:O01]
+        Lys226 NZ-O01: [A:226:NZ, C:2:O01]
+        Gln93 NE2-Asp92 OD1: [A:93:NE2, A:92:OD1]
+        O01-mer O2x: [C:2:O01, C:1:O2x]
+        # ---- D202's question, and the only pairs that answer it ----
+        #
+        # A transfer shows up as a swap: the N-H bond stretches past 1.2 A
+        # while one H-O01 distance falls under it. Which hydrogen goes is not
+        # known in advance, so all three are monitored - a proton keeps its
+        # atom name when it moves, so watching only the one that happens to
+        # point at the acceptor in the first frame is how the event is missed.
+        # Each carries `cutoff: 1.2`, the per-pair override: scored against
+        # the section's 3.5 A every one of these reads 100% in every frame
+        # whether anything happened or not.
+        #
+        # `O01-H03` is the control - the hydroxide's own proton, which should
+        # stay on it at ~0.97 A throughout. If it leaves as well the species
+        # is an oxide, not a water, and the run has gone somewhere else
+        # entirely. `Asp92 OD1-H03` is the opposite direction, which D201's
+        # three failures make the less likely one but not the untested one.
+        Lys226 NZ-HZ1: {atoms: [A:226:NZ, A:226:HZ1], cutoff: 1.2}
+        Lys226 NZ-HZ2: {atoms: [A:226:NZ, A:226:HZ2], cutoff: 1.2}
+        Lys226 NZ-HZ3: {atoms: [A:226:NZ, A:226:HZ3], cutoff: 1.2}
+        HZ1-O01: {atoms: [A:226:HZ1, C:2:O01], cutoff: 1.2}
+        HZ2-O01: {atoms: [A:226:HZ2, C:2:O01], cutoff: 1.2}
+        HZ3-O01: {atoms: [A:226:HZ3, C:2:O01], cutoff: 1.2}
+        O01-H03: {atoms: [C:2:O01, C:2:H03], cutoff: 1.2}
+        Asp92 OD1-H03: {atoms: [A:92:OD1, C:2:H03], cutoff: 1.2}
+        # Arg90 is quantum here too, so its own donors are monitored for the
+        # first time rather than assumed inert: it is a cation 3.6 A from the
+        # substrate carboxylate (D150) and nothing has yet watched it reach
+        # anywhere else.
+        Arg90 NH1-O01: [A:90:NH1, C:2:O01]
+        Arg90 NH2-O01: [A:90:NH2, C:2:O01]
+        Arg90 NE-mer O2x: [A:90:NE, C:1:O2x]
+      angles:
+        window: [95, 120]
+      monitor_angles:
+        # A proton in flight is nearly linear through the hydrogen. Vertex is
+        # the MIDDLE selector, so this is the N-H...O angle, and 150-180 is
+        # the hydrogen-bond geometry a transfer has to pass through. A short
+        # H-O01 distance at 110 degrees is a contact across the oxygen's lone
+        # pairs, not a transfer.
+        NZ-HZ1-O01:
+          atoms: [A:226:NZ, A:226:HZ1, C:2:O01]
+          window: [150, 180]
+        NZ-HZ2-O01:
+          atoms: [A:226:NZ, A:226:HZ2, C:2:O01]
+          window: [150, 180]
+        NZ-HZ3-O01:
+          atoms: [A:226:NZ, A:226:HZ3, C:2:O01]
+          window: [150, 180]
+        O01-C4x-O2x: [C:2:O01, C:1:C4x, C:1:O2x]
+        O01-C4x-N1x: [C:2:O01, C:1:C4x, C:1:N1x]
+        # Not an attack angle, so it carries its own window: whether the
+        # nucleophile and the carbonyl are TRANS across the zinc or adjacent
+        # to it. 150-180 is trans. Measured because the Burgi-Dunitz angle is
+        # not free once both oxygens are on one metal - two ligands 3.0 A
+        # apart cannot put the nucleophile above the carbon - so the attack
+        # angle and this one are the same fact seen twice, and only this one
+        # says what to change.
+        O01-Zn-O2x:
+          atoms: [C:2:O01, B:1:ZN, C:1:O2x]
+          window: [150, 180]
+
+
   clus_on_xtb:
     stage: sp
     inputs:

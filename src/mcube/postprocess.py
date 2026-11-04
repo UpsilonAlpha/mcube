@@ -168,6 +168,19 @@ def contact_occupancy(pdb_file, trajectory, monitor, cutoff=3.5, stride=1):
     stage. Occupancy is the fraction of frames within `cutoff`, 3.5 A by
     default - the usual polar-contact convention for a heavy-atom pair.
 
+    One section's pairs are not all the same kind of question, so a pair may
+    carry its own cutoff: `{atoms: [a, b], cutoff: 1.2}` in place of the bare
+    list, which is the override `angle_occupancy` already gives a triple. The
+    section cutoff is a polar-contact convention and a **bond** is not a
+    contact: a proton 1.0 A from the oxygen it has transferred to is inside
+    3.5 A in every frame of every trajectory, transferred or not, so scoring
+    it against the section value reports 100% occupancy and measures nothing.
+    With its own 1.2 A the same pair reports the fraction of frames in which
+    the proton is actually ON the acceptor. `min`/`mean`/`max` never depended
+    on the cutoff and are unchanged; each row now carries the cutoff its
+    occupancy was scored against, because an occupancy whose threshold is not
+    stated beside it is not a measurement.
+
     A pair whose atoms are not in this topology is **reported as missing, not
     skipped**: a contact absent from the system is a fact about the model, and
     a selector that silently resolves to nothing is how a monitor goes
@@ -185,8 +198,12 @@ def contact_occupancy(pdb_file, trajectory, monitor, cutoff=3.5, stride=1):
             "topology must be the structure the trajectory was produced "
             "from.") from exc
 
-    named, idx, missing = [], [], []
+    named, idx, cuts, missing = [], [], [], []
     for name, sel in (monitor or {}).items():
+        own = cutoff
+        if isinstance(sel, dict):
+            own = sel.get("cutoff", cutoff)
+            sel = sel.get("atoms")
         if not (isinstance(sel, (list, tuple)) and len(sel) == 2):
             missing.append({"pair": name,
                             "why": "needs exactly two selectors, got %r" % (sel,)})
@@ -198,6 +215,7 @@ def contact_occupancy(pdb_file, trajectory, monitor, cutoff=3.5, stride=1):
             continue
         named.append(name)
         idx.append((int(i), int(j)))
+        cuts.append(float(own))
 
     dist = [[] for _ in named]
     frames = 0
@@ -211,8 +229,8 @@ def contact_occupancy(pdb_file, trajectory, monitor, cutoff=3.5, stride=1):
     out = []
     for k, name in enumerate(named):
         d = np.array(dist[k])
-        out.append({"pair": name,
-                    "occupancy": round(float((d < cutoff).mean()) * 100.0, 1),
+        out.append({"pair": name, "cutoff": cuts[k],
+                    "occupancy": round(float((d < cuts[k]).mean()) * 100.0, 1),
                     "min": round(float(d.min()), 2),
                     "mean": round(float(d.mean()), 2),
                     "max": round(float(d.max()), 2)})
@@ -366,12 +384,12 @@ def angle_occupancy(pdb_file, trajectory, monitor, window=None, stride=1):
 def report_contacts(rep, label: str) -> None:
     print("\n===== Monitored contacts over %d frames: %s ====="
           % (rep["frames"], label))
-    print("  cutoff %.2f A" % rep["cutoff"])
-    print("  %-26s  occ%%    min  mean   max" % "pair")
+    print("  cutoff %.2f A, unless a pair states its own" % rep["cutoff"])
+    print("  %-26s  occ%%    min  mean   max  cut" % "pair")
     for row in rep["pairs"]:
-        print("  %-26s %5.1f  %5.2f %5.2f  %5.2f"
+        print("  %-26s %5.1f  %5.2f %5.2f  %5.2f  %.2f"
               % (row["pair"], row["occupancy"], row["min"], row["mean"],
-                 row["max"]))
+                 row["max"], row.get("cutoff", rep["cutoff"])))
     for row in rep["missing"]:
         print("  %-26s     -  %s" % (row["pair"], row["why"]))
 

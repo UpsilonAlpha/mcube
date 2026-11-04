@@ -116,6 +116,57 @@ class TestOccupancy:
         assert rep["frames"] == 2
 
 
+class TestAPairWithItsOwnCutoff:
+    """`{atoms: [a, b], cutoff: x}`, the override `monitor_angles` already has.
+
+    The section cutoff is a polar-contact convention, and the pair that broke
+    it is a proton: a hydrogen 1.0 A from the oxygen it transferred to is
+    inside 3.5 A in every frame whether it transferred or not, so the one
+    number the section can give reports 100% and measures nothing. D202's
+    question is exactly that pair.
+    """
+
+    def test_the_pair_is_scored_against_its_own(self, postprocess, tmp_path,
+                                                 system):
+        traj = trajectory(tmp_path, system, [3.0, 3.0])
+        monitor = {"Zn-Gln93 OE1": {"atoms": ["B:1:ZN", "A:93:OE1"],
+                                    "cutoff": 2.5}}
+        rep = postprocess.contact_occupancy(str(system), str(traj), monitor)
+        row = rep["pairs"][0]
+        assert row["occupancy"] == 0.0 and row["cutoff"] == 2.5
+        # The distance is unchanged: only what it is scored against moved.
+        assert row["min"] == 3.00 and row["max"] == 3.00
+
+    def test_the_others_keep_the_section_cutoff(self, postprocess, tmp_path,
+                                                 system):
+        traj = trajectory(tmp_path, system, [3.0, 3.0])
+        monitor = dict(MONITOR)
+        monitor["Zn-Gln93 OE1"] = {"atoms": ["B:1:ZN", "A:93:OE1"],
+                                   "cutoff": 2.5}
+        rep = postprocess.contact_occupancy(str(system), str(traj), monitor)
+        rows = {r["pair"]: r for r in rep["pairs"]}
+        assert rows["Zn-Gln93 OE1"]["occupancy"] == 0.0
+        assert rows["Zn-Asp92 OD2"]["occupancy"] == 100.0
+        assert rows["Zn-Asp92 OD2"]["cutoff"] == 3.5
+        assert rep["cutoff"] == 3.5
+
+    def test_every_row_states_the_cutoff_it_was_scored_against(
+            self, postprocess, tmp_path, system):
+        """An occupancy without its threshold beside it is not a measurement."""
+        traj = trajectory(tmp_path, system, [3.0])
+        rep = postprocess.contact_occupancy(str(system), str(traj), MONITOR,
+                                            cutoff=2.5)
+        assert all(r["cutoff"] == 2.5 for r in rep["pairs"])
+
+    def test_a_dict_without_atoms_is_reported_not_skipped(
+            self, postprocess, tmp_path, system):
+        traj = trajectory(tmp_path, system, [3.0])
+        rep = postprocess.contact_occupancy(
+            str(system), str(traj), {"typo": {"atom": ["B:1:ZN", "A:93:OE1"]}})
+        assert rep["missing"][0]["pair"] == "typo"
+        assert "two selectors" in rep["missing"][0]["why"]
+
+
 class TestAPairThatDoesNotResolve:
     """Reported, not skipped. A monitor that silently matches nothing is how
     the atom that mattered went unwatched for weeks (D120)."""

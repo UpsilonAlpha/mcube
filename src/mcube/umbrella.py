@@ -1062,6 +1062,10 @@ def run_qmmm_window(config, section, inputs, preprocess, md, index: int) -> Dict
     last = Path("window_lastframe.pdb")
     lastframe = last.resolve().as_posix() if last.exists() else None
     prep_in = preprocess.get("inputs") or {}
+    # No `restrained` argument here, deliberately: `release` zeroes the
+    # coordination force before the window samples, so nothing WAS holding the
+    # sphere and every change is a free one. Passing the detected shell would
+    # tag pairs as held that were held only during equilibration.
     changes = (compare_coordination(coordination_shell(start, prep_in),
                                     coordination_shell(lastframe, prep_in))
                if lastframe and prep_in.get("metals") else [])

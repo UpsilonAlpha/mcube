@@ -682,7 +682,7 @@ def report_coordination(shell, label: str) -> None:
               % (row["metal"], row["donor"], row["resname"], row["distance"]))
 
 
-def compare_coordination(before: list, after: list) -> list:
+def compare_coordination(before: list, after: list, restrained=None) -> list:
     """Lines describing how the sphere changed, empty if it did not.
 
     A ligand that appears during MD was not there to be constrained at setup, so
@@ -690,18 +690,42 @@ def compare_coordination(before: list, after: list) -> list:
     and there is no Pauli repulsion to stop it. That has happened here (a Gln
     amide oxygen went from 5.54 to 1.79 A), and it is invisible unless something
     looks.
+
+    `restrained` is the run's restraint list in selector form, as
+    `to_selectors` returns it, and a pair named in it is tagged `[restrained]`.
+    The distinction is the whole diagnostic value of this report and the
+    message that used to follow it did not draw it: a pair held at its crystal
+    distance that then MOVED has not been pulled in by a bare point charge, it
+    has been pulled by the restraint, and the two call for opposite responses -
+    loosen the restraint, or stop trusting the force field. Since the standing
+    rule here is to restrain everything within the 3.0 A radius at its crystal
+    distance, most changed pairs ARE held, so a warning that assumed none of
+    them were was wrong about nearly every line it printed.
     """
+    held = set()
+    for entry in restrained or []:
+        atoms = entry.replace(",", " ").split() if isinstance(entry, str) else list(entry)
+        pair = [a for a in atoms[:2] if isinstance(a, str) and a.count(":") == 2]
+        if len(pair) == 2:
+            held.add(frozenset(pair))
+
     was = {(r["metal"], r["donor"]): r["distance"] for r in before or []}
     now = {(r["metal"], r["donor"]): r["distance"] for r in after or []}
+
+    def tag(key):
+        return "   [restrained]" if frozenset(key) in held else ""
+
     lines = []
     for key in sorted(set(now) - set(was)):
-        lines.append("  APPEARED  %s - %s at %.2f A" % (key[0], key[1], now[key]))
+        lines.append("  APPEARED  %s - %s at %.2f A%s"
+                     % (key[0], key[1], now[key], tag(key)))
     for key in sorted(set(was) - set(now)):
-        lines.append("  LEFT      %s - %s (was %.2f A)" % (key[0], key[1], was[key]))
+        lines.append("  LEFT      %s - %s (was %.2f A)%s"
+                     % (key[0], key[1], was[key], tag(key)))
     for key in sorted(set(was) & set(now)):
         if abs(now[key] - was[key]) >= 0.2:
-            lines.append("  MOVED     %s - %s %.2f -> %.2f A"
-                         % (key[0], key[1], was[key], now[key]))
+            lines.append("  MOVED     %s - %s %.2f -> %.2f A%s"
+                         % (key[0], key[1], was[key], now[key], tag(key)))
     return lines
 
 

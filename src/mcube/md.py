@@ -720,15 +720,31 @@ def run(args) -> Dict[str, Any]:
         shell_after = coordination_shell(final, preprocess_inputs)
         report_coordination(shell_after, "after MD")
         result["coordination_end"] = shell_after
-        changes = compare_coordination(shell_before, shell_after)
+        # The restraint list, in selector form, so each changed pair can say
+        # whether anything was holding it. Without this the advice below was
+        # wrong about most of what it printed: under the standing rule that
+        # everything inside the coordination radius is restrained at its
+        # crystal distance, a pair that MOVED was usually moved BY a restraint,
+        # not by an unopposed point charge, and the two have opposite fixes.
+        held = to_selectors(restraints, pdb_file)
+        changes = compare_coordination(shell_before, shell_after, held)
         if changes:
+            free = [l for l in changes if "[restrained]" not in l]
             print()
             print("The coordination sphere changed during MD:")
             for line in changes:
                 print(line)
-            print("Check these are physical before building on this structure: a "
-                  "contact that appeared was not constrained, and a non-bonded "
-                  "metal has no Pauli repulsion to stop a donor collapsing onto it.")
+            print("Check these are physical before building on this structure.")
+            if free:
+                print("%d of them are on pairs NOTHING held: a non-bonded metal "
+                      "has no Pauli repulsion to stop a donor collapsing onto "
+                      "it, and a contact that appeared was not there to be "
+                      "restrained at setup." % len(free))
+            if len(free) < len(changes):
+                print("The pairs marked [restrained] were held at a target "
+                      "distance, so a change there is the restraint's doing or "
+                      "the force field fighting it - read it as a restraint to "
+                      "revisit, not as the metal pulling a donor in.")
         else:
             print()
             print("The coordination sphere is unchanged.")
