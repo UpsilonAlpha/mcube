@@ -2484,7 +2484,18 @@ sections:
           atoms: [A:226:NZ, A:226:HZ3, C:2:O01]
           window: [150, 180]
         O01-C4x-O2x: [C:2:O01, C:1:C4x, C:1:O2x]
-        O01-C4x-N1x: [C:2:O01, C:1:C4x, C:1:N1x]
+        # Scored against NOTHING, explicitly. The section window is the
+        # Burgi-Dunitz one and Burgi-Dunitz is defined for Nu-C=O, which is
+        # `O01-C4x-O2x`. The angle to the LEAVING nitrogen is not that
+        # criterion: a tetrahedral carbon puts any two of its substituents at
+        # about 109 degrees, so this triple reads 99-119 in the frames
+        # measured so far and would score as a pass inside a 95-120 window
+        # while meaning nothing about an approach. `window: null` is how
+        # `angle_occupancy` says there is no criterion - the spread is
+        # reported and the occupancy comes back None.
+        O01-C4x-N1x:
+          atoms: [C:2:O01, C:1:C4x, C:1:N1x]
+          window: null
         # Not an attack angle, so it carries its own window: whether the
         # nucleophile and the carbonyl are TRANS across the zinc or adjacent
         # to it. 150-180 is trans. Measured because the Burgi-Dunitz angle is

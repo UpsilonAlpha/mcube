@@ -6344,6 +6344,117 @@ headroom problem is not this project's - CSR is 15 GB of the total. The large
 trees are `channel` 41 G, `glp1r_md` 41 G, `AANCA` 27 G, `hf` 25 G, `boltzgen`
 16 G, and what to do about those is not a CSR decision.
 
+**D204 - D202 is answered, 6 ps in, and the answer is yes: Lys226 hands HZ3 to
+the hydroxide within 2 ps of the lysine becoming quantum. This is the fourth
+time this transfer has been seen and the first time in a complex that was built
+right, which is the whole of its value. Measured from the running job's own
+files, no analysis stage involved.** (2026-11-05, job 31892313 at step ~5700 of
+50,000)
+
+## What the record already said, so that what is new is only what is new
+
+The transfer itself is not news and must not be written up as though it were:
+
+- **D29** saw it in QM/MM MD on `CSR_crystal_v2` - "one proton transfer: Lys226
+  HZ1 -> OH- O01 in the first frame, permanent".
+- **D35** confirmed it at wB97X-D3(BJ)/def2-SVP//xTB/MM: -13.1 and -15.5
+  kcal/mol on two frames, and dropped hypothesis H4 on the strength of it.
+- **D48** repeated it in a clean four-coordinate sphere and got **-5.23
+  kcal/mol** at DFT, finding that two thirds of D35's margin had been an
+  artefact of the degraded six-coordinate geometry.
+
+And **D41** is the reason that was not the end of it. D41 classed the transfer
+as one of three ways "the QM/MM MD then degraded" a correctly built reactant,
+alongside Asp92 migrating onto the metal and the carbonyl coming inner-sphere.
+That left a real question open: in a complex that is NOT degraded - four-
+coordinate at the start, substrate bound, carbonyl on the metal by its own
+choice rather than by restraint - does the lysine still do it? Every prior
+observation was in a sphere that could be blamed. **This one cannot be, and the
+transfer still happens.** That is what D202 bought.
+
+## The measurement
+
+`QM_MM.dcd` carries six frames at 1 ps spacing (`nsavc` 1000), read directly
+with the atom indices from `QM_MM_firstframe.pdb`. Nine further samples came
+from `xtb_.xyz`, the input file the interface rewrites every step, taken ~4 s
+apart at step ~5700-5800.
+
+    ps      NZ-HZ3  HZ3-O01  O01-H03  NZ-O01   N-H...O     Zn-O01  Zn-O2x
+    1        1.04     2.54     0.98    2.79      93 deg      1.87    2.45
+    2        1.19     1.40     0.92    2.58     172          2.21    2.27
+    3        1.59     1.00     0.96    2.56     160          2.26    1.99
+    4        1.12     1.35     0.98    2.46     168          1.87    2.35
+    5        1.60     1.00     0.97    2.60     173          2.26    2.04
+    6        1.72     0.99     1.00    2.70     169          2.00    2.24
+    live   1.63-1.75  0.96-1.05 0.96-1.00 ~2.6  164          ~2.0    ~2.1
+
+Three things in that table are new.
+
+**It is a shuttle, not the one-way event D29 recorded.** At 1 ps the proton is
+on the nitrogen (1.04 A, and the N-H...O angle is 93 degrees - not even aligned
+to transfer). By 2 ps it is in flight and the angle has snapped to 172. At 3 ps
+it is on the oxygen. At **4 ps it is back at 1.12/1.35**, and from 5 ps on it
+stays on the oxygen (1.6-1.75 / 0.96-1.05) through every later sample. So the
+barrier is low in both directions and the well is on the oxygen - which is what
+a -5.23 kcal/mol driving force (D48) should look like at 300 K, and is a
+quantitative consistency check between the two rather than a repeat.
+
+**The coordination sphere reports the protonation state independently.** Zn-O01
+is **1.87 A whenever the proton is on the nitrogen** (ps 1, ps 4) and
+**2.21-2.26 A whenever it is on the oxygen** (ps 2, 3, 5), with Zn-O2x moving
+the opposite way (2.45 -> 1.99-2.27). Hydroxide binds zinc harder than water
+does, so the sphere is answering the same question the proton is, through a
+different observable, and the two agree frame by frame. That is the strongest
+evidence available here that this is chemistry and not a parameter artefact: no
+single wrong parameter produces both.
+
+**The nucleophile is a water, and it is not poised.** O01-C4x is **3.72-4.16
+A** across every frame, and the Burgi-Dunitz angle `O01-C4x-O2x` is **16-33
+degrees** - the nucleophile stays cis to the carbonyl oxygen (O01-O2x 2.68-3.02
+A, O01-Zn-O2x 77-91 degrees), both of them adjacent on the same metal. D201's
+refutation of the Burgi-Dunitz gate therefore survives the region change
+intact, and D29's 20-53 degrees is reproduced in a completely different system.
+Two ligands 3 A apart on one zinc cannot put one above the other's carbon; that
+is geometry, not sampling.
+
+## What it decides, and what it does not
+
+**Decided.** The reactant of this enzyme at this level of theory is **Zn-OH2
+with a neutral Lys226**, in a correctly built Michaelis complex and not only in
+a degraded one. D41's hope that the transfer was a simulation artefact is
+closed. D48's energy is confirmed dynamically.
+
+**Not decided, and it is the same gap as before.** Everything above is GFN2-xTB
+for the dynamics. D35 and D48 are the DFT support and they are single points on
+other geometries, so the DFT check on THESE frames has not been done. The
+second open worry is unchanged and visible in this run too: **Zn-Asp92 OD2
+reaches 1.78 A at 6 ps** (2.80 A in the crystal), the over-coordination D41
+flagged, and Asp92's charge sitting on the metal is exactly what D48 showed
+inflates the transfer energy. So the sign is secure across four measurements
+and two methods; the magnitude in THIS geometry is not.
+
+**The mechanistic consequence, stated but not acted on.** A zinc-bound water at
+2.0-2.2 A with a neutral amine 2.5-2.7 A away, both of them stable and
+exchanging a proton freely, is not a dead end - it is the arrangement in which
+the amine can take the proton back as the water attacks. That makes a concerted
+water attack with Lys226 as the base the reading this run supports, and plan
+item 6's scan/NEB the thing that would test it. No job is proposed here.
+
+## A false criterion, found while reading this
+
+`monitor_angles` in `michqmpost` scores **both** `O01-C4x-O2x` and
+`O01-C4x-N1x` against the section's 95-120 window. Burgi-Dunitz is defined for
+Nu-C=O, which is the first of those. The second is the angle to the leaving
+nitrogen, and a tetrahedral carbon puts any two substituents near 109 degrees:
+it measures **99-119 in every frame above**, so it scores as a PASS inside that
+window while saying nothing whatever about an approach. In `michrkpost` it now
+carries `window: null`, which is how `angle_occupancy` says there is no
+criterion. **`michqmpost` is left alone deliberately** - changing a section
+whose result may already be recorded would make the stored numbers disagree
+with the config that produced them - so if batch 1's report has been run, its
+`O01-C4x-N1x` occupancy is that artefact and should be struck rather than
+re-derived. A 95-120 occupancy on that triple must not reach the paper.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

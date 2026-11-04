@@ -516,6 +516,22 @@ D190 was protecting are untouched; K's comes out of this trajectory chemically
 instead, and its electrostatic row, if wanted, comes from mutagenesis. The
 region grows by 34 atoms (ARG 18 of 24, LYS 16 of 22, both cut at CA-CB).
 
+**And answered, 6 ps in (D204).** Lys226 hands HZ3 to the hydroxide within 2 ps
+of becoming quantum, and from 5 ps on the proton stays on the oxygen. So the
+reactant of this enzyme is **Zn-OH2 with a neutral Lys226** in a complex that
+was built right, not only in the degraded sphere D29, D35 and D48 saw it in -
+which is the one thing D41 left open about the transfer, and it is now closed.
+Two observations beyond the fact: it is a **shuttle** (at 4 ps the proton is
+back on the nitrogen at 1.12 A) rather than D29's one-way event, consistent
+with D48's -5.23 kcal/mol at 300 K; and **Zn-O01 reports the protonation state
+independently**, 1.87 A with the proton on N and 2.21-2.26 A with it on O,
+frame by frame, which no single wrong parameter would produce. The nucleophile
+is water and it is **not poised**: O01-C4x 3.72-4.16 A, Burgi-Dunitz
+`O01-C4x-O2x` 16-33 degrees, so D201's refutation of the attack gate survives
+the region change. What is still open is the magnitude in this geometry, not
+the sign: the dynamics are GFN2 only, and Zn-Asp92 OD2 reaches 1.78 A here,
+which is the over-coordination D48 showed inflates this very energy.
+
 Also measured, and new: **Ser186 OG** donates to the nucleophile at 1.60 A in
 the first frame and leaves (4.06 by the last); **Asn225 HD21** donates at 1.77 A
 in the last frame after giving up its coordination site. Asp92 OD1 is 5.67 then
