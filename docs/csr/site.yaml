@@ -206,11 +206,40 @@ site:
         required_at: [reactant]
         source: near-attack convention; 4.5 A is the outer bound (burgi_dunitz)
 
+      # NOT required at `reactant`, and the reason is measured (D201). The
+      # 95-120 window is a TRANSITION-STATE criterion. At fixed O01...O2x the
+      # attack angle is a function of the approach distance alone, and at a
+      # reactant separation of 3.0-3.2 A thermolysin's own geometry - the
+      # source of the two Zn-O windows above - gives 26-38 degrees. 1TMN
+      # reaches 95 degrees only at Nu-C = 1.64 A and 7CPA at 2.06 A; ours,
+      # whose O...O is wider, reaches it at 2.47-2.69 A, i.e. EARLIER along the
+      # approach than either reference. Demanding it of a reactant rejects the
+      # zinc-bound-nucleophile mechanism by construction, which is what it did
+      # from D33 to D200. `required_at` therefore names a stage `site.py check`
+      # is never called with, so the angle still PRINTS and warns - it is worth
+      # watching - but cannot fail a structure. See P10.
       - name: O01 - C4x - O2x angle
         atoms: [C:2:O01, C:1:C4x, C:1:O2x]
         range: [95, 120]
+        required_at: [transition_state]
+        source: Burgi-Dunitz, at the TS; 26-38 deg is correct at 3.0-3.2 A (D201)
+
+      # What the angle was meant to ask, asked at the reactant instead: are the
+      # nucleophile and the carbonyl correctly placed relative to each other on
+      # one metal. Both windows are measured from 1TMN and 7CPA directly, not
+      # from a review (D201), and both reference enzymes are strongly CIS -
+      # which is why D200's "they must be trans" was withdrawn.
+      - name: O01 - Zn - O2x
+        atoms: [C:2:O01, B:1:ZN, C:1:O2x]
+        range: [45, 95]
         required_at: [reactant]
-        source: Burgi-Dunitz; D34 reached 24-54 deg in 791 frames, never this
+        source: measured 1TMN 57.2, 7CPA 60.1; batch 1 71.8 (D201)
+
+      - name: O01 ... O2x separation
+        atoms: [C:2:O01, C:1:O2x]
+        range: [2.0, 3.3]
+        required_at: [reactant]
+        source: measured 1TMN 2.15, 7CPA 2.68; batch 1 3.05 (D201)
 
       - name: Asp92 OD1 - O01
         atoms: [A:92:OD1, C:2:O01]

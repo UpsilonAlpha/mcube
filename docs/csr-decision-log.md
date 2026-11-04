@@ -5988,6 +5988,180 @@ will not fix it**, because the obstruction is which sites the two oxygens
 occupy, not how long they are sampled. Batches 2-6 would sample a complex that
 cannot react.
 
+**D201 - The Burgi-Dunitz gate is wrong, measured from the two structures it
+cites. D200's "the carbonyl and the nucleophile must be trans" is false: both
+reference enzymes are 57-60 degrees CIS, more cis than ours. What is actually
+wrong with batch 1 is two setup defects - Asp92 was left free and went to 2.00
+A, and Lys226 is in the MM region while sitting 2.82 A from the nucleophile.**
+(2026-11-04, measured from 1TMN and 7CPA downloaded from RCSB and from batch
+1's own first and last frames, read directly rather than from this log)
+
+## 1. The reference geometries, measured rather than quoted
+
+    structure   Zn-O(nuc side)  Zn-O(carbonyl side)  O...O   O-Zn-O   O-X-O at centre
+    1TMN 0ZN         2.01              2.41           2.15    57.2     119.5  (C-O 1.25 / 1.23)
+    7CPA FVF         2.19              2.98           2.68    60.1     117.2  (P-O 1.60 / 1.53)
+
+D124's distances are confirmed to 0.01 A. Two things it did not carry into the
+criteria:
+
+- **The 117-119 degrees is the O-X-O angle of a formed tetrahedral centre.** In
+  1TMN both oxygens are carboxylate oxygens on one carbon at 1.25 and 1.23 A;
+  119.5 degrees is what that bonding gives and nothing else. D124's own caveat
+  said exactly this and it was never applied to the gate.
+- **The two oxygens are 57-60 degrees apart on the metal.** That is strongly
+  cis - more cis than CSR-1's 71.8 degrees in batch 1's last frame.
+
+## 2. So D200's inversion was the wrong question, and its conclusion is withdrawn
+
+D200 held r(O01-C4x) at the measured 3.82 A, asked what O...O gives 105
+degrees, got 4.31 A, and concluded the two oxygens must be essentially trans
+across the zinc. The arithmetic is right and the constraint is wrong: it
+demands a transition-state angle at a reactant distance. The attack angle is a
+function of r, and at fixed O...O it opens by itself as the nucleophile
+approaches:
+
+    r(Nu-C)   CSR-1 (O...O 3.05)   1TMN (2.15)   7CPA (2.68)
+     3.73          47.9                 --          37.8
+     3.50          58.7                 --          46.5
+     3.20          71.9               26.2          56.6
+     3.00          80.7               37.6          63.0
+     2.60          99.6               55.3          75.8
+     2.40         110.5               63.3          82.4
+     2.00         141.4               79.2          97.2
+     1.60           --                97.2         116.6
+
+**At a reactant separation of 3.0-3.2 A thermolysin's own arrangement gives
+26-38 degrees.** The 24-54 degree band D34 reported over 791 frames, D48/D49's
+33-40 degrees, and batch 1's 28.9 degree mean are what a working mononuclear
+zinc hydrolase looks like before the bond forms. 95 degrees arrives at r = 1.64
+A in thermolysin and 2.06 A in CPA, against **2.47-2.69 A in CSR-1**: because
+our O...O is wider, the window is reachable EARLIER along our approach than in
+either reference.
+
+The project has therefore been rejecting its own structures since D33 on a
+criterion that both of its reference enzymes also fail.
+
+## 3. The gate is internally inconsistent, and the fix
+
+`carbonyl_on_metal` demands together: Zn-O2x 2.4-3.0 (source: 1TMN 2.41, 7CPA
+2.98), Zn-O01 1.9-2.2 (source: 1TMN 2.01, 7CPA 2.19), O01-C4x 3.0-3.5, and
+O01-C4x-O2x 95-120. The last three are jointly satisfiable only for O...O
+between 3.35 and 4.3 A, which forces O01-Zn-O2x above about 93 degrees.
+**Neither of the two structures the distance windows are taken from would pass
+the gate those distances are in.**
+
+Changed in `site.yaml`: the angle moves to `required_at: [transition_state]`,
+so it prints as a WARN at `start` and `reactant` and is a FAIL at no stage
+`site.py check` is ever run with. Two criteria measured from 1TMN/7CPA take its
+place at `reactant`:
+
+    O01 - Zn - O2x      45-95 deg    1TMN 57.2, 7CPA 60.1; batch 1 71.8   PASS
+    O01 ... O2x         2.0-3.3 A    1TMN 2.15, 7CPA 2.68; batch 1 3.05   PASS
+
+These say what the angle was meant to say - that the nucleophile and the
+carbonyl are correctly placed relative to each other on one metal - without
+demanding the transition state of a reactant.
+
+## 4. Batch 1's sphere is NOT the designed one. D200 said it was, and that is wrong
+
+Read off `QM_MM_firstframe.pdb` and `QM_MM_lastframe.pdb` directly:
+
+    Zn-                first frame   last frame
+    O01  hydroxide        2.07          1.86
+    His88 NE2             2.23          2.01
+    His164 NE2            2.13          2.20
+    Asp92 OD2             2.77          2.00
+    Asp92 OD1             3.82          4.10
+    mer O2x carbonyl      2.58          3.07
+    mer O1x               3.74          3.63
+    Asn225 OD1            2.19          6.33
+
+D196 designed 2 His + hydroxide + carbonyl = **four**, with OD2 at 2.80 A as a
+second-shell contact and OD1 pinned out at 3.81. What ran has **Asp92 OD2 as a
+full ligand at 2.00 A**, inside 2.5 A in 96% of frames. It started at the
+designed 2.77 A, the `qmmm` stage applies no MM restraints, and xTB pulled it
+onto the metal within 50 ps.
+
+**This is the unconditioned test D59 said D58 lacked.** D58 compared xTB and
+DFT along Zn-OD2 from a structure that was already octahedral and found DFT 1.6x
+steeper; D59 correctly objected that both methods had been asked a loaded
+question. The move has now been watched from a correct four-coordinate start
+with nothing imposed, and it still happens. So **Asp92 on the metal is a real
+feature of this model rather than an artefact of the starting structure** - and
+the crystal reference still says the opposite (6NC5 ZN302: two His, two waters,
+no aspartate, D108; 2.68 A superposed into 6DN4, D184). The discrepancy is
+therefore method-against-crystal, which is plan item 11, and it is no longer
+avoidable by picking a better start.
+
+**It also finishes off the hysteresis argument.** D200 narrowed D96/D197 to
+"an anionic or chelating donor already on the metal does not leave in 50 ps".
+Asp92 is anionic and it crossed the 2.5 A boundary INWARD in this very run,
+from 2.77 to 2.00 A. Nothing is left of "QM/MM cannot cross the coordination
+boundary" in either direction, for any donor type, and it must not be used
+again as a reason to accept or discount a sphere.
+
+## 5. The hydroxide survived because it was not allowed to do anything else
+
+O01 carries one hydrogen (0.96 A) in both frames and Lys226 NZ carries three.
+That is not a result. `michqm`'s QM region is Zn, the hydroxide, meropenem,
+His88, His164, Asp92 and Asn225 - charge 0, with **Lys226 and Arg90 in the MM
+region** (D190, and the config says so). An MM lysine cannot transfer a proton.
+
+And over the 50 ps **Lys226 NZ moved from 5.68 A to 2.82 A of the nucleophile**
+(92% occupancy on the trajectory). So the model holds the residue this log says
+protonates the hydroxide - D29 in xTB, confirmed at DFT in D35, and still -5.2
+kcal/mol in a clean four-coordinate sphere in D48 - at hydrogen-bond distance
+and unable to act. **Batch 1 did not test the protonation state. It excluded
+it.** D41's third item, "a five-coordinate Zn-OH- with Lys226 as NH3+ is the
+canonical B3 reactant and was never tested", is still untested.
+
+What is actually near the nucleophile, measured: **Ser186 OG** donates at 1.60
+A in the first frame and has left by the last (4.06 A); **Asn225 HD21** donates
+at 1.77 A in the last frame, having given up its coordination site. Asp92 OD1
+is 5.67 then 5.32 A. The hydroxide is hydrogen-bonded throughout and never by
+Asp92.
+
+## 6. The water-nucleophile / neutral-Lys arm, re-read against all of this
+
+The angle never discriminated between the two routes. HOH3094 reached 3.41 A at
+99 degrees in 210 of 500 frames (D51) because a non-metal-bound water attacks
+from the open face, and 99 degrees at 3.41 A requires O...O = 3.8 A, which a
+nucleophile cis on the metal cannot have at that distance. Reading that as "the
+water route satisfies the geometry and the hydroxide route does not" compared
+one route against a criterion the other cannot meet by construction - and that
+both reference enzymes meet only at bond formation.
+
+**What actually failed in that arm was the acceptor, and it still fails.** Zero
+frames of 500 with the attacking water donating to Asp92, twice, from two
+different starting states (D49, D51); the acceptor census found only bulk waters
+within hydrogen-bond reach of its protons (D52). Both of those runs had Asp92
+on the metal at 2.07-2.11 A, which was the stated reason to distrust them - and
+batch 1 now shows Asp92 goes there spontaneously from the correct start. So
+**Asp92 as general base has failed three times, the third time for the right
+reason**: it is a zinc ligand in every state this model reaches, not only in a
+badly set up one. The CphA route is ruled out a third time.
+
+**The acceptor that has never been tested is Lys226.** Neutral Lys226 - the
+state D35 and D48 establish at DFT - is an amine 2.82 A from the nucleophile in
+92% of batch 1's frames, and apart from transient waters it is the only group
+in hydrogen-bond reach of it. The resting-state transfer is downhill by only
+5.2 kcal/mol in a clean sphere, which is the asymmetry of a shuttle rather than
+a sink. **Zn-OH2 attacking with neutral Lys226 accepting the proton** is
+consistent with everything measured here, it is the RQK lysine doing catalytic
+work, and it has never been computed - because Lys226 has been outside the QM
+region since D190.
+
+## 7. What this changes about batches 2-6
+
+D200 stopped them on the geometry, and the geometry does not stop them. What
+does is section 4 and section 5: Asp92 is unrestrained and goes to 2.00 A, and
+Lys226 sits on the nucleophile in the MM region. 250 more ps with those two
+unchanged buys more of the same complex. Both are config changes - Lys226 into
+`qm_residues` with the charge corrected, and a decision about whether Asp92 is
+held at the crystal distance or allowed to bind - not code changes, and neither
+needs a new equilibration.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
@@ -6003,6 +6177,7 @@ cannot react.
 - P4: Δ1 tautomer pathway (D19).
 - P5: DFT/MM energies along the converged xTB paths.
 - P6: establish whether the Lys226 -> OH- transfer survives in a clean four-coordinate sphere (D41). Blocks all scans.
+- P10: `site.py check` has no way to say a criterion applies at a transition state rather than a reactant. D201 parks the Burgi-Dunitz angle on a stage name that is never passed, which works but reads as a trick; a real stage list, documented, would be honest.
 - P9: let `site.py check` read a criterion's occupancy from a `postprocess` section instead of measuring a single frame. The last frame of batch 1 rejected the structure on a carbonyl at 3.07 A that the 50 ps has inside 2.5 A in 66% of frames at 2.43 A mean (D200).
 - P8: fix `md.py`'s sphere-change warning, which says a non-bonded metal has "no Pauli repulsion" in a codebase that ships fitted Li/Merz LJ parameters and applies them by default. It misled this project's own write-ups three times (D199). The accurate wording is that a 12-6 term cannot tell a ligand from a non-ligand, which is `ions.py`'s own explanation.
 - P7: preserve the input ligand atom names through OpenFF parameterisation, so `preprocess.results.ligand_atom_map` is always empty (D169).

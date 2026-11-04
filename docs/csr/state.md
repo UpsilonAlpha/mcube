@@ -365,7 +365,7 @@ frame was chosen rather than taken from the end of the MD - and an extremum of a
 distribution describes the reactant state we chose, not an equilibrium average.
 Say so wherever this run is quoted.
 
-## 2f. QM/MM batch 1: the sphere is right, the attack angle is geometrically impossible (D200, measured)
+## 2f. QM/MM batch 1 [PARTLY WITHDRAWN by 2g/D201: the sphere is NOT the designed one - Asp92 bound at 2.00 A - and the attack angle is not impossible; the Burgi-Dunitz gate was being applied at the wrong point on the reaction coordinate]
 
 **Status: measured. The remaining five batches are on hold pending the user's
 decision, because more trajectory cannot fix what this found.**
@@ -448,6 +448,68 @@ angle. One is real and never restrained: **Asp92 OD1-O01, 4.68 A closest, 5.17
 mean**, while `Lys226 NZ-O01` sits at 2.94 A mean, 92% occupancy. Something
 H-bonds the hydroxide and it is not Asp92. **P9** is the fix: let `site.py
 check` read an occupancy from a `postprocess` section.
+
+## 2g. The Burgi-Dunitz gate was wrong; what is wrong with batch 1 is its setup (D201, measured)
+
+**Read this before 2f. 2f's central conclusion is withdrawn.**
+
+Measured from 1TMN and 7CPA downloaded from RCSB, and from batch 1's own first
+and last frames read directly:
+
+| | Zn-O(nuc) | Zn-O(carbonyl) | O...O | **O-Zn-O** | O-X-O at the centre |
+| --- | --- | --- | --- | --- | --- |
+| thermolysin 1TMN | 2.01 | 2.41 | 2.15 | **57.2** | 119.5 (C-O 1.25/1.23) |
+| carboxypeptidase A 7CPA | 2.19 | 2.98 | 2.68 | **60.1** | 117.2 (P-O 1.60/1.53) |
+| **CSR-1 batch 1, last frame** | 1.86 | 3.07 | 3.05 | **71.8** | 48.1 |
+
+So the two enzymes that run this chemistry hold the nucleophile and the
+carbonyl-derived oxygen **more cis than we do**, and their 117-119 degrees is
+the angle of a tetrahedral centre whose bonds have already formed. 2f's
+inversion - that a Burgi-Dunitz angle needs the two oxygens trans across the
+zinc - held the reactant approach distance fixed while demanding a
+transition-state angle. **The attack angle is a function of the approach
+distance**: at 3.0-3.2 A thermolysin's own arrangement gives 26-38 degrees, and
+95 degrees arrives at Nu-C = 1.64 A in thermolysin, 2.06 in CPA and **2.47-2.69
+in ours**. Our geometry reaches the window earlier along the approach than
+either reference. The 95-120 criterion, applied at `reactant`, rejected the
+zinc-bound-nucleophile mechanism by construction from D33 onwards; it is now
+demoted to a stage `site.py check` never runs, and replaced at `reactant` by
+O01-Zn-O2x 45-95 degrees and O01...O2x 2.0-3.3 A, both measured from those two
+structures. Batch 1 passes both.
+
+**What is actually wrong with batch 1 is its setup, in two places.**
+
+1. **Asp92 was free and bound the metal: OD2 2.77 -> 2.00 A**, inside 2.5 A in
+   96% of frames. The designed sphere (D196) is 2 His + hydroxide + carbonyl
+   with OD2 second-shell at 2.80, so 2f's "the sphere is the designed one" is
+   wrong. `qmmm` applies no MM restraints, so this is the unconditioned test
+   **D59 said D58 lacked**, and it says Asp92 on the metal is a real feature of
+   the model rather than a bad starting structure. The crystal says otherwise
+   (D108, D184), so the discrepancy is method-against-crystal: plan item 11.
+   It also kills the hysteresis claim in the inward direction for an anionic
+   donor, which is all 2f had left of it.
+2. **Lys226 is in the MM region** (`michqm` QM = Zn, OH, mer, His88, His164,
+   Asp92, Asn225; charge 0; D190) **while its NZ moved to 2.82 A of the
+   nucleophile**, 92% occupancy. An MM lysine cannot transfer a proton, so the
+   hydroxide's survival is a construction artefact, not a result, and D41's
+   untested canonical reactant (Zn-OH- with Lys226 NH3+) is still untested.
+
+**The mechanism this leaves, and it has never been computed.** Asp92 as general
+base has now failed three times - D49, D51, and batch 1 - always because it is
+a zinc ligand, and the third time from a correct start, so the CphA route is
+ruled out for the third time. But neutral Lys226, the state D35/D48 establish
+at DFT, is an amine 2.82 A from the nucleophile and the only group besides a
+transient water in hydrogen-bond reach of it; the resting-state transfer is
+downhill by just 5.2 kcal/mol in a clean sphere, which is a shuttle rather than
+a sink. **Zn-OH2 attacking with neutral Lys226 taking the proton** fits
+everything measured, and is what the RQK lysine would be for. Lys226 has been
+outside the QM region since D190, which is why it has never been tested.
+
+Also measured, and new: **Ser186 OG** donates to the nucleophile at 1.60 A in
+the first frame and leaves (4.06 by the last); **Asn225 HD21** donates at 1.77 A
+in the last frame after giving up its coordination site. Asp92 OD1 is 5.67 then
+5.32 A. Something hydrogen-bonds the hydroxide throughout and it is never
+Asp92.
 
 ## 3. Contradictions caught late — the failure mode this file exists to stop
 
