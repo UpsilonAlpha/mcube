@@ -6295,6 +6295,55 @@ other run under 1 G. Trimming CSR's own MD trajectories to last frames would
 recover single-digit GB and is the only part of this the project can decide for
 itself.
 
+**D203 - Trimmed CSR's finished MD trajectories to their last frames, on the
+user's instruction. 287 -> 278 GB. Two were kept deliberately, and the reason
+one of them was kept is a finding in itself: `md_prod100c` never wrote a last
+frame, because that is the arm that NaNs.** (2026-11-04)
+
+Deleted, each with `NVTtrajectory_lastframe.pdb` and `_lastframe_imaged.pdb`
+confirmed present in the same directory first:
+
+    5.4 GB  CSR_mich/md_eq5_results/NVTtrajectory_imaged.dcd
+    2.8 GB  CSR_wt/md_wt100c_results/NVTtrajectory_imaged.dcd
+    274 MB  CSR_crystal_v2/md_results/NVTtrajectory_imaged.dcd
+
+**Kept, both on purpose:**
+
+- **`CSR_prod/md_prod100c_results/NVTtrajectory.dcd` (675 MB).** Its directory
+  has `relaxbox_NPT_lastframe.pdb` and `frag-minimized.pdb` but **no
+  `NVTtrajectory_lastframe.pdb` at all** - the run died at 22.68 ns on the
+  product arm's recurring NaN and never wrote one. So this trajectory is not a
+  redundant copy of a finished result, it is the only record of an open bug.
+  Trimming it would delete the evidence for a diagnosis that has not been made.
+- **`CSR_mich/protdft/qmmm_michqm/OpenMMMD_traj_wrapped.xyz` (134 MB).** Batch
+  1's own QM/MM trajectory, named outright as `trajectory` in
+  `postprocess_michqmpost` (D200), and the control that `michrk` is to be
+  compared against. Small and in use.
+
+Also kept: the job `.out` files, including `mich_qm1-31740139.out` at 187 MB.
+That is the price of the record and it is worth paying.
+
+**What the deletion costs, stated rather than glossed.** `trajfile`,
+`coordination_trajectory` and `contacts_trajectory` in each run's `config.yaml`
+are provenance keys mcube wrote when it analysed those trajectories; the
+occupancies and distances they produced are already in the config, so what is
+lost is the ability to re-derive them or to ask a NEW question of those frames.
+For `md_eq5` that matters most, because it is the trajectory `michqm`'s start
+frame was selected from (frame 4374, `cluster/frame_o1x_off.pdb`, which stays).
+A different frame can no longer be chosen from it.
+
+**This was already the established practice, which is how the decision was
+checked.** `md_wt100`, `md_wt100b`, `md_nacgpu`, `md_naclong`,
+`CSR_unrestrained/md_results` and `CSR_crystal/md_restrained` are all still
+named by `trajfile` lines in the configs and none of their files exist: they
+were trimmed earlier. The three deleted here were simply the ones that had not
+been.
+
+**Scratch: 287 -> 278 of 300 GB; files 722,408 -> 722,453 of 1,000,000.** The
+headroom problem is not this project's - CSR is 15 GB of the total. The large
+trees are `channel` 41 G, `glp1r_md` 41 G, `AANCA` 27 G, `hf` 25 G, `boltzgen`
+16 G, and what to do about those is not a CSR decision.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
