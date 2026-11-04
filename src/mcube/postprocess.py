@@ -262,6 +262,97 @@ def contact_profile(rep, want, width=0.05, temperature=300.0):
     return out
 
 
+def _vertex_angle(vertex, a, b, cell=None):
+    """The a-vertex-b angle in degrees, minimum image applied when `cell` is given."""
+    import numpy as np
+
+    def leg(p):
+        v = [float(q) - float(c) for q, c in zip(p, vertex)]
+        if cell:
+            v = [x - c * round(x / c) if c else x for x, c in zip(v, cell)]
+        return np.array(v)
+
+    u, w = leg(a), leg(b)
+    nu, nw = np.linalg.norm(u), np.linalg.norm(w)
+    if nu == 0 or nw == 0:
+        return float("nan")
+    return float(np.degrees(np.arccos(np.clip(np.dot(u, w) / (nu * nw), -1.0, 1.0))))
+
+
+def angle_occupancy(pdb_file, trajectory, monitor, window=None, stride=1):
+    """Named atom triples over a trajectory: the angle at the middle atom.
+
+    `contact_occupancy` answers how close two atoms come. A mechanism needs
+    more than that: a nucleophile 3.5 A from a carbonyl carbon is poised to
+    attack only if it sits near the line the carbon's empty orbital lies on,
+    and the same distance at 60 degrees is a contact across the face of the
+    ring rather than an approach to it. So the attack angle is a monitored
+    quantity in its own right, named in the config like any other, instead of
+    a one-off script per protein.
+
+    `monitor` is {name: [selector, selector, selector]} with the **middle**
+    selector the vertex, and the selectors are the same `chain:resid:atom`
+    every other stage takes, resolved by the same `resolve_atoms`.
+
+    `window` is an optional [low, high] in degrees. Occupancy is then the
+    fraction of frames inside it, which is what a geometric criterion asks for
+    - 95-120 degrees for an approach to a trigonal carbon, say. With no window
+    there is no criterion to score against, so occupancy is reported as None
+    and only the spread means anything.
+
+    A triple whose atoms are not in this topology is **reported as missing, not
+    skipped**, for the reason `contact_occupancy` gives.
+    """
+    import numpy as np
+
+    rows, cell = coordination_rows(pdb_file)
+    try:
+        u = mda.Universe(pdb_file, trajectory)
+    except Exception as exc:
+        raise ValueError(
+            f"{trajectory} cannot be read against {pdb_file}: {exc}. The "
+            "topology must be the structure the trajectory was produced "
+            "from.") from exc
+
+    named, idx, missing = [], [], []
+    for name, sel in (monitor or {}).items():
+        if not (isinstance(sel, (list, tuple)) and len(sel) == 3):
+            missing.append({"triple": name,
+                            "why": "needs exactly three selectors, the middle "
+                                   "one the vertex, got %r" % (sel,)})
+            continue
+        try:
+            i, j, k = resolve_atoms(list(sel), pdb_file)
+        except ValueError as exc:
+            missing.append({"triple": name, "why": str(exc)})
+            continue
+        named.append(name)
+        idx.append((int(i), int(j), int(k)))
+
+    lo, hi = (float(window[0]), float(window[1])) if window else (None, None)
+    ang = [[] for _ in named]
+    frames = 0
+    for _ in u.trajectory[::stride]:
+        xyz = u.atoms.positions
+        frames += 1
+        for n, (i, j, k) in enumerate(idx):
+            ang[n].append(_vertex_angle(xyz[j], xyz[i], xyz[k], cell))
+
+    out = []
+    for n, name in enumerate(named):
+        a = np.array(ang[n])
+        inside = (None if lo is None
+                  else round(float(((a >= lo) & (a <= hi)).mean()) * 100.0, 1))
+        out.append({"triple": name, "occupancy": inside,
+                    "min": round(float(a.min()), 1),
+                    "mean": round(float(a.mean()), 1),
+                    "max": round(float(a.max()), 1)})
+    out.sort(key=lambda r: (-(r["occupancy"] or 0), r["mean"]))
+    return {"frames": frames, "window": list(window) if window else None,
+            "triples": out, "missing": missing,
+            "_angles": {name: ang[n] for n, name in enumerate(named)}}
+
+
 def report_contacts(rep, label: str) -> None:
     print("\n===== Monitored contacts over %d frames: %s ====="
           % (rep["frames"], label))
@@ -273,6 +364,22 @@ def report_contacts(rep, label: str) -> None:
                  row["max"]))
     for row in rep["missing"]:
         print("  %-26s     -  %s" % (row["pair"], row["why"]))
+
+
+def report_angles(rep, label: str) -> None:
+    print("\n===== Monitored angles over %d frames: %s ====="
+          % (rep["frames"], label))
+    if rep["window"]:
+        print("  window %.0f-%.0f deg" % (rep["window"][0], rep["window"][1]))
+    else:
+        print("  no window given: occupancy is not scored, only the spread")
+    print("  %-26s  in%%     min  mean   max" % "triple")
+    for row in rep["triples"]:
+        occ = "    -" if row["occupancy"] is None else "%5.1f" % row["occupancy"]
+        print("  %-26s %s  %5.1f %5.1f  %5.1f"
+              % (row["triple"], occ, row["min"], row["mean"], row["max"]))
+    for row in rep["missing"]:
+        print("  %-26s     -  %s" % (row["triple"], row["why"]))
 
 
 def report_contact_profiles(profiles) -> None:
@@ -505,6 +612,23 @@ def run(args):
             if profiles:
                 result["contact_profiles"] = profiles
             result["contacts_trajectory"] = Path(trajectory).resolve().as_posix()
+            save_result(result, filename=args.config, section=section)
+
+        # Angles, for the same reason and from the same kind of config entry:
+        # a distance alone cannot say whether a nucleophile is approaching a
+        # carbon or lying across it.
+        monitor_angles = pp_inputs.get("monitor_angles")
+        if monitor_angles:
+            spec = pp_inputs.get("angles")
+            spec = spec if isinstance(spec, dict) else {}
+            arep = angle_occupancy(
+                pdbfile, trajectory, monitor_angles,
+                window=spec.get("window"),
+                stride=int(spec.get("stride", 1)))
+            report_angles(arep, Path(trajectory).name)
+            arep.pop("_angles", None)
+            result["angles"] = arep
+            result["angles_trajectory"] = Path(trajectory).resolve().as_posix()
             save_result(result, filename=args.config, section=section)
 
         if not csv:
