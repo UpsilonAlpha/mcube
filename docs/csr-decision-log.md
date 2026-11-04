@@ -5817,6 +5817,177 @@ reads that code; it is P8.
 record already. Two were caught because the user pushed back; this one because
 the standing instruction to check the record is now a memory.
 
+**D200 - QM/MM batch 1, 50 ps of GFN2. The zinc site is right, both MM
+intruders left, the carbonyl coordinates without a restraint - and the attack
+geometry is impossible for a reason that is arithmetic, not sampling.**
+(2026-11-04)
+
+**31740139 `mich_qm1`, COMPLETED, exit 0:0, 15:54:58 for 50,000 steps.** 50
+frames at 1 ps. Analysed through the stage, as `postprocess_michqmpost` (job
+31885041), not through a script: the result is in `config.yaml`.
+
+`postprocess --qmmm` was not the route. It loads the **base** `qmmm` section
+rather than the one the job ran as, and reads `results.opttraj`, which a run
+with `skip_optimize: true` never writes. The section names `pdb_file` and
+`trajectory` outright instead, which `postprocess` supports for exactly this.
+
+## The coordination sphere is the designed one, and both MM intruders left
+
+    cutoff 2.50 A, 50 frames                occ%     min / mean / max
+    C:2:O01    hydroxide                   100.0    1.72 / 1.86 / 2.08
+    A:88:NE2   His88                       100.0    1.92 / 2.09 / 2.28
+    A:164:NE2  His164                      100.0    1.94 / 2.10 / 2.33
+    A:92:OD2   Asp92                        96.0    1.87 / 2.06 / 2.61
+    C:1:O2x    mer carbonyl                 66.0    2.08 / 2.43 / 3.09
+    C:1:O1x    mer 1-hydroxyethyl           10.0    2.27 / 2.82 / 3.46
+    coordination number: 4 in 14 frames, 5 in 36
+
+**2 His + Asp92 OD2 + hydroxide + a loose carbonyl.** That is the Michaelis
+sphere D196 specified, and it is the first time any structure in this project
+has held it.
+
+The two donors MM put there and QM/MM was supposed to adjudicate **both left,
+decisively**:
+
+- **Asn225 OD1: 2.19 A at the start, 4.18 A at its closest over 50 ps, 5.86 A
+  mean.** It is not a ligand. D198's objection to frame 4374 - that Asn225 took
+  the site O1x vacated, so the window needed a genuinely four-coordinate sphere
+  before the angle could be judged - **is answered, and in the direction that
+  removes the objection**. Asn225 was in the QM region, so it had every
+  opportunity to stay.
+- **O1x, the 1-hydroxyethyl: inside 2.5 A in 10% of frames, mean 3.71 A over
+  the contact range, out to 4.73.** The 97.9% occupancy at 2.06 A that `md_eq5`
+  reported is not reproduced at the GFN2 level.
+
+**On O1x, say what this is and is not.** It started OUTSIDE (3.74 A), and
+"left out, goes further out" is the documented hysteresis (D111, D197), so O1x
+staying out is what hysteresis predicts and carries no weight by itself. What
+is worth something is that it is **not frozen**: it reaches 2.27 A in 10% of
+frames and comes back out. A contact that visits the sphere and leaves is being
+sampled, not held. Taken with D198 - GFN2 under-binds it by 5.92 kcal/mol
+relative to DFT, and DFT puts the bound form 8.75 higher - the O1x contact is
+an MM artefact, and the question D9 blocked on is closed for this contact.
+
+## The carbonyl coordinates with nothing holding it, and it exchanges
+
+This was the honest test: O2x was restrained in every previous run and
+**unrestrained here for the first time**, starting at 2.58 A, which is outside
+the 2.5 A radius.
+
+    66% of frames inside 2.5 A, mean 2.43 A, range 2.08 - 3.59
+
+So it moved **in**, and it crosses the boundary in both directions inside 50
+ps. The mean sits on D124's loose-carbonyl precedent almost exactly -
+thermolysin 2.41, L1 7UHJ 2.63, CPA 2.98 - which is the one position this
+project has withdrawn and reinstated twice (D53 withdrawn by D121/D123, settled
+in D124).
+
+**This corrects the hysteresis generalisation, which is mine.** D96 and D197
+say no run here has crossed the coordination boundary in either direction,
+because ligand exchange at Zn(II) is slower than the affordable trajectory.
+That is now false as stated: a **neutral, weakly bound** carbonyl exchanges
+freely on a picosecond timescale. The claim should be narrowed to what the
+evidence supports - an anionic or chelating donor already on the metal does not
+leave in 50 ps, which is still what every other row above shows (the hydroxide,
+the histidines and Asp92 never leave). A loose neutral donor is the easiest
+possible case and it moves. **Do not use "QM/MM cannot cross the boundary" as a
+blanket reason to discount a sphere again.**
+
+## The attack geometry cannot work, and the reason is geometry
+
+    O01-C4x  attack distance        14% within 3.5 A, mean 3.82, min 3.16
+    O01-C4x-O2x  Burgi-Dunitz       0% in 95-120 deg, mean 28.9, max 78.1
+    O01-C4x-N1x                    62% in 95-120 deg, mean 119.5
+    O01...O2x                      100% within 3.5 A, mean 2.86
+    O01-Zn-O2x                      0% in 150-180 deg, mean 82.0
+
+The attack angle did not open towards 95-120; it **closed**, from 68 deg at the
+start to 28.9 mean, and the last frame alone gives 48. It is back inside the
+24-54 deg band D34 measured over 791 frames.
+
+The last three rows say why, and they are not a sampling statement. The
+nucleophile and the carbonyl oxygen are **both on the same zinc, cis, 82 deg
+apart and 2.86 A from each other**. Fix those two numbers and the attack angle
+follows from the triangle:
+
+    O01-C4x 3.82, C4x-O2x 1.25, O01...O2x 2.86  ->  33 deg at C4x
+
+against 28.9 measured, so the three numbers are mutually consistent and nothing
+is mistranscribed. Run it backwards for the angle the mechanism needs:
+
+    O01-C4x-O2x = 105 deg  requires  O01...O2x = 4.31 A
+    with Zn-O01 1.86 and Zn-O2x 2.45, that is O01-Zn-O2x = 180 deg
+
+**A Burgi-Dunitz attack angle with the carbonyl on the same metal as the
+nucleophile requires the two to be essentially TRANS across the zinc.** Cis
+ligands on a four- or five-coordinate zinc are 2.8-3.0 A apart, which puts the
+hydroxide beside the carbonyl oxygen rather than above the carbon. The
+measured O01-C4x-N1x of 119.5 deg confirms the picture independently: with the
+ring's O2x-C4x-N1x near 92 deg, 28.9 + 92 = 121 against 119.5 measured, so the
+hydroxide is lying **in the plane of the carbonyl**, on the oxygen's side, not
+perpendicular to it.
+
+This is the sharpened version of the tension D198 flagged. It is no longer "the
+angle is wrong and crowding may be why"; it is **the angle is determined by
+which two sites of one zinc the nucleophile and the carbonyl occupy**, and the
+pose has them adjacent.
+
+**What it does not settle** is which way out is right, and there are at least
+three, none of which this run can choose between:
+
+1. The pose is wrong and a trans arrangement exists on a five-coordinate zinc -
+   axial-axial in a trigonal bipyramid, with the 2 His and Asp92 equatorial.
+   Whether that is accessible is a structural question, not a sampling one.
+2. The carbonyl is polarised by the metal without being a ligand, and the
+   nucleophile comes from elsewhere - the position D53 held, withdrawn on
+   crystallographic grounds, and not revived by this.
+3. The mono-Zn assumption is what fails, and the second site matters (plan item
+   10). Thermolysin and CPA hold both on one zinc, so **what Nu-C=O angle those
+   structures actually have is the literature check this now needs**: if they
+   reach 100 deg with both on one metal, the pose here is wrong; if they do not,
+   the geometric criterion is.
+
+## A method point worth more than the numbers: a single frame cannot gate a loose contact
+
+`site.py check` on `QM_MM_lastframe.pdb` **REJECTED** the structure, with
+`Zn - carbonyl O2x 3.07, want 2.4-3`. The 50 ps says that contact is inside 2.5
+A in 66% of frames at 2.43 A mean. The last frame caught it mid-excursion, and
+on a contact with a 1.5 A range the frame a job happens to stop on is close to
+a coin toss.
+
+The full gate on the last frame, for the record:
+
+    PASS  closest substrate O     C:1:O2x 3.07  (first run ever to pass this)
+    PASS  Zn coordination number        4       want 4-5
+    FAIL  Zn - carbonyl O2x           3.07      want 2.4-3
+    FAIL  Zn - nucleophile O01        1.86      want 1.9-2.2
+    FAIL  O01 - C4x attack            3.73      want 3-3.5
+    FAIL  O01 - C4x - O2x angle         48      want 95-120
+    FAIL  Asp92 OD1 - O01             5.32      want 2.5-3.2
+
+Two of those five failures are frame noise against the trajectory means (O2x
+3.07 against 2.43; O01 1.86 is also the trajectory mean and fails by 0.04 A,
+which is a window boundary, not a finding). Two are real and unchanged - the
+attack distance and the angle. One is real and was never restrained: **Asp92
+OD1-O01, 4.68 A at its closest, 5.17 mean.** Worth noting that `Lys226 NZ-O01`
+is 2.94 A mean at 92% occupancy - something is H-bonding the hydroxide, and it
+is not Asp92.
+
+**P9: `site.py check` should be able to read a criterion's occupancy from a
+`postprocess` section instead of measuring one frame.** A gate that a
+fluctuating contact passes or fails by which frame a job stopped on is not a
+gate, and the data to do it is already in `config.yaml`.
+
+## What this says about the question the batch was for
+
+The user asked whether the system is set up correctly before committing the
+remaining five batches. **The zinc site is set up correctly, and the setup
+produced two real results** - the sphere is the designed one, and both MM
+intruders left. **The attack geometry is not, and more of the same trajectory
+will not fix it**, because the obstruction is which sites the two oxygens
+occupy, not how long they are sampled. Batches 2-6 would sample a complex that
+cannot react.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
@@ -5832,5 +6003,6 @@ the standing instruction to check the record is now a memory.
 - P4: Δ1 tautomer pathway (D19).
 - P5: DFT/MM energies along the converged xTB paths.
 - P6: establish whether the Lys226 -> OH- transfer survives in a clean four-coordinate sphere (D41). Blocks all scans.
+- P9: let `site.py check` read a criterion's occupancy from a `postprocess` section instead of measuring a single frame. The last frame of batch 1 rejected the structure on a carbonyl at 3.07 A that the 50 ps has inside 2.5 A in 66% of frames at 2.43 A mean (D200).
 - P8: fix `md.py`'s sphere-change warning, which says a non-bonded metal has "no Pauli repulsion" in a codebase that ships fitted Li/Merz LJ parameters and applies them by default. It misled this project's own write-ups three times (D199). The accurate wording is that a 12-6 term cannot tell a ligand from a non-ligand, which is `ions.py`'s own explanation.
 - P7: preserve the input ligand atom names through OpenFF parameterisation, so `preprocess.results.ligand_atom_map` is always empty (D169).
