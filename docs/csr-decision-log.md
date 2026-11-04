@@ -6162,6 +6162,102 @@ unchanged buys more of the same complex. Both are config changes - Lys226 into
 held at the crystal distance or allowed to bind - not code changes, and neither
 needs a new equilibration.
 
+**D202 - Arg90 and Lys226 go back into the QM region, as a new section
+`michrk` rather than a change to `michqm`. D190 is not reverted: the four RQK
+cations are split by the KIND of role each has, because charge deletion and a
+proton transfer are not the same measurement and cannot share one region.**
+(2026-11-04, the user's decision: "we'll have to do both, let's make arginine
+and lysine QM")
+
+## Why this is not a reversal of D190
+
+D190 moved Arg90 and Lys226 to MM so that all four cations could be decomposed
+one way: `zero_charges_qm_only` cannot reach a residue that is already quantum,
+because electrostatic embedding has removed its MM charges and
+`charge_deletion` refuses it by name (D153). That reasoning is intact for what
+it covers. What it does not cover is the case where **deletion is the wrong
+instrument rather than an unavailable one**: deletion measures an electrostatic
+contribution on an unchanged geometry, and a residue whose catalytic role is to
+hand over a proton has a contribution that zeroing a point charge does not
+represent, in any region. For such a residue an all-MM region does not preserve
+the measurement; it only preserves the appearance of one.
+
+So the split is by role, and each side of it is measured rather than assumed:
+
+    Arg90, Lys226    Lys226 NZ ends batch 1 at 2.82 A from the nucleophile, 92%
+                     occupancy (D201). The transfer is downhill in xTB (D29),
+                     at DFT (D35), and by 5.2 kcal/mol in a clean four-
+                     coordinate sphere (D48). An MM lysine cannot perform it.
+                     -> QM.
+    Arg229, Gln93    Arg229 holds the substrate carboxylate at 3.62 +/- 0.04 A
+                     across all 45 grid points and both trajectories (D150) and
+                     never comes near a transferable proton; Gln93 is an amide.
+                     Second-sphere electrostatics, which is exactly what
+                     deletion measures.  -> MM, still deletable.
+
+**Both measurements therefore survive.** K's catalytic role comes out of this
+trajectory chemically; the R of RQK (via Arg229) and the Q (via Gln93) keep the
+deletion numbers D190 was protecting, in `sp_qmmm_r229` and `sp_qmmm_q93`,
+which are unchanged. The one row that moves is K's electrostatic contribution,
+which was never obtainable from the eleven pre-D190 systems either and whose
+right test is mutagenesis - D190 already names that as a second campaign. If
+the paper still wants a deletion number on these frames, an `sp` pair with the
+all-MM region run on THIS trajectory's geometries gives one: both members share
+a region and differ in one key, which is all D152 requires. The caveat to state
+if that is done is that the geometry was produced by a different region.
+
+## What changed in `site.yaml`
+
+    qm_regions.michaelis_rk  &qmreg_michrk  = michaelis + A:{90: ARG, 226: LYS}
+    sections.michrk          stage qmmm, charge 2
+
+`charge: 2`, not the inherited 0: the michaelis region's 0 plus Arg90(+1) and
+Lys226(+1). That is the value all eleven pre-D190 systems carried, which is the
+arithmetic check on it. A section left at 0 converges its SCF on the wrong
+species while looking entirely normal (D152).
+
+**Region size, from ff14SB rather than from an estimate.** Both ARG and LYS are
+in `AMINO_ACIDS`, so `build_qm_region` cuts them at CA-CB and the backbone
+stays MM: ARG contributes 18 atoms of 24 and LYS 16 of 22, so the region grows
+by **34 atoms**. LYS carries HZ1/HZ2/HZ3, which is the independent confirmation
+that it is the cationic form and hence the +1. `build_qm_region` matches on
+chain:resid only - the residue NAME in the mapping is documentation, never
+checked against the structure - so a wrong name there fails silently and the
+`[QM] Including residue` lines of the run's own output are the only check.
+
+## Why a new section and not `time: 100` on michqm
+
+`resume: true` restores `OpenMM_MD_state.xml`. Resuming a state file written
+with a different QM region and a different total charge is D152's silent-wrong-
+species failure with extra steps. `michrk` writes into an empty directory, so
+there is nothing to clear (D199), and batch 1 stays on disk as the control -
+the two sections now differ in exactly three keys (`pdb_file`, `qm_residues`,
+`charge`) and in nothing else, which is what makes them comparable.
+
+## Why it starts from batch 1's last frame
+
+`protdft/qmmm_michqm/QM_MM_lastframe.pdb`, not `cluster/frame_o1x_off.pdb`.
+That frame is 50 ps of geometry already equilibrated at the level of theory
+this run uses, and it is the frame in which Lys226 NZ has arrived at 2.82 A -
+the geometry the question is about. Restarting from frame 4374 spends
+picoseconds travelling back to it. Its Asp92 sits on the metal at 2.00 A and
+that is deliberate as well: D201 watched that move happen spontaneously from
+the designed four-coordinate start with nothing imposed, so 2.00 A is the
+model's own answer rather than a bad starting structure, and the standing rule
+is that MD gets crystal restraints while QM/MM gets none, because QM/MM's
+coordination behaviour is the thing being measured.
+
+## What it decides
+
+Whether Lys226 NH3+ hands its proton to the zinc-bound hydroxide. If it does,
+the attacking species is water and the base is a neutral amine - the mechanism
+D201 argues is the only one left standing, since Asp92 as general base has now
+failed three times and the third time from a correct start. If it does not,
+D41's canonical B3 reactant has passed its first honest test, and D48's 5.2
+kcal/mol is overturned where it matters. **Batch 1 could answer neither,
+because it did not test the protonation state - it excluded it.** Either
+outcome is a result; the current region produces neither.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

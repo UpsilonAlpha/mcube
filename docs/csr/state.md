@@ -505,6 +505,17 @@ a sink. **Zn-OH2 attacking with neutral Lys226 taking the proton** fits
 everything measured, and is what the RQK lysine would be for. Lys226 has been
 outside the QM region since D190, which is why it has never been tested.
 
+**What is being run about it (D202).** Arg90 and Lys226 go back into the QM
+region as a new section `michrk` - `qmreg_michrk` = the michaelis region plus
+`A:{90: ARG, 226: LYS}`, charge **2**, starting from batch 1's last frame,
+every other key identical to `michqm`. This does not revert D190: the four RQK
+cations are now split by the kind of role each has, because deletion measures
+an electrostatic contribution and cannot represent a proton transfer in any
+region. Arg229 and Gln93 stay in MM and stay deletable, so the R and Q numbers
+D190 was protecting are untouched; K's comes out of this trajectory chemically
+instead, and its electrostatic row, if wanted, comes from mutagenesis. The
+region grows by 34 atoms (ARG 18 of 24, LYS 16 of 22, both cut at CA-CB).
+
 Also measured, and new: **Ser186 OG** donates to the nucleophile at 1.60 A in
 the first frame and leaves (4.06 by the last); **Asn225 HD21** donates at 1.77 A
 in the last frame after giving up its coordination site. Asp92 OD1 is 5.67 then
