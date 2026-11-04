@@ -6258,6 +6258,43 @@ kcal/mol is overturned where it matters. **Batch 1 could answer neither,
 because it did not test the protonation state - it excluded it.** Either
 outcome is a result; the current region produces neither.
 
+## Submitted, and the rate measured rather than projected
+
+**31892313 `michrk`, RUNNING on bun152, 8 cpus, `--time=2-00:00:00`.** Written
+with `sections.py site.yaml michrk` as `qmmm_michrk`; `config.yaml.bak202` is
+the config as it was before.
+
+Checked in the job's own output rather than assumed:
+
+    [QM] Including residue  HIS A:88, ARG A:90, ASP A:92, HIS A:164,
+                            ASN A:225, LYS A:226, ZN B:1, mer C:1, OH C:2
+    [INFO] QM atoms: 124            Boundary excluded atoms: 54
+    Boundaryatoms (QM:MM pairs): six, one per amino acid
+    xtb ... --gfn 2 --chrg 2 --uhf 0 ...
+
+124 atoms is 90 + 34, so batch 1's region was 90 and the ff14SB side-chain
+arithmetic above is confirmed from the run itself. **Six** boundary pairs is
+the check that matters after that - one per amino acid, cut at CA-CB, so no
+backbone entered the region. `--chrg 2` on the real xtb command line is the
+D152 check: the charge reached the QM code rather than sitting unread in the
+config.
+
+**1.565 s per xTB call**, against batch 1's 1.15 s (15:54:58 for 50,000 steps).
+So 34 more QM atoms cost **1.36x**, and 50 ps projects to **~21.8 h** - which
+would have overrun `run.slurm`'s 24 h default once queueing and I/O are added,
+hence the two-day request. The next batch costs the same; 300 ps in six batches
+is of order 130 h rather than the 95 h the old rate implied.
+
+**Scratch at submission: 287 of 300 GB, 722,408 of 1,000,000 files.** Measured
+because an over-quota write fails silently. 13 GB is ample for this run - a 50
+ps QM/MM trajectory of this system is tens of MB - but the margin is thin, and
+**the cause is not this project**: CSR is 15 GB of the 287. The large trees are
+`channel` 41 G, `glp1r_md` 41 G, `AANCA` 27 G, `hf` 25 G, `boltzgen` 16 G.
+Inside CSR: `CSR_mich` 6.2 G, `CSR_wt` 3.6 G, `CSR_crystal_v2` 1.7 G, every
+other run under 1 G. Trimming CSR's own MD trajectories to last frames would
+recover single-digit GB and is the only part of this the project can decide for
+itself.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
