@@ -5712,7 +5712,7 @@ waters. Its first run then failed on `_locked` being handed a `str` instead of a
 bound to die. That is the **second** time this session a failed script did not
 stop a chained command; submits are now gated with `&&`.
 
-**D199 - QM/MM batch 1 runs at 1.04 fs/s. The resume trap that cost two
+**D199 - QM/MM batch 1 runs at 0.87 fs/s. The resume trap that cost two
 submissions, and the real reason O1x sits at 2.06 A - which is not the one I
 gave in D197 and D198.** (2026-11-04)
 
@@ -5721,6 +5721,15 @@ matching `md_eq5`, 90 QM atoms, four boundaries. Step 107 at about 103 s of MD:
 **1.04 fs/s = 3.7 ps/hour**, so 50 ps is **13.3 h** and batch 1 should land
 about 13:40 on 4 Nov, inside its 24 h walltime. That is the ~1 s/step the 300 ns
 arithmetic assumed, so the six batches cost about **80 h** of compute.
+
+**Corrected against 13.5 h of real running (13:48, 4 Nov).** Step 42,470 at
+48,748 s is **0.871 fs/s = 3.14 ps/hour** - 16% slower than the figure above,
+because the first 107 steps were measured before the trajectory and state
+writers had started. So 50 ps is **15.9 h**, batch 1 lands about **16:10**
+rather than 13:40, and the six batches cost about **95 h**, not 80. Still well
+inside the 24 h walltime, but the margin on a 50 ps batch is 8 h, not 11, which
+matters if a later batch is slowed by a busier node. **Take a rate from a run
+that has written at least one frame**, not from its first hundred steps.
 
 ## The resume trap
 
