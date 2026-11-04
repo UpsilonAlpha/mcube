@@ -2257,11 +2257,22 @@ sections:
         Asp92 OD1-O01: [A:92:OD1, C:2:O01]
         Lys226 NZ-O01: [A:226:NZ, C:2:O01]
         Gln93 NE2-Asp92 OD1: [A:93:NE2, A:92:OD1]
+        O01-mer O2x: [C:2:O01, C:1:O2x]
       angles:
         window: [95, 120]
       monitor_angles:
         O01-C4x-O2x: [C:2:O01, C:1:C4x, C:1:O2x]
         O01-C4x-N1x: [C:2:O01, C:1:C4x, C:1:N1x]
+        # Not an attack angle, so it carries its own window: whether the
+        # nucleophile and the carbonyl are TRANS across the zinc or adjacent
+        # to it. 150-180 is trans. Measured because the Burgi-Dunitz angle is
+        # not free once both oxygens are on one metal - two ligands 3.0 A
+        # apart cannot put the nucleophile above the carbon - so the attack
+        # angle and this one are the same fact seen twice, and only this one
+        # says what to change.
+        O01-Zn-O2x:
+          atoms: [C:2:O01, B:1:ZN, C:1:O2x]
+          window: [150, 180]
 
   clus_on_xtb:
     stage: sp

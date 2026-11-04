@@ -300,6 +300,11 @@ def angle_occupancy(pdb_file, trajectory, monitor, window=None, stride=1):
     there is no criterion to score against, so occupancy is reported as None
     and only the spread means anything.
 
+    One section's angles are not all the same kind of question, so a triple may
+    carry its own window: `{atoms: [a, b, c], window: [lo, hi]}` in place of the
+    bare list. A ligand-metal-ligand angle scored against an attack window
+    would report a number that looks like a criterion and is not one.
+
     A triple whose atoms are not in this topology is **reported as missing, not
     skipped**, for the reason `contact_occupancy` gives.
     """
@@ -314,8 +319,12 @@ def angle_occupancy(pdb_file, trajectory, monitor, window=None, stride=1):
             "topology must be the structure the trajectory was produced "
             "from.") from exc
 
-    named, idx, missing = [], [], []
+    named, idx, bounds, missing = [], [], [], []
     for name, sel in (monitor or {}).items():
+        own = window
+        if isinstance(sel, dict):
+            own = sel.get("window", window)
+            sel = sel.get("atoms")
         if not (isinstance(sel, (list, tuple)) and len(sel) == 3):
             missing.append({"triple": name,
                             "why": "needs exactly three selectors, the middle "
@@ -328,8 +337,7 @@ def angle_occupancy(pdb_file, trajectory, monitor, window=None, stride=1):
             continue
         named.append(name)
         idx.append((int(i), int(j), int(k)))
-
-    lo, hi = (float(window[0]), float(window[1])) if window else (None, None)
+        bounds.append((float(own[0]), float(own[1])) if own else (None, None))
     ang = [[] for _ in named]
     frames = 0
     for _ in u.trajectory[::stride]:
@@ -341,9 +349,11 @@ def angle_occupancy(pdb_file, trajectory, monitor, window=None, stride=1):
     out = []
     for n, name in enumerate(named):
         a = np.array(ang[n])
+        lo, hi = bounds[n]
         inside = (None if lo is None
                   else round(float(((a >= lo) & (a <= hi)).mean()) * 100.0, 1))
         out.append({"triple": name, "occupancy": inside,
+                    "window": None if lo is None else [lo, hi],
                     "min": round(float(a.min()), 1),
                     "mean": round(float(a.mean()), 1),
                     "max": round(float(a.max()), 1)})
@@ -373,11 +383,13 @@ def report_angles(rep, label: str) -> None:
         print("  window %.0f-%.0f deg" % (rep["window"][0], rep["window"][1]))
     else:
         print("  no window given: occupancy is not scored, only the spread")
-    print("  %-26s  in%%     min  mean   max" % "triple")
+    print("  %-26s  in%%     min  mean   max  window" % "triple")
     for row in rep["triples"]:
         occ = "    -" if row["occupancy"] is None else "%5.1f" % row["occupancy"]
-        print("  %-26s %s  %5.1f %5.1f  %5.1f"
-              % (row["triple"], occ, row["min"], row["mean"], row["max"]))
+        win = ("-" if not row.get("window")
+               else "%.0f-%.0f" % (row["window"][0], row["window"][1]))
+        print("  %-26s %s  %5.1f %5.1f  %5.1f  %s"
+              % (row["triple"], occ, row["min"], row["mean"], row["max"], win))
     for row in rep["missing"]:
         print("  %-26s     -  %s" % (row["triple"], row["why"]))
 

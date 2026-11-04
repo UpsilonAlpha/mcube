@@ -118,6 +118,30 @@ class TestAngles:
         assert rep["triples"][0]["max"] == pytest.approx(60.0, abs=0.2)
 
 
+class TestPerTripleWindow:
+    def test_a_triple_can_carry_its_own_window(self, postprocess, tmp_path, system):
+        """A ligand-metal-ligand angle and an attack angle are not the same question."""
+        traj = trajectory(tmp_path, system, [60.0, 100.0])
+        monitor = {"attack": {"atoms": ["C:2:O01", "C:1:C4x", "C:1:O2x"],
+                              "window": [95, 120]},
+                   "spread": {"atoms": ["C:2:O01", "C:1:C4x", "C:1:O2x"]}}
+        rep = postprocess.angle_occupancy(str(system), str(traj), monitor,
+                                          window=[150, 180])
+        rows = {r["triple"]: r for r in rep["triples"]}
+        assert rows["attack"]["occupancy"] == 50.0
+        assert rows["attack"]["window"] == [95.0, 120.0]
+        # `spread` has no window of its own, so the section's applies.
+        assert rows["spread"]["window"] == [150.0, 180.0]
+        assert rows["spread"]["occupancy"] == 0.0
+
+    def test_a_dict_without_atoms_is_reported(self, postprocess, tmp_path, system):
+        traj = trajectory(tmp_path, system, [60.0])
+        rep = postprocess.angle_occupancy(str(system), str(traj),
+                                          {"typo": {"window": [95, 120]}})
+        assert rep["triples"] == []
+        assert "three selectors" in rep["missing"][0]["why"]
+
+
 class TestMinimumImage:
     def test_a_leg_across_the_periodic_boundary_is_wrapped(self, postprocess,
                                                            tmp_path):
