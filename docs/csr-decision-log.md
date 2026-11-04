@@ -6455,6 +6455,33 @@ with the config that produced them - so if batch 1's report has been run, its
 `O01-C4x-N1x` occupancy is that artefact and should be struck rather than
 re-derived. A 95-120 occupancy on that triple must not reach the paper.
 
+**D205 - The MDAnalysis gate on the local test suite was never necessary. Three
+additive pip installs and the 50 trajectory tests that have been skipping since
+D167 now run locally: 767 pass, 7 skipped, all seven ASH.** (2026-11-05)
+
+Every `postprocess` change for weeks has been committed on a local run that
+printed a clean count while the tests that read trajectories had not executed -
+D167's collapsed escape and D202's `1 skipped` where Bunya gave `10 passed` are
+both that gate. The fix is `pip install MDAnalysis networkx polars` into the
+local `mcube-test` env, found by running the suite and installing whatever the
+next `ModuleNotFoundError` named.
+
+**Checked before each one, because this is where an install does damage.** The
+env has **numpy 2.4.6 and OpenMM 8.4**, and `pip install --dry-run` reported
+every package purely additive with no numpy or openmm line. The first attempt
+pinned `numpy==1.26.4` out of habit from the Bunya ASH env, and the dry run
+said it **would install numpy-1.26.4** - a downgrade under an OpenMM compiled
+against numpy 2, which is the exact breakage the rule about dry-running exists
+to prevent. Unpinned, nothing moved; numpy and OpenMM verified unchanged after.
+
+So the per-pair cutoff of D204 is **verified locally** -
+`TestAPairWithItsOwnCutoff` 4/4, `test_contact_occupancy` 18 passed - and the
+commit that introduced it was wrong to say it still needed the ASH environment.
+What remains ASH-gated is only `test_cores`, `test_optimizer_constraints`,
+`test_pdb_resseq`, `test_provenance`, `test_qm_levels`, `test_scan_surface` and
+`test_sp`, which is a real gate: `test_qm_levels` covers `mcube.qmmm`, so a
+`qmmm.py` change is still unverified until a Bunya run.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
