@@ -37,7 +37,8 @@ from mcube.preprocess import _locked
 # third element of each row is a distance, not a selector, and `walk` ignores
 # it because it only collects strings with exactly two colons.
 SELECTOR_KEYS = ("atoms", "atoms2", "opt_constraints", "constraints", "coordination",
-                 "monitor", "hessian_atoms", "partial_hessian_atoms",
+                 "monitor", "monitor_angles", "hessian_atoms",
+                 "partial_hessian_atoms",
                  "actregion_origin", "restraints")
 
 # Structure keys, in the order a section's selectors are checked against: for a
