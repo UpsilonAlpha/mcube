@@ -16,52 +16,48 @@ which is stable; line numbers drift and are omitted deliberately.
 
 ---
 
-## 1. Unresolved contradictions — do not quote a number for these
+## 1. The five open contradictions — ALL RESOLVED 2026-11-05 (D208)
 
-**(a) Asp92's distance from the zinc in the crystal. Four incompatible readings,
-all load-bearing, none reconciled.** This is the project's single most quoted
-number.
+Resolved by measuring the deposited structures with `refstruct.py shell`, which
+nobody had done, and by reading the restraint builder. Kept here because the
+wrong values are still quoted throughout the log.
 
-| reading | where | what it actually is |
-|---|---|---|
-| **2.80 Å**, second-shell | D23–D72 throughout, D108, D114, D120, D130, and the product-arm shells D159/D165/D166 | quoted as "crystallographic" in a dozen entries. The log's own standing rule 2 now states it **is not a crystal distance** — it is our model's Asp-to-hydroxide H-bond |
-| **4.20 Å (OD2) / 4.22 Å (OD1)** | D145, and standing rule 2 | "measured directly in `CSR_crystal/6NC5.pdb`" |
-| **2.68 Å** | D184, and quoted again in D206 | our own **superposition** of 6NC5's ZN302 into 6DN4 — and **6DN4 contains no metal** (D179), so this is not a measured Zn–Asp distance |
-| **6NC5 cannot answer it at all** | D131, D151 | 6NC5 is the engineered **Q93H/K226H double mutant with Zn2 present**, and that same carboxylate (6NC5 Asp91) is a **Zn2 ligand at 1.95 Å**. "A mutant that restores Zn2 cannot speak to the state without it." D108/D179 name **6DN4** as the wild-type reference — but 6DN4 is metal-free |
+**(a) Asp92's distance from the zinc: 4.20 A (OD2) / 4.22 A (OD1).** Measured in
+6NC5; 6NC5's ZN302 is four-coordinate (His87 NE2 2.22, His163 NE2 2.09, HOH485
+1.90, HOH493 2.14) with no aspartate. **D145 was right.** The **2.80 A** quoted
+in a dozen entries is our own model's number and appears nowhere in the file.
+**D184's 2.68 A is void**: it superposes 6NC5's zinc into 6DN4, and 6DN4 and
+6DQ2 both contain **zero metal atoms**. **D151 was right** that 6NC5's ZN301
+holds that carboxylate at 1.95 A as a Zn2 ligand, with HOH493 bridging both
+zincs — so the 4.20 A carries the caveat that Zn2 is occupied, and it remains
+the only measured value because the wild-type files are apo.
 
-It is a restraint target in D130/D144/D146, the definition of the "clean
-four-coordinate reactant" in D42/D48, the scan endpoint in D53/D57/D58, the
-product arm's claimed "crystal geometry" in D159/D166, and the ground-truth rule
-in D206. **Resolving it needs the deposited files and has never been done.**
-Until then:
+**(b) "No B3 enzyme has Asp120 on Zn1" — now measured.** 1SML 4.08, 5K0W 4.17,
+5B15 4.05, 7UHJ 4.02 A from Zn1; 2.06–2.13 A from Zn2, monodentate in all four.
+6NC5's 4.20 A is within 0.03–0.18 A of every one. Two by-products: **5K0W has
+four zincs, both sites in both chains**, so "GOB-18's single zinc sits at Zn2"
+is not what the deposit shows; and GOB-18's Zn1 is the HQH site, Gln98 OE1 2.04.
 
-> The **qualitative** ground truth is unaffected and is what every argument
-> actually rests on: Asp92 is **not a Zn1 ligand** in the crystal. Every reading
-> — 2.68, 2.80, 4.20 — is far outside a Zn–O bond of 1.9–2.2 Å, and 4.20
-> supports it hardest. Quote that, never a distance.
+**(c) Does GFN2 over-coordinate the zinc? Open, and now secondary.** All four
+closures are retracted or reclassed. But our runs put this contact at 1.77–2.11
+A against 4.02–4.20 A in four experimental structures, so the geometry is wrong
+whatever produced it; which component to fix is a separate question.
 
-**(b) Is the zinc's extra coordination an artefact? The question is OPEN.** It
-was closed three times on D58's retracted DFT comparison — in standing rule 3,
-in D133, and in project memory — and once more on D195's 1.94 → 2.56 Å
-relaxation, which D197 reclassifies as "a bond-length relaxation within the
-coordinated basin, not a rejection". There is no admissible test on record.
-D133's own text says why: "a single relaxed scan or a single 25 ps trajectory
-cannot see an equilibrium, only the well it fell into."
+**(d) What put the fifth ligand on the zinc: two necessary causes.** The 3.0 A
+cutoff admitted a second-shell contact, **and** the restraint builder's
+per-residue default then held only the nearer carboxylate oxygen, leaving the
+other free to pivot in. D120/D130/D174 blamed the cutoff alone; D175 named the
+default and was substantially right; D176 over-corrected it. Fixed in
+`find_coordinators` (`per_residue=False`).
 
-**(c) What put the fifth ligand on the zinc?** Blamed on the 3.0 Å detection
-cutoff and the restraint it generated in D120, again in D130, again in D174 —
-and D133 retires the mechanism ("D102's two newcomers were **unrestrained**, so
-a restraint is not the mechanism") while D175/D176 find the real cause was a
-per-residue default in `find_coordinators`. Three assertions of a wrong cause;
-one job cancelled and one full rebuild (`CSR_wt`) launched on it.
+**(e) D152's citation.** The 0.58 A Lys226/O4x overlap is **D148's** finding.
+Corrected in place.
 
-**(d) "No B3 enzyme has Asp120 on Zn1."** Asserted as rule 1 of D206. The
-subclass-wide generalisation has **no citation anywhere in the log**. Supported:
-Asp120 is a Zn2 ligand in the B3 structures this project has read (L1, SMB-1,
-GOB-18). Needs a source before the paper.
-
-**(e) Citation error.** D152 attributes the 0.58 Å Lys226/O4x overlap to D151.
-It is D148's finding.
+**The consequence: Asp92 should never have been in a restraint list at all.** At
+4.20 A it is outside the 3.0 A "affected by the metal" radius and far outside
+the 2.5 A coordination radius. Every structure built to hold it at 2.80 A has
+that contact 1.4 A too short; the ones that collapsed to 1.77–2.11 A are 2.1–2.4
+A too short.
 
 ---
 

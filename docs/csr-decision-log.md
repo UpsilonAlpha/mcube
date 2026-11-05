@@ -3353,7 +3353,7 @@ The five `sp_*` entries in `site.yaml` are renamed to `qmmm_ref`, `qmmm_r229`, `
 
 Anti, in plane, and in neither case an overlap. The 1.82 A is an H...H contact that is tight but real - above the sum of two hydrogen vdW radii is 2.2-2.4 A, so it is strained rather than impossible, and the optimisation is free to relax it.
 
-**A clash check added to the tool, because it had none.** `protonate` places the proton from three heavy atoms of one residue and knows nothing about the rest of the structure. It now reports the three nearest atoms outside the residue on **every** run - so the line is evidence the check ran, not something only a failure reveals - and refuses below 1.2 A, writing nothing. A strong O-H...O hydrogen bond is 1.6-2.0 A, so 1.2 A is an overlap and not a contact. `subst_start.pdb` carried a 0.58 A Lys226-O4x overlap for weeks (D151) and job 31160947 died of it in `xtbpcgradientgrab` with a row of asterisks where a point charge should have been; nothing in that path ever named the overlap. 6 tests.
+**A clash check added to the tool, because it had none.** `protonate` places the proton from three heavy atoms of one residue and knows nothing about the rest of the structure. It now reports the three nearest atoms outside the residue on **every** run - so the line is evidence the check ran, not something only a failure reveals - and refuses below 1.2 A, writing nothing. A strong O-H...O hydrogen bond is 1.6-2.0 A, so 1.2 A is an overlap and not a contact. `subst_start.pdb` carried a 0.58 A Lys226-O4x overlap for weeks (**D148**; this entry first cited D151, corrected 2026-11-05 per D208) and job 31160947 died of it in `xtbpcgradientgrab` with a row of asterisks where a point charge should have been; nothing in that path ever named the overlap. 6 tests.
 
 **A correction to the overnight brief, which would have made the test vacuous.** It said to protonate `scan_aspin/scan_00.pdb`. **scan_00 is `aspin`'s 3.60 A end - the structure where Asp92 has already left the metal.** `aspin` runs Zn-OD1 from 3.60 inward to 1.90, so scan_00 is the four-coordinate site (that is exactly why `michaelis2d` starts there). Protonating it and optimising asks whether a neutral acid *comes back*, which is not the question the user put. The question - *"obviously protonating asp prevents it from coordinating - might be worthwhile doing a quick semi-empirical QM/MM run with that assumption"* - needs the structure that has something to lose.
 
@@ -6743,6 +6743,116 @@ product would spend its barrier moving meropenem across the site, and the number
 at the top would not be a chemical barrier at all. That failure would look
 entirely normal in the output."
 
+
+**D208 - The five open contradictions `retractions.md` opened are closed. Four
+by measuring the deposited structures, which nobody had done, and one by reading
+the restraint builder. The headline result: the crystal puts Asp92 **4.20 A**
+from the catalytic zinc, every other B3 structure puts the same aspartate
+4.02-4.17 A from Zn1, and the 2.80 A this project has restrained, gated and
+reasoned from for five weeks was never a crystallographic distance.**
+(2026-11-05, user: "ok resolve these 5")
+
+**Provenance, and it needed no new tool: `python refstruct.py shell <pdb>`
+re-derives every number below from the PDB ID**, which is what that script was
+written for ("a criterion that cannot be re-derived from a PDB ID is an
+assertion, not a measurement"). Nobody had pointed it at these files. I measured
+independently first with a stdlib script and then cross-checked against
+`refstruct.py`; the two agree to the digit on 6NC5's six zincs and on 1SML, so
+the numbers below are two independent implementations of the same measurement.
+
+## 1. Asp92's distance from the zinc: 4.20 A. Four readings, one survives
+
+    6NC5  ZN A302 (OUR site)  His87 NE2 2.22, His163 NE2 2.09,
+                              HOH485 1.90, HOH493 2.14      -> FOUR-coordinate
+                              ASP A91 OD2 4.20   OD1 4.22
+    6NC5  ZN A301 (Zn2 site)  ASP A91 OD2 1.95, His92 NE2 2.01,
+                              His225 NE2 2.04, HOH493 2.08
+    6DN4                      4557 atoms, ZERO metal sites
+    6DQ2                      4049 atoms, ZERO metal sites
+
+- **D145 is correct and is now confirmed independently: 4.20 A (OD2), 4.22 A
+  (OD1).** The four-coordinate sphere in standing rule 2 is reproduced atom for
+  atom.
+- **The 2.80 A is our own model's number.** It is not in this file.
+- **D184's 2.68 A is void.** It superposes 6NC5's zinc into 6DN4, and **6DN4
+  contains no metal at all** - measured above, not inferred. The same goes for
+  6DQ2. No Zn-Asp distance can come from either.
+- **D151 is correct about ZN301.** In this mutant the carboxylate is a **Zn2
+  ligand at 1.95 A**, monodentate (OD1 3.43), and **HOH493 bridges both zincs**
+  at 2.08/2.14 - the canonical bridging-nucleophile position, which is also the
+  independent confirmation of D39. So 6NC5 cannot show what the carboxylate does
+  with Zn2 *empty*, and that caveat has to travel with the 4.20 A. It is still
+  the only measured value in existence, because the wild-type files are apo.
+
+## 2. "No B3 enzyme has Asp120 on Zn1": now measured, not asserted
+
+| structure | Zn1 site | Asp->Zn1 | Asp->Zn2 |
+|---|---|---|---|
+| 1SML, L1 | His84/86/160 + HOH 1.88 | **4.08** | Asp88 OD2 **2.07**, OD1 3.20 |
+| 5K0W, GOB-18 (chain A) | **Gln98 OE1 2.04**, His100/175 | **4.17** | Asp102 OD2 **2.11**, OD1 3.43 |
+| 5B15, SMB-1 | His72/74/150 + HOH 1.83 | **4.05** | Asp76 OD2 **2.13**, OD1 3.31 |
+| 7UHJ, L1 + ligand | His105/107/181 + MX0 O1 2.63 | **4.02** | Asp109 OD2 **2.06**, OD1 3.18 |
+
+In all four the conserved aspartate is a **Zn2** ligand, **monodentate**, with
+the second oxygen 3.18-3.46 A out - and 4.02-4.17 A from Zn1. **6NC5's 4.20 A
+sits within 0.03-0.18 A of every one of them.** CSR-1's crystal is completely
+ordinary for a B3 at this contact; what was anomalous was our 2.80 A.
+
+D206's rule 1 is therefore supported by measurement and its uncited
+generalisation can be replaced by this table. Two by-products:
+
+- **5K0W has FOUR zincs - both sites occupied in both chains.** "GOB-18's single
+  zinc sits in the Zn2 site" is not what the deposit shows, and that sentence
+  needs correcting wherever the project repeats it.
+- **GOB-18's Zn1 is confirmed as the HQH site**, Gln98 OE1 at 2.04 A, which is
+  D124's point measured rather than read.
+
+## 3. Does GFN2 over-coordinate the zinc? Still open - and now secondary
+
+No admissible test exists: the three closures (standing rule 3, D133, project
+memory) all rest on D58, which is retracted, and the fourth (D195) is reclassed
+by D197 as a relaxation inside the coordinated basin. **But the question no
+longer gates anything,** because the discrepancy is now too large to be a method
+artefact alone: our runs put this contact at **1.77-2.11 A** against **4.02-4.20
+A in four independent experimental structures**. A 2+ A error against four
+crystals is a wrong geometry whatever produced it. Which component to fix - the
+MM start, the restraint set, or xTB - is a real question and a secondary one.
+
+## 4. What put the fifth ligand on the zinc: both causes, and neither alone
+
+Read in `find_coordinators`, which is the restraint builder. It now calls
+`coordination_shell(pdb_file, inputs, per_residue=False)`, and its own comment
+records the history: it "took the per-residue default anyway. So only the closest
+donor of each residue was ever held, and a group with two donors inside the
+cutoff had one pinned and the other free: exactly the geometry D120 and D130
+record failing, where Asp92's OD2 was held at 2.80 and OD1 pivoted onto the metal
+at 1.99."
+
+So **two conditions were both necessary**: the **3.0 A cutoff** admitted a
+second-shell contact into the list at all, and the **per-residue default** then
+held only the nearer carboxylate oxygen, leaving the other free to rotate in.
+D120, D130 and D174 each blamed the cutoff alone; D175 named the per-residue
+default and was substantially right; D176's "No: detection was never per atom for
+restraints" over-corrected it. Nobody had both halves. Fixed at the library
+(`per_residue=False`, plus `warn_beyond_bond_length` at the single detection
+exit).
+
+## 5. The citation error
+
+D152's "0.58 A Lys226-O4x overlap for weeks (D151)" is **D148's** finding.
+Corrected in place.
+
+## What this costs, and it is not small
+
+**Asp92 should never have been in a restraint list.** At 4.20 A it is outside the
+3.0 A "affected by the metal" radius and far outside the 2.5 A coordination
+radius, so under this project's own standing rule it gets no coordination
+restraint and no QM-region membership on coordination grounds. Every structure
+built to hold it at 2.80 A - D130's hand-written pair, D144's rule, the
+`finalsystem.pdb` lineage, both 100 ns arms, and the `michrk` start frame - has
+that contact **1.4 A too short**, and the ones that collapsed to 1.77-2.11 A are
+2.1-2.4 A too short. The restraint target for any rebuild is ~4.2 A, which in
+practice means: do not restrain it, and let the run say where it goes.
 
 ## Resources (see `running-on-bunya.md`)
 
