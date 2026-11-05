@@ -1031,10 +1031,10 @@ Spending four days of DFT optimisation before reading an 18 h answer that is alr
 
 (The 3.05 A point was still running; three points already settle it.)
 
-**DFT is 1.6x steeper than xTB, which is the opposite of the concern.** The worry from D51/D53 was that GFN2-xTB over-coordinates the zinc and had invented the sixth ligand. It has not: at the DFT level Asp92 is bound *more* strongly, costing **9.1 kcal/mol** to reach its crystallographic 2.80 A rather than xTB's 5.7. **The six-coordinate site is a real feature of this model, not a semi-empirical artefact**, and the Yang *et al.* over-coordination failure mode - real in general, and a legitimate thing to have checked - does not apply to this result.
+**DFT is 1.6x steeper than xTB, which is the opposite of the concern.** The worry from D51/D53 was that GFN2-xTB over-coordinates the zinc and had invented the sixth ligand. It has not: at the DFT level Asp92 is bound *more* strongly, costing **9.1 kcal/mol** to reach its crystallographic 2.80 A rather than xTB's 5.7. ~~**The six-coordinate site is a real feature of this model, not a semi-empirical artefact**~~ **[RETRACTED - see D59 below, which already said so, and D206. These are single points on xTB geometries that all descend from the degraded six-coordinate MD start. They show the two methods agree about that path; they cannot promote the path. Asp92 is not a Zn1 ligand in 6NC5 or in any B3 structure.]**, and the Yang *et al.* over-coordination failure mode - real in general, and a legitimate thing to have checked - does not apply to this result.
 
 Consequences:
-- **D51 and D52 stand on firmer ground.** The zinc is genuinely six-coordinate, so it is a Lewis acid activating the bound carbonyl rather than a hydroxide generator, and the two aqua ligands genuinely cannot reach the attack trajectory.
+- ~~**D51 and D52 stand on firmer ground.** The zinc is genuinely six-coordinate, so it~~ **[RETRACTED, D206.]** The superseded claim read: the zinc is genuinely six-coordinate, so it is a Lewis acid activating the bound carbonyl rather than a hydroxide generator, and the two aqua ligands genuinely cannot reach the attack trajectory.
 - **The planned DFT geometry optimisations are unnecessary** and will not be run: they were insurance against an artefact that does not exist. That also removes the cost problem from D57, where a def2-TZVP gradient measured about two hours.
 - **Asp92 being a zinc ligand does not rule out the CphA mechanism**, since in CphA Asp120 is both ligand and base and protonation is what breaks its Zn-O bond. But at 9.1 kcal/mol the bond is not weak.
 
@@ -1111,7 +1111,7 @@ So the 64 CPUs now available should go to **DFT**, which genuinely saturates wha
 | 2.80 | +5.72 | +9.12 |
 | 3.05 | +8.46 | **+13.72** |
 
-DFT is consistently about 1.6x steeper across the whole curve, confirming D58: xTB is not over-coordinating, and the six-coordinate zinc is real at both levels.
+DFT is consistently about 1.6x steeper across the whole curve. **What that does and does not say is set out in the next paragraph, and the clause first written here - "confirming D58: xTB is not over-coordinating, and the six-coordinate zinc is real at both levels" - contradicted it and is withdrawn (D206).** It licenses only the narrow statement that xTB does not over-bind Asp92 *along this coordinate from this structure*.
 
 **The planned pose-robustness MD (D59) is now pointless and has been cancelled.** It was to start unconstrained MD from the 4.00 A scan structure, but the scan itself shows that structure is 22.4 kcal/mol uphill, so the carbonyl would obviously return. The scan answered the question the MD was meant to ask, more cheaply. Displacing along Zn-O2x was never going to test the *pose*, only that one bond.
 
@@ -6481,6 +6481,76 @@ What remains ASH-gated is only `test_cores`, `test_optimizer_constraints`,
 `test_pdb_resseq`, `test_provenance`, `test_qm_levels`, `test_scan_surface` and
 `test_sp`, which is a real gate: `test_qm_levels` covers `mcube.qmmm`, so a
 `qmmm.py` change is still unverified until a Bunya run.
+
+**D206 - The order of evidence, written down as a rule because it was broken
+twice in one session: an experimental structure is ground truth, the literature
+is second, and an energy computed on our own geometry is not evidence about
+structure at all. D58's headline is retracted in place - D59 had already
+retracted it, and then D59's own closing line re-asserted it, so the log
+contradicted itself and I quoted the wrong half.** (2026-11-05, user: "you're
+relying on minima from flawed md starts again - asp is not coordinated in the
+crystal or in any other B3 structure - that's our ground truth ... good job with
+looking at the literature - that's our second source of truth")
+
+## The rule
+
+1. **An experimental structure is ground truth.** 6NC5's ZN302 is
+   four-coordinate - His87 NE2 2.22, His163 NE2 2.09, HOH485 1.90, HOH493 2.14:
+   two histidines, two waters, **no aspartate** - and Asp92 OD2 is a
+   second-shell contact at 2.80 A, 2.68 A when superposed into wild-type 6DN4
+   (D184). Wider than this one structure, **no B3 enzyme has Asp120 on Zn1**: it
+   is a Zn2 ligand, and CSR-1 has no Zn2. A Zn1-coordinating Asp92 therefore has
+   no structural precedent anywhere, and a model that produces one is wrong about
+   the structure however favourable its energy.
+2. **The literature is the second source of truth**, for what one structure
+   cannot say: which site a mononuclear metal occupies, what the nucleophile is,
+   what each metal does.
+3. **An energy computed on our own geometry is evidence about the energy
+   function, not about the structure.** A single point cannot promote the
+   geometry it was handed. Neither can agreement between two methods on the same
+   handed geometry.
+
+## The two violations, and the correction to each
+
+**(a) D58's headline, retracted in place above.** The DFT points were single
+points on xTB scan geometries that all descend from the degraded six-coordinate
+MD start, so both methods were asked one conditional question - given this
+octahedron, what does removing a ligand cost? - and neither was asked what the
+site should look like. **D59 already said exactly this**, in the words
+"agreement between two methods on a loaded question is not evidence that the
+question was right", and then closed its own table by re-asserting that the
+six-coordinate zinc "is real at both levels". Both sentences are corrected
+above. The surviving statement is the narrow one: xTB does not over-bind Asp92
+along that coordinate from that structure.
+
+**(b) D107 and D112's pKa bookkeeping has a sign error.** "A 2+ cation 4-5 A
+away should **raise** a lysine's pKa" is backwards. A lysine's conjugate base is
+the **neutral** amine, so a nearby cation stabilises the base and **lowers** the
+pKa - the same argument D154 used to correct D153 for the carboxylate in this
+same site. Signed correctly, the electrostatic term favours the Lys226 -> O01
+transfer instead of opposing it; the BcII aqua pKa of ~5.6 also needs revising
+upward for a mono-zinc site, which pushes back. So the bookkeeping is
+**indeterminate**, and D112's reading that it "runs the other way" and would
+"favour `lysH` and vindicate what has been run" does not hold.
+
+## What survives, because the rule cuts both ways
+
+**D48 is not touched by any of this, and the rule raises its standing rather
+than lowering it.** Its comparison was run in a constructed clean
+four-coordinate sphere - Asp92 held at the crystallographic 2.80 A, carbonyl out
+of the inner sphere, identical constraints on both states - that is, in the
+geometry the ground truth prescribes, and it still puts the Lys226 -> O01
+transfer at **-5.23 kcal/mol** at wB97X-D3(BJ)/def2-SVP. It is the one energetic
+result on this question whose geometry agrees with the crystal. So the
+water-versus-hydroxide question stays open and the best evidence in it still
+favours the transfer; what the rule removes is a bad argument that was being used
+on both sides.
+
+**And the standing worry about `michrk` stands at full strength.** Zn-Asp92 OD2
+at 1.77-1.84 A and five-coordinate in every frame (D204) is rejected by the
+structural criterion - which is also the published VIM-2 criterion, where
+candidate protonation states were judged by zinc coordination against the
+crystal rather than by energy - independent of what its energy says.
 
 ## Resources (see `running-on-bunya.md`)
 
