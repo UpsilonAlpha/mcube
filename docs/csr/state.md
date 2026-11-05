@@ -2,7 +2,7 @@
 
 **This file is the single source of truth for what is true now.** The decision
 log (`../csr-decision-log.md`) is append-only history: it records how each
-conclusion was reached, including the ones later overturned, and it is 208
+conclusion was reached, including the ones later overturned, and it is 209
 entries long. Reading it end to end to find the current value of something is
 how the same facts get rediscovered, and how a contradiction can sit unnoticed
 for a week (see *Contradictions caught late* below).
@@ -13,7 +13,7 @@ without editing this file is incomplete. Status words here are
 `settled` / `measured, open` / `void` / `not started` / `in flight`, and
 nothing else.
 
-Last updated: 2026-11-05.
+Last updated: 2026-11-06.
 
 ---
 
@@ -589,7 +589,7 @@ Items 1–3 gate everything below them. **Status is maintained here.**
 | --- | --- | --- |
 | 0 | Asp92's placement in the starting structure | **settled (D179/D184), re-confirmed 2026-11-05.** Asp92 **is** affected by the metal and **is** to be restrained — the 3.0 Å radius is "what is affected by the metal", not a coordination test (D174, D186, the user twice). Targets: **OD2 2.76 Å, OD1 3.90 Å** from the superposition, which land within 0.09 Å of the 2.80/3.81 the project already used. **One thing to ADD:** the Asp92–Lys226 salt bridge, 2.99 Å in 6DN4 and 2.83 Å in 6DQ2, which no run has ever restrained |
 | 1+2 | Experiment-anchored Michaelis complex, both endpoints on one topology | **open as a scientific question, not blocked on tooling (D194).** The docked pose binds with the carbonyl at 5.43 Å and one attack restraint; 7UHI/7UHJ put L1's at 2.53/2.63 Å (D123). Deciding between them is the blocking question (D89) and needs evidence, not a revert to `CSR_ligand` (§2a) |
-| 3 | Equilibration that preserves the site | **FAILED, both arms (D191), cause found (D194): the attack-coordinate restraint was replaced, not added to.** Re-run needs `[C:2:O01, C:1:C4x, 3.47]` **and** `[B:1:ZN, A:92:OD1, 3.81, 50.0]` in the list. Still to fix alongside: 50 kcal/mol/Å² does not hold Asp92 OD2 at 2.80 (mean 2.44/2.37), a bulk water holds the free site 97.0%/89.3%, and `prod100c` NaN'd at 22.68 ns — the product arm's second NaN, so it predates D186 |
+| 3 | Equilibration that preserves the site | **PASSED on 2026-11-06 by `eq6` (D214)**, after failing both arms in D191. Job 32177894, 10 ns NVT, 43.7 min on one H100. Every configured restraint held to within 0.03 A (O01-C4x 3.48, Zn-O2x 2.57, Zn-OD1 3.87, Zn-O1x 3.79, NZ-OD2 2.79), Lys226 is the ammonium the salt bridge implies, and the metal is **four-coordinate at 2.50 A** (2 His, hydroxide, water) with the carbonyl just outside at 2.57. Last frame: `md_eq6_results/NVTtrajectory_lastframe.pdb`. **Caveat that limits what it proves:** `coordination_redetect` added its own `Zn-OD2 2.79` restraint, so Asp92 was held at both ends and this run does not test whether the carboxylate would approach - item 11 does. Earlier diagnosis, kept: the attack-coordinate restraint was replaced, not added to.** Re-run needs `[C:2:O01, C:1:C4x, 3.47]` **and** `[B:1:ZN, A:92:OD1, 3.81, 50.0]` in the list. Still to fix alongside: 50 kcal/mol/Å² does not hold Asp92 OD2 at 2.80 (mean 2.44/2.37), a bulk water holds the free site 97.0%/89.3%, and `prod100c` NaN'd at 22.68 ns — the product arm's second NaN, so it predates D186 |
 | 4 | Nucleophile identity, origin, protonation state | not started — blocked on 1–3. D48 and D107 disagree **in sign**. One datum arrived anyway: **Lys226 NZ–O01 at 2.72 Å mean in 100% of 5000 frames** (D191) |
 | 5 | PROPKA/H++ and the His164 HID/HIE sensitivity check | **blocked on one pip install**: neither `propka` nor `pdb2pqr` is in the ASH env, both are pure Python, so `pip install propka pdb2pqr` is the whole of it — the user's env, so their call (D185). Open since **D7** |
 | 6 | scan → NEB → TS → frequencies → IRC, ≥3 snapshots | not started — the paper's actual content |
@@ -597,7 +597,7 @@ Items 1–3 gate everything below them. **Status is maintained here.**
 | 8 | Protonation of the leaving nitrogen | not started |
 | 9 | Per-residue roles reaching R, Q and K | **decided and applied (D190)**: Arg90, Lys226, Arg229 and Gln93 **all in MM**, so charge deletion decomposes the set as one. QM charge 0 on both arms, set explicitly on all nine QM/MM-family sections. Deletions must still be run at **both ends** of the coordinate |
 | 10 | Di-zinc comparison at identical level | not started — scope decision |
-| 11 | Asp92 free energy | deferred by design — only if the discrepancy survives 1–3 |
+| 11 | Asp92 free energy | **in flight (D213, D214).** Promoted from "deferred" because the discrepancy did survive 1-3: `eq6` holds Asp92 at 2.79 A only because it is restrained there, and D211 measured the unrestrained QM/MM lineage sitting at 1.93 A mean. A PMF along **Zn-Asp92 CG** (not an oxygen: a profile along Zn-OD1 is contaminated by every carboxylate rotation) is what decides it. `aspcg` (26 scan points from eq6's last frame) then `asp` (26 QM/MM windows, 2.3-4.8 A at 0.1 A, k=150, 45 ps equilibration + 60 ps data). Cost at the measured rate: 40.9 h per window, ~8,500 core-hours. **Not started — gated on the user's go-ahead**, and on writing 26 `seed` entries by hand because `window_seed` cannot take them from a `scan` |
 | 12 | `md` resume | **done (D182)** — one implementation now serves both stages |
 
 **Item 9's deadline is the non-obvious one.** Arg90 and Lys226 are inside the
@@ -641,7 +641,8 @@ contacts stay visible without being counted.
 
 1. **Four-coordinate at 2.5 Å**, at high occupancy.
 2. **Asp92 OD2 near 2.80, not collapsed toward 2.0** — the artefact of D173/D177. **Gate STANDS** (I withdrew it on 2026-11-05 and was wrong; the superposition reproduces 2.71–2.76 Å from three independent atom sets). Judge at **2.76 Å**, and add a second gate: **Lys226 NZ – Asp92 OD within 2.8–3.0 Å**, since that bridge is what holds the carboxylate out and no run has ever held it.
-   now restrained, so this tests whether 50 kcal/mol/Å² holds it.
+   now restrained, so this tests whether 50 kcal/mol/Å² holds it. **Met by `eq6` at
+   500 kcal/mol/Å²** (OD2 2.81, NZ-OD2 2.79), with the caveat in item 3.
 3. **Asp92 OD1 near 3.81**, not pivoted in (D120, D130).
 4. **Product only: O4x/O5x near 2.9, O2x away** — its 4.75 Å migration onto the
    metal was the turnover of D173.

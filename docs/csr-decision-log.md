@@ -7425,6 +7425,87 @@ these, since a QM/MM window is xTB-bound and a GPU does not help it. Added
 removed so the caller supplies them on the sbatch line, as `run.slurm` does.
 The two should eventually be one file, and that is the only difference.
 
+**D214 - `eq6` finished in 43.7 minutes and all five configured restraints held,
+but the result is a valid *starting structure*, not evidence about Asp92: the
+redetection added a sixth restraint on Zn-OD2 itself, so the distance that the
+PMF exists to measure was held, at both ends, for the whole 10 ns.** (2026-11-06)
+
+Job 32177894, `md_eq6`, 10 ns NVT at 2 fs on one H100, `[DONE]` at 02:37 AEST.
+`ASH Total Walltime: 2624.7 s`.
+
+**What was asked for and what landed, from the last frame
+(`md_eq6_results/NVTtrajectory_lastframe.pdb`, 47,979 atoms):**
+
+| pair | target | last frame |
+| --- | --- | --- |
+| `C:2:O01 - C:1:C4x` | 3.47 | **3.48** |
+| `B:1:ZN - C:1:O2x` | 2.60 | **2.57** |
+| `B:1:ZN - A:92:OD1` | 3.90 | **3.87** |
+| `B:1:ZN - C:1:O1x` | 3.82 | **3.79** |
+| `A:226:NZ - A:92:OD2` | 2.79 | **2.79** |
+
+So the pose survives: the carbonyl stays poised, the hydroxide stays at attack
+distance, Asp92 stays in the second shell, and the salt bridge is intact.
+Lys226 carries `HZ1 HZ2 HZ3` - the ammonium the crystal salt bridge implies
+(the Tier 1 question 1), so the protonation state used here is the one the
+structure argues for, not an assumption added for convenience.
+
+**The metal's own sphere in the last frame, measured rather than assumed:**
+
+    OH2:O01      1.96      the nucleophile
+    HOH3171:O    1.97      a bulk water
+    HIS164:NE2   2.13
+    HIS88:NE2    2.20
+    mer1:O2x     2.57      the substrate carbonyl
+    ASP92:OD2    2.81      second shell
+    ASP92:CG     3.72      the PMF's coordinate
+
+Two histidines, not three, is correct and not a defect: the motif is **H-R-H**,
+Arg90 standing where BBL His118 would be. At the 2.50 A coordination radius the
+metal is **four-coordinate** (2 His, hydroxide, water), with the carbonyl just
+outside at 2.57 - which is the coordination number the user expected of the
+wild type, reached without being imposed.
+
+**The honest qualification, which changes what this run can be cited for.**
+`coordination_redetect: true` ran preprocess's detector on `finalsystem.pdb`,
+and at the 3.00 A cutoff it found `ASP A:92 (OD2) 2.79 A` and added its own
+restraint `[ZN, OD2, 2.79, 500.0]` - nine restraints in total, five configured
+plus four detected (the detector's own Zn-O2x at 1.94 A was correctly overridden
+by the configured 2.60). mcube printed the warning it was written to print:
+*"longer than 2.50 A, so it is not a bond: this holds a second-shell contact
+against the metal"*. That is exactly the user's rule (D174, D186: restrain what
+is affected by the metal at its crystal distance), so the run is **right**. But
+Zn-OD2 was pinned at 2.79 and OD2 was simultaneously pinned to Lys226's NZ at
+2.79, so "OD2 ended at 2.81" is the restraint reporting itself, not a finding.
+**Nothing in this run tests whether Asp92 would come onto the metal.** That is
+the PMF's question, and the reason the PMF is the next step rather than a
+confirmation of this one.
+
+**Two things checked in `src/mcube/umbrella.py` before trusting the plan:**
+
+1. **The bias and the coordination restraints do not fight.** `coordination_force`
+   takes `exclude_pair` and drops the biased pair, and `release()` zeroes the
+   whole coordination force before sampling begins, in both `run_mm_window` and
+   `run_qmmm_window`. The module's own comment says why: two forces on one pair
+   simply add while WHAM is told only about the bias, so the window's effective
+   force constant would not be the one in the config "and the error would be
+   invisible in the output". This matters here more than in the channel case,
+   because the pair being biased (Zn-CG) is *not* the pair carrying a restraint
+   (Zn-OD1, Zn-OD2) - without the release, the PMF would have been a profile of
+   the restraints.
+2. **`engine: qmmm` with `coordinate: distance` is a real path**, not a
+   combination that falls through to MM: `run_qmmm_window` has its own distance
+   branch and writes `engine: qmmm`, and `wham` skips each window's
+   `equilibrate_ps` for QM/MM entries.
+
+**The one gap left, and it is in the library, not the plan.** `window_seed` looks
+only at the window's own `seed`, then at a matching MM window, then raises; a
+finished `scan` cannot seed an umbrella even though it produces exactly the
+structures required. So the 26 seeds have to be written into the config by hand
+between `aspcg` and `asp`. That is a config-driven feature mcube should have
+(the user's standing rule that users should not rewrite code per protein), and
+it is the only manual step in the chain.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
