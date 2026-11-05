@@ -69,11 +69,18 @@ from a fix that landed. Every constraint here names the decision it comes from,
 what enforces it, and - where nothing does - that it rests on a human reading
 this. **Update the status line in the same commit that changes the behaviour.**
 
+> **Before quoting any entry below, or anywhere in this log, check
+> `csr/retractions.md`.** This file is append-only and 207 entries long; roughly
+> forty of its entries still **lead** with a claim a later entry overturns, so a
+> grep lands on the retracted half. That has caused four re-derivations of
+> discarded arguments (D130, D179, D194, D206). For a *current* value use
+> `csr/state.md`, never this log.
+
 ### The coordination sphere (D120, D121, D130)
 
 1. **A restraint only preserves a bond if the contact IS one.** `preprocess.inputs.cutoff` decides which contacts become 50 kcal/mol/A^2 restraints for the whole run. A Zn-O/N bond is 1.9-2.2 A; **2.5 is defensible, 3.0 is not.** *Enforced:* `md` warns on every pair it will restrain beyond `LIGAND_MAX` (2.5 A), detected and configured alike, and records them in `coordination_beyond_bond_length`. The library default cutoff is still 2.8, so **set `cutoff` explicitly**. Raise `coordination_warn_above` for a genuinely longer bond (Ln-O reaches 2.4-2.5 A).
 2. **The crystal sphere is four:** HOH485 1.90, His163 NE2 2.09, HOH493 2.14, His87 NE2 2.22 (6NC5 ZN302). **Asp92 is not on it, and not near it: 4.20 A (OD2) and 4.22 A (OD1), measured in `CSR_crystal/6NC5.pdb` itself.** The 2.80 A this rule used to quote is not a crystal distance - see D145. *Enforced:* nothing. A run whose sphere disagrees has to be caught by reading `site.py shell`.
-3. **Asp92 binds the zinc at every level of theory we have run, and the crystal says it should not. Do not set up a run that assumes either side of that.** MM at 100 ns (D102), unconstrained GFN2-xTB at 25 ps (D51) and DFT, 1.6x steeper than xTB (D58/D60), all put it on the metal; 6NC5 ZN302 has it at **4.20 A** (D145 corrects the 2.80 A this used to say). The working explanation is D133: Asp92 is a **Zn2** ligand with no Zn2 to bind, held off Zn1 by the RQK cations, and probably in equilibrium rather than fixed. Two things follow. **Removing a restraint does not fix this** - D102's extra ligands were unrestrained - it only makes the coordination measurable. And **"xTB over-coordinates the zinc" is no longer the open question**; D58/D60 settled it. *Enforced:* nothing.
+3. **Asp92 binds the zinc at every level of theory we have run, and the crystal says it should not. Do not set up a run that assumes either side of that.** MM at 100 ns (D102), unconstrained GFN2-xTB at 25 ps (D51) and DFT, 1.6x steeper than xTB (D58/D60), all put it on the metal; 6NC5 ZN302 has it at **4.20 A** (D145 corrects the 2.80 A this used to say). The working explanation is D133: Asp92 is a **Zn2** ligand with no Zn2 to bind, held off Zn1 by the RQK cations, and probably in equilibrium rather than fixed. Two things follow. **Removing a restraint does not fix this** - D102's extra ligands were unrestrained - it only makes the coordination measurable. ~~And **"xTB over-coordinates the zinc" is no longer the open question**; D58/D60 settled it.~~ **[RETRACTED 2026-11-05, D206. D58's inference is invalid - D59 said so at the time and D206 retracts it in place - so this rule was closing the project's standing method question on evidence the log itself withdraws, in the one block everyone is told to read before setting up a run. The question is OPEN. D133 repeats the same closure and is corrected there too. Note also that "DFT, 1.6x steeper than xTB (D58/D60)" above is that same retracted inference.]** *Enforced:* nothing.
 
 4. **Count coordination against this enzyme's own motif, which has TWO protein ligands and not three.** CSR-1's Zn1 site is **H-R-H**: Arg90 (BBL R118) stands where the third histidine would be. The canonical-equivalent four-coordinate sphere is therefore **two His + hydroxide + one water**, so an extra solvent ligand is not over-coordination until it is counted against two protein ligands. *Enforced:* nothing; user correction, made twice.
 5. **The other five zincs in 6NC5 are not the site.** ZN301 occupies the Zn2 pocket only because the construct is the engineered HARLDQ motif, whose `SEQADV` records mutate **Gln93 to His and Lys226 to His** - the Q and K of RQK - restoring an Asp-His-His Zn2 set. In the wild type those are a glutamine and a lysine and cannot ligate a metal, which is the structural basis for Zn2 being vacant. ZN303-306 are adventitious. Measure ZN302. *Enforced:* `reference-structures.md` tabulates all six.
@@ -2368,7 +2375,15 @@ Asked by the user after D120: is substrate carbonyl binding a step seen in other
 
 **One caution against over-reading the L1 column.** 7UHJ is di-zinc at 2.20 A, so its carboxylate contact is to Zn2, which CSR-1 does not have, and its Zn1 carries no modelled water. The transferable numbers are the ones that do not depend on Zn2 being occupied: Zn1-carbonyl 2.63, and the Zn2-site residues' reach to the substrate, which in CSR-1 are Gln93 and Lys226 and are the whole question.
 
-**D123 - Everything since October ran on the wrong pose. `CSR_ligand` used Vina pose 2, which puts the carbonyl 2.55 A from the zinc; the pose inherited from `CSR_crystal` presents the 6-alpha-hydroxyethyl O1x at 3.13 A and leaves the carbonyl at 5.43 A. The carbonyl restraint was dropped on my recommendation in D40, and D40's reason was wrong.** (2026-10-28, user)
+**[HEADLINE FALSE - D126, and marked here 2026-11-05 because the body's
+strikethrough never reached the headline a grep returns. 2.55 A is the May run's
+own carbonyl RESTRAINT output, not a measurement, and it was read out of a file
+this same entry lists as not reusable. Pose 2's closest heavy atom to the metal
+is 7.23 A, and no Vina pose puts any atom within 5 A of it. This false distance
+seeded `md_pose2`'s restraint target (now DO NOT RUN) and a regression test in
+D125 asserting "pose 2 at 2.55 A must be accepted".]** **D123 - Everything since
+October ran on the wrong pose. `CSR_ligand` used Vina pose 2, which puts the
+carbonyl 2.55 A from the zinc; the pose inherited from `CSR_crystal` presents the 6-alpha-hydroxyethyl O1x at 3.13 A and leaves the carbonyl at 5.43 A. The carbonyl restraint was dropped on my recommendation in D40, and D40's reason was wrong.** (2026-10-28, user)
 
 The user's recollection is correct on both counts and the measurements bear it out.
 
@@ -2660,7 +2675,7 @@ Four restraints at 50 kcal/mol/A^2, and they are 6NC5 ZN302's four donors: two h
 
 Config: `md_wt100` in `docs/csr/site.yaml` (b9b3513), written into the run config with `sections.py`, which reported `0 selectors checked` - correct here, because the section has no selectors at all.
 
-**D133 - Why every level of theory puts Asp92 on the zinc and the crystal does not: the RQK cations stand in for the absent Zn2, and Asp92 is probably in equilibrium rather than fixed.** (2026-10-29, user: "it sounds like the positive residues that replace Zn's charge in the Zn2 site pull Asp92 away enough to enable a reactive 4 coordinate zinc ... it's possible that Asp92 *does* coordinate Zn1 in the wild type, but exists in equilibrium - it's a fairly slow lactamase so this would make sense")
+**D133 - Why every level of theory puts Asp92 on the zinc and the crystal does not: the RQK cations stand in for the absent Zn2, and Asp92 is probably in equilibrium rather than fixed.** **[PARTLY RETRACTED 2026-11-05, D206: the equilibrium hypothesis stands, but this entry also states that the standing "does GFN2 over-coordinate the zinc" question is ANSWERED, on D58's 1.6x-steeper DFT comparison. D58 is retracted and the question is open. This entry's own text undercuts the closure two paragraphs later - "a single relaxed scan or a single 25 ps trajectory cannot see an equilibrium, only the well it fell into, and every row in the table above is that kind of measurement" - and D136 built the hysteresis pair precisely because single-direction scans report their start.]** (2026-10-29, user: "it sounds like the positive residues that replace Zn's charge in the Zn2 site pull Asp92 away enough to enable a reactive 4 coordinate zinc ... it's possible that Asp92 *does* coordinate Zn1 in the wild type, but exists in equilibrium - it's a fairly slow lactamase so this would make sense")
 
 **The contradiction, stated plainly.** Four results, and the structure is the one that disagrees:
 
@@ -5007,7 +5022,7 @@ list, not about the pose.** It has been mistaken for the latter twice.
    *"GFN2, or the pose"*. Re-running `wt100c` with the attack restraint
    restored gives a valid MM equilibration; it does not answer that.
 
-**D195 - INVENTORY, measured with `site.py check` over all 84 last frames. There is NO correctly equilibrated structure for a QM/MM start. Exactly ONE frame in the project is accepted - `CSR_crystal_v2/qmmm_results/QM_MM_lastframe.pdb` - and it has a six-coordinate zinc with Asp92 OD2 at 2.04 A and an attack angle of 26 deg. AND the user's hypothesis is CONFIRMED by the only frame that can test it: a carbonyl held coordinated through MM (1.94 A) STAYED under QM/MM and relaxed to 2.56 A, inside 0.07 A of 7UHI/7UHJ's 2.53/2.63; every frame whose carbonyl was uncoordinated in MM lost the substrate under QM/MM.** (2026-11-03, user: "If the substrate is held coordinated in MM then it'll stay in QM, if it's not it won't")
+**D195 - INVENTORY, measured with `site.py check` over all 84 last frames. There is NO correctly equilibrated structure for a QM/MM start. Exactly ONE frame in the project is accepted - `CSR_crystal_v2/qmmm_results/QM_MM_lastframe.pdb` - and it has a six-coordinate zinc with Asp92 OD2 at 2.04 A and an attack angle of 26 deg. AND the user's hypothesis is CONFIRMED by the only frame that can test it: a carbonyl held coordinated through MM (1.94 A) STAYED under QM/MM and relaxed to 2.56 A, inside 0.07 A of 7UHI/7UHJ's 2.53/2.63 **[QUALIFIED - D197: this is "a bond-length relaxation within the coordinated basin, not a rejection", so it is not a validation of GFN2's coordination behaviour; in this project QM/MM has never been observed to cross the coordination boundary in either direction. n = 1, our own run. The standing method question stays open.]**; every frame whose carbonyl was uncoordinated in MM lost the substrate under QM/MM.** (2026-11-03, user: "If the substrate is held coordinated in MM then it'll stay in QM, if it's not it won't")
 
 ## The hypothesis test
 
@@ -6496,12 +6511,32 @@ looking at the literature - that's our second source of truth")
 
 1. **An experimental structure is ground truth.** 6NC5's ZN302 is
    four-coordinate - His87 NE2 2.22, His163 NE2 2.09, HOH485 1.90, HOH493 2.14:
-   two histidines, two waters, **no aspartate** - and Asp92 OD2 is a
-   second-shell contact at 2.80 A, 2.68 A when superposed into wild-type 6DN4
-   (D184). Wider than this one structure, **no B3 enzyme has Asp120 on Zn1**: it
-   is a Zn2 ligand, and CSR-1 has no Zn2. A Zn1-coordinating Asp92 therefore has
-   no structural precedent anywhere, and a model that produces one is wrong about
-   the structure however favourable its energy.
+   two histidines, two waters, **no aspartate**. **[CORRECTED 2026-11-05, within
+   the hour: this rule first said "Asp92 OD2 is a second-shell contact at 2.80 A,
+   2.68 A when superposed into wild-type 6DN4 (D184)", and neither number is a
+   measurement of a Zn-Asp distance. The log's own standing rule 2 says 2.80 A
+   "is not a crystal distance" and gives 4.20 A (OD2) / 4.22 A (OD1) measured in
+   `CSR_crystal/6NC5.pdb` itself (D145); and 6DN4 contains no metal, so D184's
+   2.68 A is our own superposition of 6NC5's zinc into a metal-free structure.
+   Writing a ground-truth rule on two of our own numbers, in the entry
+   establishing that rule, is the error the entry is about. What the structures
+   actually support, on every reading - 2.68, 2.80 or 4.20 - is the qualitative
+   statement, and 4.20 supports it hardest: **Asp92 is not a Zn1 ligand**, being
+   far outside a Zn-O bond of 1.9-2.2 A. Quote that, not a distance. The three
+   readings are irreconcilable until someone measures the deposited files, and
+   `csr/retractions.md` §1(a) carries that as the project's first open
+   contradiction - including D151's finding that 6NC5 is the Q93H/K226H double
+   mutant with Zn2 PRESENT, holding that same carboxylate at 1.95 A, so it may
+   not be a wild-type reference for this residue at all.]** Wider than this one structure, **Asp120 is a Zn2 ligand in the B3
+   structures this project has read** - L1, SMB-1, GOB-18 - and CSR-1 has no
+   Zn2. So a Zn1-coordinating Asp92 has no precedent in anything we have looked
+   at, and a model that produces one is wrong about the structure however
+   favourable its energy. **Flagged honestly: the stronger form of this sentence
+   first written here - "no B3 enzyme has Asp120 on Zn1" - is a generalisation
+   over the whole subclass that no citation in this log supports. It needs a
+   source before it goes in the paper, and until it has one the argument rests on
+   6NC5/6DN4 plus those three structures, which is enough for the decision and
+   not enough for the claim.**
 2. **The literature is the second source of truth**, for what one structure
    cannot say: which site a mononuclear metal occupies, what the nucleophile is,
    what each metal does.
@@ -6536,7 +6571,13 @@ upward for a mono-zinc site, which pushes back. So the bookkeeping is
 ## What survives, because the rule cuts both ways
 
 **D48 is not touched by any of this, and the rule raises its standing rather
-than lowering it.** Its comparison was run in a constructed clean
+than lowering it - but the distinction has to be stated, because rule 3 excludes
+the evidence class D48 belongs to.** The rule is not that our own calculations
+say nothing; it is that they say nothing *about geometry they were handed*. D48
+was not asked where Asp92 sits - it was told, from the crystal, and then asked a
+question about protons at fixed geometry. That is a legitimate conditional, where
+D58's was not, because D58's conditional was loaded by a geometry no structure
+supports. What D48 cannot do is promote its own sphere, and it does not try to. Its comparison was run in a constructed clean
 four-coordinate sphere - Asp92 held at the crystallographic 2.80 A, carbonyl out
 of the inner sphere, identical constraints on both states - that is, in the
 geometry the ground truth prescribes, and it still puts the Lys226 -> O01
@@ -6550,14 +6591,21 @@ on both sides.
 at 1.77-1.84 A and five-coordinate in every frame (D204) is rejected by the
 structural criterion - which is also the published VIM-2 criterion, where
 candidate protonation states were judged by zinc coordination against the
-crystal rather than by energy - independent of what its energy says.
+crystal rather than by energy (*Protocols for Metallo- and Serine-beta-Lactamase
+Free Energy Predictions*, J Phys Chem B 2024, 128:12416, PMC11664573; read and
+recorded in **D113**, which is where the citation lives - this entry asserted the
+criterion without it) - independent of what its energy says.
 
-**D207 - Why the NEB never ran, traced through the whole log on the user's
-instruction. It was never deselected: it was staged as config on 2026-10-22 and
-has been waiting on one file, `protdft/scan_attack/scan_15.pdb`, which has never
-existed. The machinery is ready; the endpoint is not, and the reason the endpoint
-never arrived is that the reactant was treated as something to settle BEFORE the
-path rather than something the path settles.** (2026-11-05, user: "now if you'll
+**D207 - Why no reaction coordinate has ever run. Two answers, and the first
+one corrects this entry's own original framing: CI-NEB was never the published
+method for this problem - it was OUR substitution for Imhof's path network (D1:
+"their CPR-style path search -> *our* CI-NEB"), and every MBL mechanism study in
+this project's survey reports a FREE ENERGY instead, which is where CphA's 14
+kcal/mol comes from. D32 was a user decision to replicate that PMF; the M-series
+dropped umbrella sampling for cost. Second, the path itself has been blocked on
+one missing file since 2026-10-22 - `protdft/scan_attack/scan_15.pdb` - because
+the reactant was treated as something to settle BEFORE the path rather than
+something the path settles. The stage machinery is ready; the endpoint is not.** (2026-11-05, user: "now if you'll
 recall this was the plan from the very beginning. Why did we deviate from NEB?")
 
 **[QUALIFIED the same day, by the user: "previously you've stated that NEB is
