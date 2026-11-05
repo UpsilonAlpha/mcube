@@ -7256,6 +7256,80 @@ it is the first lineage that would start with the wild type's two-cation
 arrangement intact. Nothing about the resting state should be concluded from
 `michqm` or `michrk` geometries without the caveat in §2.
 
+**D212 — `eq6`'s restraints checked against the actual start structure
+before running it, and three of the five were pulling the wrong way. The good
+news is bigger than the corrections: **`CSR_mich/preprocess_results/
+finalsystem.pdb` already holds the Asp92–Lys226 salt bridge at 2.79 Å**,
+inside the deposits' own 2.83–2.99 spread. The start structure was right about
+the contact this project never knew it had.** (2026-11-05, measured)
+
+## What the start structure actually contains
+
+    Zn - His164 NE2    2.09        Zn - Asp92 OD2     2.79
+    Zn - mer O2x       1.94        Zn - Asp92 OD1     4.09
+    Zn - O01           2.14        Zn - mer O1x       3.82
+    Zn - His88 NE2     2.22        Lys226 NZ - OD2    **2.79**
+                                   Lys226 NZ - O01    2.66
+                                   Lys226 NZ - OD1    4.91
+
+Four donors inside 2.5 Å — His88, His164, O01 and the substrate carbonyl
+— with Asp92 in the second shell at 2.79. **Four-coordinate at the strict
+radius, exactly as D196 designed.** Note `Zn - HOH485` is **48.99 Å**: in the
+Michaelis system the crystal's second water is not in the sphere at all, because
+the substrate carbonyl took its place. The D186 cluster table, which lists
+`HOH D:1` as the second ligand, was built from `CSR_wt`, not from this system.
+
+## The three corrections, all in the same direction
+
+Every one of them was pulling an atom **toward** the metal, which is the artefact
+this whole line of work exists to avoid.
+
+    restraint        D210 wrote   structure has   superposition   now
+    mer O1x            3.13          3.82              -          3.82
+    Lys226 NZ-OD2      2.99          2.79          2.83-2.99      2.79
+    Asp92 OD1          3.81          4.09             3.90         3.90
+
+- **O1x 3.13 —> 3.82.** 3.13 came from D197's words about "the October pose",
+  a different structure. Applied here it would have pulled the alcohol oxygen
+  **0.69 Å inward** at k = 500 — manufacturing the very coordination that
+  rejected `eq5`. There is no crystallographic value for this atom, because no
+  CSR-1 deposit contains the substrate, so the structure's own distance is the
+  only defensible target. D211 says this is safe from the other side too:
+  unrestrained QM/MM keeps O1x at 4.24 Å mean, further out than 3.82.
+- **Salt bridge 2.99 —> 2.79.** The structure already has 2.79, so 6DN4's
+  2.99 would have pulled it 0.20 Å outward for no measured reason. Holding a
+  detected contact where the structure has it is the project's own convention
+  (D174), and 2.79 is inside the two deposits' spread.
+- **Asp92 OD1 3.81 —> 3.90, which makes this three changes from `eq5` and not
+  two.** D174's 3.81 has no stated source anywhere in the log. The structure has
+  4.09 and the superposition gives 3.90, so 3.81 at k = 500 pulls the second
+  carboxylate oxygen **0.28 Å toward the metal** — biasing precisely the
+  bidentate collapse D120 and D130 both record as the failure. 3.90 is the
+  crystal-derived number and is used. This breaks the clean
+  "one-restraint-differs" comparison with `eq5`, and being right is worth more
+  than the comparison.
+
+The two restraints left untouched are `eq5`'s and both are crystal-based:
+`O01-C4x 3.47` (the structure has 3.48) and `Zn-mer O2x 2.60`, which pushes the
+carbonyl **out** from 1.94 to the 2.53/2.63 Å that 7UHI/7UHJ measure in the
+only experimental B3 Michaelis complex (D156).
+
+## The lesson, which is the project's recurring one
+
+Four of the five numbers in a config written from the decision log disagreed with
+the structure the config points at, and three of them disagreed in the direction
+that would have produced a known artefact. **A distance quoted in an entry is a
+measurement of whatever structure that entry was looking at.** Reading the start
+structure takes one fetch.
+
+## Status
+
+`eq6` is configured and the YAML parses. **It has not been submitted.** Running
+it needs `sections.py site.yaml eq6` and an `sbatch` in the code-server
+terminal, and the pane is currently hidden, so input cannot be verified by
+reading it back — which is the one thing that must not be guessed at after
+today.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

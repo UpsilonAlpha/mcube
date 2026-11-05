@@ -1758,7 +1758,17 @@ sections:
   #      metal", not a coordination test (D174, D186, the user twice), and D174
   #      itself restrained Asp92 OD1 at 3.81 A by explicit judgement for being
   #      affected while outside the radius. An alcohol oxygen 0.13 A outside it
-  #      is a stronger case than that one. Held at its pose distance, 3.13 A.
+  #      is a stronger case than that one.
+  #      **Held at 3.82 A, which is what `CSR_mich/preprocess_results/
+  #      finalsystem.pdb` ACTUALLY HAS** - measured 2026-11-05, not taken from
+  #      D197. D197's "3.13 A in the October pose" is a different structure, and
+  #      restraining to it would have pulled O1x 0.69 A TOWARD the metal, which
+  #      is the artefact this line exists to prevent. There is no crystal value
+  #      for it: no CSR-1 deposit contains the substrate.
+  #      D211 adds the reason this is safe: unrestrained QM/MM keeps O1x at
+  #      4.24 A mean (3.53-5.04) over michrk's 50 frames, where MM pulled it to
+  #      2.18 A in 97.9% of eq5's. So the restraint corrects an MM error and the
+  #      quantum answer is further out still, not closer in.
   #      Whether O1x genuinely chelates is NOT settled and MM cannot settle it
   #      (D197/D199): a 12-6 term cannot tell an alcohol from a hydroxide and
   #      rewards every oxygen in reach. Holding it where the structure puts it
@@ -1775,7 +1785,25 @@ sections:
   #      This is the restraint with the most mechanistic content in the file:
   #      the lysine is what holds Asp92 out of the first shell, so an MD that
   #      does not hold it is free to produce the 2.00 A collapse that three
-  #      separate entries have recorded as an artefact.
+  #      separate entries have recorded as an artefact. D211 measured that it
+  #      never forms in the michqm/michrk lineage at all: NZ-OD2 mean 4.66 A,
+  #      0% of 50 frames inside 3.2 A.
+  #      **Held at 2.79 A, the distance finalsystem.pdb already has** - the
+  #      start structure is RIGHT about this contact, which nobody had checked.
+  #      2.79 sits inside the deposits' own spread (2.83 in 6DQ2, 2.99 in 6DN4),
+  #      and holding it where the structure has it is the project's convention
+  #      for every detected contact (D174). Restraining to 6DN4's 2.99 would
+  #      pull it 0.20 A outward for no measured reason.
+  #
+  #   3. **Asp92 OD1 moves from 3.81 to 3.90 A, so this is three changes from
+  #      eq5 rather than two.** finalsystem.pdb has OD1 at **4.09 A** and the
+  #      superposition of 6NC5's ZN302 into 6DN4 gives **3.90** (D210). D174's
+  #      3.81 has no stated source, and at k = 500 it pulls the second
+  #      carboxylate oxygen 0.28 A TOWARD the metal - biasing exactly the
+  #      bidentate collapse D120 and D130 record. 3.90 is the crystal-derived
+  #      number; 4.09 would be the structure's own. Flagged because it breaks
+  #      the clean one-restraint-differs comparison with eq5, and that is worth
+  #      more than the comparison.
   #
   # Nothing else differs from eq5, so the comparison is clean: two restraints
   # added, none changed, none removed. Both at k = 500, because D191 measured
@@ -1797,9 +1825,9 @@ sections:
       restraints:
         - [C:2:O01, C:1:C4x, 3.47]
         - [B:1:ZN, C:1:O2x, 2.60, 500.0]
-        - [B:1:ZN, A:92:OD1, 3.81, 500.0]
-        - [B:1:ZN, C:1:O1x, 3.13, 500.0]     # the fifth donor, D197's cause
-        - [A:226:NZ, A:92:OD2, 2.99, 500.0]  # the salt bridge, 6DN4
+        - [B:1:ZN, A:92:OD1, 3.90, 500.0]    # was 3.81; see D212
+        - [B:1:ZN, C:1:O1x, 3.82, 500.0]     # the fifth donor; the structure's own
+        - [A:226:NZ, A:92:OD2, 2.79, 500.0]  # the salt bridge, the structure's own
       nvt_time: 10000
       nvt_timestep: 0.002
       traj_frequency: 500
