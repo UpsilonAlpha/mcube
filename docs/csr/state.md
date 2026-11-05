@@ -456,6 +456,24 @@ check` read an occupancy from a `postprocess` section.
 
 ## 2g. The Burgi-Dunitz gate was wrong; what is wrong with batch 1 is its setup (D201, measured)
 
+**The full batch, read frame by frame (D211).** `michrk` finished its 50 ps; D204 saw
+the first 6. Over all 50 frames: **Zn–Asp92 OD2 mean 1.93 Å, 100% inside 2.5 Å**;
+**Lys226 NZ–Asp92 OD2 mean 4.66 Å, min 3.43, 0% inside 3.2 Å** against 2.99 Å in
+the crystal — so **the wild type's salt bridge never forms in this lineage at all**,
+and every `michqm`/`michrk` number carries that caveat; O01–C4x mean 3.81 Å
+(3.34–4.16), so the nucleophile is still not poised over 8x more data; and
+**Zn–mer O1x mean 4.24 Å (3.53–5.04)**, i.e. QM/MM keeps the alcohol oxygen well
+off the metal where MM pulled it to 2.18 Å in 97.9% of `eq5`'s frames — so the fifth
+donor is an **MM artefact**, and `eq6`'s new restraint corrects an MM error rather than
+imposing a geometry.
+
+**The ordering test D209 proposed is VOID here, not failed.** Asp92 is 2.13 Å from the
+zinc in frame 1, before the proton leaves Lys226 — but D202 started this run from batch
+1's last frame *because* Asp92 was already at 2.00 Å there, and batch 1 had Lys226 in MM
+where it could not transfer anything. One of the two events had already happened at t = 0.
+**`eq6` and a QM/MM from its frames are the only lineage that can test it**, being the only
+one that starts with Asp92 out and the salt bridge held.
+
 **Read this before 2f. 2f's central conclusion is withdrawn.**
 
 Measured from 1TMN and 7CPA downloaded from RCSB, and from batch 1's own first
@@ -526,11 +544,15 @@ of becoming quantum, and from 5 ps on the proton stays on the oxygen. So the
 reactant of this enzyme is **Zn-OH2 with a neutral Lys226** in a complex that
 was built right, not only in the degraded sphere D29, D35 and D48 saw it in -
 which is the one thing D41 left open about the transfer, and it is now closed.
-Two observations beyond the fact: it is a **shuttle** (at 4 ps the proton is
-back on the nitrogen at 1.12 A) rather than D29's one-way event, consistent
-with D48's -5.23 kcal/mol at 300 K; and **Zn-O01 reports the protonation state
-independently**, 1.87 A with the proton on N and 2.21-2.26 A with it on O,
-frame by frame, which no single wrong parameter would produce. The nucleophile
+Two observations beyond the fact, **both retracted 2026-11-05 by D211 on the full
+50 ps**: it was called a **shuttle** (at 4 ps the proton is back on the nitrogen at
+1.12 Å), but over all 50 frames the proton is on the oxygen in **47 of 50** and on
+the nitrogen only in frames 1, 2 and 4 — the flicker is the first four picoseconds
+of equilibration and after that it is **one-way**; and **Zn-O01 was said to report the
+protonation state independently**, 1.87 Å with H on N against 2.21–2.26 Å with H
+on O, but over 50 frames H-on-N gives mean 1.98 Å (1.87–2.21) and H-on-O gives mean
+2.04 Å (1.86–2.38): the distributions overlap and the means differ by 0.06 Å.
+Both claims held on three early frames only.
 is water and it is **not poised**: O01-C4x 3.72-4.16 A, Burgi-Dunitz
 `O01-C4x-O2x` 16-33 degrees, so D201's refutation of the attack gate survives
 the region change. What is still open is the magnitude in this geometry, not
@@ -788,6 +810,15 @@ built; offered.
 ---
 
 ## 7. Operational facts that cost time when forgotten
+
+- **The run root is `/scratch/user/uquadhik/CSR/`**, not `/scratch/user/uquadhik/`, and
+  `mcube` is checked out at `/scratch/user/uquadhik/mcube/`. Nothing recorded this, and on
+  2026-11-05 a dozen probes of the wrong root returned the code-server route's own
+  `Not found`, which looks exactly like scratch being unmounted.
+- **`QM_MM.dcd` is the whole system** (47,979 atoms), not the QM region, with a unit-cell
+  record per frame: header 276 bytes, frame stride 56 + 3 x (8 + 4N). `xtb_.xyz` is a single
+  frame of **130** atoms = 124 QM + 6 link atoms. Atom indices come from
+  `QM_MM_lastframe.pdb`, whose atom order matches the DCD.
 
 | Fact | Detail |
 | --- | --- |

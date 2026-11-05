@@ -7142,6 +7142,120 @@ Asp92, and 5.67/5.32 Å in the michrk frames plus "something hydrogen-bonds the
 hydroxide throughout and it is never Asp92" (D204) says it is not. Adding the
 restraint would impose the CphA geometry on a run designed to test the other one.
 
+**D211 — `michrk`'s full 50 ps read frame by frame. Four results, one of
+them against my own prediction and one of them a correction to D204. The
+headline: **the ordering test I proposed in D209 cannot be run on this
+trajectory**, because Asp92 is already on the metal at 2.13 Å in frame 1,
+before the proton leaves Lys226 — and it is there because D202 deliberately
+started this run from a frame where it had already collapsed. The salt bridge
+never forms at all: **NZ–OD2 mean 4.66 Å, 0% of frames inside 3.2 Å**,
+against 2.99 Å in the crystal.** (2026-11-05, measured)
+
+## How it was read, and where the files actually are
+
+**The run root is `/scratch/user/uquadhik/CSR/`,** not `/scratch/user/uquadhik/`.
+Nothing in this project records that, and it is why a dozen probes returned the
+code-server route's own `Not found` earlier today. `mcube` itself is checked out
+at `/scratch/user/uquadhik/mcube/`. Both worth remembering.
+
+`QM_MM.dcd` header: `nset 50`, `nsavc 1000`, `delta 0.020455` AKMA = 1 ps per
+frame, 47,979 atoms, 28,791,676 bytes = 276 + 50 x 575,828 exactly. So **the
+batch finished its full 50 ps** - D204 was written 6 ps in and there is eight
+times more data than it saw. Atom indices from `QM_MM_lastframe.pdb`
+(Zn 4203, Asp92 OD1/OD2 1413/1414, Lys226 NZ/HZ3 3431/3434, O01 4255,
+mer O1x/C4x 4206/4208), coordinates by ranged byte reads of the three
+coordinate blocks per frame. `xtb_.xyz` holds **130** atoms = D202's 124 QM
+atoms plus the six link atoms, which confirms the six boundary pairs.
+
+## 1. The ordering test is VOID, not failed
+
+    frame (ps)   Zn-Asp92 OD2    HZ3 on
+       1            2.13           N
+       2            1.97           N (in transit, 1.40 from O01)
+       3            2.03           O
+       4            1.99           N
+       5 onward     1.77-2.10      O, continuously to frame 50
+
+Asp92 is 2.13 Å from the zinc in the **first** frame, with HZ3 still on the
+nitrogen. So the collapse does not follow the transfer here, which is what D209
+predicted it must.
+
+**But this trajectory was never able to answer the question.** D202 chose
+`protdft/qmmm_michqm/QM_MM_lastframe.pdb` as the start precisely because "its
+Asp92 sits on the metal at 2.00 Å and that is deliberate". The collapse
+happened in **batch 1**, where Lys226 was in the MM region, cationic, and could
+not transfer a proton to anything. So one of the two events the test orders had
+already occurred at t = 0, and no amount of this trajectory can order them.
+D209's chain is **untested, not refuted**, and the lesson is general: *a run that
+starts from the phenomenon cannot test its cause.*
+
+The one run that could test it is **`eq6` followed by a QM/MM from its frames**,
+because that is the only lineage in the project where Asp92 starts out and the
+salt bridge starts held.
+
+## 2. The salt bridge is absent for the whole batch
+
+    Lys226 NZ - Asp92 OD2   mean 4.66 A   min 3.43   max 5.58   0% inside 3.2 A
+    crystal                 2.99 A (6DN4), 2.83 A (6DQ2)
+
+Not once in 50 ps does the contact the wild type holds at 2.99 Å come within
+0.4 Å of existing. With Asp92 on the metal and the lysine deprotonated from
+frame 5, that is what should be expected — but it means **every number in
+`michqm` and `michrk` was computed in a site missing its wild-type cation
+arrangement**, which is a caveat that has to travel with all of them.
+
+    Zn-Asp92 OD2   mean 1.93   min 1.77   max 2.13   **100% of frames inside 2.5 A**
+    Zn-Asp92 OD1   mean 3.95   min 3.45   max 4.26
+
+## 3. It is NOT a shuttle. D204 is corrected
+
+D204, 6 ps in, called the transfer "a **shuttle** (at 4 ps the proton is back on
+the nitrogen at 1.12 Å) rather than D29's one-way event". Over the full batch
+the proton is on the oxygen in **47 of 50 frames** and on the nitrogen only in
+frames 1, 2 and 4. O01–HZ3 mean **1.05 Å**. So the flicker D204 saw is the
+first four picoseconds of equilibration, and after that it is **one-way**. The
+`-5.23` kcal/mol of D48 is still the number to reconcile, but "shuttle" is not
+what this trajectory shows.
+
+## 4. Zn-O01 does NOT report the protonation state
+
+D204: "**Zn-O01 reports the protonation state independently**, 1.87 Å with the
+proton on N and 2.21-2.26 Å with it on O, frame by frame, which no single wrong
+parameter would produce." Over 50 frames:
+
+    H on N (3 frames)    Zn-O01 mean 1.98   range 1.87-2.21
+    H on O (47 frames)   Zn-O01 mean 2.04   range 1.86-2.38
+
+The distributions **overlap almost completely** and the means differ by 0.06 Å.
+The claim held on three early frames and does not survive the batch. Retracted.
+
+## 5. A result that validates `eq6`'s new O1x restraint
+
+    Zn - mer O1x, QM/MM (michrk, 50 frames)   mean 4.24   min 3.53   max 5.04
+    Zn - mer O1x, MM (eq5, 10,000 frames)     mean 2.18   **97.9% inside 2.5 A**
+
+So the fifth donor that rejected `eq5` is an **MM-specific artefact**: QM/MM,
+given the same system with no restraint on it at all, keeps the alcohol oxygen
+3.5-5.0 Å away. That is exactly D199's diagnosis — a 12-6 term cannot tell
+an alcohol from a hydroxide and rewards every oxygen in reach. It also settles
+the worry D210 left open about the new restraint: holding O1x at 3.13 Å during
+MM **corrects an MM error rather than imposing a geometry**, because the quantum
+answer is further out still, not closer in.
+
+## 6. And the nucleophile is still not poised, over 8x more data
+
+    O01 - C4x   mean 3.81   min 3.34   max 4.16
+
+Never inside 3.3 Å. D201's and D204's conclusion survives the full batch.
+
+## What this changes in the plan
+
+`eq6` was Tier 0 scaffolding. It is now the **only** run that can test the
+mechanism D209 proposed, and the QM/MM that follows it is the experiment, because
+it is the first lineage that would start with the wild type's two-cation
+arrangement intact. Nothing about the resting state should be concluded from
+`michqm` or `michrk` geometries without the caveat in §2.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
