@@ -6560,6 +6560,27 @@ never arrived is that the reactant was treated as something to settle BEFORE the
 path rather than something the path settles.** (2026-11-05, user: "now if you'll
 recall this was the plan from the very beginning. Why did we deviate from NEB?")
 
+**[QUALIFIED the same day, by the user: "previously you've stated that NEB is
+not done for MBL mechanism studies and why it's not suited". Correct, and this
+entry's framing was wrong in the other direction. D1's own words are "their
+CPR-style path search -> OUR CI-NEB": NEB was never the published method, it was
+our substitution for Imhof's path network, chosen on day one. **No MBL mechanism
+study in this project's own survey uses NEB.** Xu-Xie-Guo 2006 on CphA - the
+mono-Zn precedent, and the source of the 14 kcal/mol we would compare against -
+is "SCC-DFTB/MM MD, with free energies from potential-of-mean-force (umbrella
+sampling), plus DFT", so that number is a **PMF barrier**; SMB-1 and NDM-1 are
+the same group's protocol, and D151 costed our own Asp92 PMF explicitly "on
+SMB-1's protocol"; the VIM-2 paper is titled *Free Energy Predictions*; IRE1 used
+metadynamics; Ackerman & Gatti used potential energy surfaces. **And D32 was a
+user decision to replicate those methods, PMF included.** What dropped the PMF
+was the M-series, whose "explicitly dropped" list contains umbrella sampling -
+for cost. So the deviation runs the opposite way to what is written below: the
+project deviated from the field's free-energy methods TOWARD a minimum-energy
+path. Everything below about the missing endpoint still holds; read "the next job
+is `scan_attack`" as seeding an umbrella PMF, with NEB/TS/IRC optional for
+characterising the saddle rather than for the number we publish. See the
+reasons-it-is-unsuited list appended at the end of this entry.]**
+
 ## It was never deselected
 
 CI-NEB with TS and IRC is in **D1**, the first entry (2026-10-15): "their
@@ -6640,7 +6661,40 @@ the proton free, and read its timing off the result. The only property the
 endpoint must have is the one the ground truth prescribes - Asp92 second-shell
 near 2.80 A and a four-coordinate zinc - and structures with that property exist
 in the docked/`naclong` lineage. So the next job is `scan_attack`, which is what
-`neb_step1` has been waiting for since 2026-10-22.
+`neb_step1` has been waiting for since 2026-10-22 - and which also seeds the
+umbrella windows (D133: "windows take a `seed` each, which the scan in 1
+supplies").
+
+## Why a minimum-energy path is the wrong instrument for the number we publish
+
+Four reasons, all already in this log:
+
+1. **The literature's barriers are free energies.** CphA's ~14 kcal/mol is a
+   PMF. A NEB gives a potential-energy barrier along one path with no entropy and
+   no solvent sampling, so quoting it beside that number compares two different
+   quantities. This log already says the same of scans: what a scan cannot give
+   is a free energy, because there is "no entropy and no sampling of the waters
+   that reorganise".
+2. **NEB-CI returns one saddle.** Hydrolysis is at least two elementary steps
+   (attack, then C4x-N1x cleavage with N-protonation), and "a single NEB spanning
+   both puts two barriers on one path and NEB-CI returns **one** saddle, so the
+   other is simply never found" (D17). That forces the step decomposition to be
+   known in advance, which is the thing we do not know and the thing the scan is
+   for.
+3. **The two-surfaces asymmetry is structural, not a bug.** ASH's NEB exposes no
+   constraints argument, so `neb` cannot hold what `qmmm`, `scan` and `ts` hold.
+   The rigid-water default (D139/D141) removed the mismatch by making everything
+   flexible, but interior images can still lower their energy by relaxing
+   solvent unrelated to the reaction, which is why `check_path_shape` exists.
+4. **The soft coordinates here are exactly the ones an MEP serves worst** - bulk
+   water reorganisation and a proton shared over a barrier of order kT.
+
+**What this does not change.** The endpoint problem is prior to both instruments:
+"a NEB **or an umbrella series** run from that reactant to a template-derived
+product would spend its barrier moving meropenem across the site, and the number
+at the top would not be a chemical barrier at all. That failure would look
+entirely normal in the output."
+
 
 ## Resources (see `running-on-bunya.md`)
 
