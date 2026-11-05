@@ -7014,6 +7014,134 @@ so both arms' recorded FAIL is a failure to reproduce the model's own artefact).
 What a start structure must now get right is the Asp92–Lys226 salt bridge, not
 an Asp92–Zn distance. The header also said the log was 180 entries long.
 
+**D210 — Tier 0, and it is two restraints rather than a rebuild. I
+over-corrected twice on 2026-11-05 and the user caught both: Asp92 **is** to be
+restrained, because the 3.0 Å radius is "what is affected by the metal" and not
+a coordination test. Redoing D184's superposition at three atom sets reproduces
+**2.71–2.76 Å**, so D184 was right and so was D174's 3.81 Å judgement call.
+What was genuinely missing is different: the fifth donor that rejected `eq5`, and
+the Asp92–Lys226 salt bridge, which no run has ever held.** (2026-11-05, user:
+"Asp92 should be restrained. I said restrain everything AFFECTED BY THE METAL ...
+I've explicitly said this several times - check logs", and "reuse previous runs if
+they're valid")
+
+## The rule, from the logs rather than from me
+
+- **D174** (user): "use the 3 angstrom constraint! We already established that
+  anything within that range is affected by the zinc and should be restrained to
+  it's crystallographic distances".
+- **D186** (user): "the 3 angstrom restraints aren't exclusively for coordinators
+  - they're for anything affected by the metal - a different set. The metal could
+  still be 4-coordinate you'd just use a stricter coordination radius for that
+  like 2.5".
+- **D174 again, in its own words:** Asp92 OD1 at 3.81 Å was restrained as "one
+  restraint beyond the sweep, flagged in the config as a judgement ... a
+  carboxylate whose other oxygen is 2.80 Å from a divalent cation is affected by
+  it whatever the distance says."
+
+So "Asp92 should carry no restraint at all", which I put into `state.md` plan
+item 0 earlier today and attributed to D208, is the opposite of the standing rule
+and is retracted. The three edits that carried it — plan item 0, equilibration
+gate 2, and the "FALSE" mark on the 2.80 Å line — are all reverted in place.
+
+## D184 reproduced, which is why my correction was wrong
+
+6NC5's ZN302 placed into 6DN4's frame by Kabsch fit on the two conserved
+histidines (6NC5 His87/His163 —> 6DN4 His116/His192):
+
+    fit basis                    n    fit RMSD    Zn-OD2   Zn-OD1   Zn-Lys226 NZ
+    ring only                   10     0.189       2.71     3.88       4.13
+    ring + CB                   12     0.226       2.73     3.89       4.13
+    ring + CB + CA + N + C      18     0.256       2.76     3.90       4.19
+
+**0.05 Å of spread over an 8-fold change in the fit basis, and within 0.08 Å
+of D184's 2.68.** It is still a model value and not a crystallographic one —
+6DN4 has no metal — but it is a stable one, and the project's two
+independently chosen numbers land inside it: the model's **2.80** for OD2 and
+D174's **3.81** for OD1, the latter to within 0.09 Å of a figure derived without
+reference to it. For comparison the mapped zinc reaches His116 NE2 at 2.36 and
+His192 NE2 at 2.09, against 2.22 and 2.09 measured on the real ZN302.
+
+## The geometry that explains the artefact
+
+OD2 is the **bridging** oxygen, and this had not been noticed:
+
+    Asp92 OD2   2.76 A from the (modelled) zinc     2.99 A from Lys226 NZ
+    Asp92 OD1   3.90 A from the zinc                5.06 A from Lys226 NZ
+
+Measured in both wild-type-background deposits: Lys254 NZ – Asp120 OD2
+**2.99 Å** in 6DN4 and **2.83 Å** in 6DQ2, with OD1 at 5.06 and 4.12. So the
+carboxylate is pinned between two cations, zinc on one side and the lysine
+ammonium on the other, and OD1 points away from both.
+
+**That predicts the failure mode this project keeps recording.** D204 has Lys226
+handing HZ3 to the hydroxide within 2 ps of becoming quantum. Deprotonate the
+lysine and OD2 loses the cation on one side, so it falls onto the one on the
+other — 2.76 to 2.00 Å. The 2.00 Å collapse is not an independent xTB
+failure and it is not a bad starting structure; it is what the geometry does once
+the salt bridge is gone. It is still an artefact, because it overshoots the
+second shell by a whole coordination shell, but the cause is now named.
+
+## Reuse: `eq5` is valid and its Asp92 restraints already worked
+
+Checked rather than assumed, per the user's instruction. `md_eq5` holds OD1 at
+3.81 Å with k = 500 and lets the 3.0 Å rule detect OD2, which is the
+per-atom treatment D175/D176 fixed. Over **10,000 frames** it gave Asp92 OD2 at
+**2.743 Å** mean and **0.0% inside 2.5 Å** — 0.02 Å from the
+superposition target. So the aspartate was never the problem and there is nothing
+to rebuild for its sake.
+
+**`eq5` was rejected for a different atom.** `mer` **O1x**, the
+6-(1-hydroxyethyl) alcohol oxygen, sat at 3.13 Å in the October pose —
+**0.13 Å outside the detection radius** — so `fill_restraints` never saw it.
+It then came onto the metal at 2.06 Å with **97.9% occupancy** and, sitting
+between the hydroxide and the carbonyl at 76.8 degrees from both, closed the
+attack angle (D197). D199 adds that this is not a missing repulsion: the Li/Merz
+parameters were applied, so 2.06 is the fitted Zn–O distance "applied to the
+wrong oxygen", because a 12-6 term cannot tell an alcohol from a hydroxide.
+
+An alcohol oxygen 0.13 Å outside an arbitrary radius is a stronger case for
+D174's judgement than the one D174 itself made. Held at its pose distance.
+
+## `eq6`: `eq5` plus two lines, nothing changed and nothing removed
+
+    - [B:1:ZN, C:1:O1x, 3.13, 500.0]     # the fifth donor, D197's cause
+    - [A:226:NZ, A:92:OD2, 2.99, 500.0]  # the salt bridge, 6DN4
+
+k = 500 on both because D191 measured that 50 kcal/mol/Å^2 holds a 2.80 Å
+target at a mean of 2.44/2.37, and holding within ~0.05 Å needs of order 500.
+Every other key is `eq5`'s, so the two runs differ in exactly two restraints.
+
+**Monitors added in five blocks** (`site`, `wtpostc`, `michpost`, `michqmpost`,
+`michrkpost`): `Lys226 NZ-Asp92 OD2` and `-OD1`. The salt bridge had never been
+monitored anywhere in this project, which is why nobody saw it break. Both
+oxygens, because D120 is what happens when only one is watched. The product-arm
+sections do not carry it; their hydroxide is a different chain and the product
+state is a separate question.
+
+Also corrected in `site.yaml`: the D148 comment saying Gln93 and Lys226 stand on
+Zn2's ligand positions "and why Asp92 (D120) is left orphaned." **Asp92 is not
+orphaned.** The lysine holds it, at 2.99 Å, which is the same job Zn2 does at
+~2.1 Å in every canonical B3.
+
+## What is NOT done
+
+`eq6` has not run. Every path under `/scratch/user/uquadhik/` returns the
+code-server route's own `Not found` from the `bun126/53134` session, including
+the 41 GB `channel` tree, so scratch is unreachable from that session and neither
+`eq6` nor the `michrk` time-ordering test could be touched. The config change is
+on disk and pushed; it needs one `ls` to settle the path before anything runs.
+
+**And one thing to decide before `eq6` is submitted.** D197 says "Asp92 OD1-O01
+needs its own restraint ... the restraint has to be OD1-O01 itself", because
+pinning OD1 to the zinc fixes its distance and not its direction. I have NOT
+added that, because whether `Asp92 OD1 - O01` belongs in `carbonyl_on_metal` at
+all is still an open question in this project, and the new geometry argues
+against it: if Lys226 is the base, the hydroxide has no reason to be pointing at
+Asp92, and 5.67/5.32 Å in the michrk frames plus "something hydrogen-bonds the
+hydroxide throughout and it is never Asp92" (D204) says it is not. Adding the
+restraint would impose the CphA geometry on a run designed to test the other one.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

@@ -63,7 +63,12 @@ site:
     # ---- the RQK triad and the residues that hold the substrate (D148) ----
     # Arg90 (BBL R118) stands where Zn1's third histidine would be; Gln93
     # (Q121) and Lys226 (K263) stand on two of Zn2's three ligand positions,
-    # which is why there is no Zn2 and why Asp92 (D120) is left orphaned.
+    # which is why there is no Zn2. **Asp92 (D120) is NOT orphaned, corrected
+    # D209:** Lys226's ammonium holds its OD2 at 2.99 A in 6DN4 and 2.83 A in
+    # 6DQ2, i.e. the lysine does on one side what Zn2 does at ~2.1 A in every
+    # canonical B3. 6NC5 lacks the contact only because its `SEQADV` records
+    # Lys226His as an engineered mutation - the lysine had to be removed before
+    # a zinc would bind Zn2, which is the thesis with a crystal behind it.
     # SMB-1's Gln157 hydrogen-bonds the carbonyl oxygen at 1.67-1.70 A through
     # ES, TS and EI and is called the oxyanion hole there (Mu & Xu 2020); our
     # Gln93 is at a different BBL position, so whether it reaches the carbonyl
@@ -77,6 +82,14 @@ site:
     Arg90 NH1-O01: [A:90:NH1, C:2:O01]
     Arg90 NH1-HOH485: [A:90:NH1, D:1:O]
     Lys226 NZ-O01: [A:226:NZ, C:2:O01]
+    # D209/D210: the salt bridge, and it had never been monitored anywhere.
+    # Lys254 NZ - Asp120 OD2 is 2.99 A in 6DN4 and 2.83 A in 6DQ2 (our Lys226 -
+    # Asp92; both deposits are BBL numbering). OD2 is the BRIDGING oxygen: 2.76 A
+    # from the zinc on one side by superposition, 2.99 A from the lysine on the
+    # other, with OD1 pointing away from both (3.90 and 5.06 A). Both oxygens are
+    # here because D120 is what happens when only one of them is watched.
+    Lys226 NZ-Asp92 OD2: [A:226:NZ, A:92:OD2]
+    Lys226 NZ-Asp92 OD1: [A:226:NZ, A:92:OD1]
     Lys226 NZ-mer O3x: [A:226:NZ, C:1:O3x]
     Lys226 NZ-mer O4x: [A:226:NZ, C:1:O4x]
     Arg229 NH1-mer O3x: [A:229:NH1, C:1:O3x]
@@ -1725,6 +1738,75 @@ sections:
       properties:
         Precision: mixed
 
+  # ---- eq6: eq5 with the two restraints it was missing (D210) ----
+  #
+  # eq5 is the best equilibration this project has run: every restraint held,
+  # Asp92 OD2 at 2.743 A over 10,000 frames and 0.0% inside 2.5 A, and it was
+  # the first structure to hold all three of D196's criteria at once (D197).
+  # It was rejected for three things, and ONE unrestrained atom caused the one
+  # that matters. So this is eq5 plus two lines, not a rebuild.
+  #
+  #   1. **`mer` O1x, the 6-(1-hydroxyethyl) alcohol oxygen, at 3.13 A in the
+  #      October pose - 0.13 A OUTSIDE the 3.0 A detection radius.** Nothing
+  #      restrained it, it came onto the metal at 2.06 A with 97.9% occupancy,
+  #      and sitting between the hydroxide and the carbonyl at 76.8 degrees from
+  #      both it squeezed the attack angle shut (D197). `fill_restraints` can
+  #      only hold what is inside the radius WHEN IT LOOKS, so a donor arriving
+  #      from outside is the one case detection-time restraints cannot cover -
+  #      the same failure as `prod100b` (D173).
+  #      The rule already covers it: the 3.0 A set is "what is affected by the
+  #      metal", not a coordination test (D174, D186, the user twice), and D174
+  #      itself restrained Asp92 OD1 at 3.81 A by explicit judgement for being
+  #      affected while outside the radius. An alcohol oxygen 0.13 A outside it
+  #      is a stronger case than that one. Held at its pose distance, 3.13 A.
+  #      Whether O1x genuinely chelates is NOT settled and MM cannot settle it
+  #      (D197/D199): a 12-6 term cannot tell an alcohol from a hydroxide and
+  #      rewards every oxygen in reach. Holding it where the structure puts it
+  #      is what lets QM/MM answer that, per the standing rule.
+  #
+  #   2. **The Asp92-Lys226 salt bridge, which no run has ever restrained.**
+  #      Measured in both wild-type-background deposits: Lys254 NZ - Asp120 OD2
+  #      **2.99 A in 6DN4** and **2.83 A in 6DQ2** (our Lys226 - Asp92; 6DN4 is
+  #      BBL numbering). OD2 is the bridging oxygen - 2.76 A from the zinc on
+  #      one side by superposition, 2.99 A from the lysine on the other, while
+  #      OD1 points away from both (3.90 and 5.06 A). So the carboxylate is held
+  #      between two cations, and 6NC5 lacks the contact only because its
+  #      `SEQADV` records Lys226His as an engineered mutation (D209).
+  #      This is the restraint with the most mechanistic content in the file:
+  #      the lysine is what holds Asp92 out of the first shell, so an MD that
+  #      does not hold it is free to produce the 2.00 A collapse that three
+  #      separate entries have recorded as an artefact.
+  #
+  # Nothing else differs from eq5, so the comparison is clean: two restraints
+  # added, none changed, none removed. Both at k = 500, because D191 measured
+  # that 50 kcal/mol/A^2 holds a 2.80 A target at a mean of 2.44/2.37 and
+  # holding within ~0.05 A needs of order 500.
+  #
+  # What it decides: whether the site survives 10 ns with the fifth donor held
+  # out and the salt bridge held on - i.e. whether a usable Michaelis start
+  # frame exists at all. Read it with `site.py shell` for occupancy at 2.5 A
+  # with a 1.0 A margin, and `site.py check --at=reactant` on the last frame.
+  # The two numbers to watch that eq5 could not report: `Zn-mer O1x` staying
+  # near 3.13 rather than 2.06, and `Lys226 NZ - Asp92 OD2` staying near 2.99.
+  # Cost: eq5's own 10 ns at this timestep, on one GPU.
+  eq6:
+    stage: md
+    inputs:
+      pdb_file: preprocess_results/finalsystem.pdb
+      coordination_redetect: true
+      restraints:
+        - [C:2:O01, C:1:C4x, 3.47]
+        - [B:1:ZN, C:1:O2x, 2.60, 500.0]
+        - [B:1:ZN, A:92:OD1, 3.81, 500.0]
+        - [B:1:ZN, C:1:O1x, 3.13, 500.0]     # the fifth donor, D197's cause
+        - [A:226:NZ, A:92:OD2, 2.99, 500.0]  # the salt bridge, 6DN4
+      nvt_time: 10000
+      nvt_timestep: 0.002
+      traj_frequency: 500
+      platform: CUDA
+      properties:
+        Precision: mixed
+
   # ---- wtqm: the reactant's QM/MM MD, matching prodqm (D190) ----
   #
   # Same treatment as the product arm so the two stay comparable: the RQK set in
@@ -1912,6 +1994,14 @@ sections:
         Zn-Arg90 NH1: [B:1:ZN, A:90:NH1]
         O01-mer C4x: [C:2:O01, C:1:C4x]
         Lys226 NZ-O01: [A:226:NZ, C:2:O01]
+        # D209/D210: the salt bridge, and it had never been monitored anywhere.
+        # Lys254 NZ - Asp120 OD2 is 2.99 A in 6DN4 and 2.83 A in 6DQ2 (our Lys226 -
+        # Asp92; both deposits are BBL numbering). OD2 is the BRIDGING oxygen: 2.76 A
+        # from the zinc on one side by superposition, 2.99 A from the lysine on the
+        # other, with OD1 pointing away from both (3.90 and 5.06 A). Both oxygens are
+        # here because D120 is what happens when only one of them is watched.
+        Lys226 NZ-Asp92 OD2: [A:226:NZ, A:92:OD2]
+        Lys226 NZ-Asp92 OD1: [A:226:NZ, A:92:OD1]
         Gln93 NE2-Asp92 OD1: [A:93:NE2, A:92:OD1]
 
   # ---- michpost: did the Michaelis sphere hold for 10 ns? (D197) ----
@@ -1963,6 +2053,14 @@ sections:
         Zn-Arg90 NH1: [B:1:ZN, A:90:NH1]
         O01-mer C4x: [C:2:O01, C:1:C4x]
         Lys226 NZ-O01: [A:226:NZ, C:2:O01]
+        # D209/D210: the salt bridge, and it had never been monitored anywhere.
+        # Lys254 NZ - Asp120 OD2 is 2.99 A in 6DN4 and 2.83 A in 6DQ2 (our Lys226 -
+        # Asp92; both deposits are BBL numbering). OD2 is the BRIDGING oxygen: 2.76 A
+        # from the zinc on one side by superposition, 2.99 A from the lysine on the
+        # other, with OD1 pointing away from both (3.90 and 5.06 A). Both oxygens are
+        # here because D120 is what happens when only one of them is watched.
+        Lys226 NZ-Asp92 OD2: [A:226:NZ, A:92:OD2]
+        Lys226 NZ-Asp92 OD1: [A:226:NZ, A:92:OD1]
         Gln93 NE2-Asp92 OD1: [A:93:NE2, A:92:OD1]
 
   # ---- prod100b: WITHDRAWN, do not submit (D173) ----
@@ -2373,6 +2471,14 @@ sections:
         O01-mer C4x: [C:2:O01, C:1:C4x]
         Asp92 OD1-O01: [A:92:OD1, C:2:O01]
         Lys226 NZ-O01: [A:226:NZ, C:2:O01]
+        # D209/D210: the salt bridge, and it had never been monitored anywhere.
+        # Lys254 NZ - Asp120 OD2 is 2.99 A in 6DN4 and 2.83 A in 6DQ2 (our Lys226 -
+        # Asp92; both deposits are BBL numbering). OD2 is the BRIDGING oxygen: 2.76 A
+        # from the zinc on one side by superposition, 2.99 A from the lysine on the
+        # other, with OD1 pointing away from both (3.90 and 5.06 A). Both oxygens are
+        # here because D120 is what happens when only one of them is watched.
+        Lys226 NZ-Asp92 OD2: [A:226:NZ, A:92:OD2]
+        Lys226 NZ-Asp92 OD1: [A:226:NZ, A:92:OD1]
         Gln93 NE2-Asp92 OD1: [A:93:NE2, A:92:OD1]
         O01-mer O2x: [C:2:O01, C:1:O2x]
       angles:
@@ -2433,6 +2539,14 @@ sections:
         O01-mer C4x: [C:2:O01, C:1:C4x]
         Asp92 OD1-O01: [A:92:OD1, C:2:O01]
         Lys226 NZ-O01: [A:226:NZ, C:2:O01]
+        # D209/D210: the salt bridge, and it had never been monitored anywhere.
+        # Lys254 NZ - Asp120 OD2 is 2.99 A in 6DN4 and 2.83 A in 6DQ2 (our Lys226 -
+        # Asp92; both deposits are BBL numbering). OD2 is the BRIDGING oxygen: 2.76 A
+        # from the zinc on one side by superposition, 2.99 A from the lysine on the
+        # other, with OD1 pointing away from both (3.90 and 5.06 A). Both oxygens are
+        # here because D120 is what happens when only one of them is watched.
+        Lys226 NZ-Asp92 OD2: [A:226:NZ, A:92:OD2]
+        Lys226 NZ-Asp92 OD1: [A:226:NZ, A:92:OD1]
         Gln93 NE2-Asp92 OD1: [A:93:NE2, A:92:OD1]
         O01-mer O2x: [C:2:O01, C:1:O2x]
         # ---- D202's question, and the only pairs that answer it ----
