@@ -7330,6 +7330,101 @@ terminal, and the pane is currently hidden, so input cannot be verified by
 reading it back — which is the one thing that must not be guessed at after
 today.
 
+**D213 — `eq6` submitted (job 32177894) and the Asp92 umbrella set up but
+NOT started, because checking the logs first showed the only available seeds
+would have bought an accurate free energy for a condemned shell over a range
+that misses the answer, at the measured cost of ~8,500 core-hours. The library
+blocker is gone though: `coordinate: distance` exists, so the chain is
+`md_eq6` —> `aspcg` —> `asp`.** (2026-11-05, user: "double check logs
+thoroughly before submitting any jobs to make sure you're not wasting work. Set
+up and run the umbrella using mcube's umbrella module.")
+
+## What the check found, which is why the umbrella did not go in tonight
+
+`scan_aspout` and `scan_aspin` are 18 converged QM/MM points along Zn–Asp92
+OD1, sitting on disk, and they look like ready-made window seeds. Three
+independent reasons they are not:
+
+1. **Both descend from `CSR_nac/md_naclong_results`**, which D120, D122 and D130
+   all call the condemned shell and which D131 says nothing measured on can be
+   cited. `retractions.md` already carries D136 for precisely this.
+2. **Their range stops short of the answer.** Zn–OD1 1.90 –> 3.60 Å,
+   while the wild-type conformer is at **OD1 3.90 Å** (D210's superposition)
+   and **4.09 Å** in the start structure. Both arms end before the geometry
+   the question is about — the same error D145/D208 caught in D144's costing,
+   where the then-believed crystal value was off the end of both scans.
+3. **D157 says so in its own words:** "This does not mean the PMF should be run
+   now ... The order is the rebuilt pose first, this second", because that pose
+   is 5.15 Å from the only experimental Michaelis complex in the family
+   (D156).
+
+At D157's measured rate — **40.9 h per window, 2.57 ps/h on 8 cores, ~8,500
+core-hours for 26 windows** — seeding from those scans would have spent the
+whole budget on a structure the project has already condemned. That is the
+"wasting work" the instruction was about, and it was two greps away.
+
+## What IS submitted
+
+**`eq6`, job 32177894**, PD on `gpu_cuda`, 10 ns at 2 fs on one H100, 6 h limit.
+`sections.py` wrote `md_eq6` after checking **10 selectors**, all resolved —
+including `A:226:NZ`, which no section in this project had ever named. The five
+restraints landed exactly as D212 corrected them:
+
+    C:2:O01  - C:1:C4x   3.47
+    B:1:ZN   - C:1:O2x   2.60  500
+    B:1:ZN   - A:92:OD1  3.90  500
+    B:1:ZN   - C:1:O1x   3.82  500
+    A:226:NZ - A:92:OD2  2.79  500
+
+## The library blocker is gone, and site.yaml said otherwise
+
+The `aspout` comment block has claimed since it was written that "a PMF along a
+two-atom distance cannot be run here: `umbrella` and `metadynamics` are both
+built around a channel's z coordinate and a single ion". **That is no longer
+true.** `umbrella.py` now has `COORDINATES = ("z", "distance")`, `cv_pair`,
+`distance_cv`, `distance_values`, a distance branch in `bias_force`, and
+`exclude_pair` on `coordination_force` so the biased pair is dropped from the
+coordination restraints — those two forces would otherwise add and WHAM is
+only told about the bias. `docs/umbrella.md` documents the whole mode. The stale
+comment is marked superseded in place.
+
+What a distance CV still cannot do: `pull` (refused by name — dragging a
+bonded pair apart is not a seeding method), and the frame rescoring behind
+`energies`, `wham --reweight` and `stitch`, all three tied to the channel
+geometry. None is needed here: WHAM reads `cv.csv` directly.
+
+## The chain, and why each link is gated
+
+    md_eq6   the rebuilt pose              SUBMITTED, job 32177894
+    aspcg    26 optimised points, the seeds   waits on eq6's last frame
+    asp      the PMF, 26 QM/MM windows        waits on aspcg's points
+
+`sections.py` refuses to write a section whose `pdb_file` does not exist, so
+each link gates the next by construction rather than by my remembering to wait.
+
+**The coordinate is Zn–Asp92 CG, not an oxygen**, for the reason the `monitor`
+block already gives: a profile along Zn–OD1 is contaminated every time the
+carboxylate rotates OD1 out and OD2 in, which is the exact motion D120 was
+about, whereas Zn–CG moves only when the whole group moves. It is also what
+the classical carboxylate–cation PMFs use. **2.3 –> 4.8 Å at 0.1 Å**,
+D157's 26 windows, which brackets the bound state and reaches past the
+wild-type value — D210 measures **Zn–CG 3.71 Å** in the superposed frame,
+comfortably inside the range, unlike the OD1 scans' 3.60 Å cap. k = 150, 45 ps
+equilibration + 60 ps data, SMB-1's protocol.
+
+## One gap closed while setting up
+
+`umbrella` takes a **subcommand** (`pull` / `window --window N` / `wham`), and
+`run.slurm` passes only a stage and a section, so umbrella could not be launched
+by it at all. `docs/channel/system/umbrella_windows.slurm` already solves this
+generally — `SECTION` from the environment, `FIRST`/`LAST` blocks, finished
+windows skipped so a block resumes after a timeout — but it hardcodes
+`--partition=gpu_cuda --gres=gpu:1`, right for its MM windows and wrong for
+these, since a QM/MM window is xTB-bound and a GPU does not help it. Added
+`docs/csr/umbrella_windows.slurm`: the same script with the resource directives
+removed so the caller supplies them on the sbatch line, as `run.slurm` does.
+The two should eventually be one file, and that is the only difference.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

@@ -1004,14 +1004,13 @@ sections:
   # D133's hypothesis is for. Curves that separate mean the earlier scans were
   # measuring their own start and the preference is hysteresis.
   #
-  # **This is not a free energy, and a free energy is what would settle it.** A
-  # PMF along a two-atom distance cannot be run here: `umbrella` and
-  # `metadynamics` are both built around a channel's z coordinate and a single
-  # ion (`ion`, `reference`, `z_start`/`z_end`, `cylinder`, `z_walls`), and every
-  # stage downstream - window naming, `find_window`, the FES reconstruction - is
-  # keyed on that one number. A general `coordinate: distance` mode is being
-  # agreed with the ion-channel session so both kinds of job use one set of keys
-  # rather than two bespoke ones. A hysteresis pair is what config alone buys.
+  # **This is not a free energy, and a free energy is what would settle it.**
+  # **[SUPERSEDED 2026-11-05: `coordinate: distance` now EXISTS** - `umbrella.py`
+  # has `COORDINATES = ("z", "distance")`, `cv_pair`, `distance_values`, a
+  # distance branch in `bias_force` and `exclude_pair` on the coordination
+  # restraints, and `docs/umbrella.md` documents it. So a two-atom PMF is no
+  # longer blocked by the library. It is blocked by its seeds: see `aspcg` and
+  # `asp` below, and note that THESE scans cannot supply them.]
   #
   # `extra_qm_residues: {A: [93]}` puts Gln93 in the QM region. Arg90 and Lys226
   # are already in it (preprocess `extra_qm_residues`), but the **Q** of RQK was
@@ -1834,6 +1833,87 @@ sections:
       platform: CUDA
       properties:
         Precision: mixed
+
+  # =========================================================================
+  # ---- The Asp92 free energy: `aspcg` seeds it, `asp` is the PMF (D213) ----
+  #
+  # **This is the experiment D133 named and D157 costed, and it is the one that
+  # settles whether Asp92 sits on the zinc.** An equilibrium is a population and
+  # only a free energy reports one; every scan in this log reports a minimum, and
+  # D94's objection is that a relaxed scan reports the basin it started in.
+  #
+  # **Why the existing scans cannot seed it, checked 2026-11-05 before
+  # submitting anything.** `scan_aspout` and `scan_aspin` are 18 converged
+  # points along Zn-Asp92 OD1 and they look like ready-made seeds. They are not
+  # usable:
+  #
+  #   1. Both descend from `CSR_nac/md_naclong_results`, which D120, D122 and
+  #      D130 all call the condemned shell and which D131 says nothing measured
+  #      on can be cited. `retractions.md` carries D136 for exactly this.
+  #   2. Their range is Zn-OD1 1.90 -> 3.60 A. The wild-type conformer is at
+  #      **OD1 3.90 A** (D210's superposition) and 4.09 A in the start structure,
+  #      so both arms stop short of the geometry the question is about - which is
+  #      the same error D145/D208 caught in D144's costing.
+  #   3. D157 says it in its own words: "This does not mean the PMF should be run
+  #      now ... The order is the rebuilt pose first, this second", because the
+  #      pose those scans used is 5.15 A from the only experimental Michaelis
+  #      complex in the family (D156).
+  #
+  # Seeding from them would have produced an accurate free energy for a
+  # condemned shell over a range that misses the answer, at the measured cost of
+  # **~8,500 core-hours**. So the chain is `md_eq6` -> `aspcg` -> `asp`, and each
+  # link is gated by `sections.py`, which refuses to write a section whose
+  # `pdb_file` does not exist yet.
+  #
+  # **The coordinate is Zn-Asp92 CG, not an oxygen.** The `monitor` block says
+  # why: a profile along Zn-OD1 is contaminated every time the carboxylate
+  # rotates OD1 out and OD2 in, which is the very motion D120 was about, whereas
+  # Zn-CG moves only when the whole group moves. It is also the choice the
+  # classical carboxylate-cation PMFs make. Range **2.3 -> 4.8 A** at 0.1 A, the
+  # 26 windows D157 costed: it brackets the bound state and reaches past the
+  # wild-type value, which D210 measures at **Zn-CG 3.71 A** in the superposed
+  # frame. k = 150 kcal/mol/A^2, SMB-1's protocol, 45 ps equilibration + 60 ps
+  # of data per window.
+  #
+  # Cost, measured rather than projected (D157): **40.9 h per window at 2.57
+  # ps/h on 8 cores**, so ~8,500 core-hours, every window inside one 72 h
+  # allocation, and the 26 run in parallel for about **two days of wall clock**.
+  # CPU, not GPU - xTB is the bottleneck and a GPU does not help it (user).
+  #
+  # `aspcg` produces one optimised structure per window centre, which is what a
+  # distance-CV umbrella needs: `umbrella` has no `pull` for a distance (pulling
+  # a bonded pair apart is not a seeding method), so each window reads a `seed`
+  # from its own results entry. Writing those 26 entries is the one step between
+  # the scan finishing and the PMF starting.
+  aspcg:
+    stage: scan
+    inputs:
+      pdb_file: md_eq6_results/NVTtrajectory_lastframe.pdb
+      atoms: [B:1:ZN, A:92:CG]
+      start: 2.3
+      end: 4.8
+      points: 26
+      opt_maxiter: 300
+      extra_qm_residues: {A: [93]}
+      resume: true
+
+  # The PMF itself. `engine: qmmm` runs every window through ASH on a
+  # QMMMTheory with mcube's ordinary QM region, and the biased pair is dropped
+  # from the coordination restraints automatically - those two forces would add,
+  # and WHAM is only told about the bias.
+  asp:
+    stage: umbrella
+    inputs:
+      coordinate: distance
+      atoms: [B:1:ZN, A:92:CG]
+      cv_start: 2.3
+      cv_end: 4.8
+      spacing: 0.1
+      k: 150
+      engine: qmmm
+      equilibrate: 45
+      time: 60
+      extra_qm_residues: {A: [93]}
 
   # ---- wtqm: the reactant's QM/MM MD, matching prodqm (D190) ----
   #
