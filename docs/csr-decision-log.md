@@ -6552,6 +6552,96 @@ structural criterion - which is also the published VIM-2 criterion, where
 candidate protonation states were judged by zinc coordination against the
 crystal rather than by energy - independent of what its energy says.
 
+**D207 - Why the NEB never ran, traced through the whole log on the user's
+instruction. It was never deselected: it was staged as config on 2026-10-22 and
+has been waiting on one file, `protdft/scan_attack/scan_15.pdb`, which has never
+existed. The machinery is ready; the endpoint is not, and the reason the endpoint
+never arrived is that the reactant was treated as something to settle BEFORE the
+path rather than something the path settles.** (2026-11-05, user: "now if you'll
+recall this was the plan from the very beginning. Why did we deviate from NEB?")
+
+## It was never deselected
+
+CI-NEB with TS and IRC is in **D1**, the first entry (2026-10-15): "their
+CPR-style path search -> our CI-NEB, transition-state optimisation and IRC". It
+survived every revision of the plan - the P-series, then the M-series where it is
+M2, then the numbered plan where it is item 6, still reading **"not started; the
+paper's actual content"**. **D204**, four days ago, still names "plan item 6's
+scan/NEB" as the test. It was staged as real config on 2026-10-22:
+`scan_attack -> neb_step1 -> ts_saddle1` and `scan_ringopen -> neb_step2 ->
+ts_saddle2`, one NEB per elementary step (D17), both endpoints in one solvent box
+(D4).
+
+`neb_step1` names `protdft/scan_attack/scan_15.pdb` as its product and
+`neb_step2` names `protdft/scan_ringopen/scan_11.pdb`. **Neither file has ever
+existed**, because neither scan was ever run. That is the whole deviation.
+
+## The machinery was genuinely broken three times, and all three are fixed
+
+Worth recording because it justifies part of the delay, and because each would
+have produced a confident wrong number:
+
+1. **`neb.py` hardcoded `runmode='library'`** (found 2026-10-23 while costing the
+   MD). The stage could not run at all - it would have reached the PC-gradient
+   branch and called `ashexit()` mid-job. Now
+   `runmode = 'parallel' if neb_workers > 1 else 'serial'`.
+2. **The atom-order bug.** `neb` compared atom *count*, and NEB interpolates atom
+   i of the reactant toward atom i of the product, so a mismatched order "gives a
+   path between atoms that are not counterparts and **converges anyway**". Now
+   compares `atom_names` index by index.
+3. **The two-surfaces bug.** `qmmm`, `scan` and `ts` held active-region MM waters
+   rigid as optimizer constraints; `neb` cannot, since ASH's NEB exposes no
+   constraints argument. So the endpoints were not minima of the surface the path
+   was evaluated on, and interior images could dip below the reactant. Fixed by
+   the rigid-water default (D139/D141), with `check_path_shape` left as a warning.
+
+**So nothing in the code blocks a NEB today.**
+
+## What did block it: one thing in six costumes - we never had an endpoint
+
+Every candidate reactant was disqualified, each time for a real reason:
+
+    no attack geometry      0 of 500 frames meet the NAC criteria; the Zn-bound
+                            oxygens are cis at 24-54 deg (D33, D41, and again in
+                            D201/D204 at 16-33)
+    protonation contested   D29 found the Lys226 transfer, D30/D35 checked it at
+                            DFT, D48 redid it in a clean sphere - and D112 then
+                            found the running system was in the state M1 had
+                            rejected, because "the verdict was never carried
+                            across"
+    the pose                nine tied Vina poses, one carried forward by accident
+                            (D66), and the 1.94 A Zn-carbonyl bond imposed rather
+                            than found (D67)
+    the trajectories        `qmmm_nacarg/QM_MM.dcd` "cannot supply Michaelis-
+                            complex frames - not for NEB endpoints" (D110/D111)
+    the shell               everything downstream of `md_wt100`/`md_wt100b`
+                            "describes a six-coordinate zinc, which is not the
+                            species the paper is about"
+    unrestrained MM         "a Michaelis complex cannot be produced by
+                            unrestrained MM MD and was not"
+
+## The diagnosis, which is the part worth keeping
+
+Each blocker was investigated **on its own terms rather than as a question about
+the endpoint**. Asp92's coordination got three separate campaigns (D51-D59,
+D120-D145, D173-D200); the protonation state got three (D29-D48, D112-D119,
+D202-D205). Both are real questions about this enzyme. Neither is the NEB, and
+neither has to be answered before one.
+
+And the loop could not terminate, because **every attempt to settle the reactant
+used our own minima as the evidence** - which D206 has now ruled inadmissible for
+exactly this. A question whose only evidence class cannot settle it will reopen
+indefinitely, and it did, three times each.
+
+**The exit is the user's own argument of today.** A reactant whose proton
+interconverts over a barrier of order kT does not need its protonation state
+settled in advance, because the path settles it: drive the slow coordinate, leave
+the proton free, and read its timing off the result. The only property the
+endpoint must have is the one the ground truth prescribes - Asp92 second-shell
+near 2.80 A and a four-coordinate zinc - and structures with that property exist
+in the docked/`naclong` lineage. So the next job is `scan_attack`, which is what
+`neb_step1` has been waiting for since 2026-10-22.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
