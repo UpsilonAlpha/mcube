@@ -6854,6 +6854,166 @@ that contact **1.4 A too short**, and the ones that collapsed to 1.77-2.11 A are
 2.1-2.4 A too short. The restraint target for any rebuild is ~4.2 A, which in
 practice means: do not restrain it, and let the run say where it goes.
 
+**D209 — The wild-type site, measured rather than inferred. Neither
+wild-type CSR-1 deposit contains a metal, so no Zn–Asp92 distance exists in any
+of them; the aspartate is a **Zn2** ligand in every B3 structure; and in 6DN4 it
+is **Lys226 that holds the carboxylate, at 2.99 Å**. That last number makes
+Asp92's collapse onto the metal a CONSEQUENCE of the Lys226 proton transfer
+rather than an independent xTB failure. It also corrects D208, which is mine.**
+(2026-11-05, prompted by the user: "The CSR-1 WT structure is our source of
+ground truth and it has a 4-coordinate zinc yes?")
+
+## The premise that started this, and why it is wrong in a useful way
+
+It is not. **6DN4 has 347 waters and nothing else; 6DQ2 has 63 waters and a
+phosphate. Neither contains a single metal atom.** The only four-coordinate zinc
+anywhere in the CSR-1 record is 6NC5's ZN302, and 6NC5 is the Zn2-site double
+mutant. So "the wild-type structure has a four-coordinate zinc" is not available
+as a premise — but the conclusion drawn from it survives on better evidence,
+below.
+
+**And ZN302 is not an isolated sphere.** Both of its waters bridge to
+neighbouring zincs: HOH493 to ZN301 at 2.08 Å, HOH485 to ZN303 at 1.88 Å. The
+sphere the project built `finalsystem.pdb` from is one site of a water-bridged
+zinc cluster. Delete the neighbours, as a mono-zinc model must, and neither
+water's position is justified by this deposit. This is a second, independent
+reason D108 was right to reject 6NC5 as a wild-type reference.
+
+## What corrects D208, which I wrote
+
+D208 measured Asp—>Zn1 at 4.20 Å in 6NC5 and 4.02–4.17 Å across four B3
+structures and concluded that ~4.2 Å is where the carboxylate belongs. The
+measurement is right; the inference is not, and it was about to be built into a
+start structure.
+
+    structure        Asp -> Zn1    Asp -> Zn2
+    1SML (L1)            4.08         **2.07**
+    5K0W chain A         4.17         **2.11**
+    5K0W chain B         4.36         **2.08**
+    7UHI (L1 Michaelis)  3.94         **2.27**
+    5AXO                 4.08         **2.19**
+    6NC5                 4.20         **1.95**
+
+In **every** one the aspartate is a Zn2 ligand, monodentate, and its ~4 Å
+distance to Zn1 is the Zn1–Zn2 separation plus the carboxylate's bite — a
+measurement of where the second metal is, not of where the side chain prefers to
+sit. CSR-1 has no second metal. So the user's ground truth, stated exactly as the
+user stated it, stands untouched: **Asp92 is not coordinated to Zn1 in the
+crystal or in any other B3 structure.** What does not follow from it is any
+particular distance. That is now an open question in `state.md` §1 rather
+than a settled value, and all three numbers previously quoted as "the crystal"
+— 2.80 (ours), 2.68 (void, D184), 4.20 (a Zn2-occupied mutant) — are
+measurements of something else.
+
+## The finding: in the wild type, Lys226 does Zn2's job
+
+6DN4's site, measured structurally after the assumed BBL numbering failed (see
+below):
+
+    Lys254 NZ  - Asp120 carboxylate   **2.99**   <- a salt bridge
+    Asp120 OD1 - His116 NE2             3.00
+    HOH545     - Asp120 carboxylate     2.83
+    Gln121 OE1 - Asp120                 3.70
+    Arg118 NH1 - Asp120                 6.05
+    His116 NE2 - His192 NE2             3.63   <- the Zn1 histidine pair
+
+Lys254 is Lys226. Where canonical B3 holds this carboxylate with a **zinc** at
+~2.1 Å, wild-type CSR-1 holds it with a **lysine ammonium** at 2.99 Å. This is
+the RQK thesis with a crystallographic number behind it, and the project did not
+have it: `state.md` has never mentioned an Asp92–Lys226 salt bridge, and
+`michrk` was set up treating Lys226 as a proton donor with Asp92 elsewhere.
+
+**So Asp92 is held off the metal in the resting state, and by the lysine.**
+Asp92-on-Zn1 is an artefact of the resting state, which is what the user said.
+
+## Why the model does it anyway, and the prediction that follows
+
+D204: Lys226 hands HZ3 to the hydroxide within 2 ps of becoming quantum, and from
+5 ps the proton stays on the oxygen. **That deprotonates the lysine, and a neutral
+amine cannot hold a carboxylate.** So the two observations this project has been
+treating as separate problems — the Lys226 proton transfer and Asp92's collapse
+onto the metal — are one event with an order, and the collapse is downstream.
+
+**Falsifiable, on data already on disk:** in the `michrk` trajectory Asp92's
+approach to the zinc must **follow** the proton transfer in time. If it precedes
+it, this chain is wrong and GFN2 over-coordination is back as a first-order
+suspect. Not yet tested: every path under `/scratch/user/uquadhik/` returned the
+route's own `Not found` from the new `bun126/53134` code-server session, including
+the 41 GB `channel` tree, so scratch looks unreachable from that session rather
+than any one file being absent.
+
+**And it sharpens the thesis.** The difference from canonical B3 is not merely
+that Zn2 is absent: the cation that replaces it is **titratable**. A zinc can
+polarise the nucleophile but cannot hand it a proton; a lysine can do both. If
+that holds, CSR-1 has swapped a permanent Lewis acid for a group that is also a
+general acid/base, which is a difference in kind rather than degree — and it is
+the mechanistic content of the user's thesis that CSR-1 differs from canonical B3.
+
+## The salt bridge is in BOTH deposits that have the lysine, and the one that lacks it had the lysine mutated away ON PURPOSE
+
+    6DN4 (WT)        Lys254 NZ - Asp120 OD   **2.99**
+    6DQ2 (mutant)    Lys254 NZ - Asp120 OD   **2.83**
+    6NC5             residue 225 is **HIS** - the lysine is not there
+
+6NC5's own `SEQADV` records why: `HIS A 92 <- GLN 136` and
+`HIS A 225 <- LYS 269`, both ENGINEERED MUTATION. In our numbering those are
+**Gln93His and Lys226His** — the Q and the K of RQK. So 6NC5 is the
+**Q93H/K226H double mutant**, and the two residues that had to be replaced to
+get a zinc into Zn2 are exactly the two the RQK thesis says are standing in for
+it. The nearest other lysine is 16.4–17.2 Å away in all three, so the
+contact is specific.
+
+This is the strongest experimental support the thesis has, and it was sitting in
+a `SEQADV` record: **the lysine occupies the Zn2 site, and it must be removed
+before zinc will bind there.**
+
+## Structures the user supplied, which are NOT deposits (checked 2026-11-05)
+
+Under `pbeval/.claude/worktrees/charming-cray-fe9629/University/Undergrad/`
+`Honours/SCIE4481/bioinformatic_data/MM/Structure/CSR/`. Two kinds, and the
+difference matters:
+
+- **`CSR_nontruncated_1metal.pdb` / `_2metal` / `CSR_truncated_1metal`** — the
+  full-length WT with zinc. **Their zinc spheres are non-physical**:
+  `ASP120.OD2 1.38 | LYS254.NZ 1.95` in the non-truncated 1-metal file, and
+  `LYS254.NZ 2.18` alone in the truncated one. A Zn–O of 1.38 Å is not a
+  bond length, and a zinc does not ligate a protonated lysine NZ at all. The
+  metal was placed into the Asp92–Lys226 salt bridge — i.e. into the pocket
+  the lysine already occupies. These cannot serve as a structural reference, but
+  as evidence they point the same way: the only hole the modelling could find for
+  a second metal is the one the lysine is in.
+- **`dmCSR_mutant_1metal_refine_12.pdb` / `dmCSR_mutant_2metal_refine_16.pdb`**
+  — `REMARK PHENIX refinement`, dated 2025-12-16. These are refined against
+  real data. The 2-metal one has **two zincs bridged by two waters** (ZN1–HOH1
+  2.03, ZN2–HOH1 2.01, HOH2 2.43/1.98), which is the canonical B3 bridging
+  arrangement. `dmCSR_1metal`/`dmCSR_2metal` put a zinc on Asp91/His92/His225,
+  i.e. the restored Zn2 site, with the Zn1 site (His87/His163) filled only in the
+  2-metal file.
+
+**So an experimental, zinc-bound CSR-1 structure does exist — of the double
+mutant, from the user's own crystallography.** Nothing in this project has used
+it. That is the control the whole argument wants: WT has Lys226 in the Zn2 site,
+the double mutant has a zinc there, and the user holds kinetics for both.
+
+## Numbering, corrected
+
+The BBL mapping in `state.md` is wrong twice for these deposits. In 6DN4 the Zn1
+histidine partner is **His192**, not His196; and the lysine is **Lys254**, not
+Lys263 — Lys263 NZ is **20.4 Å** from the site, so any reasoning that reached
+for "Lys263" was reaching for the wrong residue. Both corrected in place.
+
+## What changed in `state.md`
+
+Seven rows corrected and three added in §1, and three prescriptions
+withdrawn: the claim that Asp92 "sits at 2.80 Å in the crystal" (false), plan
+item 0's "2.80 Å supported" (reopened — Asp92 should carry **no** restraint,
+since the standing rule restrains what is within coordination range and no
+wild-type structure puts it there), and equilibration gate 2, "Asp92 OD2 near
+2.80" (withdrawn — it tests against a number with no crystallographic basis,
+so both arms' recorded FAIL is a failure to reproduce the model's own artefact).
+What a start structure must now get right is the Asp92–Lys226 salt bridge, not
+an Asp92–Zn distance. The header also said the log was 180 entries long.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

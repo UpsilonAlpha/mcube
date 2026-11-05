@@ -2,7 +2,7 @@
 
 **This file is the single source of truth for what is true now.** The decision
 log (`../csr-decision-log.md`) is append-only history: it records how each
-conclusion was reached, including the ones later overturned, and it is 180
+conclusion was reached, including the ones later overturned, and it is 208
 entries long. Reading it end to end to find the current value of something is
 how the same facts get rediscovered, and how a contradiction can sit unnoticed
 for a week (see *Contradictions caught late* below).
@@ -13,7 +13,7 @@ without editing this file is incomplete. Status words here are
 `settled` / `measured, open` / `void` / `not started` / `in flight`, and
 nothing else.
 
-Last updated: 2026-11-02.
+Last updated: 2026-11-05.
 
 ---
 
@@ -33,16 +33,19 @@ one exists, the entry that wrongly contradicted it later.
 | **Zn2 is vacant in the wild type, by positive evidence:** 6NC5's `SEQADV` shows HIS A92←GLN and HIS A225←LYS as engineered mutations restoring a canonical Zn2 ligand set. The only way anyone put a metal in Zn2 was to engineer two of its ligands back | settled | D22/D40, audit §3(a) |
 | The modelled zinc is **crystallographic**: 6NC5's ZN302, whose own ligands His87/His163 are *not* mutated. The wild-type crystals are metal-free because of affinity and crystallisation, not an absent site | settled | D40 correcting D22 |
 | **6NC5 is a Zn2-site mutant and is NOT a wild-type reference for Asp92. 6DN4 is.** | settled | **D108** — then contradicted by D145, re-settled by D179 |
-| BBL mapping: H116→His88, R118→Arg90, D120→Asp92, Q121→Gln93, H196→His164, K254/263→Lys226. 6NC5 is our numbering **−1**; 6DN4/6DQ2 are in **BBL numbering** | settled | D108, D179 |
+| BBL mapping: H116—>His88, R118—>Arg90, D120—>Asp92, Q121—>Gln93, H196—>His164, K254/263—>Lys226. 6NC5 is our numbering **–1**; 6DN4/6DQ2 are in **BBL numbering**. **Two corrections, measured 2026-11-05:** in 6DN4 the Zn1 histidine partner is **His192**, not His196 (His116 NE2 – His192 NE2 3.63 Å), and the lysine is **Lys254**, not Lys263 (Lys263 NZ is 20.4 Å from the site) | settled | D108, D179 |
 
 ### The crystallographic zinc sphere
 
 | Measurement | Value | Entry |
 | --- | --- | --- |
-| 6NC5 ZN302, four ligands within 2.8 Å | HOH485 1.90, His163 NE2 2.09, HOH493 2.14, His87 NE2 2.22 | D108 |
-| **No aspartate on ZN302** | Asp91 OD2 4.82 / OD1 4.13 Å from His87 NE2 — *in the mutant* | D108, D179 |
-| Asp92's conformer across CSR-1's own three crystals | **6DN4 (WT, 1.99 Å, B 15–16): 3.00/3.07 Å from His116 NE2 — close.** 6DQ2 (mutant S60, B 53–66): 4.28/5.49. 6NC5 (Zn2 mutant): 4.13/4.82 | **D179** |
-| **Zn–Asp92 OD2 in the wild type: 2.68 Å** — 6NC5's ZN302 superposed into 6DN4 on the two histidine rings alone, fit RMSD 0.184 Å. Our model has 2.80, and all six site distances agree to within 0.13 Å | settled — **the starting structure is right**; D145's 4.20 Å was the Zn2 mutant's | **D184** |
+| 6NC5 ZN302, four ligands within 2.8 Å | HOH485 1.90, His163 NE2 2.09, HOH493 2.14, His87 NE2 2.22. **Caveat, measured 2026-11-05: both waters bridge to other zincs** — HOH493 to ZN301 at 2.08 Å, HOH485 to ZN303 at 1.88 Å. ZN302 is one site of a water-bridged zinc cluster, not an isolated four-coordinate sphere, so neither water's position is justified by this deposit once the neighbouring metals are removed | D108; caveat measured 2026-11-05, log entry pending |
+| **No aspartate on ZN302** | Asp91 OD2 4.20 / OD1 4.22 Å from ZN302 itself; 4.82 / 4.13 Å from His87 NE2 — *in the mutant, whose ZN301 holds that same carboxylate at 1.95 Å* | D108, D179, D208 |
+| **Asp92 is a Zn2 ligand in every B3 structure, and never a Zn1 ligand** | Asp—>Zn2 1.95–2.27 Å, Asp—>Zn1 3.94–4.20 Å, in 1SML, 5K0W (both chains), 7UHI, 5AXO and 6NC5. The ~4 Å Zn1 distance is **set by the Zn2 ion holding the carboxylate**, so it does not transfer to an enzyme whose Zn2 is vacant. The user's ground truth — Asp92 is not coordinated to Zn1 in any structure — stands; no specific distance follows from it | measured 2026-11-05 |
+| **In wild-type CSR-1 it is Lys226 that holds Asp92's carboxylate: Lys254 NZ – Asp120 OD 2.99 Å in 6DN4** | A salt bridge. Where canonical B3 has Zn2 at ~2.1 Å, CSR-1 has the lysine ammonium at 2.99 Å — the RQK thesis with a crystallographic number behind it. **Consequence:** deprotonating Lys226 removes what holds Asp92 off the metal, so Asp92 moving onto Zn1 is **downstream of the Lys226 proton transfer (D204)**, not an independent xTB failure. Testable: the approach must FOLLOW the transfer in time | measured 2026-11-05 |
+| How far is Asp92 from Zn1 in wild-type CSR-1? | **Open, and no crystal answers it.** Every structure that pins the number has a Zn2 doing the pinning; the one Zn2-free WT deposit has no metal. All three values quoted as "the crystal" — 2.80 (ours), 2.68 (void), 4.20 (a Zn2-occupied mutant) — are measurements of something else | measured, open |
+| Asp92's conformer across CSR-1's own three crystals | **6DN4 (WT, 1.99 Å, B 15–16): 3.00/3.07 Å from His116 NE2 — the closest of the three.** 6DQ2 (mutant S60, B 53–66): 4.28/5.49. 6NC5 (Zn2 mutant): 4.13/4.82. **Neither WT deposit contains any metal** (6DN4: 347 waters and nothing else; 6DQ2: 63 waters + phosphate), so no Zn–Asp92 distance exists in any wild-type structure | **D179**, remeasured 2026-11-05 |
+| ~~Zn–Asp92 OD2 in the wild type: 2.68 Å~~ | **[CORRECTED 2026-11-05 — do not use this number.]** It is not a measurement: it came from superposing 6NC5's ZN302 into metal-free 6DN4 on two histidine rings. **6DN4 contains no metal at all**, so there is nothing in it to measure a Zn–Asp distance from. The model's 2.80 Å has no crystallographic basis either. D184's "the starting structure is right" is **withdrawn** | void — **D184 superseded by D208** |
 | Gln93 is remote, from the crystal as well as the trajectory | NE2 **7.10 Å** from the zinc in 6DN4; 7.95–9.88 Å from the ligand over 34 ns | D184 + D173 |
 | Therefore: the carboxylate is **mobile**, and the only well-ordered wild-type copy has it close | measured, open | D179 + D151 |
 | L1 7UHI/7UHJ, the only measured B3 Michaelis complex | intact carbonyl **2.53/2.63 Å** from Zn1; ring N and C-carboxylate on Zn2 | D156 |
@@ -179,7 +182,7 @@ carbonyl = **four**. Five is not rejected, for two separate reasons:
 - GOB-18's B3 site expands four- to five-coordinate on substrate binding
   (`reference-structures.md`), so a retained second water is a real
   possibility, not a build error.
-- Asp92 OD2 sits at **2.80 Å** in the crystal as a second-shell contact (D120).
+- ~~Asp92 OD2 sits at **2.80 Å** in the crystal as a second-shell contact (D120).~~ **[FALSE, corrected 2026-11-05.]** No crystal places it there. 2.80 Å is the model's own value; the Zn2-occupied mutant 6NC5 gives 4.20 Å, and neither wild-type deposit contains a metal at all.
   A frame where it drifts inside the 2.5 Å measurement radius counts as five
   here while being nothing of the kind chemically.
 
@@ -560,7 +563,7 @@ Items 1–3 gate everything below them. **Status is maintained here.**
 
 | # | Item | Status |
 | --- | --- | --- |
-| 0 | Asp92's placement in the starting structure | **settled (D179)** — 2.80 Å supported; `prod100c` unblocked |
+| 0 | Asp92's placement in the starting structure | **REOPENED 2026-11-05.** D179's "2.80 Å supported" rested on D184, which is void (6DN4 has no metal). No crystal constrains this distance, so **Asp92 should carry no restraint at all** (D208): it is not within coordination range in any wild-type structure, and the standing rule restrains only what is. What the wild type does say is that **Lys226 holds the carboxylate at 2.99 Å** — so the thing to get right in a start structure is the Asp92–Lys226 salt bridge, not an Asp92–Zn distance |
 | 1+2 | Experiment-anchored Michaelis complex, both endpoints on one topology | **open as a scientific question, not blocked on tooling (D194).** The docked pose binds with the carbonyl at 5.43 Å and one attack restraint; 7UHI/7UHJ put L1's at 2.53/2.63 Å (D123). Deciding between them is the blocking question (D89) and needs evidence, not a revert to `CSR_ligand` (§2a) |
 | 3 | Equilibration that preserves the site | **FAILED, both arms (D191), cause found (D194): the attack-coordinate restraint was replaced, not added to.** Re-run needs `[C:2:O01, C:1:C4x, 3.47]` **and** `[B:1:ZN, A:92:OD1, 3.81, 50.0]` in the list. Still to fix alongside: 50 kcal/mol/Å² does not hold Asp92 OD2 at 2.80 (mean 2.44/2.37), a bulk water holds the free site 97.0%/89.3%, and `prod100c` NaN'd at 22.68 ns — the product arm's second NaN, so it predates D186 |
 | 4 | Nucleophile identity, origin, protonation state | not started — blocked on 1–3. D48 and D107 disagree **in sign**. One datum arrived anyway: **Lys226 NZ–O01 at 2.72 Å mean in 100% of 5000 frames** (D191) |
@@ -613,7 +616,7 @@ contacts stay visible without being counted.
 **The gate:**
 
 1. **Four-coordinate at 2.5 Å**, at high occupancy.
-2. **Asp92 OD2 near 2.80, not collapsed toward 2.0** — the artefact of D173/D177,
+2. ~~**Asp92 OD2 near 2.80, not collapsed toward 2.0**~~ — the artefact of D173/D177, **gate WITHDRAWN 2026-11-05**: it tests against a number with no crystallographic basis, so both arms' "FAIL" below is a failure to reproduce the model's own artefact. Replace it with the Asp92–Lys226 salt bridge (2.99 Å in 6DN4) and leave the Zn–Asp distance unrestrained and unjudged. See the Asp92 rows in §1.
    now restrained, so this tests whether 50 kcal/mol/Å² holds it.
 3. **Asp92 OD1 near 3.81**, not pivoted in (D120, D130).
 4. **Product only: O4x/O5x near 2.9, O2x away** — its 4.75 Å migration onto the
