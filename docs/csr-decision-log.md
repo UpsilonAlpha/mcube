@@ -8979,6 +8979,127 @@ production MD. NPT took the box from 475.6 to 480.6 nm3, **within 0.6 of
 `eq6`'s equilibrated 481.18**, which is the relaxation `asppull3`'s 2 ns never
 finished. Scratch 209/300 GB.
 
+**D231 - `relax10` finished and passed the gate: the RMSD plateaus, the
+restraints held to 0.09 A, and Zn-OD1 reached 4.33 against 6DQH's 4.28 with
+nothing restraining it over 10 ns. QM/MM chunk 1 submitted as job 32416288.
+AND the gate's own box-volume criterion was wrong - D225's box-drift argument
+is retracted, because all three NPT runs plateau in their first decile and
+`asppull3`'s box was already converged.** (2026-11-06)
+
+**`relax10`, job 32405173, finished.** 10,000.0 ps in 5000 frames, final T
+299.63, no NaN anywhere in the output.
+
+    CA RMSD by decile:  0.81 0.85 0.87 1.05 1.25 1.23 1.41 1.38 1.38 1.40
+    RMSF (A)       mean   r vs full   ratio
+      full         0.58      -          -
+      first 10%    0.49    0.871      0.850
+      first 50%    0.54    0.995      0.945
+      last  50%    0.55    0.907      0.954
+      last  90%    0.57    0.999      0.995
+    site CA RMSF: 88:0.31 90:0.30 92:0.31 93:0.30 164:0.37 186:0.32 225:0.39 226:0.40
+    T 300.292 +/- 1.399, drift +0.094
+
+**The last four deciles are 1.41, 1.38, 1.38, 1.40 - a spread of 0.03 A.** The
+run climbs for ~6 ns and then holds for 4, where `eq6` plateaued by 3 ns and
+held for 7. So 10 ns was the right length and not generous: 2 ns would have
+caught none of the plateau, which is what `asppull3` showed.
+
+**The site geometry after 10 ns, measured on the last frame:**
+
+    RESTRAINED             value   target    dev
+    C:2:O01 - C:1:C4x      3.48     3.47    +0.01
+    B:1:ZN  - C:1:O2x      2.61     2.60    +0.01
+    B:1:ZN  - C:1:O1x      3.86     3.82    +0.04
+    A:226:NZ- A:92:OD2     2.88     2.79    +0.09
+    B:1:ZN  - A:226:NZ     5.28     5.27    +0.01
+    B:1:ZN  - A:92:OD2     5.15     5.14    +0.01
+
+    UNRESTRAINED           value   [6DQH]
+    Zn-OD1                  4.33    [4.28]
+    Zn-CG                   5.19    [5.15]
+    NZ-OD1                  4.14    [3.94]
+    Zn-Ser186 OG            4.05
+
+    sphere < 2.50 A: HOH3095 2.02, OH 2.04, HOH3171 2.05, His164 2.13, His88 2.18
+
+**`Zn-OD1` at 4.33 against the crystal's 4.28, and `Zn-CG` at 5.19 against
+5.15, with nothing restraining either, held for 10 ns.** D224 reported the same
+agreement at the end of a 2 ns run and noted it was adopted rather than
+imposed; ten nanoseconds of 300 K MD later it is still there, which is a much
+stronger version of that statement. The sphere is still **five** donors with
+Asp92 outside it and two bulk waters inside - rule 4 expects four for an H-R-H
+site, and whether the extra water leaves is QM/MM's to answer, not MM's.
+
+**One soft number, recorded rather than smoothed over:** the last 50% of the
+trajectory correlates with the full RMSF profile at **r = 0.907**, where the
+first 50% manages 0.995. The back half has a different distribution of
+flexibility, so something re-arranged on the way to the plateau. It is not the
+site - those eight residues sit at 0.30-0.40 A and their first-decile values
+are within 0.05 of their final ones - so it is termini and loops, exactly where
+the 10-vs-100 ns comparison put the only deviations over 4 A (D226).
+
+**THE GATE'S BOX-VOLUME CRITERION WAS WRONG, AND SO WAS D225's ARGUMENT FOR
+THIS RUN.** The criterion, written in D225 and carried into D228 and into the
+wakeup prompt, was: box volume drift under ~1 nm3, because `asppull3` drifted
++5.396 against `eq6`'s +0.653. `relax10` drifts **+5.008**, which by the letter
+of that gate forbids starting QM/MM. Checking the quantity before acting on it:
+
+    NPT box volume by decile (nm3)                                  final-3 spread
+    relax10   475.6 480.5 481.2 481.3 480.4 481.2 480.9 480.6 480.2 480.6   0.43
+    asppull3  475.3 480.6 480.3 480.5 480.7 480.8 480.7 481.0 480.5 480.7   0.51
+    eq6       480.9 480.5 482.2 481.7 481.4 481.2 481.0 480.4 481.1 481.5   1.07
+
+**Every one of them plateaus in the first decile.** The "drift" is
+last-decile-minus-first-decile, and for a quantity that steps once and then
+sits still that statistic measures **how far the box had to travel**, not how
+unconverged it is. `relax10` and `asppull3` both started from a 475.3-475.6
+box and both reached ~480.7 immediately; `eq6` started at 480.9 because its box
+came straight from solvation and had nowhere to go. **By the statistic that
+actually describes convergence - the spread over the final three deciles -
+`asppull3` (0.51) is better than `eq6` (1.07), and all three are converged.**
+These numbers also come from `nptsim.csv`, i.e. the NPT phase: NVT is constant
+volume and `nvtsim.csv` has no box column at all, so this metric can never say
+anything about production.
+
+So **D225's second reason for running `relax10` is retracted.** Its claim -
+*"The box is still accommodating the 1.3-2.2 A displacement of the Asp92/Lys226
+pair"* - was a mechanism invented to explain a number, and the number meant
+something else. All three runs equilibrate to the same ~480.7 nm3 box, so the
+displacement required no accommodation at all. Entered in `retractions.md`.
+**The first reason stands and is sufficient**: `asppull3`'s RMSD was still
+climbing with its three highest deciles last, which is a real statement about a
+2 ns trajectory and is exactly what the 10 ns fixed. The decision was right;
+one of the two arguments for it was not.
+
+**The gate is replaced** by what the data supports: CA RMSD flat over the final
+three or more deciles; T drift under ~0.2 K; configured restraints held to
+within ~0.1 A; and the unrestrained second-shell distances still matching the
+crystal. Box volume is checked as the **final-three-decile spread of the NPT
+phase**, under ~1 nm3, not as a first-to-last difference.
+
+**QM/MM chunk 1: `aspqm2`, job 32416288, `general`, 50 ps.** The launcher's
+gate passed - `pdb_file: md_relax10_results/NVTtrajectory_lastframe.pdb`,
+charge 2, `skip_equilibrate: False`, `skip_optimize: True`, `resume: True`,
+`rigid_water: False`, QM region `Zn, OH, mer, His88, His164, Asp92, Asn225,
+Arg90, Lys226` - and printed **`[OK] starts from relax10's last frame, charge
+2, nothing restrained`**. The D229 merged-set check is vacuous for a `qmmm`
+stage, since `bond_constraints` is reached only from the optimiser path and
+rigid water and both are off; confirmed from the launcher's own warning check
+finding nothing rather than from reading the source again.
+
+**Housekeeping.** The raw trajectory duplicates in `md_relax10_results` are
+deleted where the imaged twin exists - `NVTtrajectory.dcd` 2.68 GB and
+`relaxbox_NPT.dcd` 549 MB - **verified by `ls` returning "No such file or
+directory"** rather than by an echo after a `;`, which is the failure mode
+`BUNYA_BROWSER_SHELL.md` section 5 records. 3.2 GB freed; scratch 213/300 GB,
+723,619/1,000,000 inodes. The duplication is still a library-level waste in
+every project and the config flag to suppress it is still unbuilt.
+
+**Cadence.** Wakeup `7f92d121` deleted, replaced by `aae784b7` every three
+hours at :21, since chunk 1 is ~19.5 h at the measured 2.57 ps/h. Its prompt
+carries the starting distances so the next check can read the chemistry off the
+running job without a shell, and instructs it to stretch its own cadence again.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
