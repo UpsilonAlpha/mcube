@@ -332,4 +332,13 @@ Running MD on the reactant and the product separately gives each its own water c
 
 ## Driving Bunya through code-server
 
-See `binder-physics/docs/BUNYA_BROWSER_SHELL.md`: keep typed commands under about 100 characters, write output to files under `/scratch/user/uquadhik/...` and fetch them, never use heredocs, and use `printf` or `sed` to build scripts.
+**READ `binder-physics/docs/BUNYA_BROWSER_SHELL.md` BEFORE driving the pane, not after something fails.** It is the only document for the bridge. Keep typed commands under about 100 characters, write output to files under `/scratch/user/uquadhik/...` and fetch them, never use heredocs, and use `printf` or `sed` to build scripts.
+
+Four of its rules that cost a session each when skipped (D228):
+
+1. **The terminal is xterm.js on a canvas.** There is no `.xterm-rows` DOM and no readable buffer, so an empty DOM read says *nothing* about whether the shell is alive — do not diagnose a dead pty from it. Write to a file and fetch the file; that is the only way to read output.
+2. **If nothing you type arrives, check `Screen Reader Optimized` in the status bar first.** In that mode `type` reaches xterm not at all while `Return` works, so the terminal looks alive and produces a column of empty prompts. Toggle it with `ctrl+shift+p`, `screen reader acc`, `Return`.
+3. **`querySelector` returns the FIRST terminal, usually the blocked one.** Focus the newest: mouse events on the last `.xterm-screen`, then `.focus()` on the last `.xterm-helper-textarea`. A new shell inherits no variables.
+4. **Clear a dirty prompt with `ctrl+u`, not `ctrl+c`.** A line that failed to submit silently swallows the next one and the two merge — the tell is an error naming a command you never typed, e.g. `bash: shrquota: command not found`.
+
+And: **a successful fetch proves the file exists, never that your command wrote it.** A stale `q.txt` from an earlier session was read as a current quota figure. Use a fresh, dated filename each round, or truncate with `: > $F` first and put `date` at the top.

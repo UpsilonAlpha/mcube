@@ -2085,10 +2085,34 @@ sections:
       properties:
         Precision: mixed
 
+  # SUPERSEDED by `aspqm2`. Kept, not deleted: job 32384737 ran this for 5.16 ps
+  # (5159 fs at a 1 fs step) before being cancelled, and `qmmm_aspqm_results`
+  # still holds that output. It started from `asppull3`'s 2 ns frame, which the
+  # convergence analysis showed is not relaxed - box volume drift +5.40 nm3
+  # against eq6's +0.65 - so it was a pilot, not the pipeline's QM/MM leg
+  # (D226, D228). Do not re-run it: `resume: true` would continue those 5.16 ps.
   aspqm:
     stage: qmmm
     inputs:
       pdb_file: md_asppull3_results/NVTtrajectory_lastframe.pdb
+      qm_residues: *qmreg_michrk
+      charge: 2
+      skip_equilibrate: false
+      skip_optimize: true
+      time: 50
+      resume: true
+      rigid_water: false
+
+  # The QM/MM leg proper: same QM region, same charge, same everything as
+  # `aspqm`, but starting from the END of the 10 ns NVT rather than from the
+  # unrelaxed 2 ns frame. A NEW section name, deliberately, so it writes to a
+  # fresh `qmmm_aspqm2_results` and `resume: true` cannot pick up the cancelled
+  # run's state file. The 300 ps still goes in six 50 ps chunks by raising
+  # `time` to 100, 150, 200, 250, 300 and re-running, one at a time (D228).
+  aspqm2:
+    stage: qmmm
+    inputs:
+      pdb_file: md_relax10_results/NVTtrajectory_lastframe.pdb
       qm_residues: *qmreg_michrk
       charge: 2
       skip_equilibrate: false

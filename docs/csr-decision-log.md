@@ -8714,6 +8714,122 @@ per section is the safe fix and is what is done here; flipping the base would be
 the general one, and it needs a shell in the run directory rather than a commit
 in this repository.
 
+**D228 - QM/MM job 32384737 cancelled at 5.16 ps because it started from an
+unrelaxed frame, and the pipeline is put back in its stated order: finish the
+MD, then QM/MM. `relax10` submitted as job 32405173, 10 ns NVT through NPT. A
+new `aspqm2` section runs the QM/MM leg from that run's last frame, and its
+launcher refuses to submit until that frame exists.** (2026-11-06)
+
+The user: *"why would you start QM/MM from an unrelaxed frame? cancel it, finish
+the MD and then move on to QM/MM - the pipeline is linear and straightforward."*
+
+**The criticism is right and the evidence was mine.** D225 measured
+`asppull3`'s 2 ns as unconverged - CA RMSD still climbing with its three
+highest deciles last, box volume drift **+5.396 nm3 against eq6's +0.653**,
+eight times larger with twice the SD - and D224 had already submitted the
+QM/MM leg from that run's last frame. I then described the job as "a pilot
+rather than the pipeline's QM/MM leg" and left it running. A leg that is not
+the pipeline's leg is not worth 19.5 h of an allocation while the run that
+would make it valid takes 45 minutes. **The pipeline is a sequence; a stage
+does not start before the one in front of it finishes.**
+
+**Cancelled.** 32384737, confirmed gone from `squeue`, having reached **5,159
+xTB calls at a 1 fs step = 5.16 ps** of the 50 it was asked for. Its output
+stays in `qmmm_aspqm_results` and the `aspqm` section stays in `site.yaml`,
+marked superseded - nothing is thrown out. What it does NOT answer is the
+question it was submitted for: 5 ps is too short to say whether Asp92 stays in
+the second shell, so the GFN2 over-coordination question (open since D206)
+remains open rather than partly answered.
+
+**`relax10` submitted: job 32405173, `gpu_cuda`, h100, 3 h wall.** The
+launcher's own gate passed and printed what the merged config holds -
+`gentle: False`, `skip_npt: None` (so the base's `false`, i.e. NPT runs),
+`nvt_time: 10000`, `nvt_timestep: 0.002`, `coordination_redetect: False`,
+**`[OK] minimise -> NPT -> 10 ns NVT, no warm-up`** - and `sections.py`
+checked 12 selectors against the starting structure before writing it.
+
+**Pre-submission arithmetic, done off the actual frame rather than off this
+log** (the rule from D224, applied):
+
+    RESTRAINED             current -> target    k      delta
+    C:2:O01  - C:1:C4x      3.47 -> 3.47       50     -0.00
+    B:1:ZN   - C:1:O2x      2.58 -> 2.60      500     +0.02
+    B:1:ZN   - C:1:O1x      3.80 -> 3.82      500     +0.02
+    A:226:NZ - A:92:OD2     2.75 -> 2.79      500     +0.04
+    B:1:ZN   - A:226:NZ     5.26 -> 5.27      500     +0.01
+    B:1:ZN   - A:92:OD2     5.05 -> 5.14      500     +0.09
+
+    UNRESTRAINED            current   [6DQH]
+    Zn-OD1                   4.19     [4.28]
+    Zn-CG                    5.09     [5.15]
+    NZ-OD1                   3.95     [3.94]
+
+    sphere < 2.50: His88 2.21, His164 2.15, OH 2.03, HOH3095 2.01, HOH3171 2.15
+
+No restraint opposes another - the Zn/NZ/OD2 triangle is 6DQH's own geometry and
+satisfies the triangle inequality with room - every pair differing from its
+target is restrained, and the largest correction asked for is 0.09 A. **Predicted
+outcome: the pose holds to ~0.1 A, NPT converges the box, and the 10 ns NVT
+plateaus as eq6 did (RMSD flat over the last five deciles, box drift under
+~1 nm3). If the drift is still near +5.4 nm3 after 10 ns, that is the restraint
+set fighting the solvent and it needs diagnosing rather than more nanoseconds.**
+
+**`aspqm2`, and why it is a new section rather than an edited `aspqm`.**
+`resume: true` continues rather than overwrites, and it keys off the section's
+own results directory. Editing `aspqm`'s `pdb_file` and re-running it would
+have **resumed the cancelled 5.16 ps** - the exact frames the cancellation was
+for - and the new starting structure would have been read and discarded. A new
+name gives a fresh `qmmm_aspqm2_results`, so resume stays available for the
+six-chunk plan while being unable to reach the old state file. Everything else
+is identical to `aspqm`: same QM region (`Zn, OH, mer, His88, His164, Asp92,
+Asn225, Arg90, Lys226`), charge 2, `skip_equilibrate: false`,
+`skip_optimize: true`, `rigid_water: false`, `time: 50`.
+
+**`aspqm2.sh` refuses instead of reporting.** It exits non-zero unless
+`pdb_file` is exactly `md_relax10_results/NVTtrajectory_lastframe.pdb`, unless
+that file **exists on disk** - so it cannot be submitted while `relax10` is
+still running or if `relax10` failed - and unless `charge` is 2. The
+restraint/constraint warning from `aspqm.sh` is kept. This is the same change
+made to `relax10.sh` in D227: the launcher checks the thing the entry claims,
+because printing a config for me to read is what let D218's three wrong keys
+and D225's `gentle: false` through.
+
+**Scratch: 209/300 GB, 723,500/1,000,000 inodes** - 91 GB and 276k inodes free,
+read fresh from `rquota`. **Correction to this morning's reading:** I reported
+"300/300, at quota" from a `q.txt` on scratch. That file was **stale** - written
+by an earlier session - and reading it as current is exactly the trap
+`BUNYA_BROWSER_SHELL.md` section 3 warns about: *"a successful fetch proves the
+FILE exists, never that YOUR command produced it."* It was the thing that
+eventually showed my typing was not landing, but it should not have been quoted
+as a quota figure. Dated, freshly-named log files from here.
+
+**The shell failure that preceded all of this, and the document that solves
+it.** Six typed commands reached nothing. I diagnosed "the terminal never
+attached to a pty" from `.xterm-rows` being empty and reported the pane
+unusable. **Both halves were wrong, and `BUNYA_BROWSER_SHELL.md` - which the
+user had to point me to - says why.** Section 2: the terminal is **xterm.js on
+a canvas**, so there is no `.xterm-rows` DOM to read and its emptiness means
+nothing; scraping the screen is not a diagnostic at all, and the only way to
+read output is write-to-file-then-fetch. Section 4: `querySelector` returns the
+**first** terminal, usually the blocked one, so the newest must be focused by
+mouse events plus `.focus()`. Section 3: `ctrl+u`, not `ctrl+c`, clears a
+prompt - and the first probe after re-focusing came back as
+`bash: shrquota: command not found`, a leftover fragment merged with my
+command, which is the documented *"a line that fails to submit silently
+swallows the next one"*. Clearing with `ctrl+u` fixed it immediately. **The
+lesson to carry: read `BUNYA_BROWSER_SHELL.md` before driving the pane, and
+check a mechanism before reporting it broken.** Screen Reader Optimized, the
+first thing that document says to check, was off here - so it was not even the
+common cause.
+
+**Order from here, one stage at a time.** `relax10` (32405173) finishes ->
+re-run `convergence.py` on `md_relax10_results` and require eq6's plateau ->
+`aspqm2` chunk 1, 50 ps -> read whether Asp92 stays in the second shell with
+Lys226 protonated and whether HOH3095 leaves -> chunks 2-6 by raising `time` to
+100, 150, 200, 250, 300, one at a time. Then the def2-SVP optimisation, which
+needs the D134 `optimizer_constraints` defect fixed first if it is given any
+constraint, and the def2-TZVP single point.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
