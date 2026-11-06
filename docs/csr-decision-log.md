@@ -8370,6 +8370,113 @@ expects for an H-R-H site?
 Scratch at submission: **239/300 GB**, down from 294 - 61 GB free, so the quota
 risk that D221 raised has receded.
 
+**D225 - The 10 ns vs 100 ns question, settled from trajectories already on disk
+rather than by running a new one. eq6's 10 ns is converged; `asppull3`'s 2 ns is
+not; no 100 ns trajectory survives to check against. The answer is a 10 ns
+continuation, not 100 ns - 45 minutes rather than 7.3 hours.** (2026-11-06)
+
+The user asked whether the MM part was finished correctly, whether that was the
+full 100 ns the pipeline specifies, and - taking RMSF, temperature and pressure
+into account - whether 10 ns and 100 ns differ enough to matter. Then: do not
+throw out work.
+
+**What had actually been run.** `eq6` 10 ns + `asppull` 1 ns + `asppull2` 2 ns +
+`asppull3` 2 ns = **15 ns in four segments**, and each segment re-ran mcube's
+`Gentle_warm_up_MD` (10 steps at 1 K, 50 at 10 K, 10,000 at 4 fs and 300 K = 40
+ps) plus an NPT box relax before its own NVT. That warm-up is inherited from the
+run directory's base `md` inputs, not from `site.yaml`, which is why it went
+unnoticed: **the 15 ns is four short equilibrations, not one trajectory.**
+Nothing is discarded by this - `asppull3`'s last frame carries the whole lineage
+- but it is not 100 ns and it is not continuous.
+
+**`docs/csr/convergence.py` (new, read-only, writes nothing).** Per run: CA RMSD
+against frame 0 as decile block means, so a plateau is visible rather than
+inferred from one number; per-residue RMSF over windows of the same trajectory,
+scored both by Pearson r against the full profile and by the **ratio of mean
+RMSF**, since the usual failure of a short window is to understate motion; the
+same restricted to residues 88, 90, 92, 93, 164, 186, 225, 226, because a global
+profile can converge while the site has not; and T, box volume, density and
+total energy from `nvtsim.csv`/`nptsim.csv` with last-decile-minus-first-decile
+drift.
+
+**eq6, 10 ns, 10,000 frames - converged on every measure.**
+
+    CA RMSD by decile:  0.82 0.94 1.22 1.17 1.09 1.18 1.19 1.14 1.04 1.06
+    RMSF (A)      mean   r vs full   ratio
+      full        0.63      -          -
+      first 10%   0.52    0.902      0.820
+      first 50%   0.62    0.986      0.974
+      last  90%   0.62    0.999      0.985
+    site CA RMSF: 88:0.32 90:0.33 92:0.32 93:0.31 164:0.48 186:0.39 225:0.38 226:0.37
+    T 300.307 +/- 1.454, drift +0.135    box 481.178 +/- 1.223, drift +0.653
+    density 1.015 +/- 0.003, drift -0.001
+
+**RMSD plateaus by the third decile (~3 ns) at ~1.1 A and stays flat for the
+remaining 7 ns. RMSF is within 3% of its final value by 5 ns at r = 0.986.** The
+site residues fluctuate by 0.31-0.48 A and converge within the first nanosecond.
+Temperature and box volume are as steady as an NVT run gets. **A 1 ns window
+understates the motion by 18%, so the convergence is real and not an artefact of
+the metric being insensitive.**
+
+**`asppull3`, 2 ns, 200 frames - NOT converged.**
+
+    CA RMSD by decile:  0.75 0.81 0.78 0.83 0.85 0.86 0.82 0.93 0.95 0.91
+    RMSF full 0.50; first 50% 0.48 (r 0.979); last 90% 0.50 (r 0.999)
+    T 300.371 +/- 1.323, drift +0.005
+    box 480.117 +/- 2.401, drift **+5.396**    density drift -0.012
+
+**RMSD is still climbing - its three highest deciles are the last three - and
+box volume drift is +5.40 nm3 against eq6's +0.65, eight times larger, with
+twice the standard deviation.** The box is still accommodating the 1.3-2.2 A
+displacement of the Asp92/Lys226 pair. Temperature is fine; the volume is not.
+So the repaired structure has not finished relaxing, and that is the honest
+answer to "is what we have fine?" - the *equilibration* is, the *2 ns after the
+pull* is not.
+
+**No 100 ns trajectory survives, so the 10-vs-100 comparison cannot be made
+directly.** `md_wt100c_results` holds 123 MB of `OpenMMOpt_traj.xyz`,
+checkpoints, state XML and four `.cif` frames - **and no DCD at all**; `wt100b`
+likewise. Their trajectories were deleted by the same cleanup policy that freed
+6 GB today (D221). The complete surviving inventory:
+
+    5.4G  eq6                NVTtrajectory_imaged.dcd        10 ns
+    644M  prod100c           NVTtrajectory.dcd            22.68 ns
+    110M  asppull3, asppull2 (both copies)                    2 ns each
+     55M  asppull                                             1 ns
+
+**The longest survivor, `prod100c` at 22.68 ns, does NOT converge** - RMSD
+deciles 1.22 1.43 1.19 1.09 1.27 1.39 1.45 1.56 1.67 **1.72**, rising
+monotonically through the back half, +0.51 A overall and still climbing at the
+end; RMSF first-50% r only 0.961. But that is the **product arm that rearranged
+and then NaN'd** (D173: Asp92 to 2.03 A, ligand turned over, O2x travelled 4.75
+A), so its drift is the pathology on its way to failure rather than evidence
+about how long equilibration takes. It is recorded because it is the reason the
+claim here is about *eq6's system*, not a general claim that 10 ns suffices.
+
+**Decision: `relax10` - 10 ns, continuous, from `asppull3`'s last frame.**
+`gentle: false` so it continues instead of re-annealing; **NPT left ON**, because
+the box drift says it is needed - an earlier draft of this section had
+`skip_npt: true`, which the data contradicts. Restraints are `asppull3`'s,
+unchanged. 10 ns because that is the length eq6 demonstrated is sufficient for
+*this* system; the pipeline's 100 ns is a round number and nothing measured
+supports paying 7.3 h for it. **~45 min on one H100.** Afterwards, re-run
+`convergence.py` and require eq6's plateau - RMSD flat over the last five
+deciles and box drift back under ~1 nm3 - before the QM/MM leg is taken as
+starting from a relaxed structure.
+
+**Two library findings.** `MD_TRAJECTORIES` in `src/mcube/md.py` lists only the
+`.pdb` spellings of each topology, while the md stage wrote `.cif` for the
+wt100/prod100 runs - so `salvage_results` cannot find a trajectory pair for
+those runs even in principle. `convergence.py` now tries every combination.
+And the raw/imaged duplication of D221 is visible again here: `asppull2` and
+`asppull3` each carry two identical 110 MB copies.
+
+**Caveat on the running QM/MM chunk (32384737).** It started from `asppull3`'s
+frame, which this entry establishes is not fully relaxed. Its 50 ps is still
+worth having - it answers early whether Asp92 stays off the metal under GFN2,
+which is the central question - but it is a pilot, and the pipeline's QM/MM leg
+should start from `relax10`'s frame.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
