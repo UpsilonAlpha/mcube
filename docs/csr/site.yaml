@@ -1958,6 +1958,45 @@ sections:
       properties:
         Precision: mixed
 
+  # D223: stage 2 moved the LYSINE (Zn-NZ 4.03 -> 4.85 of 5.27) and confirmed
+  # stage 1's diagnosis, but the carboxylate still did not follow: Zn-CG reached
+  # 3.96 of 5.15. The reason is that Zn-CG is nearly blind to the thing that is
+  # wrong. Our OD1 is already at 4.09 against 6DQH's 4.28, while OD2 sits at
+  # 2.95 against 5.14 - the carboxylate is ROTATED, with OD2 facing the metal
+  # where the crystal has it facing away. A carboxylate can swing about CG
+  # without changing Zn-CG much, so pulling CG cannot fix an orientation.
+  #
+  # So pull the one distance that is actually wrong: Zn-OD2, 2.2 A out of place.
+  # That is a single pair at its measured crystal value, not a two-oxygen
+  # restraint, so rule 6 still holds - OD1 is left free, and whether it settles
+  # near 4.28 of its own accord is then a real test rather than an assertion.
+  #
+  # k is 500, not 50. Every crystal-derived restraint in eq6 uses 500; the 50 on
+  # the pull was my own inconsistency, and D154 is why it matters: the Asp92-Zn
+  # contact in this model "requires the anionic carboxylate - it is
+  # electrostatic, not steric", so MM wants the carboxylate on the metal and a
+  # gentle restraint will lose. Fighting the force field here is the POINT of
+  # the standing rule: restrain at the crystal distance in MM, because MM cannot
+  # be trusted for coordination, then let QM/MM decide where it goes.
+  asppull3:
+    stage: md
+    inputs:
+      pdb_file: md_asppull2_results/NVTtrajectory_lastframe.pdb
+      coordination_redetect: false
+      restraints:
+        - [C:2:O01, C:1:C4x, 3.47]
+        - [B:1:ZN, C:1:O2x, 2.60, 500.0]
+        - [B:1:ZN, C:1:O1x, 3.82, 500.0]
+        - [A:226:NZ, A:92:OD2, 2.79, 500.0]
+        - [B:1:ZN, A:226:NZ, 5.27, 500.0]
+        - [B:1:ZN, A:92:OD2, 5.14, 500.0]
+      nvt_time: 2000
+      nvt_timestep: 0.002
+      traj_frequency: 5000
+      platform: CUDA
+      properties:
+        Precision: mixed
+
   aspcg:
     stage: scan
     inputs:
