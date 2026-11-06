@@ -1,7 +1,8 @@
 # Working in an argument map - operating instructions
 
 For an agent or a person arriving at a directory of argmap notes. Read
-`SPEC.md` for the format; this file is what to *do*.
+`SPEC.md` for the format, or `GUIDE.md` for the whole system in one file; this
+file is what to *do*.
 
 ---
 
@@ -10,7 +11,8 @@ For an agent or a person arriving at a directory of argmap notes. Read
 1. **Run the validator.** `python argmap.py <dir>` (or `python check.py` if the
    project ships a shim). Its findings are the current state of the argument's
    health, and you should not add to a map whose existing findings you have not
-   read.
+   read. **Record the count before you start**, so you can say afterwards which
+   findings you caused.
 2. **Read the thesis node.** It tells you what the map is for. If what you are
    about to add does not bear on it, it does not belong here.
 3. **Find the project's maintained-state file and its retractions index** if it
@@ -95,8 +97,66 @@ to the node's `checked` list. Leave it unacknowledged only when the node's
 **Edit the project's maintained-state file in the same change**, if it has one
 and the node changes a settled value. The graph is not a substitute for it.
 
+## If you are an agent editing through file tools
+
+**Work the loop: run, read, edit one node, run again.** Do not write several
+nodes and validate once; a finding is much easier to attribute to the edit that
+caused it.
+
+**Every finding carries a `fix:` line** saying what to do about it. It is the
+intended response, not a suggestion to improvise around - and it never includes
+flipping a status or deleting an edge, because those are the moves the checks
+exist to catch.
+
+**Use `--json` when you are acting on findings rather than reading them.**
+`python argmap.py <dir> --json` writes the whole report to stdout as JSON and
+nothing else: `findings`, `notes`, `skipped`, and a `checks` array whose
+entries carry `check`, `title`, `status` (`clean` / `flagged` / `skipped`) and
+lists of `{node, problem, fix}`. Parse that instead of the text report. Exit
+status is the same either way, and `--strict` makes the advisory notes count
+towards it.
+
+**Never hand-maintain the reverse index.** The validator builds inbound edges
+for you. Write the edge on the node that makes the assertion and stop; the only
+reason to touch a second file is a mirror heading a *reader* of that node needs.
+
+**The validator is the authority on what the graph says, not your reading of
+the files.** If you believe an edge exists and no check mentions it, the edge
+does not exist - look for a misspelled heading.
+
+### What a wrong edit now looks like
+
+These used to pass silently and are now check-0 findings, so a mistyped edit
+fails loudly instead of quietly shrinking the graph:
+
+- a misspelled or missing `status` (`suported`) - which would otherwise make
+  the node non-load-bearing and disarm checks 1, 2, 2b and 4 on it
+- a misspelled frontmatter key (`entrys`), or any key outside the five
+- an invalid `type`, which also keeps the note out of the graph entirely
+- a short level-2 heading that looks like an edge heading but is not
+  (`## Supporting`), which would otherwise discard every link beneath it
+- frontmatter the parser cannot read: nesting, a stray line, a duplicate key,
+  an unclosed `---` block
+- an empty `entries` on a `supported` node, when the project configures a
+  journal
+
+### Which check allows which repair
+
+| flagged by | the repairs that are allowed |
+| --- | --- |
+| 0, 0b, 5a | bookkeeping: fix the field, the heading, the spelling, the link |
+| 1 | add the observation the chain rests on; promote an intermediate that is in fact held; or demote this claim |
+| 2 | demote the claim, refute the refuter with evidence, or record in the body why the refutation does not bite |
+| 2b | repoint at the replacement the `superseded-by` edge names, or demote |
+| 3 | evidence the premise, or drop the `requires` edge and say in the body why the thesis does not need it |
+| 4 | read the superseding entry, make the body reflect it, then add the id to the acknowledged field |
+| 5b | link the node into the argument, or remove it |
+
 ## Finishing
 
-Run the validator again and **read every finding**. A finding you cannot
-resolve is a result: record it where the project records results. Do not leave
-the map in a state whose findings you have not either fixed or explained.
+Run the validator again and **read every finding**. Report the before and after
+counts, and explain every change in either direction - a new finding that is a
+real defect is a good outcome and should be reported, not suppressed. A finding
+you cannot resolve is a result: record it where the project records results. Do
+not leave the map in a state whose findings you have not either fixed or
+explained.

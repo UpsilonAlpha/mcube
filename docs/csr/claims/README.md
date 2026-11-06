@@ -12,9 +12,10 @@ own; the positive claim about the lysine can, and it names a mechanism, so its
 premises can be listed and checked - which is what the map is for.
 
 One markdown file per node, typed links between them, and a validator that
-checks the result. The format is generic and documented in
-`../../argmap/SPEC.md`; how to work in it is `../../argmap/AGENT.md`. This
-directory is the instance.
+checks the result. The format is generic: `../../argmap/GUIDE.md` describes the
+whole system in one file, `../../argmap/SPEC.md` is the terse format reference,
+and `../../argmap/AGENT.md` is how to work in it. This directory is the
+instance.
 
 ## The one rule
 
@@ -69,11 +70,18 @@ remember, and it has a mechanical consequence: **a claim whose only support is
 python check.py
 ```
 
-From this directory, no arguments, no dependencies. It reports: claims held on
-our own calculations alone; supported claims with a standing refutation;
-premises the thesis requires with no support; supported nodes citing entries
-`../retractions.md` lists as overturned; broken wikilinks; and nodes with no
-path to the thesis. Exit 1 if anything is flagged.
+From this directory, no arguments, no dependencies. It prints nine numbered
+sections: note format (0) and one-thesis (0b); what each supported claim rests
+on, following `supports` transitively (1); supported claims with a standing
+refutation (2); void nodes with no replacement and live nodes still resting on
+one (2b); premises the thesis requires, transitively, with no observation
+beneath them (3); supported nodes citing entries `../retractions.md` lists as
+overturned (4); broken wikilinks (5a); and nodes with no path to the thesis
+(5b). Every finding carries a `fix:` line. Exit 1 if anything is flagged, 2 on
+a structural error.
+
+`python check.py --json` gives the same report as JSON for a tool or an agent
+to act on, and `--strict` counts the advisory notes towards the exit status.
 
 `argmap.json` points it at this project's log and retractions index.
 
@@ -83,7 +91,9 @@ path to the thesis. Exit 1 if anything is flagged.
 2. One file, kebab-case, named for the **claim** and not the topic.
 3. Frontmatter: `type` (`thesis`/`claim`/`observation`/`question`), `status`
    (`supported`/`open`/`unsupported`/`withheld`/`void`), `evidence` on
-   observations only, `entries` for the log citations.
+   observations only, `entries` for the log citations - required on a
+   `supported` node, and all five keys are validated, so a typo is a finding
+   rather than a silent exemption from scrutiny.
 4. Body: the claim as the heading, then the numbers and the entry each came
    from. **A claim that cannot be traced to a measurement, a paper, or a named
    calculation is an assertion - mark it `status: unsupported`.**
