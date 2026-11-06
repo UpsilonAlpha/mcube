@@ -8587,6 +8587,89 @@ came from searching one working directory and reporting the absence as general
 `CSR_mich/`, and `job-inventory.md` is the index that should have been read
 first.
 
+**D227 - The standard mcube pipeline written down from the source rather than
+from memory: minimise -> gentle warm-up -> NPT box equilibration -> NVT
+production. `relax10`'s `gentle: false` was the only deviation in any CSR
+section and it is removed, so the 10 ns is NVT production reached through NPT,
+and the mutant arm can be run from an identical section. The launcher now
+refuses to submit if the merged config is not that.** (2026-11-06)
+
+The user's instruction: use the standard mcube pipeline, NPT then NVT, and make
+the 10 ns NVT for all future runs.
+
+**What the stage actually does, read in `src/mcube/md.py` rather than assumed.**
+In order, for a non-membrane explicit-solvent system:
+
+    resolve_resume(...)                 # decided FIRST (D182)
+    OpenMM_Opt(maxiter=500)             # unless resuming
+    Gentle_warm_up_MD(...)              # iff inputs["gentle"]
+    OpenMM_box_equilibration(...)       # NPT, unless skip_npt/implicit/resuming
+    OpenMM_MD(simulation_time=nvt_time) # NVT production, unless skip_nvt
+
+`Gentle_warm_up_MD(time_steps=[0.0005,0.001,0.004], steps=[10,50,10000],
+temperatures=[1,10,300])` is 40 ps from 1 K. **NVT production is
+`OpenMM_MD(..., integrator='LangevinMiddleIntegrator', trajfilename=
+'NVTtrajectory')` and its length is `nvt_time` in ps**, so "10 ns NVT" is
+`nvt_time: 10000` and nothing else.
+
+**The base `md` inputs in `CSR/CSR_mich/config.yaml`, which every CSR section
+inherits from:** `skip_npt: false`, `skip_nvt: false`, `gentle: true`,
+`npt_timestep: 0.001`, `nvt_timestep: 0.002`, `temp: 300`, `cores: 16`,
+`nvt_time: 1000`. **So the standard pipeline is the default and always has
+been**, and a section only leaves it by overriding one of those keys.
+
+**Audit of all 17 `md` sections in `docs/csr/site.yaml`.** **Not one sets
+`skip_npt` or `skip_nvt`**, so every CSR MD run ever submitted - `eq5`, `eq6`,
+`wt100`/`wt100b`/`wt100c`, `prod100`/`prod100b`/`prod100c`, `nac`/`nacgpu`/
+`naclong`, `subst`, `rwon`, and the three `asppull` stages - went NPT then NVT
+with the 40 ps warm-up in front. **The one deviation anywhere was `relax10`'s
+`gentle: false`**, which D225 added so the run would continue from 300 K rather
+than re-anneal.
+
+**That override is removed.** Two reasons, and the second is the one that
+decides it. The weaker reason is that re-annealing does not threaten the pose:
+the warm-up runs with the section's restraints in force, and `relax10` carries
+Zn-OD2 at 5.14 and NZ-OD2 at 2.79 at k = 500, so the pulled Asp92/Lys226
+geometry is held through it. **The stronger reason is the comparison.** The
+user's pipeline requires that CSR_wt and the active double-His mutant go
+through *the same* preprocessing; a wild-type arm that skipped the warm-up and
+a mutant arm that did not would differ by a step, and the whole point of the
+two-arm design is that they differ only in the mutation. A 40 ps warm-up costs
+nothing against a 10 ns run. **`relax10` now sets no ensemble keys at all**, so
+it takes `gentle: true` / `skip_npt: false` from the base inputs and is the
+standard pipeline by construction rather than by having been written to match
+it.
+
+**`relax10.sh` now gates the submission on the ensemble instead of printing
+it.** It reads the merged `md_relax10` section back out of `config.yaml` after
+`sections.py` writes it and exits non-zero if `skip_npt` or `skip_nvt` is set,
+if `gentle` is off, or if `nvt_time` is not 10000. Printing a config and
+eyeballing it is what let three wrong keys through in D218 and `gentle: false`
+through in D225; the check is three lines and runs before `sbatch`.
+
+**`docs/csr/prod100d.sh` deleted.** It was the superseded 100 ns launcher, it
+carried `skip_npt: true`, and **no `prod100d` section exists in `site.yaml`** -
+so it could only ever have run against a hand-edited config, and it was the one
+file in the tree still advertising a no-NPT run.
+
+**A library observation, recorded because the config implies otherwise.**
+`npt_time` is read only in the **membrane** branch
+(`simulation_time=inputs.get("npt_time", 1000)`). The non-membrane call passes
+`numsteps_per_NPT=10000, volume_threshold=1.0, density_threshold=0.001` and
+**no simulation time at all**: NPT runs in 10,000-step blocks until the box
+volume and density stop changing by more than those thresholds. **So for every
+CSR run the NPT length was convergence-driven and `npt_time` was silently
+ignored.** That is defensible behaviour - better than a fixed length - but a
+user setting `npt_time` on a solvated protein would get no error and no effect,
+which is the kind of silent no-op worth fixing upstream. It also means the NPT
+phase self-certifies the box, which is the right check for the box-volume drift
+D225 flagged in `asppull3`.
+
+**For all future runs, including the mutant arm.** An MD section states
+`nvt_time: 10000` and leaves `gentle`, `skip_npt`, `skip_nvt` and
+`npt_timestep` alone. 10 ns is the measured baseline (D226), NVT production is
+what that 10 ns means, and NPT runs to convergence in front of it.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

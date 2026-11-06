@@ -125,6 +125,7 @@ The grep traps. Read the right-hand column before quoting the left.
 | **D198** | "GFN2 does **not** over-coordinate the zinc", answering the blocker open since D9; frame 4374 is the only qualifying structure | its own caveat limits it to one contact, one geometry pair, single points; D200 — batch 1's last frame also passes |
 | **D200** | batch 1's zinc site is the designed sphere; a Bürgi–Dunitz angle needs the ligands essentially trans | D201 §4 ("D200 said it was, and that is wrong") and D201 §2 (1TMN and 7CPA are 57–60° **cis**) — 240 lines later |
 | **D204** | the reactant is Zn–OH₂ with neutral Lys226 "in a correctly built Michaelis complex and not only in a degraded one" | its own closing section (Zn–Asp92 at 1.78 Å) and D206, which rejects that geometry on the structural criterion |
+| **D225** | "**No 100 ns trajectory survives**, so the 10-vs-100 comparison cannot be made directly" | **D226.** True of the DCD, false as written. `wt100c` finished its full 100 ns and its `NVTtrajectory_lastframe.pdb`, `NVTtrajectory_firstframe.pdb`, NPT frames and 5000-row `nvtsim.csv` are all on disk — in `CSR/CSR_wt/`, not `CSR_mich/`, which is why one directory's listing was reported as a general absence. The comparison was made from them. **Its conclusion — 10 ns is enough — survives and is now measured rather than inferred.** |
 
 ---
 

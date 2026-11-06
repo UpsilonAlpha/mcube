@@ -6,8 +6,12 @@
 # 2 ns is not (RMSD still climbing, box volume drift 8x eq6's). So this matches
 # the length eq6 demonstrated is sufficient for this system, and no more.
 #
-# `gentle: false` so it continues rather than re-annealing from 1 K as every
-# pull stage did; NPT left ON because the box is still relaxing after the pull.
+# The standard mcube pipeline, unmodified: minimise -> gentle warm-up -> NPT box
+# equilibration -> 10 ns NVT production. Nothing here sets `gentle` or
+# `skip_npt`, so both come from the run directory's base `md` inputs
+# (`gentle: true`, `skip_npt: false`) and this run is treated exactly as `eq6`
+# and the three pull stages were. The mutant arm must use the same section shape
+# for the comparison to mean anything (D227).
 #
 # In the repo rather than typed, because the code-server terminal truncates long
 # single-line commands silently (bunya-working-rules).
@@ -39,8 +43,20 @@ if not s:
     raise SystemExit("md_relax10 is not in config.yaml - sections.py refused it")
 i = s["inputs"]
 for k in ("pdb_file", "nvt_time", "nvt_timestep", "gentle", "skip_npt",
-          "coordination_redetect", "traj_frequency", "platform"):
+          "skip_nvt", "npt_timestep", "coordination_redetect",
+          "traj_frequency", "platform"):
     print(f"    {k}: {i.get(k)}")
+# The ensemble is the point of this run, so fail loudly rather than print and
+# continue if the merged config is not NPT-then-10-ns-NVT (D227).
+if i.get("skip_npt"):
+    raise SystemExit("skip_npt is set - NPT must run before NVT")
+if i.get("skip_nvt"):
+    raise SystemExit("skip_nvt is set - the 10 ns must be NVT production")
+if i.get("nvt_time") != 10000:
+    raise SystemExit(f"nvt_time is {i.get('nvt_time')} ps, expected 10000 (10 ns NVT)")
+if not i.get("gentle"):
+    raise SystemExit("gentle is off - that is a deviation from the standard pipeline")
+print("    [OK] standard pipeline: warm-up -> NPT -> 10 ns NVT")
 for r in i.get("restraints", []):
     print("    restraint", r)
 PY
