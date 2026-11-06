@@ -1885,6 +1885,40 @@ sections:
   # a bonded pair apart is not a seeding method), so each window reads a `seed`
   # from its own results entry. Writing those 26 entries is the one step between
   # the scan finishing and the PMF starting.
+  # D218/D219: repair eq6's second shell before QM/MM, rather than re-equilibrate.
+  # eq6 drifted to Zn-CG 3.72; 6DQH (1.10 A, the only deposit with a Zn1 AND the
+  # wild-type lysine) measures 5.15, and every Zn2-bearing construct agrees at
+  # 4.66-5.48. Pull ONE coordinate - rule 6: a two-oxygen restraint would assert
+  # the carboxylate's rotation, which is D130's mistake. The constraints are
+  # eq6's own list minus the Asp92-Zn pair, so nothing new is asserted; the
+  # attack coordinate has to stay on because freeing Asp92 is measured to let
+  # the hydroxide take the vacated face and open O01-C4x (3.48 -> 3.69).
+  asppull:
+    stage: scan
+    inputs:
+      pdb_file: md_eq6_results/NVTtrajectory_lastframe.pdb
+      atoms: [B:1:ZN, A:92:CG]
+      start: 3.72
+      end: 5.15
+      points: 15
+      opt_maxiter: 300
+      extra_qm_residues: {A: [93]}
+      resume: true
+      constraints:
+        - [C:2:O01, C:1:C4x, 3.47]
+        - [B:1:ZN, C:1:O2x, 2.60]
+        - [B:1:ZN, C:1:O1x, 3.82]
+        - [A:226:NZ, A:92:OD2, 2.79]
+      monitor:
+        - [B:1:ZN, A:92:OD1]
+        - [B:1:ZN, A:92:OD2]
+        - [A:226:NZ, A:92:OD1]
+        - [A:226:NZ, A:92:OD2]
+        - [A:226:NZ, B:1:ZN]
+        - [B:1:ZN, C:2:O01]
+        - [C:2:O01, C:1:C4x]
+        - [B:1:ZN, A:186:OG]
+
   aspcg:
     stage: scan
     inputs:

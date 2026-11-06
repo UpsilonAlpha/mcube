@@ -7922,6 +7922,73 @@ the single most expensive thing this project has done. **Taking 6DQH's distances
 as restraint targets while keeping our own equilibrated system is the correct
 reading of D216, and it is what the user proposed.**
 
+**D219 - The two-arm comparison replicates, and the reason is a result in itself:
+Asp92 sits the same distance from Zn1 whether a Zn2 holds it or the lysine does.
+But our own structure cannot be the mutant arm's starting geometry - S214D is an
+active-site mutation, 4.1 A from both metals.** (2026-11-06)
+
+Asked whether the Asp92 pull can be replicated for dmCSR so the two arms stay
+comparable. Measured across every metal-bound structure of this enzyme:
+
+| structure | what holds Asp92 | Zn1-CG | Zn1-OD1 | Zn1-Zn2 |
+| --- | --- | --- | --- | --- |
+| `ours2` dmCSR-1 S214D, 1.47 A | Zn2 at 2.06 | 4.72 | 4.12 | 3.23 |
+| 6NC5 dm (Q121H/K254H), 2.07 A | Zn2 at 1.95 | 4.66 | 4.22 | 3.43 |
+| 6DR8 tm, 1.48 A | Zn2 at 2.22 (occ 0.45) | 5.48 | 4.61 | 4.46 |
+| **6DQH WT lysine, 1.10 A** | **Lys226 at 2.79** | **5.15** | **4.28** | - |
+
+**Zn1-Asp92 is 4.12-4.61 A at OD1 and 4.66-5.48 at CG in all four, and 6DQH sits
+inside that range.** So the lysine does not merely keep the carboxylate off the
+metal - **it holds it where a Zn2 would hold it**, to within 0.2 A at OD1. That is
+a sharper statement of the thesis than "restrains the bridging aspartate", it is
+measured in four independent crystals of three different constructs, and it is
+what makes the comparison valid: both arms are restrained at effectively the same
+Zn1-Asp92 distance, reached by different means.
+
+**What is symmetric between the arms, which is what the user's "same
+preprocessing" requires:** restraints taken from each system's own crystal
+distances; the same MD length; the same 300 ps xTB QM/MM in 50 ps chunks; the
+same def2-SVP optimisation and def2-TZVP single point; the same QM-region residue
+indices. **What differs, necessarily:** the mutant has two metals, so a different
+QM charge and a bridging hydroxide, and its Asp92 is a genuine Zn2 ligand at
+~2.0 A, which `preprocess` will detect and restrain there without any pull. **The
+WT arm's pull is a repair of an equilibration artefact, not a physics step** -
+`eq6` drifted to Zn-CG 3.72 against the crystal's 5.15 - so applying it to one
+arm and not the other does not break the symmetry that matters.
+
+**S214D disqualifies our own structure as the mutant arm's starting geometry.**
+The construct's name gives it away only once the numbering is resolved: our file
+is BBL **-42**, so S214D is file residue **172**, and the motif reads
+ALA-ASP-**ASP**-LEU-ALA where 6DN4, 6DQH and 6NC5 all read
+ALA-ASP-**SER**-LEU-ALA. In BBL numbering that serine is **Ser214**, which is
+**Ser186 in project numbering** - and `eq6`'s own metal sphere has Ser186 OG at
+**3.81 A from the zinc**. So this is not a remote crystallisation aid:
+
+    6DQH   Ser214 OG -> Zn1 5.21        (Asp120 8.4, HOH526 6.35)
+    6NC5   Ser185 OG -> Zn1 4.78, Zn2 5.87
+    ours2  Asp172 OD2 -> Zn1 4.13, Zn2 4.06     <- the mutation, moved ~1 A IN
+
+The engineered aspartate puts **a second anionic group 4.1 A from both metals**,
+roughly equidistant, where the wild type has a neutral hydroxyl 4.8-5.2 A out.
+It does not touch Asp92 (9.1 A away), so it is not a direct confound on the
+carboxylate - but it changes the site's total charge and the metals'
+electrostatic environment, which is precisely the variable this thesis is about.
+It is also the likely reason our crystals bind Zn2 well.
+
+**So: the mutant arm starts from 6NC5** - the plain double mutant, both zincs at
+full occupancy, Ser186 intact, Zn1-Zn2 3.43 - with `remove_residues:
+[A:303:ZN, A:304:ZN, A:305:ZN, A:306:ZN]` as D216 prescribed. **Our structure
+becomes the validation instead, and it is good at it:** an independent crystal
+form at higher resolution reproducing 6NC5's Asp-Zn2 at 2.06-2.13 against 1.95
+and Zn1-CG at 4.72 against 4.66. Two crystals, two space groups, the same
+geometry.
+
+**One question for the user, of the same kind as the construct question on
+premise 8 and needing no kinetic values:** are the withheld mutant kinetics
+measured on the plain double mutant or on dmCSR-1 **S214D**? If the latter, the
+simulated construct and the measured one differ by an active-site mutation, and
+the mutant arm should carry S186D.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
