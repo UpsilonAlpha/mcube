@@ -55,6 +55,9 @@ measures the carboxylate's position in a site whose third Zn1 ligand is not the
 wild-type one. No deposit is wild type at all three positions *and* metal-bound,
 and [[wild-type-csr1-binds-no-zinc-in-any-crystal]] says why none can be.
 
+## Supported by
+- [[asp92-is-rigid-in-the-crystal-and-the-lysine-is-the-mobile-partner]]
+
 ## Supports
 - [[thesis-lys226-restrains-asp92-in-place-of-zn2]]
 - [[lys226-salt-bridges-asp92-in-wild-type-crystals]]

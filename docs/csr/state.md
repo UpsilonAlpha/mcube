@@ -19,6 +19,17 @@ Last updated: 2026-11-06.
 
 ## 1. Settled facts
 
+**Our own structure, added to the record 2026-11-06 (D217).** `dmCSR-1 S214D`,
+**1.27 Å** (one Zn) and **1.47 Å** (two Zn), at
+`University/Undergrad/Honours/SCIE4481/bioinformatic_data/MM/Structure/CSR/dmCSR_mutant_{1,2}metal_refine_*.pdb`,
+numbering BBL **−42**. **The single zinc sits at Zn2** (Asp78 OD2 2.13, His79
+2.12, His212 2.18 — the DHH set), and **Zn1 is only 0.53 occupied** even in the
+two-metal form; the manuscript attributes Zn1 binding to the presence of
+substrate. It is the double mutant, so **it contains no Lys226 and is not a
+wild-type reference** — but it confirms in-house that an available Zn2 ligand set
+takes the carboxylate at ~2.1 Å. Accession still pending.
+
+
 These are not to be re-derived. Each gives the entry that settled it and, where
 one exists, the entry that wrongly contradicted it later.
 

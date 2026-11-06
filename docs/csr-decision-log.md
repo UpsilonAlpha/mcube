@@ -7753,6 +7753,85 @@ four ACT crystallisation additives, and in 6DQH the phosphate oxygen sitting on
 Zn1 at 2.32 A, in the position the substrate carbonyl has to occupy.
 
 
+**D217 - Our own solved structure was never in the record, and the B-factor
+check the user asked for changes what the no-equilibrium claim is allowed to say:
+Asp92 is rigid, the lysine is the mobile partner.** (2026-11-06)
+
+**Our structure.** `CSR_Manuscript-v1_old_gary_comments.docx` names it and the
+coordinates have been sitting in the Honours tree all along:
+`University/Undergrad/Honours/SCIE4481/bioinformatic_data/MM/Structure/CSR/dmCSR_mutant_1metal_refine_12.pdb`
+and `dmCSR_mutant_2metal_refine_16.pdb`. **dmCSR-1 S214D, 1.27 A (one Zn) and
+1.47 A (two Zn)**, P2(1)2(1)2(1), Rwork/Rfree 0.163/0.179 and 0.188/0.214. PDB
+accession still "XXXX" in the manuscript. Numbering is BBL **-42** (Asp78 = Asp120,
+His79 = Gln121H, His212 = Lys254H, His74 = His116, His150 = His192).
+
+    ours1 (1.27 A)  ZN B1 occ 0.70  -> HOH2 2.07, His212 NE2 2.12, Asp78 OD2 2.13,
+                                       HOH1 2.16, His79 NE2 2.22, HOH61 2.38
+    ours2 (1.47 A)  ZN B1 occ 1.00  -> HOH1 2.03, Asp78 OD2 2.06, His79 NE2 2.11,
+                                       His212 NE2 2.18, HOH2 2.43, HOH157 2.51
+                    ZN B2 occ 0.53  -> HOH2 1.98, HOH1 2.01, His150 NE2 2.05,
+                                       His74 NE2 2.23, HOH185 2.29
+
+**The single zinc is at Zn2, not Zn1**, coordinated by the DHH set, which is what
+the manuscript says: *"Multiple datasets ... all revealed the presence of only a
+single zinc in the active site ... located in the Zn2 site coordinated by an
+aspartate and two histidines (DHH site). The second metal site was only occupied
+in a single dataset obtained for enzyme co-crystallised with ampicillin ... This
+points to a weaker binding at the Zn1 site, and a possible mechanism where
+binding of metal at this site is facilitated by the presence of substrate."*
+Zn1 is at **occupancy 0.53** even there, and Zn2 at 0.70 in the one-metal form.
+
+**What it does and does not settle.** It is the double mutant, so position 254 is
+a histidine and **there is no lysine in it**: it cannot speak to the
+Lys226-Asp92 question, and it is not a wild-type reference. What it does give is
+independent, high-resolution, in-house confirmation that **when a Zn2 ligand set
+exists the aspartate goes to Zn2 at 2.06-2.13 A and Zn1 is the weak site** - the
+mirror image of the wild type, and a second reason the assembled resting state
+(one zinc, at Zn1, with the lysine) has never been observed in any crystal,
+ours included. It also supplies a substrate-dependent metal-binding mechanism we
+had not recorded, which is a better explanation of the apo wild-type crystals
+than crystallisation conditions.
+
+**The B-factor check, which the user demanded before the no-equilibrium claim
+stands. It stands for the aspartate and not for the pair.**
+
+    6DQH (1.10 A; protein mean B 13.2, median 11.3, side-chain mean 14.4)
+      Asp120   CB 9.6  CG 9.9  OD1 10.0  OD2 11.9      <- BELOW average, no altloc
+      Lys260   CB 10.6 CG 12.5 CD 12.9 CE 13.6 NZ 14.6 <- rising along the chain
+      His118   6.9-9.4            HOH526  14.2
+    6DN4 (1.99 A; mean 16.2, median 13.8, side-chain 17.4)
+      Asp120   CB 14.2 CG 15.4 OD1 16.4 OD2 16.3       <- about average
+      Lys254   CB 13.9 CG 17.0 CD 19.1 CE 22.1 NZ 24.8 <- 1.5x the mean at the tip
+    ours1 (1.27 A; mean 13.2, median 11.4, side-chain 15.3)
+      Asp78    CB 10.9 CG 10.7 OD1 9.9 OD2 11.5        <- below average, as a Zn2 ligand
+
+**Asp120 in 6DQH is one of the better-ordered side chains in the structure** -
+every atom under the protein median, full occupancy, and not among the 12
+residues that carry an alternate conformer. At 1.10 A a carboxylate with B ~10
+is a single conformer, not a two-state average. So the **4.28 A is a real single
+position**, and the user's concern does not apply to the atom the claim is about.
+
+**But the lysine is the mobile partner, and that is a real qualification.** NZ's
+B climbs monotonically out the side chain and ends **above** the protein mean in
+6DQH (14.6 vs 13.2) and at **1.5x** the mean in apo 6DN4 (24.8 vs 16.2), with CE
+22.1 - the signature of a lysine whose tip is sampling. So the honest statement
+is not "the pair is rigid" but **"the carboxylate is pinned and the ammonium
+reaches it"**. The direction of the thesis's verb is therefore weaker than
+written: the crystal shows Asp92 held in a well-ordered position with the lysine
+nearby and somewhat mobile, not a lysine clamping a carboxylate. In the apo
+structures, where NZ B is 25, the salt bridge is much thinner evidence than its
+2.83-2.99 A distance suggests - which is a second reason 6DQH rather than 6DN4
+is the structure to take numbers from.
+
+**No equilibrium between Zn1 and the lysine is still the right reading of the
+crystal**, on the aspartate's own order parameters rather than on the single
+distance: a carboxylate exchanging between a metal at 2.1 A and an ammonium at
+2.8 A would show either two conformers or elevated B, and at 1.10 A it shows
+neither. What the crystal cannot rule out is an equilibrium that is fast and
+fully shifted - a minor state below the density threshold - which is a
+free-energy question and is what the PMF measures
+([[question-is-asp92-in-equilibrium-between-lys226-and-zn1]]).
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

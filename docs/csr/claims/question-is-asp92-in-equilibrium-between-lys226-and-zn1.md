@@ -15,7 +15,13 @@ rather than held by either.
 rather than a resolution one: the comparison needs both partners present at once,
 and only 6DQH has them. There the carboxylate is **2.79 A from the lysine and
 4.28 A from the metal** ([[zinc-bound-crystal-holds-asp92-off-the-metal]]) - one
-state, at 1.10 A, not a split population. But 6DQH carries an engineered
+state, at 1.10 A, not a split population - and that is now checked on the
+carboxylate's own order parameters rather than on the distance alone:
+**B-factors below the protein median, occupancy 1.00, no alternate conformer**
+([[asp92-is-rigid-in-the-crystal-and-the-lysine-is-the-mobile-partner]]). An
+exchanging carboxylate would show two conformers or raised B. What the crystal
+still cannot exclude is a minor state below the density threshold, which is
+exactly a free-energy question. But 6DQH carries an engineered
 histidine at the Arg90 position, and
 [[wild-type-csr1-binds-no-zinc-in-any-crystal]] shows no wild-type deposit holds
 a metal at all, so there is no crystallographic route to the wild-type answer.
