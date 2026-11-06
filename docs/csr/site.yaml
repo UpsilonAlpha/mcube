@@ -1922,7 +1922,9 @@ sections:
         - [B:1:ZN, A:92:CG, 4.45, 50.0]   # stage 1: halfway out, gentle k
       nvt_time: 1000
       nvt_timestep: 0.002
-      traj_frequency: 500
+      traj_frequency: 5000   # D221: scratch is at 294/300 GB. The deliverable
+                             # is the last frame, not the trajectory; 500 would
+                             # write ~1.2 GB per ns, twice over (raw + imaged).
       platform: CUDA
       properties:
         Precision: mixed
@@ -1941,7 +1943,9 @@ sections:
         - [B:1:ZN, A:92:CG, 5.15, 50.0]   # 6DQH's distance
       nvt_time: 2000
       nvt_timestep: 0.002
-      traj_frequency: 500
+      traj_frequency: 5000   # D221: scratch is at 294/300 GB. The deliverable
+                             # is the last frame, not the trajectory; 500 would
+                             # write ~1.2 GB per ns, twice over (raw + imaged).
       platform: CUDA
       properties:
         Precision: mixed
