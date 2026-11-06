@@ -8148,6 +8148,76 @@ sent one at a time all landed. `BUNYA_BROWSER_SHELL.md` warns that batches are
 refused more often; this was worse than a refusal, since it reported success for
 every action. One command per call on this node.
 
+**D222 - `asppull` stage 1 is DONE in 6.6 minutes with the pose fully intact,
+and it moved Asp92 by 0.10 A of the 0.73 it was asked for. The reason is the
+thesis turning up in a restrained MD: the carboxylate is tethered to Lys226, and
+the lysine did not move.** (2026-11-06)
+
+Job 32365427, `md_asppull`, `[DONE] md_asppull` at 16:53 AEST, **ASH total
+walltime 396.2 s**. 1 ns NVT at 2 fs on one H100, `traj_frequency` 5000.
+
+**Every restraint that was meant to hold, held** - which was the thing at risk,
+because D154 measured the hydroxide taking the vacated face and the attack
+coordinate opening when Asp92 leaves:
+
+| pair | target | last frame |
+| --- | --- | --- |
+| `C:2:O01 - C:1:C4x` | 3.47 | **3.45** |
+| `B:1:ZN - C:1:O2x` | 2.60 | **2.55** |
+| `B:1:ZN - C:1:O1x` | 3.82 | **3.79** |
+| `A:226:NZ - A:92:OD2` | 2.79 | **2.79** |
+| `B:1:ZN - A:92:CG` | **4.45** | **3.82** |
+
+So the poise survived the pull. **The pull did not happen.** Zn-CG went
+3.72 -> 3.82: 0.10 A of a 0.73 A displacement, with the restraint 0.63 A from
+its target at the end of 1 ns.
+
+**Why, and it is informative rather than a bug.** The full geometry:
+
+    Zn-CG   3.72 -> 3.82      Zn-OD1  3.87 -> 4.01    Zn-OD2  2.81 -> 2.86
+    Zn-NZ   3.94 -> 4.03      NZ-OD1  4.86 -> 4.93    NZ-OD2  2.79 -> 2.79
+    Zn-Ser186 OG  3.81 -> 4.01
+    sphere: HOH3171 1.96, O01 2.03, His164 2.13, His88 2.19, mer O2x 2.55, OD2 2.86
+
+**The lysine never moved** (Zn-NZ 3.94 -> 4.03), and the carboxylate is tied to
+it by a 500 kcal/mol/A^2 salt-bridge restraint that held at exactly 2.79. A
+k = 50 pull on Zn-CG was therefore pulling a carboxylate that is anchored, at ten
+times the force constant, to a residue the rest of the protein holds in place.
+The 500 wins, as it must.
+
+**That is the mechanism the thesis asserts, demonstrated by accident: Asp92
+cannot be moved away from Zn1 without moving Lys226, because the lysine is what
+holds it.** It is weak evidence - a restraint fight is not a free energy - but it
+is the right sign, and it came out of a run set up for another purpose.
+
+**The fix, and it is faithful to the crystal rather than a force-constant hack.**
+6DQH gives an internally consistent set for the whole pair: **Zn-CG 5.15,
+Zn-NZ 5.27, NZ-OD2 2.79.** Our structure has 3.82 / 4.03 / 2.79 - the salt bridge
+is already at the crystal value and the *pair* is 1.3 A too close to the metal.
+So stage 2 restrains all three and the pair travels as a unit. Raising k on
+Zn-CG instead would have strained the structure to win a tug of war against a
+restraint we put there ourselves.
+
+Lys226 NZ at 3.94 A from the metal is outside the 3.0 A detection cutoff, so it
+was never auto-restrained - but it is squarely "anything affected by the metal"
+under the standing rule (D174, D186), and 5.27 A is its measured crystal
+distance. Still **no OD1/OD2-to-metal restraint**, so the carboxylate's rotation
+stays unasserted (rule 6).
+
+One incidental: **Ser186 OG moved 3.81 -> 4.01 A**, which matters because
+S214D - our own crystal's third mutation - is this residue (D219). Its position
+is not fixed by anything in our setup.
+
+**Stage 2's submission is UNCONFIRMED.** `asppull2.sh` was committed (`e732e1e`)
+and the launcher was run, but the code-server bridge stopped answering
+immediately afterwards - every `vscode-remote-resource` fetch returning
+`TypeError: Failed to fetch` while `location.href` still showed the code-server
+URL and the terminal was still in the DOM. So it is not known whether the repo
+pull landed, whether `sections.py` accepted `md_asppull2`, or whether anything
+was submitted. **Check `squeue` and `config.yaml` before re-running it**, because
+a second submission of the same section would be two jobs writing the same
+output directory. Stage 1's results are on `/scratch` and unaffected.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
