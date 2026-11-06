@@ -1941,6 +1941,14 @@ sections:
         - [B:1:ZN, C:1:O1x, 3.82, 500.0]
         - [A:226:NZ, A:92:OD2, 2.79, 500.0]
         - [B:1:ZN, A:92:CG, 5.15, 50.0]   # 6DQH's distance
+        - [B:1:ZN, A:226:NZ, 5.27, 50.0]  # D222: stage 1 moved Zn-CG only 0.10 A
+                                          # of 0.73. The carboxylate is tethered
+                                          # to NZ at k=500 and the lysine never
+                                          # moved (Zn-NZ 3.94 -> 4.03), so the
+                                          # salt bridge anchored it. 6DQH has
+                                          # Zn-NZ 5.27: the PAIR has to travel.
+                                          # Still no OD1/OD2-to-metal restraint,
+                                          # so no rotation is asserted (rule 6).
       nvt_time: 2000
       nvt_timestep: 0.002
       traj_frequency: 5000   # D221: scratch is at 294/300 GB. The deliverable
