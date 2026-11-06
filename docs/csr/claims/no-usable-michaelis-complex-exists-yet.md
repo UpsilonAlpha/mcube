@@ -1,7 +1,7 @@
 ---
 type: claim
 status: supported
-entries: [D191, D195, D197, D198, D200, D201, D207]
+entries: [D191, D195, D197, D198, D200, D201, D207, D214]
 checked: [D191, D195, D197, D198, D200, D201]
 ---
 
@@ -26,6 +26,25 @@ The record, compressed:
   level (10% against 97.9%), Asn225 leaves, and the carbonyl coordinates
   unrestrained - but Asp92 bound the metal at 2.00 A in 96% of frames, so the
   sphere is not the designed one (D200 as corrected by D201).
+
+- **`eq6`, 10 ns, 2026-11-06 (D214):** the first build to pass the
+  equilibration gate. Every configured restraint held to within 0.03 A, Zn1 is
+  **four-coordinate at 2.50 A** (two histidines, hydroxide, water) with the
+  carbonyl just outside at 2.57, and the Lys226-Asp92 salt bridge is held at
+  2.79 A for the first time in the project. **What it does not settle:** Asp92
+  was restrained at both ends, so the run is a valid starting structure rather
+  than evidence about the carboxylate; and the underlying *pose* is still the
+  open question below.
+
+**The claim is now narrower than its heading.** An equilibrated complex exists.
+What does not exist is agreement on the pose it was equilibrated from: the
+docked complex puts the carbonyl at 5.43 A with one attack restraint, while
+7UHI/7UHJ - the only experimental B3 Michaelis complexes - put theirs at
+2.53/2.63 A (D123), and choosing between them is the blocking question (D89).
+Until that is settled, "usable" is an assessment of our own structures by our own
+criteria, which is why this node is held on `ours` evidence and flagged by the
+validator's check 1. That flag is correct and is not resolvable by more
+computation of the same kind.
 
 **Two structural lessons worth keeping.** Testing properties one at a time can
 pass a composition that would be rejected if asked directly (D197). And an

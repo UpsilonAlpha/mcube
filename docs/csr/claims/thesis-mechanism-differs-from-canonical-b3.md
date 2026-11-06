@@ -1,13 +1,22 @@
 ---
-type: thesis
+type: claim
 status: open
 entries: [D22, D40, D107, D124, D178, D207]
 ---
 
 # CSR-1's wild-type mechanism is different from the canonical B3 metallo-beta-lactamase mechanism
 
-The root of this map. Every other node exists to support, refute, or be
-required by this claim.
+**No longer the root of the map.** On 2026-11-06 the project sharpened its
+argument to a specific mechanism - that Lys226 restrains Asp92 in place of the
+missing Zn2 - and that is now the thesis
+([[thesis-lys226-restrains-asp92-in-place-of-zn2]]). This node is kept as a
+claim because it is still held and is still what the broader structural evidence
+supports: it is what the new thesis *entails*, not what it replaces. Its own
+premises below remain the premises of the argument.
+
+Nothing here is retracted. The change is that "different from canonical B3" is a
+negative claim and cannot be the content of a paper on its own; the positive
+claim about the lysine can.
 
 **Status is `open`, deliberately.** No reaction coordinate has ever been
 computed in this project ([[no-reaction-coordinate-has-ever-been-computed]]),
@@ -37,6 +46,7 @@ and is deliberately unread.
 - [[the-modelled-non-truncated-form-is-catalytically-relevant]]
 
 ## Supported by
+- [[thesis-lys226-restrains-asp92-in-place-of-zn2]]
 - [[rqk-cations-replace-zn2-electrostatically]]
 - [[nucleophile-is-zn-bound-water-with-neutral-lys226]]
 - [[mono-zinc-mbl-precedents-are-zn2-enzymes]]

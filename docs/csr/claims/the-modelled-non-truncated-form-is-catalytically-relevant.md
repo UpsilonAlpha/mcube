@@ -1,6 +1,6 @@
 ---
 type: claim
-status: unsupported
+status: void
 entries: [D22, D40, D41]
 ---
 
@@ -29,3 +29,14 @@ this one should be quoted without it.
 
 ## Supports
 - [[thesis-mechanism-differs-from-canonical-b3]]
+
+## Superseded by
+- [[the-truncated-form-is-the-one-modelled]]
+
+**Superseded 2026-11-06.** This node was the thesis's one unsupported premise
+(check 3) for as long as the map has existed. The user's decision resolves it by
+removing the premise rather than supporting it: the **truncated** construct is
+what will be modelled, so no claim about the non-truncated form's catalytic
+relevance is needed. Kept for the record because it shows the map doing its one
+job - an assertion nobody had noticed making, surfaced by listing what the
+thesis requires.

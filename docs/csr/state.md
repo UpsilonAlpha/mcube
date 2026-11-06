@@ -2,7 +2,7 @@
 
 **This file is the single source of truth for what is true now.** The decision
 log (`../csr-decision-log.md`) is append-only history: it records how each
-conclusion was reached, including the ones later overturned, and it is 209
+conclusion was reached, including the ones later overturned, and it is 210
 entries long. Reading it end to end to find the current value of something is
 how the same facts get rediscovered, and how a contradiction can sit unnoticed
 for a week (see *Contradictions caught late* below).
@@ -593,7 +593,7 @@ Items 1–3 gate everything below them. **Status is maintained here.**
 | 4 | Nucleophile identity, origin, protonation state | not started — blocked on 1–3. D48 and D107 disagree **in sign**. One datum arrived anyway: **Lys226 NZ–O01 at 2.72 Å mean in 100% of 5000 frames** (D191) |
 | 5 | PROPKA/H++ and the His164 HID/HIE sensitivity check | **blocked on one pip install**: neither `propka` nor `pdb2pqr` is in the ASH env, both are pure Python, so `pip install propka pdb2pqr` is the whole of it — the user's env, so their call (D185). Open since **D7** |
 | 6 | scan → NEB → TS → frequencies → IRC, ≥3 snapshots | not started — the paper's actual content |
-| 7 | Cluster-model DFT-vs-GFN2 benchmark, Imhof-style | **scoped (D187)**: 37 atoms of site (Zn, two 4-methylimidazoles, acetate, hydroxide, water), net 0, plus a ~15-atom substrate fragment giving −1. The two `sp` additions are **built** (D188): `cluster: true` and `sp_engine: xtb|dft`. Still needs the cluster PDB and reading the ligand's connectivity from `mer_crystal.pdb`'s CONECT records rather than guessing it. Open since **D9** |
+| 7 | Cluster-model DFT-vs-GFN2 benchmark, Imhof-style | **the benchmark has been RUN and the result is recorded at last (D215).** Two 51-atom clusters, O1x on vs off the metal: GFN2 gives -14.67 kcal/mol, wb97x-v/def2-svp gives -8.75. Same sign, **GFN2 exaggerates by 5.9 kcal/mol (x1.68)**. One calibration point, not an error bar; D198's reading of these same numbers as "GFN2 does not over-coordinate the zinc" is listed in retractions.md as stronger than its evidence. Earlier scoping, kept: 37 atoms of site (Zn, two 4-methylimidazoles, acetate, hydroxide, water), net 0, plus a ~15-atom substrate fragment giving −1. The two `sp` additions are **built** (D188): `cluster: true` and `sp_engine: xtb|dft`. Still needs the cluster PDB and reading the ligand's connectivity from `mer_crystal.pdb`'s CONECT records rather than guessing it. Open since **D9** |
 | 8 | Protonation of the leaving nitrogen | not started |
 | 9 | Per-residue roles reaching R, Q and K | **decided and applied (D190)**: Arg90, Lys226, Arg229 and Gln93 **all in MM**, so charge deletion decomposes the set as one. QM charge 0 on both arms, set explicitly on all nine QM/MM-family sections. Deletions must still be run at **both ends** of the coordinate |
 | 10 | Di-zinc comparison at identical level | not started — scope decision |

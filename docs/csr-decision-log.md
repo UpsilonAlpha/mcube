@@ -7506,6 +7506,120 @@ between `aspcg` and `asp`. That is a config-driven feature mcube should have
 (the user's standing rule that users should not rewrite code per protein), and
 it is the only manual step in the chain.
 
+**D215 - The thesis is now a mechanism, not a contrast, and the argument map was
+rebuilt around it. Twelve new nodes; four existing ones moved, every one of them
+found by the validator rather than by reading. Findings 11 -> 2, and both
+survivors are real gaps.** (2026-11-06)
+
+The user's argument, in their words: *"Lys replaces Zn2 in the CSR-1 WT
+mechanism by restraining the bridging aspartate, allowing for MBL activity."*
+This replaces *"CSR-1's wild-type mechanism is different from the canonical B3
+mechanism"* as the map's thesis. The old statement is kept as a claim, not
+voided: the new thesis entails it. The reason for the change is that a negative
+claim has no premises to list, and listing premises is the only thing an
+argument map does.
+
+**New nodes (12).** `thesis-lys226-restrains-asp92-in-place-of-zn2`;
+`lys226-salt-bridges-asp92-in-wild-type-crystals` (2.99 A in 6DN4, 2.83 in 6DQ2);
+`engineered-zn2-holds-asp92-at-195-angstrom`; `lys226-is-cationic-in-the-resting-enzyme`;
+`question-what-is-lys226-pka`; `asp92-on-zn1-interferes-with-hydrolysis`;
+`a-fifth-zinc-donor-closes-the-attack-angle`; `asp120-mutants-lose-activity-in-b1-and-b3`;
+`question-does-restraining-asp92-lower-the-barrier`;
+`the-truncated-form-is-the-one-modelled`; `spr1-activity-required-n-terminal-truncation`;
+`gfn2-overstates-the-metal-coordination-preference`.
+
+**6NC5 measured properly for the first time: it holds SIX zincs, and four are
+crystallisation artefacts.**
+
+    ZN301  Asp91 OD2 1.95 | His92 NE2 2.01 | His225 NE2 2.04 | HOH493 2.08
+    ZN302  His87 NE2 2.22 | His163 NE2 2.09 | HOH485 1.90 | HOH493 2.14
+    ZN303  HOH485 1.88 | HOH504 2.13 | HOH516 1.96          <- no protein ligand
+    ZN304  Glu115 OE2 1.87 | PO4 1.90
+    ZN305  His111 ND1 2.36 | Glu141 OE2 1.91 | PO4 1.90
+    ZN306  Glu123 OE1/OE2 2.36/2.50 | Asp129 OD2 2.03
+
+ZN301 is the engineered Zn2 with the canonical Asp-His-His set the two mutations
+restore; ZN302 is Zn1 with two histidines because Arg90 holds the third position;
+**Zn1-Zn2 is 3.43 A bridged by HOH493** at 2.14/2.08 - canonical B3 mu-hydroxide
+geometry. So the thesis's central contrast sits in one deposit: the carboxylate a
+lysine holds at 2.8-3.0 A in the wild type is held at **1.95 A by a metal** once
+the metal is engineered back. Two preprocessing consequences: the four extra
+zincs must be dropped explicitly, and **ZN303 shares Zn1's terminal water**
+(HOH485 at 1.88/1.90 from the two metals), so removing ZN303 leaves that water
+unanchored - and that water is where the nucleophile goes.
+
+**The GFN2-vs-DFT benchmark (plan item 7) had already been run and was never
+recorded.** Two 51-atom clusters differing only in whether the substrate's O1x
+is on the metal, from `CSR_mich/config.yaml`:
+
+    GFN2-xTB           off - on = -14.67 kcal/mol
+    wb97x-v/def2-svp   off - on =  -8.75 kcal/mol
+
+Same sign, **GFN2 exaggerates by 5.9 kcal/mol, a factor of 1.68**, on exactly
+the metal-coordination question the thesis turns on. D198 read these same
+numbers as "GFN2 does not over-coordinate the zinc"; the retractions index
+already lists that as stronger than its evidence, and the opposite reading is
+the defensible one. It also means `scan_znasp`'s +8.46 kcal/mol for pulling
+Asp92 from 2.05 to 3.05 A should be expected to be too steep.
+
+**Four existing nodes moved, each flagged by `check.py` and not by anyone
+reading.**
+
+- `asp92-is-a-zn1-ligand-in-our-models` was `supported` while its own body said
+  the claim is "wrong by 2 A or more" against the crystals. **Voided**,
+  superseded by the measurement. Its prescription - "do not restrain it, and let
+  the run say where it goes" - is also superseded by the user's standing rule
+  (D174, D186): Asp92 is affected by the metal and is restrained at its
+  structural distance.
+- `cpha-route-is-closed` **demoted to `open`**. D201 closed it on "Asp92 is a
+  zinc ligand in every state this model reaches", measured false. The route is
+  open, not reopened: nothing is asserted in its place.
+- `mono-zinc-mbl-precedents-are-zn2-enzymes` **demoted to `open`** - its GOB-18
+  premise is a literature description its own body says the deposit does not
+  evidence.
+- `a-fifth-zinc-donor-closes-the-attack-angle` was written leaning on D198's
+  "the site keeps a fifth donor whatever we do", which **D200 overturns**
+  (Asn225 leaves: 2.19 -> 4.18 A closest, 5.86 mean). Rewritten so the heading
+  is the measurement - 39/56/68 deg against a 95-120 window - and the
+  generalisation is marked retracted. This weakens
+  `asp92-on-zn1-interferes-with-hydrolysis`, which is the thesis's mechanistic
+  half, and it is now `open` for three stated reasons rather than one.
+
+**The thesis's one unsupported premise is gone, by removal rather than support.**
+`the-modelled-non-truncated-form-is-catalytically-relevant` had been check 3's
+only finding since the map was built. The user's decision - truncation bears on
+expression, use the truncated sequence - replaces it with
+`the-truncated-form-is-the-one-modelled`, whose real requirement is weaker and is
+met: **the construct modelled must be the construct the withheld kinetics were
+measured on.** That needs no kinetic values to settle, only a construct name,
+and it is the one question outstanding on that premise.
+
+**Two findings remain and both are results, not defects.**
+`question-what-is-lys226-pka` is a premise of the thesis with nothing behind it:
+an uncharged lysine cannot restrain a carboxylate electrostatically, the project
+has previously modelled this residue **neutral**, and the QM/MM lineage that
+deprotonated it (D204) is the one where Asp92 then collapsed onto the zinc. If
+the resting state is deprotonated, the thesis inverts. PROPKA and pdb2pqr are
+still not in the ASH env (plan item 5, open since D7). And
+`no-usable-michaelis-complex-exists-yet` is held on `ours` evidence by
+construction - whether our structures are usable is our own assessment - but it
+was narrowed: `eq6` is an equilibrated complex, so what is missing is agreement
+on the **pose**, 5.43 A docked against 7UHI/7UHJ's 2.53/2.63 (D89, D123).
+
+**Literature read for the aspartate's role, which cuts both ways.** L1 (B3,
+Garrity 2004): Asp120 mutants lose **10- to 1000-fold in kcat**. IMP-1 (B1,
+Yamaguchi 2005): **10^2-10^4-fold with both zincs still bound**, and stopped-flow
+pH work argues the residue is neither the thing lowering the bridging water's
+pKa nor the proton donor. BcII (B1, Llarrull 2007): the residue acts mainly as a
+strong Zn2 ligand, positioning that ion. The mainstream explanation is therefore
+that Asp120 holds **Zn2** - the ion CSR-1 does not have - which is the premise
+behind caring what holds the carboxylate instead. But IMP-1 keeps both zincs and
+still loses four orders of magnitude, so whatever the residue does past
+positioning a metal is large, and nothing in our argument says a lysine supplies
+it. Recorded as the third way the thesis could be wrong. All three are abstracts
+and secondary summaries so far; the L1 paper needs reading in full before it is
+cited, being the B3 comparator a referee reaches for.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

@@ -1,8 +1,15 @@
 # CSR-1: the argument map
 
-The claims that bear on **one thesis**: *CSR-1's wild-type mechanism is
-different from the canonical B3 metallo-beta-lactamase mechanism*
-([[thesis-mechanism-differs-from-canonical-b3]]).
+The claims that bear on **one thesis**: *Lys226 replaces Zn2 in the CSR-1
+wild-type mechanism by restraining the bridging aspartate, allowing MBL
+activity* ([[thesis-lys226-restrains-asp92-in-place-of-zn2]]).
+
+**The thesis was sharpened on 2026-11-06** from "CSR-1's wild-type mechanism is
+different from the canonical B3 mechanism", which is kept as a claim
+([[thesis-mechanism-differs-from-canonical-b3]]) because the new thesis entails
+it. The old one is a negative claim and cannot be the content of a paper on its
+own; the positive claim about the lysine can, and it names a mechanism, so its
+premises can be listed and checked - which is what the map is for.
 
 One markdown file per node, typed links between them, and a validator that
 checks the result. The format is generic and documented in
@@ -29,7 +36,17 @@ The live example, which the validator finds in one command: D201 closed the
 CphA route for the third time because "Asp92 is a zinc ligand in every state
 this model reaches", and that premise is refuted by measurement
 ([[asp92-is-never-a-zn1-ligand-in-b3-structures]]). See
-[[cpha-route-is-closed]].
+[[cpha-route-is-closed]] - **demoted to `open` on 2026-11-06** as a result of
+exactly that edge.
+
+Three further nodes moved the same day, all found by running the validator
+rather than by reading: [[asp92-is-a-zn1-ligand-in-our-models]] was `supported`
+while its own body said it is "wrong by 2 A or more" against the crystals (now
+`void`); [[mono-zinc-mbl-precedents-are-zn2-enzymes]] was `supported` on a
+GOB-18 premise its own body says the deposit does not evidence (now `open`); and
+[[a-fifth-zinc-donor-closes-the-attack-angle]] had to be rewritten when the
+index showed D200 overturning the Asn225 frame that made its generalisation
+look safe.
 
 ## Four edge types
 

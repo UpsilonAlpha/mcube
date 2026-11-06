@@ -1,6 +1,6 @@
 ---
 type: claim
-status: supported
+status: open
 entries: [D107, D124]
 checked: [D107, D124]
 ---
@@ -24,6 +24,13 @@ differ from anything published: there is no mono-zinc MBL template at the right
 site to copy, and the di-zinc templates are missing the metal that holds the
 part of the substrate nearest the chemistry
 ([[l1-michaelis-complex-uses-both-zincs]]).
+
+**Demoted from `supported` to `open`, 2026-11-06.** Not because the argument is
+weak - it is the strongest in the map - but because its load-bearing GOB-18
+premise is a literature description that the deposit does not evidence, and the
+node said so itself while claiming `supported`. What it needs is the Lisa 2017
+paper read for its solution-state evidence, or the claim narrowed to Sfh-I and
+CphA, which are unaffected.
 
 **One by-product correction to carry:** the claim that GOB-18's single zinc
 sits at Zn2 is not what the deposit shows

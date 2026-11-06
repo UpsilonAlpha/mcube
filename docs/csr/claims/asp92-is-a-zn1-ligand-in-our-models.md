@@ -1,6 +1,7 @@
 ---
 type: claim
-status: supported
+status: void
+checked: [D51, D57, D58, D102, D133, D134, D138, D157, D201, D204]
 entries: [D51, D57, D58, D102, D133, D134, D138, D157, D201, D204]
 ---
 
@@ -35,3 +36,22 @@ is "do not restrain it, and let the run say where it goes".
 ## Refuted by
 - [[asp92-is-never-a-zn1-ligand-in-b3-structures]]
 - [[asp92-is-a-zn2-ligand-in-b3-structures]]
+
+## Superseded by
+- [[asp92-is-never-a-zn1-ligand-in-b3-structures]]
+
+**Voided 2026-11-06.** The status was `supported` while the body said the claim
+is "wrong by 2 A or more" against the crystals - which is the exact move the
+validator's check 2 exists to find, and it sat here through the map's whole
+first week. The conclusion is retracted; the measurement it was drawn from is
+untouched at [[our-models-put-asp92-on-the-zinc]].
+
+Two things have changed since the node was written. The crystals now say
+positively where the carboxylate sits in the wild type - the second shell, held
+by Lys226 ([[lys226-salt-bridges-asp92-in-wild-type-crystals]]) - so there is a
+replacement, not just a refutation. And the body's prescription, "do not restrain
+it, and let the run say where it goes", is **superseded by the user's standing
+rule** (D174, D186, restated 2026-11-05): Asp92 is affected by the metal and is
+to be restrained at its structural distance, the 3.0 A radius being "what is
+affected by the metal" rather than a coordination test. `eq6` was built that way
+(D214).
