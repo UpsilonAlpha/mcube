@@ -8283,6 +8283,93 @@ test rather than inferred after losing work. The earlier eight-action
 pane visible, so there are two independent ways for input to vanish: **send one
 command, then verify by fetching a file, every time.**
 
+**D224 - `asppull3` reproduced 6DQH to within 0.1 A on every Asp92/Lys226
+distance, and OD1 got there with nothing restraining it. The QM/MM leg is
+submitted as job 32384737 with nothing restrained at all. Gate 3 is re-passed.**
+(2026-11-06)
+
+Job 32382372, `md_asppull3`, `[DONE]`, 2 ns NVT.
+
+| pair | eq6 | stage 1 | stage 2 | **stage 3** | 6DQH |
+| --- | --- | --- | --- | --- | --- |
+| Zn-OD2 | 2.81 | 2.86 | 2.95 | **5.05** | 5.14 |
+| Zn-OD1 | 3.87 | 4.01 | 4.09 | **4.19** | **4.28** |
+| Zn-CG | 3.72 | 3.82 | 3.96 | **5.09** | 5.15 |
+| Zn-NZ | 3.94 | 4.03 | 4.85 | **5.26** | 5.27 |
+| O01-C4x | 3.48 | 3.45 | 3.45 | **3.47** | - |
+
+**The result that makes this start earned rather than built: Zn-OD1 is 4.19
+against the crystal's 4.28 and nothing restrained it.** Only OD2 was pulled. So
+the carboxylate adopted the crystal's orientation - OD1 facing the metal, OD2
+facing the lysine - on its own, which is the split 6DQH shows and which eq6 did
+not have. Had OD1 swung in to replace OD2 on the metal, that would have said the
+MM site simply insists on a carboxylate oxygen at ~2 A and the geometry is
+unreachable. It did not.
+
+Sphere at the 2.50 A radius: HOH3095 2.01, O01 2.03, His164 2.15, HOH3171 2.15,
+His88 2.21 - **five donors, because a second bulk water took the space Asp92
+vacated**, as D154 saw the vacancy close. Asp92 is nowhere near it. Not fixed in
+MM, deliberately: bulk water comes and goes and MM cannot decide coordination
+(user, repeatedly), so whether that water stays is QM/MM's answer to give.
+
+**Gate 3 (plan item 3) is re-passed on the right numbers.** D216 had demoted it
+because `eq6` held Asp92 at distances 1.5-2.4 A inside the crystal's. The
+structure now matches 6DQH where 6DQH can be matched, with the attack coordinate
+intact through three successive pulls.
+
+**Three stages for what one should have done, and the reason is worth recording
+because it is a process failure rather than a chemistry one.** Stage 1 pulled
+`Zn-CG` at k=50 while leaving the salt bridge at k=500, and moved 0.10 A of
+0.73; stage 2 added `Zn-NZ` and moved the lysine but not the carboxylate; stage 3
+pulled `Zn-OD2` at k=500 and arrived. **Every one of those failures was
+deducible from a table already in this log before the job ran** - D219 recorded
+Zn-NZ at 3.94 against 5.27, so stage 1 could not work; stage 1's own output
+showed OD1 near its target and OD2 2.2 A out, so the rotation was diagnosable
+before stage 2; and eq6's restraint list, quoted repeatedly, uses 500 for every
+crystal-derived distance, so k=50 was never justified. An arithmetic problem was
+treated as a sequence of experiments. **The rule, to be applied before every
+submission from here: write out every restrained pair as current to target with
+its force constant, check that no restraint opposes another, check that every
+distance differing from its target is actually restrained, and state the
+predicted outcome. A setup whose outcome cannot be predicted is not understood
+well enough to spend the allocation on.** The cost of ignoring this just rose
+from 10 minutes to 20 hours per iteration.
+
+**`aspqm`: the QM/MM leg, job 32384737, `general`, 8 cores, 16 GB, 24 h.**
+`sections.py` accepted it and `config.yaml` holds what was intended -
+`skip_equilibrate: False`, `skip_optimize: True`, `time: 50`, `resume: True`,
+`charge: 2`, QM region `Zn, OH, mer, His88, His164, Asp92, Asn225, Arg90,
+Lys226`. **The launcher prints a warning if `restraints`, `opt_constraints` or
+`constraints` appear in the section, and none fired**, so "nothing is restrained"
+is confirmed from the written config and not only from reading the source.
+
+Why nothing is restrained, checked in `qmmm.py` rather than assumed:
+`bond_constraints` is reached only from the optimiser path and from rigid water,
+so the equilibrate applies no coordination restraints; and the QM region is
+rebuilt from residue names, so D115's stale-index trap - saved indices
+restraining a substrate carbon as the metal - cannot fire on a frame this far
+from the one preprocess ran on.
+
+Charge 2 re-derived rather than inherited (D152): Zn(2+) - OH(-) + meropenem
+zwitterion(0) - Asp92(-) = 0 for the michaelis region, + Arg90 + Lys226 = +2.
+
+**The 300 ps goes in six chunks**, by raising `aspqm.inputs.time` to 100, 150,
+200, 250, 300 and re-running `aspqm.sh`; `resume: true` continues rather than
+overwrites. ~19.5 h per chunk at the measured 2.57 ps/h. The chunking is
+insurance, not bookkeeping: the attack coordinate is free as well, so if the
+nucleophile drifts we learn it after one chunk instead of after six.
+
+**What to read off chunk 1.** Does Asp92 stay in the second shell with Lys226
+protonated, or collapse onto the metal? D211's collapse to a 1.93 A mean came
+from a lineage that began already-collapsed with Lys226 **deprotonated**, so this
+is the first clean test. Staying out supports the thesis; coming in means GFN2
+over-coordinates the zinc against a crystal that says otherwise, which is still
+open (D206). Second: does HOH3095 leave, giving the four-coordinate sphere rule 4
+expects for an H-R-H site?
+
+Scratch at submission: **239/300 GB**, down from 294 - 61 GB free, so the quota
+risk that D221 raised has receded.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
