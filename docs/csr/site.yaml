@@ -2058,13 +2058,18 @@ sections:
     stage: md
     inputs:
       pdb_file: md_asppull3_results/NVTtrajectory_lastframe.pdb
-      # No `gentle`, no `skip_npt`: the standard mcube pipeline, which is
-      # minimise -> gentle warm-up -> NPT box equilibration -> NVT production,
-      # exactly as `eq6` and all three pull stages ran it. An earlier draft set
-      # `gentle: false` to avoid re-annealing from 1 K; that is a deviation, and
-      # the two arms must go through identical preprocessing to be comparable,
-      # so it is removed (D227). The restraints hold through the warm-up, so the
-      # pulled Asp92/Lys226 pose is not lost to it.
+      # Standard mcube: minimise -> NPT box equilibration -> NVT production.
+      # `gentle: false` IS the library default (README: "for a system that will
+      # not start otherwise"), and it is set explicitly here only because this
+      # run directory's base `md` inputs override it to true, so a section that
+      # stays silent inherits the warm-up. The warm-up is 0.055 ps of annealing
+      # followed by 40 ps of ordinary 300 K MD *before* NPT: after a successful
+      # minimisation it buys nothing NPT does not, and those 40 ps are long
+      # enough for a force-field artefact to develop in a box that has not been
+      # equilibrated yet - which on this system means coordination drift, the one
+      # thing the run exists to avoid. Starting frame is already 300 K and
+      # equilibrated, so there is nothing to warm up (D227, corrected).
+      gentle: false
       coordination_redetect: false
       restraints:
         - [C:2:O01, C:1:C4x, 3.47]

@@ -6,12 +6,11 @@
 # 2 ns is not (RMSD still climbing, box volume drift 8x eq6's). So this matches
 # the length eq6 demonstrated is sufficient for this system, and no more.
 #
-# The standard mcube pipeline, unmodified: minimise -> gentle warm-up -> NPT box
-# equilibration -> 10 ns NVT production. Nothing here sets `gentle` or
-# `skip_npt`, so both come from the run directory's base `md` inputs
-# (`gentle: true`, `skip_npt: false`) and this run is treated exactly as `eq6`
-# and the three pull stages were. The mutant arm must use the same section shape
-# for the comparison to mean anything (D227).
+# The standard mcube pipeline: minimise -> NPT box equilibration -> 10 ns NVT
+# production. `skip_npt` is left alone (false), so NPT runs. `gentle` is set
+# false explicitly - that is the library default, but THIS run directory's base
+# `md` inputs override it to true, so staying silent would inherit a 40 ps 300 K
+# leg before NPT for no benefit on an already-equilibrated 300 K frame (D227).
 #
 # In the repo rather than typed, because the code-server terminal truncates long
 # single-line commands silently (bunya-working-rules).
@@ -54,9 +53,11 @@ if i.get("skip_nvt"):
     raise SystemExit("skip_nvt is set - the 10 ns must be NVT production")
 if i.get("nvt_time") != 10000:
     raise SystemExit(f"nvt_time is {i.get('nvt_time')} ps, expected 10000 (10 ns NVT)")
-if not i.get("gentle"):
-    raise SystemExit("gentle is off - that is a deviation from the standard pipeline")
-print("    [OK] standard pipeline: warm-up -> NPT -> 10 ns NVT")
+if i.get("gentle"):
+    raise SystemExit("gentle is on - 40 ps of 300 K MD before NPT, for nothing; "
+                     "the base md inputs override the library default, so the "
+                     "section has to say false")
+print("    [OK] minimise -> NPT -> 10 ns NVT, no warm-up")
 for r in i.get("restraints", []):
     print("    restraint", r)
 PY

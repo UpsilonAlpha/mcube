@@ -8587,12 +8587,15 @@ came from searching one working directory and reporting the absence as general
 `CSR_mich/`, and `job-inventory.md` is the index that should have been read
 first.
 
-**D227 - The standard mcube pipeline written down from the source rather than
-from memory: minimise -> gentle warm-up -> NPT box equilibration -> NVT
-production. `relax10`'s `gentle: false` was the only deviation in any CSR
-section and it is removed, so the 10 ns is NVT production reached through NPT,
-and the mutant arm can be run from an identical section. The launcher now
-refuses to submit if the merged config is not that.** (2026-11-06)
+**D227 - The standard mcube pipeline written down from the source: minimise ->
+NPT box equilibration -> NVT production of `nvt_time` ps, with the gentle
+warm-up OFF, which is the library default. `relax10` is 10 ns of NVT reached
+through NPT with `gentle: false`, and the launcher refuses to submit anything
+else. CORRECTED LATER THE SAME DAY - the first version of this entry called
+`gentle: true` "the standard pipeline" and removed `relax10`'s `gentle: false`
+on that basis. That was wrong, the user corrected it, and the correction is
+§CORRECTION below. The NPT-then-NVT finding, the 17-section audit and the
+`npt_time` no-op all stand.** (2026-11-06)
 
 The user's instruction: use the standard mcube pipeline, NPT then NVT, and make
 the 10 ns NVT for all future runs.
@@ -8626,24 +8629,55 @@ with the 40 ps warm-up in front. **The one deviation anywhere was `relax10`'s
 `gentle: false`**, which D225 added so the run would continue from 300 K rather
 than re-anneal.
 
-**That override is removed.** Two reasons, and the second is the one that
-decides it. The weaker reason is that re-annealing does not threaten the pose:
-the warm-up runs with the section's restraints in force, and `relax10` carries
-Zn-OD2 at 5.14 and NZ-OD2 at 2.79 at k = 500, so the pulled Asp92/Lys226
-geometry is held through it. **The stronger reason is the comparison.** The
-user's pipeline requires that CSR_wt and the active double-His mutant go
-through *the same* preprocessing; a wild-type arm that skipped the warm-up and
-a mutant arm that did not would differ by a step, and the whole point of the
-two-arm design is that they differ only in the mutation. A 40 ps warm-up costs
-nothing against a 10 ns run. **`relax10` now sets no ensemble keys at all**, so
-it takes `gentle: true` / `skip_npt: false` from the base inputs and is the
-standard pipeline by construction rather than by having been written to match
-it.
+**§CORRECTION - the warm-up is not part of the standard pipeline, and
+`relax10` keeps `gentle: false`.**
+
+The first version of this entry reasoned that because every CSR section
+inherits `gentle: true`, the warm-up *is* the project's standard and `relax10`
+should not deviate from it, and that the two arms must match. The user: *"gentle:
+false is the default, we only need it if normal md runs throw errors, otherwise
+it's wasted compute."* **That is right, and mcube's own README says so more
+sharply than I did** (`README.md:172`): `gentle` defaults to **`false`**, it is
+"**for a system that will not start otherwise**", and - the part that matters -
+
+> Despite the name it is 10 steps at 1 K and 50 at 10 K (0.055 ps in total)
+> followed by **40 ps of ordinary 300 K MD**, so after a successful
+> minimisation it buys nothing NPT does not, and the 300 K leg is long enough
+> to let a force-field artefact develop before any equilibration you are
+> watching.
+
+So the cost is not only the 40 ps. **Those 40 ps are 300 K MD in a box that has
+not been equilibrated yet**, which on this system is exactly where coordination
+drift comes from - the thing every restraint in `relax10` exists to prevent.
+Running it on an already-equilibrated 300 K frame is worse than wasteful. The
+`gentle: true` I had taken for the standard is a **local override in this run
+directory's base `md` inputs**, not the library's behaviour, and it is the
+reason a section that stays silent gets the warm-up: `inputs.get("gentle")`
+reads the merged section, so silence means "inherit true" here and "off"
+anywhere else. **`relax10` therefore sets `gentle: false` explicitly** rather
+than relying on a default it would not actually get.
+
+Two things from the retracted reasoning survive, and one does not. **Surviving:**
+the warm-up would not have lost the pulled pose (the restraints are in force
+through it, Zn-OD2 5.14 and NZ-OD2 2.79 at k = 500), and the two arms must still
+match. **Not surviving:** that matching them means keeping the warm-up. It means
+**both arms run with `gentle: false`**, and the arm already built is unaffected
+in anything that is measured downstream - the warm-up only ever preceded NPT,
+which then re-equilibrated the box to a volume/density threshold regardless.
+
+**What the earlier arms actually spent on it.** `eq6` and the three `asppull`
+stages each ran the warm-up, so the 15 ns lineage carries **4 x 40 ps = 160 ps
+of pre-NPT 300 K MD** it did not need. That is small against 15 ns and none of
+it is a reason to re-run anything; it is recorded because D225 counted the four
+warm-ups as evidence the lineage was "four short equilibrations rather than one
+trajectory", and part of what made it four was a step that should not have been
+there.
 
 **`relax10.sh` now gates the submission on the ensemble instead of printing
 it.** It reads the merged `md_relax10` section back out of `config.yaml` after
 `sections.py` writes it and exits non-zero if `skip_npt` or `skip_nvt` is set,
-if `gentle` is off, or if `nvt_time` is not 10000. Printing a config and
+if `nvt_time` is not 10000, **or if `gentle` is on** - the last of those being
+the check the correction above inverted. Printing a config and
 eyeballing it is what let three wrong keys through in D218 and `gentle: false`
 through in D225; the check is three lines and runs before `sbatch`.
 
@@ -8666,9 +8700,19 @@ phase self-certifies the box, which is the right check for the box-volume drift
 D225 flagged in `asppull3`.
 
 **For all future runs, including the mutant arm.** An MD section states
-`nvt_time: 10000` and leaves `gentle`, `skip_npt`, `skip_nvt` and
-`npt_timestep` alone. 10 ns is the measured baseline (D226), NVT production is
-what that 10 ns means, and NPT runs to convergence in front of it.
+`nvt_time: 10000` and **`gentle: false`**, and leaves `skip_npt`, `skip_nvt`
+and `npt_timestep` alone. 10 ns is the measured baseline (D226), NVT production
+is what that 10 ns means, and NPT runs to convergence in front of it. `gentle`
+goes to `true` only for a system that will not start without it - an unstable
+first few steps after minimisation - and then it is a diagnosis, recorded with
+the error that prompted it, not a default.
+
+**The base `md` block in each CSR run directory's `config.yaml` still says
+`gentle: true`**, and that is the landmine: it is a local override of a library
+default, so every section that does not speak up inherits it. Setting it false
+per section is the safe fix and is what is done here; flipping the base would be
+the general one, and it needs a shell in the run directory rather than a commit
+in this repository.
 
 ## Resources (see `running-on-bunya.md`)
 

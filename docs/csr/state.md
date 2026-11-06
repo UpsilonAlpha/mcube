@@ -139,22 +139,33 @@ fold less than one trajectory's own fluctuation**, so 10 ns is the baseline for
 both arms. Both existing 100 ns runs are separately unusable as QM/MM starts,
 for restraint reasons rather than length ones: see D194 and D226.
 
-**And that 10 ns is NVT production, reached through NPT (D227).** The standard
-mcube pipeline, read out of `src/mcube/md.py`, is **minimise → gentle warm-up
-(40 ps, 1 K → 10 K → 300 K) → NPT box equilibration → NVT production**, the
-production length being `nvt_time` in ps. The base `md` inputs every CSR
-section inherits set `skip_npt: false`, `skip_nvt: false`, `gentle: true`,
-`npt_timestep: 0.001`, `nvt_timestep: 0.002`, `temp: 300`, so **the standard
-pipeline is the default**. An audit of all 17 `md` sections in `site.yaml`
-found **none setting `skip_npt` or `skip_nvt`** — every CSR MD run has been
-NPT-then-NVT — and the one deviation anywhere, `relax10`'s `gentle: false`,
-is removed, because the two arms must go through identical preprocessing.
-**A future MD section states `nvt_time: 10000` and leaves `gentle`,
-`skip_npt`, `skip_nvt` and `npt_timestep` alone.** `relax10.sh` now exits
-non-zero before `sbatch` if the merged config is not that. Note that for a
-non-membrane system **`npt_time` is silently ignored**: NPT runs in
-10,000-step blocks to a volume/density convergence threshold, so its length is
-self-certifying rather than configured.
+**And that 10 ns is NVT production, reached through NPT, with no warm-up
+(D227).** The standard mcube pipeline, read out of `src/mcube/md.py`, is
+**minimise → NPT box equilibration → NVT production**, the production length
+being `nvt_time` in ps. An audit of all 17 `md` sections in `site.yaml` found
+**none setting `skip_npt` or `skip_nvt`**, so every CSR MD run has been
+NPT-then-NVT.
+
+**`gentle` is OFF.** The library default is `false` and the README is explicit
+that it is "for a system that will not start otherwise": it is 0.055 ps of
+annealing plus **40 ps of ordinary 300 K MD *before* NPT**, so after a
+successful minimisation it buys nothing NPT does not, and those 40 ps are long
+enough for a force-field artefact to develop in a box that is not yet
+equilibrated — on this system, coordination drift, which is what the restraints
+exist to prevent. **The trap:** each CSR run directory's base `md` block
+overrides it to `gentle: true`, so a section that stays silent inherits the
+warm-up. `eq6` and the three `asppull` stages each ran it, so the 15 ns lineage
+carries 160 ps of pre-NPT 300 K MD it did not need — small, and not a reason to
+re-run anything.
+
+**A future MD section states `nvt_time: 10000` and `gentle: false`, and leaves
+`skip_npt`, `skip_nvt` and `npt_timestep` alone.** Both arms the same.
+`gentle: true` is a diagnosis for a system that will not start, logged with the
+error that prompted it, never a default. `relax10.sh` exits non-zero before
+`sbatch` if the merged config is not that. Note that for a non-membrane system
+**`npt_time` is silently ignored**: NPT runs in 10,000-step blocks to a
+volume/density convergence threshold, so its length is self-certifying rather
+than configured.
 
 **What is still open:** whether the docked pose is right at all. 7UHI/7UHJ put
 L1's carbonyl at **2.53/2.63 Å from Zn1** (D123, which withdrew D40's claim
