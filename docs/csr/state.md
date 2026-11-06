@@ -124,6 +124,21 @@ Nothing asserts the carbonyl coordinates the zinc."*
 `[C:2:O01, C:1:C4x, 3.47]`. With it, the substrate held through 100 ns
 (D100/D101, Zn–O2x 5.47 Å). Without it, it leaves.
 
+**The MD length is 10 ns, measured rather than assumed (D226).** The pipeline
+said 100 ns. `wt100c` did finish its 100 ns — 25,000,000 steps at 4 fs, final
+T 300.70 — and its last frame survives in `CSR/CSR_wt/md_wt100c_results/`,
+so the comparison can be made frame against frame. **CA RMSD against `eq6`'s
+10 ns frame is 1.52 Å** (275 CA, same solute: 1 ZN, 51 mer, 2 OH), median
+per-residue deviation **1.01 Å**, and the eight site residues move
+**0.40–1.48 Å** — all inside `eq6`'s own 0.63 Å CA RMSF and ~1.1 Å RMSD
+plateau. The five residues past 4 Å are 275, 273, 131, 1 and 8: termini and one
+loop. Over the real 100 ns, T is 301.00 ± 1.27 in the first 10 ns against
+300.97 ± 1.26 in the last, and potential energy moves 300 kJ/mol out of
+656,600 — 0.4 σ — flat from the third decile. **90 further nanoseconds move the
+fold less than one trajectory's own fluctuation**, so 10 ns is the baseline for
+both arms. Both existing 100 ns runs are separately unusable as QM/MM starts,
+for restraint reasons rather than length ones: see D194 and D226.
+
 **What is still open:** whether the docked pose is right at all. 7UHI/7UHJ put
 L1's carbonyl at **2.53/2.63 Å from Zn1** (D123, which withdrew D40's claim
 that inner-sphere coordination was unestablished), and the docked pose never

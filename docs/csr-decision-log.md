@@ -8477,6 +8477,116 @@ worth having - it answers early whether Asp92 stays off the metal under GFN2,
 which is the central question - but it is a pilot, and the pipeline's QM/MM leg
 should start from `relax10`'s frame.
 
+**D226 - The 10-vs-100 ns comparison made directly, frame against frame. The
+100 ns run did finish and its last frame survives. Its backbone is 1.52 A from
+the 10 ns structure with a median per-residue deviation of 1.01 A, and the five
+residues that move more than 4 A are all termini. **10 ns is adopted as the
+baseline.** The site distances in that frame look alarming and are not evidence
+about length - both 100 ns runs were restrained differently.** (2026-11-06)
+
+D225 said no 100 ns trajectory survives, which was true of the DCD and wrong
+about what the question needed. **`md_wt100c_results` is in
+`/scratch/user/uquadhik/CSR/CSR_wt/`, not `CSR_mich/`** - which is why D225's
+inventory missed it - and it holds `NVTtrajectory_lastframe.pdb`,
+`NVTtrajectory_firstframe.pdb`, the NPT frames and `nvtsim.csv`. **The run
+completed: 25,000,000 steps at 4 fs = 100,000.00 ps, final T 300.70.** A
+single-structure comparison needs no trajectory, so the question the user asked
+- is there anything at 100 ns not evident at 10 ns - is answerable from what is
+on disk, and was answered by fetching two PDBs through
+`vscode-remote-resource` and doing the superposition in browser JS.
+
+**The two frames are the same system, checked before comparing rather than
+assumed.** Both: 275 CA, chain A 4203 protein atoms, 1 ZN, 51 mer, 2 OH. Only
+the water count differs (45,108 vs 43,668 atoms' worth), so the solute is
+identical and the boxes are 79.03 A against 78.44 A.
+
+**Backbone: 10 ns and 100 ns agree.**
+
+    CA RMSD, wt100c @100 ns vs eq6 @10 ns   1.522 A   (275 CA, chain A)
+    per-residue deviation   median 1.01   90th 2.47   max 6.88
+    residues > 2 A  37      > 3 A  16      > 4 A  5
+    the five over 4 A: 275, 273, 131, 1, 8   - termini and one loop
+    site CA deviation: 88:0.99 90:1.08 92:0.82 93:0.74 164:1.48 186:0.40
+                       225:1.11 226:0.92
+
+**Every one of those is inside the thermal envelope of a single trajectory.**
+eq6's own CA RMSF is 0.63 A and its RMSD against its own frame 0 plateaus at
+~1.1 A (D225), so 1.52 A between two independently solvated copies run to
+lengths differing tenfold is the scale of ordinary fluctuation, not of a
+structural change. **The eight site residues move by 0.40-1.48 A, below the
+1.52 A global value**, so the part of the protein the argument depends on is
+the part that moves least. The superposition was computed twice by different
+routes - the quaternion key-matrix eigenvalue, and a Newton-Schulz polar
+decomposition of the 3x3 correlation matrix - and both give 1.522, which is
+how the first run's broken rotation matrix was caught.
+
+**Thermodynamics over the real 100 ns, 5000 rows at one per 20 ps.**
+
+    T  (K)        0-10 ns  301.00 +/- 1.27     90-100 ns  300.97 +/- 1.26
+    PE (kJ/mol)   0-10 ns  -656395 +/- 773     90-100 ns  -656693 +/- 768
+    PE by decile: -656395 -656520 -656580 -656616 -656616
+                  -656648 -656673 -656625 -656591 -656692
+
+Temperature is identical to 0.03 K. Potential energy falls by 300 kJ/mol out of
+656,600 - **0.05%, and 0.4 of one standard deviation** - and is flat from the
+third decile on. **There is no slow relaxation running past 10 ns.**
+
+**The site distances in the 100 ns frame, and why they are NOT an argument
+about length.** Read naively they are alarming:
+
+    pair        wt100c @0 ns   wt100c @100 ns   eq6 @10 ns   6DQH
+    Zn-OD2          -              2.40            2.81       5.14
+    Zn-OD1          -              3.67            3.87       4.28
+    NZ-OD2          -              3.14            2.79       2.79
+    Zn-O2x        4.94           16.82 (min-image) 2.57         -
+    sphere < 2.5 A   -          6 donors          4 donors      -
+
+At 100 ns the zinc is **six-coordinate** - His88 2.18, Asp92 OD2 2.40, His164
+2.17, OH 1.91, and two waters at 2.09 and 2.06 - and the meropenem is out of
+the site, 16.8 A away by minimum image in a 79 A box, its nearest protein
+contact Gly231 instead of Trp21. **Neither is attributable to the duration,
+and the dissociation is not a new finding: it is D194**, which established that
+`md_wt100c` and `prod100c` replaced `[C:2:O01, C:1:C4x, 3.47]` with `[B:1:ZN,
+A:92:OD1, 3.81, 50.0]` instead of carrying both, so nothing held the substrate.
+This frame is an independent confirmation of it from the structure rather than
+from the trajectory - 16.8 A at the final frame against D194's 50.69 A maximum,
+both inside the 68.4 A cubic-box ceiling. What *is* new here is the second
+consequence of that same swap: **the single weak restraint on OD1 left the
+carboxylate free to rotate OD2 in to 2.40 A**, which is D223's lesson about
+restraining one oxygen of a carboxylate arriving again from the other
+direction, and it is why the 100 ns frame cannot be used as a QM/MM start even
+setting the ligand aside. `md_wt100b` is the same story with no Asp92 restraint
+at all: its own `coordination_end` records **Asp92 OD2 at 2.06 A** where its
+`coordination_start` had no Asp92 in the sphere.
+
+**So both 100 ns runs are independently unusable as QM/MM starting structures,
+and for a reason that has nothing to do with their length.** That is also why
+the backbone comparison above is the only part of them worth using: the fold is
+insensitive to the restraint differences, the site is not.
+
+**Decision: 10 ns is the baseline, and the pipeline's "100 ns MD" is amended to
+10 ns.** Measured, not assumed: 90 further nanoseconds move the backbone by
+less than one trajectory's own fluctuation, leave the site CAs within 1.5 A,
+and change the potential energy by 0.4 sigma. MM is being asked for one thing
+here - a relaxed fold that does not hand QM/MM an overcoordinated metal - and
+10 ns delivers it. **The 7.3 h per arm that 100 ns costs buys nothing
+measurable, and both existing 100 ns runs spent it and produced structures we
+cannot use.**
+
+**This does not retire `relax10`.** Its justification was never length: it is
+that `asppull3`'s 2 ns after the pull has not finished relaxing (RMSD still
+climbing, box volume drift 8x eq6's - D225). 10 ns continuous from
+`asppull3`'s last frame, `gentle: false`, NPT on, restraints unchanged, ~45
+min. The length is now the measured baseline rather than a guess.
+
+**Correction to D225.** "No 100 ns trajectory survives" should have read "no
+100 ns *DCD* survives". The last frames of both 100 ns runs are on disk, and
+`nvtsim.csv` covers the whole 100 ns at 20 ps resolution for both. The error
+came from searching one working directory and reporting the absence as general
+- the runs for the wild-type arm live in `CSR_wt/`, the Michaelis arm in
+`CSR_mich/`, and `job-inventory.md` is the index that should have been read
+first.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
