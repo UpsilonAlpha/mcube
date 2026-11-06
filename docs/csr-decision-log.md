@@ -8916,6 +8916,69 @@ set cost one fetch and the source check cost two greps, against ~45 minutes of
 H100 and a re-submission. **A warning in a log is a hypothesis about a run, not
 a measurement of it.**
 
+**D230 - The withheld kinetics' CONSTRUCTS, asked early and answered: wild type
+is the truncated form, and both the plain double mutant and dmCSR-1 S214D have
+kinetics. The mutant arm runs strictly after the wild-type arm. Wakeups
+scheduled to pick the work up when jobs land.** (2026-11-06)
+
+The user asked for autonomous work on scheduled wakeups, and for questions to
+be asked early rather than becoming blockers. Three were outstanding; **a
+construct name is not a kinetic value, so asking does not breach D178's
+blind-prediction protocol**, and the answers decide what gets built.
+
+**1. Wild type: the truncated form.** That is the form this project already
+models, so the measured and the modelled construct are the same one and no
+caveat is needed on that axis. This retires the last soft spot in that premise:
+`the-truncated-form-is-the-one-modelled` had been `withheld`, resting on the
+user's modelling decision plus an inference from SPR-1's 49-residue truncation
+(which is as consistent with expression as with catalysis). It is now
+`supported`, confirmed by the person holding the data. **The values stay
+withheld and the protocol is unchanged - do not ask for them.**
+
+**2. Mutant: BOTH the plain double mutant and dmCSR-1 S214D were measured.**
+This is the more useful answer, because it unties a knot from D219. That entry
+disqualified our own S214D structure as the mutant arm's starting geometry -
+S214D is BBL Ser214 = project **Ser186**, 3.81 A from the zinc in `eq6`, with
+the engineered aspartate 4.06/4.13 A from both metal sites, so it is not
+catalytically innocent and cannot stand in for the plain double mutant. With
+kinetics on both, **the mutant arm is built from 6NC5 as the plain double
+mutant and still has a measured partner**, and our S214D structure is not
+stranded either: it has its own. S214D is disqualified as a *starting structure
+for the double-mutant comparison*, not as a system worth computing later.
+
+**3. The mutant arm runs strictly after the wild-type arm**, not in parallel.
+The two arms are independent and a parallel 10 ns would have cost one of the
+four GPU slots, but the user chose one thing in flight. So 6NC5 preprocessing
+is not started yet. When it is, the policy already decided applies: delete the
+four extra zincs (`remove_residues: [A:303:ZN, A:304:ZN, A:305:ZN, A:306:ZN]`,
+and note ZN303 shares Zn1's terminal water at 1.88/1.90 A, so deleting it
+leaves that water as Zn1's own, which is where the nucleophile goes), delete
+the crystallisation additives by the same reasoning the user gave for the
+zincs - five PO4 and four ACT are there because of the crystallisation, and in
+6DQH a phosphate oxygen sits **on Zn1 at 2.32 A**, occupying the nucleophile's
+site - and then the same treatment as the wild-type arm: `gentle: false`, NPT,
+10 ns NVT, 3.0 A restraints on everything the metal affects at its crystal
+distance, coordination measured at 2.50 A.
+
+**Wakeups: recurring job `7f92d121`, `13,38 * * * *`, first fire 22:19.**
+Session-only and auto-expiring after seven days. Its prompt carries the whole
+pickup procedure rather than a reminder to look: read `state.md` and
+`retractions.md` before asserting anything; read the code-server base from the
+live tab; consult `BUNYA_BROWSER_SHELL.md` before concluding the pane is
+broken; **stretch its own cadence to the remaining runtime** rather than waking
+every 25 minutes, and delete itself if the server is down (the standing check-
+cadence rule); run `convergence.py` on `md_relax10_results` and require `eq6`'s
+signature - RMSD flat over the last five deciles, box drift under ~1 nm3 -
+before QM/MM; treat a drift still near the 2 ns run's +5.4 nm3 as the restraint
+set fighting the solvent rather than a run needing longer, and **not** start
+QM/MM in that case; then `aspqm2` in 50 ps chunks, one at a time, with the D224
+arithmetic done on the **merged** restraint set per D229.
+
+**Status at 21:50.** `relax10` (32405173) is past minimisation and NPT and into
+production MD. NPT took the box from 475.6 to 480.6 nm3, **within 0.6 of
+`eq6`'s equilibrated 481.18**, which is the relaxation `asppull3`'s 2 ns never
+finished. Scratch 209/300 GB.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

@@ -670,6 +670,24 @@ into the log **before** the numbers are released, and are **not revised
 afterwards**. A barrier that moves once the experiment arrives is a fit.
 **Do not ask for the kinetics.**
 
+**Which constructs they are on — answered by the user 2026-11-06, values still
+withheld (D230).** Asking for a construct name is not asking for a number, and
+it was worth asking early because it decides what gets built:
+
+- **Wild type: the truncated form**, which is the form this project already
+  models. So the modelled and the measured construct agree and no caveat is
+  needed on that axis — this had been the one premise resting on a decision
+  rather than a measurement.
+- **Mutant: both** the plain double mutant (the Zn2-site restoration) **and
+  dmCSR-1 S214D** have kinetics. So the mutant arm can be built from **6NC5**
+  as the plain double mutant and still have something to compare against, and
+  our own S214D structure is not stranded — it has its own measured partner.
+  This removes the awkwardness of D219, which disqualified S214D as the mutant
+  arm's starting geometry; it is disqualified as a *starting structure* for the
+  double-mutant comparison, not as a system worth computing later.
+- **The mutant arm runs strictly AFTER the wild-type arm**, not in parallel
+  (user's choice): the WT arm goes through QM/MM first. One thing in flight.
+
 ---
 
 ## 4a. Two radii, and the gate before any QM/MM (D186)

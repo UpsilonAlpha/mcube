@@ -1,8 +1,8 @@
 ---
 type: claim
-status: withheld
-entries: [D40, D216]
-checked: [D40]
+status: supported
+entries: [D40, D216, D230]
+checked: [D40, D230]
 ---
 
 # The truncated construct is the one being modelled, and truncation bears on expression rather than on catalysis
@@ -40,3 +40,15 @@ submission.
 
 ## Supersedes
 - [[the-modelled-non-truncated-form-is-catalytically-relevant]]
+
+## Resolved 2026-11-06 (D230)
+
+Asked the user which construct the withheld kinetics are on - a construct name,
+not a number, so it does not breach the blind-prediction protocol. **The
+wild-type kinetics are on the truncated form**, which is the form being
+modelled. So this node no longer rests on the user's modelling decision plus an
+inference from SPR-1; the measured and the modelled construct are the same one,
+confirmed by the person holding the data. Status moves `withheld` ->
+`supported`. The kinetic *values* remain withheld and the protocol above is
+unchanged.
+
