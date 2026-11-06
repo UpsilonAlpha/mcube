@@ -7620,6 +7620,139 @@ it. Recorded as the third way the thesis could be wrong. All three are abstracts
 and secondary summaries so far; the L1 paper needs reading in full before it is
 cited, being the B3 comparator a referee reaches for.
 
+**D216 - A fifth deposit, 6DQH, was never cited by this project. It is 1.10 A,
+it holds a Zn1 and the wild-type lysine at once, and it measures Asp92 at 4.28 A
+from the metal and 2.79 A from the lysine. In the same session the subclass's own
+mutagenesis turned out to run against the thesis's causal clause.** (2026-11-06)
+
+The user asked whether the Lys226-Asp92 salt bridge might exist only in
+zinc-free structures, which would make Asp92 an equilibrium between the lysine
+and Zn1 rather than committed to either. Checking it turned up more than the
+answer.
+
+**An RCSB full-text search for this enzyme returns five deposits and the record
+used four.** Measured directly from the files, with project numbering in
+brackets:
+
+| deposit | 118 [90] | 121 [93] | 254 [226] | metal | Lys NZ-Asp120 | res. |
+| --- | --- | --- | --- | --- | --- | --- |
+| 6DN4 | Arg | Gln | Lys | **none** | 2.99 | 1.99 |
+| 6DQ2 | Arg | Gln | Lys | **none** | 2.83 | 1.99 |
+| **6DQH** | **His** | Gln | Lys | 1, at Zn1 | **2.79** | **1.10** |
+| 6NC5 | Arg | **His** | **His** | 6 | no Lys | 2.07 |
+| 6DR8 | **His** | **His** | **His** | 2 | no Lys | 1.48 |
+
+**So the user's suspicion was right about the apo structures and is answered by
+the one they had not seen.** 6DN4 and 6DQ2 contain no metal at all - zero Zn,
+Cd, Ni, Mn, Fe, Co, Mg, Ca - which Pedroso et al. state in words ("no metal ions
+were observed in the crystal structures of CSR-1 and CSR-1trunc") with ITC
+giving alpha_Kd ~2 uM and beta_Kd ~150 uM. 6DQH is the R118H single mutant
+[R90H], the construct the same paper describes as showing "one bound Zn2+ in the
+alpha-site", and it keeps Gln121 and the lysine:
+
+    ZN401   HOH526.O     2.03   <- terminal water, the nucleophile position
+            His192.NE2   2.05
+            His118.ND1   2.07   <- ENGINEERED; wild type is Arg here
+            His116.NE2   2.08
+            PO4405.O2    2.32
+            HOH525.O     2.50
+
+    Zn-Asp120 OD1   4.28     OD2  5.14     CG  5.15
+    Lys260 NZ-OD2   2.79     NZ-OD1 3.94   NZ-Zn  5.27
+    Asp120 OD1-HOH526  2.64
+    Gln121 OE1-Zn   5.25     OE1-HOH526  4.60
+
+**Three results, the third unlooked for.**
+
+1. **With a metal and the lysine both present, the lysine wins outright.** 2.79
+   against 4.28 at 1.10 A resolution is one state, not a split population. There
+   is no crystallographic equilibrium.
+2. **Every structure this project has modelled puts Asp92 too close to the
+   metal.** `eq6` holds Zn-OD2 at 2.79 and Zn-OD1 at 3.90; earlier work put the
+   carboxylate at 1.95-2.05. The crystal says 4.28/5.14, which is **1.5-2.4 A
+   further out**. By the standing rule - restrain what the metal affects at its
+   crystal distance (D174, D186) - those are the distances, and `eq6` is
+   therefore a starting structure built on the wrong ones.
+3. **Asp92 hydrogen-bonds the nucleophile**: OD1 to HOH526, the Zn1 terminal
+   water, at 2.64 A. The carboxylate is not merely out of the way, it is in the
+   second shell touching the water that attacks. That is the role canonical B1
+   schemes give Asp120, and it is a positive mechanism rather than relief of
+   inhibition.
+
+**The caveat that keeps this an observation.** 6DQH's third Zn1 ligand is the
+engineered histidine at the Arg90 position, two residues from the carboxylate.
+6NC5's ZN302 is the only wild-type-like Zn1 (His87/His163 plus two waters, Arg90
+unmutated at 4.02 A) and that deposit has lost the lysine. **No deposit is wild
+type at all three positions and metal-bound, and the ITC numbers say none can
+be:** at beta_Kd ~150 uM the Zn2 site does not fill, and Zn1 fills tightly only
+once its third ligand is restored. The resting state the project models - one
+zinc at Zn1, Arg90 intact, Lys226 intact - has never been observed. It is
+assembled from two deposits that each supply half, which is defensible and is
+what the modelling is for, but the paper has to say so.
+
+**The literature result that runs against the thesis, and it is the serious one.**
+Krco et al. (Front Chem 2023;11:1196073), citing Pedroso et al. 2020 Supp.
+Table S2: replacing the Zn2-site glutamine and lysine with histidines "enhances
+the affinities of both Zn(II) ions and **drastically improves the catalytic
+efficiency to a level comparable to that of other B3 MBLs**"; and R118H gives "a
+modest improvement in catalytic efficiency". ITC: wild type 2 / 150 uM, R118H
+0.1 / 180, double **0.14 / 0.14**, triple 0.06 / 0.4.
+
+The double mutant is exactly the construct in which Asp92 becomes a true
+bridging ligand - 6NC5 measures it at 1.95 A on the engineered Zn2 - so if a
+carboxylate on a metal suppressed hydrolysis, that construct should be worse. It
+is dramatically better. **The thesis's structural half survives untouched; its
+causal clause "allowing for MBL activity" does not.** On this evidence the
+lysine is what *limits* CSR-1's activity, and the defensible reading is weaker:
+the lysine is a structural stand-in that lets a mono-zinc B3 retain some
+activity, not the reason it has activity. Two reservations: the fold changes sit
+in a supplementary table neither the review nor this project has read
+("drastically" is the review's word), and the double mutant adds a metal *and*
+removes the lysine, so nothing isolates the carboxylate. Also checked and
+absent: **no Asp120 mutant of CSR-1 or SPR-1 appears in either paper**, so the
+claim that removing the bridging aspartate raises activity in this subclass is
+not in the deposited literature.
+
+**Clavulanate is functional evidence for the occupancy claim** and had not been
+recorded: Ki 350 uM for CSR-1trunc, with the mechanism given as displacing the
+metal from the beta site, attributed to the residue at 263 [226]. A residue
+elsewhere could not make Zn2 the site a clavulanate displaces a metal from.
+
+**The user's rulings on the premise list, recorded.** Premise 6 (Lys226 cationic)
+**supported**, on the ground that a neutral lysine could not make this contact in
+every crystal - now its own premise node, which is the right shape of argument.
+Premises 4 (hydrolyses meropenem) and 8 (truncated construct) **withheld**: the
+data exists and the user holds it, which is what the status means. Premise 7
+(Asp92 on Zn1 interferes) was ruled true on a sharper mechanism than the node
+had - the carboxylate makes Zn1 six-coordinate and a six-coordinate metal has no
+open face - and that mechanism is now recorded as the one to test, **but the
+status was not flipped**, because the mutagenesis above arrived after the ruling
+and refutes it. Flipping it would have hidden the contradiction.
+
+**Map state.** Nodes thesis 1, claim 20, observation 28, question 7; evidence
+experimental 15, literature 7, ours 6; edges supports 81, refutes 10, requires
+25, superseded-by 2. Findings **1**, the pre-existing
+`no-usable-michaelis-complex-exists-yet`. The pKa question was re-scoped: it is
+no longer a premise of the thesis or of the cationic claim, both settled by
+geometry, and now belongs to `question-what-protonates-the-leaving-nitrogen`,
+where the turnover state actually bears.
+
+**The extra zincs in 6NC5 go, and it needs no code.** `remove_residues` already
+exists in `preprocess.py`, takes `chain:resid:resname` selectors, and runs
+before solvation and before the coordination detector - so a position left by a
+deleted metal is left open for whatever displaces it, which is the behaviour
+wanted here. For the mutant arm:
+
+    remove_residues: [A:303:ZN, A:304:ZN, A:305:ZN, A:306:ZN]
+
+keeping ZN301 (the engineered Zn2) and ZN302 (Zn1). **ZN303 shares Zn1's
+terminal water** (HOH485 at 1.88 from ZN303 and 1.90 from ZN302), so deleting it
+leaves that water as Zn1's own terminal ligand, unanchored - which is correct,
+because that is where the nucleophile goes. Still to decide: the five PO4 and
+four ACT crystallisation additives, and in 6DQH the phosphate oxygen sitting on
+Zn1 at 2.32 A, in the position the substrate carbonyl has to occupy.
+
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

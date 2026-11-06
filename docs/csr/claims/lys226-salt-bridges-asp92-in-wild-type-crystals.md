@@ -2,15 +2,24 @@
 type: observation
 status: supported
 evidence: experimental
-entries: [D209]
+entries: [D209, D216]
+checked: [D216]
 ---
 
-# Lys226's ammonium salt-bridges Asp92's carboxylate in both wild-type CSR-1 crystals
+# Lys226's ammonium salt-bridges Asp92's carboxylate in every CSR-1 crystal that contains the lysine, with a metal or without one
 
 Measured from the deposits, in BBL numbering: **Lys254 NZ - Asp120 OD 2.99 A in
-6DN4** and **2.83 A in 6DQ2** (D209). Both are inside the range of a charged
-hydrogen bond, and the pairing is present in both independent wild-type
-structures.
+6DN4**, **2.83 A in 6DQ2** (D209), and **2.79 A in 6DQH at 1.10 A resolution**
+(D216). All three are inside the range of a charged hydrogen bond, and the
+pairing is present in every deposit that retains the lysine.
+
+**The obvious objection, raised by the user and checked: the salt bridge is not
+an apo artefact.** 6DN4 and 6DQ2 do indeed contain **no metal at all** -
+[[wild-type-csr1-binds-no-zinc-in-any-crystal]] - so if those were the only
+evidence, the contact might exist only because nothing was competing for the
+carboxylate. 6DQH settles it: it holds a zinc at Zn1 **and** the wild-type
+lysine, and the carboxylate stays with the lysine at 2.79 A while sitting 4.28 A
+from the metal ([[zinc-bound-crystal-holds-asp92-off-the-metal]]).
 
 The same contact survives into our own equilibrated model at **2.79 A**
 (`eq6`, D214), where it was restrained at the structure's own distance - so the

@@ -1,7 +1,7 @@
 ---
 type: thesis
 status: open
-entries: [D22, D40, D107, D178, D209, D214]
+entries: [D216, D22, D40, D107, D178, D209, D214]
 checked: [D40, D107, D178]
 ---
 
@@ -48,6 +48,20 @@ and without the restraint to compare.
 
 **The blind-prediction protocol (D178) applies.** The kinetics exist, are
 withheld, and the computed mechanism goes in the log before they are released.
+
+**Standing refutation of the causal clause, 2026-11-06 (D216).** The structural
+half - the lysine occupies the Zn2 site and holds the carboxylate out of the
+metal's reach - is now measured at 1.10 A resolution in a metal-bound crystal
+([[zinc-bound-crystal-holds-asp92-off-the-metal]]) and is in good shape. The
+clause *"allowing for MBL activity"* is refuted as stated:
+[[restoring-the-zn2-site-drastically-improves-catalysis]] shows that giving Asp92
+a real Zn2 to bridge makes the enzyme **much better**, not worse. The thesis that
+survives the evidence is weaker and should be written that way - **the lysine is
+a structural stand-in that lets a mono-zinc B3 retain some activity at all,
+holding the carboxylate in the second shell where it hydrogen-bonds the
+nucleophilic water (2.64 A in 6DQH) instead of closing the metal's open face.**
+It is not what makes the enzyme good at hydrolysis; on the published mutagenesis
+it is part of what makes it poor.
 
 ## Requires
 - [[canonical-b3-mechanism-is-dizinc-hydroxide]]

@@ -1,7 +1,7 @@
 ---
 type: claim
 status: open
-entries: [D197, D199, D200, D211]
+entries: [D197, D199, D200, D211, D216]
 checked: [D197, D199]
 ---
 
@@ -19,7 +19,14 @@ frame. Asp92 on the metal is such a fifth donor. In the QM/MM lineage where it i
 on the metal, **Zn-Asp92 OD2 averages 1.93 A over 50 frames, 100% inside 2.5 A,
 and the nucleophile is never poised** (O01-C4x mean 3.81 A, D211).
 
-**Why this is `open` and not `supported`, in three parts.**
+**The user ruled this true, 2026-11-06**, on a sharper mechanism than the node
+had: the carboxylate makes the zinc **six-coordinate**, and a six-coordinate Zn1
+has no open face for nucleophilic attack - which is the same argument the attack
+angle data makes, stated in coordination number rather than in degrees. That
+mechanism is recorded here and it is the right one to test. The status is **not**
+flipped, for the reason in part 5, which arrived after the ruling.
+
+**Why this is still `open`, in five parts.**
 
 1. **The crowding was never measured with Asp92 as the fifth donor.** It was
    measured with the substrate's O1x and with Asn225. The inference that a
@@ -41,6 +48,21 @@ and the nucleophile is never poised** (O01-C4x mean 3.81 A, D211).
    positions **Zn2**, not that it must be kept off Zn1. For an enzyme with no Zn2
    that explanation does not transfer, but neither does it support us.
 
+5. **The subclass's own mutagenesis runs the other way, and this is the serious
+   one.** The ruling rested in part on CSR enzymes losing activity when the
+   bridging aspartate is given a metal to bridge and gaining it when the
+   aspartate is removed. The published record says the opposite for the first
+   half and is silent on the second:
+   [[restoring-the-zn2-site-drastically-improves-catalysis]] - the Q121H/K226H
+   double mutant, which is exactly the construct where Asp92 becomes a true
+   bridging ligand at 1.95 A, *"drastically improves the catalytic efficiency to
+   a level comparable to that of other B3 MBLs"*. And **no Asp120 mutant of
+   CSR-1 or of SPR-1 appears in either Pedroso et al. or the Krco review**, so
+   the increase-on-removal result is not in the deposited literature. If it is in
+   the withheld dataset it settles this premise outright; if it is a recollection
+   of the B1/B3 work then it has the wrong sign
+   ([[asp120-mutants-lose-activity-in-b1-and-b3]]).
+
 **What would settle it:** a barrier computed with Asp92 restrained off the metal
 and again with it on, in the same system at the same level.
 [[question-does-restraining-asp92-lower-the-barrier]].
@@ -54,3 +76,6 @@ and again with it on, in the same system at the same level.
 ## Supported by
 - [[a-fifth-zinc-donor-closes-the-attack-angle]]
 - [[our-models-put-asp92-on-the-zinc]]
+
+## Refuted by
+- [[restoring-the-zn2-site-drastically-improves-catalysis]]

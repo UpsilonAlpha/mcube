@@ -1,7 +1,7 @@
 ---
 type: claim
-status: open
-entries: [D40]
+status: withheld
+entries: [D40, D216]
 checked: [D40]
 ---
 
@@ -29,8 +29,11 @@ be the construct the withheld kinetics were measured on.** If those kinetics are
 on the truncated protein, this premise is satisfied by consistency and the
 catalytic question never arises.
 
-**Open item:** confirm which construct the withheld kinetics belong to. This
-needs no kinetic values, only the construct name.
+**Ruled `withheld` by the user, 2026-11-06:** they hold the data that settles
+which construct was measured. The premise is therefore satisfied as far as this
+project can see, and the status records that the evidence is held rather than
+missing. The construct name still has to reach the methods section before
+submission.
 
 ## Supports
 - [[thesis-lys226-restrains-asp92-in-place-of-zn2]]

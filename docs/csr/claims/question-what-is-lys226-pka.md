@@ -29,6 +29,14 @@ can go either way: the anion raises it, the metal lowers it.
 and Asp92 collapsed onto the zinc afterwards. If the resting state is in fact
 deprotonated, the collapse is not an artefact at all and the thesis inverts.
 
+**Re-scoped 2026-11-06 (D216).** This was a premise of the thesis and of
+[[lys226-is-cationic-in-the-resting-enzyme]]. It is neither any longer: the
+user ruled the resting state settled by the crystal geometry
+([[a-neutral-lysine-would-not-sit-at-28-angstroms-from-a-carboxylate]]), which
+does not need a pKa. What the pKa is still needed for is the state **during
+turnover** - whether this residue can be the proton source for the leaving
+nitrogen, which is where D204's deprotonation actually bears. The question is
+unchanged; only what depends on it has moved.
+
 ## Required by
-- [[lys226-is-cationic-in-the-resting-enzyme]]
-- [[thesis-lys226-restrains-asp92-in-place-of-zn2]]
+- [[question-what-protonates-the-leaving-nitrogen]]
