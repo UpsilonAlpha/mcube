@@ -2023,6 +2023,53 @@ sections:
   # donors inside 2.50 A (a second water, HOH3095 at 2.01, took the space Asp92
   # vacated). Whether that water leaves is what this run is for; if instead the
   # nucleophile drifts, one chunk tells us at 20 h rather than 120.
+  # D225: the 100 ns production run the pipeline actually calls for, as a
+  # CONTINUATION of the repaired structure rather than a restart. Nothing from
+  # the 15 ns already run is discarded - `md_asppull3`'s last frame carries the
+  # whole lineage (eq6 10 ns, then the three pulls).
+  #
+  # `gentle: false` and `skip_npt: true` are the point of this section. Every
+  # pull stage inherited the warm-up from the run directory's base `md` inputs
+  # and re-annealed from 1 K over 40 ps, then re-relaxed the box, before its own
+  # NVT - so the 15 ns on record is FOUR short equilibrations, not one
+  # continuous trajectory. The box is relaxed and the system is at 300 K, so
+  # this run continues from it and gives the first continuous 100 ns.
+  #
+  # Restraints are exactly `asppull3`'s - the crystal's own internally
+  # consistent set, which 6DQH measures as a single geometry, so none of them
+  # opposes another. `coordination_redetect: false` because redetection re-pins
+  # whatever it finds inside 3.0 A and would undo the repair (D214).
+  #
+  # No valid 100 ns has ever completed in this project: `wt100`/`wt100b` are
+  # condemned (D177, zinc six-coordinate in 4995/5000 frames), `prod100` NaN'd
+  # at 34 ns, `prod100b` was withdrawn, `prod100c` NaN'd at 22.68 ns, and
+  # `wt100c` replaced the attack-coordinate restraint instead of adding to it
+  # (D194). This would be the first.
+  #
+  # ~7.3 h on one H100 at eq6's measured 10 ns / 43.7 min. traj_frequency 10000
+  # gives 5000 frames - one per 20 ps, ample for `site.py shell` occupancies -
+  # at ~2.9 GB, doubled by the raw/imaged pair (D221).
+  prod100d:
+    stage: md
+    inputs:
+      pdb_file: md_asppull3_results/NVTtrajectory_lastframe.pdb
+      gentle: false
+      skip_npt: true
+      coordination_redetect: false
+      restraints:
+        - [C:2:O01, C:1:C4x, 3.47]
+        - [B:1:ZN, C:1:O2x, 2.60, 500.0]
+        - [B:1:ZN, C:1:O1x, 3.82, 500.0]
+        - [A:226:NZ, A:92:OD2, 2.79, 500.0]
+        - [B:1:ZN, A:226:NZ, 5.27, 500.0]
+        - [B:1:ZN, A:92:OD2, 5.14, 500.0]
+      nvt_time: 100000
+      nvt_timestep: 0.002
+      traj_frequency: 10000
+      platform: CUDA
+      properties:
+        Precision: mixed
+
   aspqm:
     stage: qmmm
     inputs:
