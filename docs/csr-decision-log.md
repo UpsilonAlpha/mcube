@@ -7832,6 +7832,96 @@ fully shifted - a minor state below the density threshold - which is a
 free-energy question and is what the PMF measures
 ([[question-is-asp92-in-equilibrium-between-lys226-and-zn1]]).
 
+**D218 - Pulling Asp92 out of a pre-equilibrated structure is the right plan and
+cheaper than a rebuild, but two of this log's own rules and one already-measured
+result set conditions on how. The pull must assert a distance and not an
+orientation, and the attack coordinate has to be held while it happens.**
+(2026-11-06)
+
+The user's question: what stops us using a pre-equilibrated structure and pushing
+Asp92 out to 6DQH's distance before QM/MM, instead of re-restraining and
+re-equilibrating from scratch? Three things were already in the record and none
+of them had been connected to it.
+
+**1. Rule 6 of the coordination-sphere block is this exact move, and it is there
+because D130 made it.** *"Do not hand-write a restraint to correct a shell that
+is already wrong. D130's `[B:1:ZN, A:92:OD2, 2.80]` plus `[.., OD1, 3.81]`
+blocked D120's rotation and reinstated its condition, **asserting the
+carboxylate's orientation where the original asserted only a distance**."* Rule 7
+adds the companion: *"no cutoff undoes an artefact already in the coordinates."*
+
+**But those rules were written about a different defect and do not disqualify
+`eq6`.** They condemn frames with Asp92 **on** the metal at 1.93-2.11 A - a real
+coordination bond, inside any defensible cutoff. `eq6`'s carboxylate is at
+**2.81 A**, outside the 2.50 A radius, and its sphere was measured
+four-coordinate with the right composition (two His, hydroxide, bulk water, with
+the carbonyl at 2.57). So `eq6`'s **coordination sphere is not wrong**; its
+**second shell** is, by 1.4 A. That is a repairable defect and rules 6 and 7 do
+not reach it.
+
+**2. What rule 6's warning does reach is the orientation, and the target needs a
+rotation.** Compare the two carboxylate geometries:
+
+    eq6 last frame     Zn-OD2 2.81   Zn-OD1 3.87   Zn-CG 3.72
+                       NZ-OD2 2.79   NZ-OD1 4.86   NZ-Zn  3.94
+    6DQH (1.10 A)      Zn-OD1 4.28   Zn-OD2 5.14   Zn-CG 5.15
+                       NZ-OD2 2.79   NZ-OD1 3.94   NZ-Zn  5.27
+
+In `eq6` **one oxygen does both jobs**: OD2 faces the metal at 2.81 and the
+lysine at 2.79. In the crystal **the jobs are split**: OD1 faces the metal, OD2
+faces the lysine, and the NZ-OD2 distance is the same 2.79 in both. So the target
+is not a longer distance, it is a **different conformer** - a chi2 rotation that
+separates the two oxygens' roles. Restraining OD1 to 4.28 *and* OD2 to 5.14 would
+produce it, and that pair of restraints is literally D130's mistake: it fixes the
+rotation by assertion. **Pull on one coordinate - Zn-CG - and let the carboxylate
+rotate or not.** If the free pull reproduces the crystal's split, the conformer is
+earned; if it does not, that disagreement is a result about the pose.
+
+**3. The experiment has effectively been run once, and its outcome is the real
+obstacle.** In the protonated-Asp92 run (log §around D154), one proton and nothing
+restrained, *"the carboxylate walks off to 2.99 A"* and the site becomes
+**the crystal's four-coordinate sphere** - two histidines, the hydroxide and
+HOH485 - which *"D120, D134 and D138 each failed to get by any other route,
+having tried twice."* So Asp92 will leave and the sphere will come out right.
+What happened next is the warning:
+
+    hydroxide O01   1.94 -> 1.80     the vacancy closes by the HYDROXIDE moving in
+    O01-C4x         3.48 -> 3.69     the attack coordinate OPENS
+    O1x             3.64 -> 3.72
+    carbonyl O2x    4.96 -> 4.63
+
+*"The vacancy closes by the hydroxide moving in, not by the substrate moving
+over. So emptying the Asp92 site does not by itself produce a Michaelis
+complex."* **That is the thing to stop.** `eq6` spent 10 ns establishing a poised
+pose - O01-C4x 3.48, Zn-O2x 2.57 - and freeing Asp92 is measured to degrade
+exactly that coordinate.
+
+**The protocol that follows from all three.** Pull from `eq6`'s last frame along
+**Zn-CG only**, 3.72 -> 5.15 A, **while keeping `eq6`'s attack-coordinate and
+carbonyl restraints in place** (`C:2:O01 - C:1:C4x 3.47` and `B:1:ZN - C:1:O2x
+2.60`), which are already in the config and are what prevents the hydroxide from
+taking the face. Monitor OD1, OD2 and NZ at every point so the conformer is read
+rather than imposed. Then release the Asp92 restraint for the QM/MM leg and let
+it say where the carboxylate goes.
+
+**The tool is the `scan` stage, and this reverses what D213 said about it.**
+`aspcg` was dismissed there as adding nothing over the qmmm stage's built-in
+optimiser. For *this* job that was wrong: an unconstrained optimisation runs
+downhill to wherever it likes, while a relaxed scan walks one coordinate in
+controlled steps with each point starting from the previous - which is precisely
+a controlled pull. A short scan over 3.7-5.2 A is also the first half of `aspcg`,
+so none of it is wasted if the PMF follows.
+
+**Cost, for the comparison that prompted the question.** The pull is a ~15-point
+relaxed QM/MM scan, far below the 8,500 core-hours of the PMF and below the
+43.7 minutes of a fresh 10 ns MD. The rebuild-from-6DQH alternative is worse than
+it sounded in D216: 6DQH is a different deposit with different numbering, a
+phosphate on the zinc where the substrate carbonyl goes, and no meropenem - so
+"rebuild" means re-docking the substrate and re-establishing the pose, which is
+the single most expensive thing this project has done. **Taking 6DQH's distances
+as restraint targets while keeping our own equilibrated system is the correct
+reading of D216, and it is what the user proposed.**
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
