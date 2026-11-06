@@ -36,9 +36,15 @@ import math
 import sys
 from pathlib import Path
 
-TRAJ_PAIRS = (
-    ("NVTtrajectory_imaged.dcd", "NVTtrajectory_firstframe.pdb"),
-    ("NVTtrajectory.dcd", "NVTtrajectory_firstframe.pdb"),
+# The md stage writes its topology as .cif for some runs and .pdb for others,
+# and mcube's own MD_TRAJECTORIES constant lists only the .pdb spellings - which
+# is why `salvage_results` cannot find a trajectory pair for the wt100/prod100
+# runs at all. Try every combination rather than assume one (D225).
+TRAJ_PAIRS = tuple(
+    (traj, top)
+    for traj in ("NVTtrajectory_imaged.dcd", "NVTtrajectory.dcd")
+    for top in ("NVTtrajectory_firstframe.pdb", "NVTtrajectory_firstframe.cif",
+                "NVTtrajectory_lastframe.pdb", "NVTtrajectory_lastframe.cif")
 )
 
 # The residues this project's argument turns on, in project numbering.
