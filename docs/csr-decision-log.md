@@ -8077,6 +8077,77 @@ around:** in `eq6` OD2 does both jobs at once (2.81 to the metal, 2.79 to the
 lysine), where 6DQH splits them (OD1 4.28 to the metal, OD2 2.79 to the lysine,
 and NZ-OD1 closes from 4.86 to 3.94).
 
+**D221 - Scratch was FULL at 301/300 GB, which would have made the pull's output
+silently incomplete. The cause is not this project: mcube writes every
+trajectory twice, raw and imaged, and eq6's NVT alone was 5.4 GB in each copy.
+6 GB reclaimed with no information lost, and `asppull` submitted as job
+32365427.** (2026-11-06)
+
+Rule 8 says check disk first because an over-quota write fails silently, leaving
+a file that looks complete. It was worth obeying: **`rquota` reported
+`scratch 301 300`** - over the limit, not near it. Anything submitted before
+clearing that would have produced output that could not be trusted, and the
+failure would have looked like success.
+
+**CSR is not the problem.** The whole 301 GB, by `du --max-depth=1`:
+
+    45G .cache     41G channel    41G glp1r_md   27G AANCA    25G hf
+    23G rfd4       19G CSR        17G pmhc       16G boltzgen 14G .venv_bgrocm
+    14G .venv_esm  7.9G .boltz    3.1G NeuralCubes
+
+CSR is 19 GB of it, and ~98 GB is caches and virtualenvs (`.cache`, `hf`, the two
+`.venv_*`). Those are not this project's to delete, and `channel`, `glp1r_md`,
+`AANCA`, `pmhc`, `rfd4` and `boltzgen` belong to other work - so freeing real
+space is the user's call, not an autonomous one.
+
+**What was this project's to fix, and it is a library finding.**
+`md_eq6_results` was **13 GB - 68% of the entire CSR tree** - for one 10 ns run:
+
+    5.4G NVTtrajectory.dcd          5.4G NVTtrajectory_imaged.dcd
+    550M relaxbox_NPT.dcd           550M relaxbox_NPT_imaged.dcd
+     55M warmup_MD_cycle2.dcd        55M warmup_MD_cycle2_imaged.dcd
+     28M warmup_MD_cycle1.dcd        28M warmup_MD_cycle1_imaged.dcd
+
+**Every trajectory is stored twice, raw and imaged.** That is mcube's behaviour
+in every project, not a CSR setting, so it doubles the footprint of every MD run
+anyone runs. **A config flag to drop the un-imaged copy once imaging succeeds
+would halve that everywhere**, and by the standing instruction - make it a config
+change so users need not rewrite code - that is where the fix belongs. Not built.
+
+Deleted the four raw duplicates, conditional on the imaged twin existing and
+being non-empty (`test -s NVTtrajectory_imaged.dcd && rm -f ...`). **Information
+loss: none** - the imaged copy is the same data wrapped into the box, and it is
+the copy analysis wants. `rquota` after: **294/300**. The last frame, the
+checkpoints and `OpenMM_MD_final_state.xml` are untouched, and the eq6 occupancy
+analysis remains possible because `NVTtrajectory_imaged.dcd` is still there.
+
+**6 GB of headroom is thin for two MD runs, so the config changed too.**
+`traj_frequency` 500 would write ~1.2 GB per ns, doubled - about 5 GB for the two
+pull stages, against 6 GB free. Raised to **5000** in both pull sections: the
+deliverable is the last frame, not the trajectory, so 100 and 200 frames are
+ample and the runs now cost ~200 MB together.
+
+**Submitted.** `asppull.sh`, in the repo rather than typed because the
+code-server terminal truncates long lines silently, prints the quota and the
+restraints that actually landed before submitting. `sections.py` accepted the
+section - **10 selectors checked** - and `config.yaml` holds what was intended:
+
+    ['C:2:O01','C:1:C4x',3.47] ['B:1:ZN','C:1:O2x',2.6,500.0]
+    ['B:1:ZN','C:1:O1x',3.82,500.0] ['A:226:NZ','A:92:OD2',2.79,500.0]
+    ['B:1:ZN','A:92:CG',4.45,50.0]
+    nvt_time 1000, nvt_timestep 0.002, traj_frequency 5000,
+    coordination_redetect False, platform CUDA
+
+**Job 32365427**, `asppull`, `gpu_cuda`, PD at 16:46 AEST. Stage 2 (`asppull2`,
+Zn-CG to 5.15) cannot be staged yet: `sections.py` refuses a section whose
+`pdb_file` does not exist, and stage 1's last frame is that file.
+
+**Also learned about the bridge:** a `browser_batch` of eight actions was
+accepted and silently did nothing - no file, no error - where the same commands
+sent one at a time all landed. `BUNYA_BROWSER_SHELL.md` warns that batches are
+refused more often; this was worse than a refusal, since it reported success for
+every action. One command per call on this node.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
