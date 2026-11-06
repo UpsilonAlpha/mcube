@@ -8218,6 +8218,71 @@ was submitted. **Check `squeue` and `config.yaml` before re-running it**, becaus
 a second submission of the same section would be two jobs writing the same
 output directory. Stage 1's results are on `/scratch` and unaffected.
 
+**D223 - `asppull2` moved the lysine and so confirmed D222's diagnosis, but the
+carboxylate still did not follow, and the reason is that `Zn-CG` is nearly blind
+to what is wrong: the carboxylate is ROTATED, not merely too close. Also
+confirmed, by probe rather than by assumption: typing does not reach the shell
+while the browser pane is hidden.** (2026-11-06)
+
+Job 32366546, `md_asppull2`, `[DONE] md_asppull2`, **ASH total walltime 617.3 s
+(10.3 min)**, 2 ns NVT. It was submitted before the bridge dropped, so D222's
+warning about a possible double submission is resolved: there is exactly one
+stage-2 job and its output is intact. `sections.py` checked 12 selectors.
+
+**The whole lineage, against 6DQH:**
+
+| pair | eq6 | stage 1 | stage 2 | 6DQH |
+| --- | --- | --- | --- | --- |
+| Zn-CG | 3.72 | 3.82 | **3.96** | 5.15 |
+| Zn-NZ | 3.94 | 4.03 | **4.85** | 5.27 |
+| Zn-OD1 | 3.87 | 4.01 | **4.09** | **4.28** |
+| Zn-OD2 | 2.81 | 2.86 | **2.95** | 5.14 |
+| NZ-OD2 | 2.79 | 2.79 | 2.83 | 2.79 |
+| NZ-OD1 | 4.86 | 4.93 | 4.71 | 3.94 |
+| O01-C4x | 3.48 | 3.45 | **3.45** | - |
+
+Sphere: O01 2.00, HOH3171 2.04, His164 2.14, His88 2.21, mer O2x 2.62, OD2 2.95.
+**The pose survived a second time** - the attack coordinate has not moved off
+3.45 through two pulls, which is the thing D154 said was at risk.
+
+**D222's diagnosis was right.** Adding the `Zn-NZ 5.27` restraint moved the
+lysine from 4.03 to **4.85**, within 0.42 A of its crystal distance, where in
+stage 1 it had not budged. The salt bridge was indeed the anchor.
+
+**But the carboxylate is still in the second shell, and the table says why.**
+**Zn-OD1 is 4.09 against the crystal's 4.28 - essentially there - while Zn-OD2 is
+2.95 against 5.14.** One oxygen is at its crystal distance and the other is 2.2 A
+too close. That is not a translation problem, it is an **orientation** problem:
+the carboxylate is rotated so OD2 faces the metal, where 6DQH has OD2 facing the
+lysine and OD1 facing the metal. This is the flip identified in D220 before any
+of these runs, and it has survived all of them.
+
+**And `Zn-CG` cannot fix it.** A carboxylate can swing about CG while Zn-CG
+barely changes, so the coordinate chosen to avoid asserting the rotation (rule 6)
+is also nearly insensitive to it. Zn-CG moved 3.72 -> 3.96 across two runs, 0.24
+of 1.43 A, which is about what a rotation alone would give.
+
+**So stage 3 pulls `Zn-OD2` instead, at its measured crystal value of 5.14.**
+That is a *single* pair, so rule 6 still holds - OD1 is left free, and whether it
+settles near 4.28 by itself becomes a test rather than an assertion. And **k is
+500, not 50**: every crystal-derived restraint in `eq6` uses 500, the 50 on the
+pull was an inconsistency of mine, and D154 says why it matters - the Asp92-Zn
+contact in this model *"requires the anionic carboxylate: it is electrostatic,
+not steric"*. MM wants the carboxylate on the metal, so a gentle restraint loses.
+Fighting the force field is the **point** of the standing rule: restrain at the
+crystal distance in MM, because MM cannot be trusted for coordination, then let
+QM/MM decide where it goes. Committed as `52c5e85`; not submitted.
+
+**The bridge, verified rather than assumed.** The pane was hidden, so a probe
+(`date > p2.txt`) was sent before anything else. The fetch returned **404 with
+body `Not found`** - the route working, the file absent - so **the command never
+ran**. `bunya-working-rules` says typing fails while the pane is hidden in a way
+that looks identical to success, and that is now confirmed with a one-command
+test rather than inferred after losing work. The earlier eight-action
+`browser_batch` that silently did nothing (D221) was the same failure with the
+pane visible, so there are two independent ways for input to vanish: **send one
+command, then verify by fetching a file, every time.**
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
