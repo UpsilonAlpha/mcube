@@ -1997,6 +1997,44 @@ sections:
       properties:
         Precision: mixed
 
+  # D224: the QM/MM leg of the user's pipeline, from the repaired structure.
+  #
+  # Start: `md_asppull3`'s last frame, which matches 6DQH on every Asp92/Lys226
+  # distance to within 0.1 A - Zn-OD2 5.05 (5.14), Zn-OD1 4.19 (4.28), Zn-CG
+  # 5.09 (5.15), Zn-NZ 5.26 (5.27) - with O01-C4x at 3.47 and Asp92 well outside
+  # the 2.50 A coordination radius. OD1 reached its crystal distance with
+  # NOTHING restraining it, which is why this start is earned rather than built.
+  #
+  # NOTHING is restrained here, verified by reading rather than assumed:
+  # `bond_constraints` in qmmm.py is used only by the optimiser and by rigid
+  # water, so the equilibrate applies no coordination restraints, and the region
+  # is rebuilt from residue names so D115's stale-index trap cannot fire.
+  # Asp92 runs free and QM/MM says where it goes, which is the whole point -
+  # MM cannot decide coordination (user, repeatedly).
+  #
+  # Charge 2 checked independently, not inherited (D152): Zn(2+) - OH(-) +
+  # meropenem zwitterion(0) - Asp92(-) = 0 for the michaelis region, plus Arg90
+  # and Lys226 = +2.
+  #
+  # `time` is the TOTAL ps wanted and `resume` continues rather than overwrites,
+  # so the 300 ps goes in 50 ps chunks by raising this number: 50 -> 100 -> ...
+  # -> 300. At the measured 2.57 ps/h that is ~19.5 h per chunk. The chunking is
+  # the insurance: the attack coordinate is free too, and stage 3 left five
+  # donors inside 2.50 A (a second water, HOH3095 at 2.01, took the space Asp92
+  # vacated). Whether that water leaves is what this run is for; if instead the
+  # nucleophile drifts, one chunk tells us at 20 h rather than 120.
+  aspqm:
+    stage: qmmm
+    inputs:
+      pdb_file: md_asppull3_results/NVTtrajectory_lastframe.pdb
+      qm_residues: *qmreg_michrk
+      charge: 2
+      skip_equilibrate: false
+      skip_optimize: true
+      time: 50
+      resume: true
+      rigid_water: false
+
   aspcg:
     stage: scan
     inputs:
