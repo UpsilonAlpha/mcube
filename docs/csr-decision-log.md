@@ -8830,6 +8830,92 @@ Lys226 protonated and whether HOH3095 leaves -> chunks 2-6 by raising `time` to
 needs the D134 `optimizer_constraints` defect fixed first if it is given any
 constraint, and the def2-TZVP single point.
 
+**D229 - `relax10`'s log appears to apply a `Zn-Asp92 OD2 2.79` restraint
+opposing the configured 5.14, and it does not: an explicitly configured pair
+wins and the detected one is dropped by pair identity before anything is
+applied. The run is correct and was NOT cancelled. This also corrects D220 on
+*which* mechanism protects the pulled geometry.** (2026-11-06)
+
+Reading `relax10`'s output while it ran, the `[INFO] Atom selectors resolved`
+line appears **twice**, and the second is a set nobody configured:
+
+    [['B:1:ZN','C:1:O2x',1.94,500.0], ['B:1:ZN','A:164:NE2',2.09,500.0],
+     ['B:1:ZN','C:2:O01',2.14,500.0], ['B:1:ZN','A:88:NE2',2.22,500.0],
+     ['B:1:ZN','A:92:OD2',2.79,500.0]]
+
+with a warning naming exactly the danger: *"coordination restraint on A:92:OD2
+at 2.79 A is longer than 2.50 A, so it is not a bond: this holds a second-shell
+contact against the metal for the whole run, and a carboxylate held that close
+can rotate its other oxygen on (D120)."* **`Zn-OD2` at 2.79 against the
+configured 5.14, and `Zn-O2x` at 1.94 against the configured 2.60 - two pairs
+restrained at both ends, which is D214 exactly.** The run looked invalid.
+
+**It is not, and the thing that settled it was `asppull3`'s own log, then the
+source.** `asppull3` printed the identical five-pair resolution - and recorded
+
+    coordination_restraints: [['B:1:ZN','A:164:NE2',2.09,500.0],
+                              ['B:1:ZN','C:2:O01',2.14,500.0],
+                              ['B:1:ZN','A:88:NE2',2.22,500.0]]
+
+**three pairs, not five.** `Zn-O2x` and `Zn-OD2` were gone. Since `asppull3`
+reached Zn-OD2 5.05, they cannot have been applied. `src/mcube/md.py:317-319`
+says why:
+
+    rows = resolve_atoms(saved, pdb_file) or []
+    # An explicit restraint on a pair wins: the user named a distance for it.
+    named = {frozenset(r[:2]) for r in asked}
+    detected = fill_restraints([r for r in rows if frozenset(r[:2]) not in named],
+                               pdb_file, force)
+
+**Any detected pair whose two atoms match a configured pair is discarded,
+whatever the distances.** `relax10` names `[B:1:ZN, A:92:OD2, 5.14]` and
+`[B:1:ZN, C:1:O2x, 2.60]`, so both offending rows are dropped. What is applied
+is the configured six plus the three first-shell pairs nobody configured -
+His164 2.09, hydroxide 2.14, His88 2.22, which measure 2.15, 2.03 and 2.21 in
+the starting frame, so all three are right and none conflicts. **Nine
+restraints, no pair twice.**
+
+**The warning fires before the dedup, by design**, and the comment above it says
+so: *"Warned on BEFORE resolution, so the message can name the atoms."* So the
+message names a restraint that is then thrown away. That is defensible - it can
+print atom names rather than indices - but it means **the warning cannot be read
+as a statement about what the run will do**, which is exactly how I read it. A
+line in the log saying a second-shell contact "is held for the whole run" while
+the run holds nothing of the kind is a trap worth knowing: `coordination_restraints`
+in the saved results is the authority, and it is written after the dedup.
+
+**Correction to D220.** It credited `coordination_redetect: false` with
+preventing D214: *"which is what stops D214 repeating, since redetection
+re-pins Zn-OD2 at its detected 2.81 and would hold the pulled coordinate at
+both ends again."* **That is not the mechanism.** With `coordination_redetect:
+false` the stored `preprocess.results.coordination` is used - and that set
+**still contains `Zn-OD2` at 2.79**, measured on the original structure, which
+is precisely the row that alarmed me here. The protection is the pair-identity
+dedup, which works whether or not redetection runs. (Redetection would have
+been safe too, for a different reason: on this frame OD2 is 5.05 A, beyond
+`LIGAND_MAX` 2.50, so it would not be detected at all. Both routes are safe;
+neither is safe for the reason D220 gave.) `coordination_redetect: false` is
+still the right setting - it keeps the metal's first shell pinned at the
+distances the crystal-derived preprocess measured rather than at whatever a
+pulled frame happens to show - but it is not what keeps Asp92 out.
+
+**The practical rule this adds to D224's pre-submission arithmetic.** That rule
+said to write out every restrained pair as current -> target and check that no
+restraint opposes another. **It is not enough to check the pairs you wrote: the
+stage adds its own.** The check is against the **merged** set, and the merged
+set is only visible in `coordination_restraints` in the saved results - i.e.
+after the run starts. So the pre-submission version of the check is: for each
+pair you configure, confirm it either (a) is absent from
+`preprocess.results.coordination`, or (b) appears there and will be dropped by
+the dedup. Naming a pair is sufficient to win it; that is the whole protection
+and it should be stated deliberately rather than relied on by accident.
+
+**Nothing was cancelled, and that was the right call.** The first instinct was
+to kill the job on the strength of a log line. Checking `asppull3`'s recorded
+set cost one fetch and the source check cost two greps, against ~45 minutes of
+H100 and a re-submission. **A warning in a log is a hypothesis about a run, not
+a measurement of it.**
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
