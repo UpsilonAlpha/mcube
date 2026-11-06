@@ -2,7 +2,7 @@
 type: observation
 status: withheld
 evidence: experimental
-entries: [D22, D40, D178]
+entries: [D22, D40, D178, D230]
 ---
 
 # The user's mutant and double-mutant kinetics
@@ -22,6 +22,16 @@ it must not be invisible just because it is unread - an argument map that omits
 the evidence nobody has looked at is the same failure as a log whose
 corrections live inside later entries. Status `withheld` keeps it visible
 without letting it be cited as if read.
+
+**Which constructs, answered 2026-11-06 (D230).** Asked deliberately, because
+a construct name is not a measurement and the answer decides what gets built:
+the wild-type kinetics are on the **truncated** form - the form being modelled,
+so [[the-truncated-form-is-the-one-modelled]] moves to `supported` - and
+**both** the plain double mutant and dmCSR-1 S214D were measured. The latter
+unties D219: the mutant arm can be built from 6NC5 as the plain double mutant
+and still have a measured partner, and our own S214D structure
+([[our-dmcsr1-structure-puts-the-single-zinc-at-zn2]]) is not stranded either.
+**No values were asked for or given, and the status stays `withheld`.**
 
 **What it does not do.** It cannot be used to settle any node below the thesis,
 and no premise in this map may be marked supported on the strength of it.

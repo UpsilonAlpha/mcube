@@ -1,7 +1,7 @@
 ---
 type: claim
 status: supported
-entries: [D191, D195, D197, D198, D200, D201, D207, D214]
+entries: [D191, D195, D197, D198, D200, D201, D207, D214, D231]
 checked: [D191, D195, D197, D198, D200, D201]
 ---
 
@@ -36,6 +36,15 @@ The record, compressed:
   than evidence about the carboxylate; and the underlying *pose* is still the
   open question below.
 
+- **`relax10`, 10 ns, 2026-11-06 (D231):** the first build whose Asp92 is
+  where the crystals put it *and* which holds there. Every restraint within
+  0.09 A, and Zn-OD1 at 4.33 against 6DQH's 4.28 with nothing restraining it -
+  the carboxylate choosing the crystal's rotamer rather than being told to
+  ([[relax10-holds-the-crystal-geometry-for-10-ns]]). **What it does not
+  settle:** the pose, which it inherits unchanged from the same docked complex
+  as every run above; and the sphere, which is five-coordinate with two bulk
+  waters where [[csr1-zn1-site-is-h-r-h]] expects one.
+
 **The claim is now narrower than its heading.** An equilibrated complex exists.
 What does not exist is agreement on the pose it was equilibrated from: the
 docked complex puts the carbonyl at 5.43 A with one attack restraint, while
@@ -44,7 +53,9 @@ docked complex puts the carbonyl at 5.43 A with one attack restraint, while
 Until that is settled, "usable" is an assessment of our own structures by our own
 criteria, which is why this node is held on `ours` evidence and flagged by the
 validator's check 1. That flag is correct and is not resolvable by more
-computation of the same kind.
+computation of the same kind. **`relax10` does not change this**: a startable
+structure is not a correct one, and 10 ns of MM on an unresolved pose is
+exactly "more computation of the same kind".
 
 **Two structural lessons worth keeping.** Testing properties one at a time can
 pass a composition that would be rejected if asked directly (D197). And an
