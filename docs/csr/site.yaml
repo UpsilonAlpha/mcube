@@ -1885,39 +1885,66 @@ sections:
   # a bonded pair apart is not a seeding method), so each window reads a `seed`
   # from its own results entry. Writing those 26 entries is the one step between
   # the scan finishing and the PMF starting.
-  # D218/D219: repair eq6's second shell before QM/MM, rather than re-equilibrate.
-  # eq6 drifted to Zn-CG 3.72; 6DQH (1.10 A, the only deposit with a Zn1 AND the
-  # wild-type lysine) measures 5.15, and every Zn2-bearing construct agrees at
-  # 4.66-5.48. Pull ONE coordinate - rule 6: a two-oxygen restraint would assert
-  # the carboxylate's rotation, which is D130's mistake. The constraints are
-  # eq6's own list minus the Asp92-Zn pair, so nothing new is asserted; the
-  # attack coordinate has to stay on because freeing Asp92 is measured to let
-  # the hydroxide take the vacated face and open O01-C4x (3.48 -> 3.69).
+  # D218/D219/D220: repair eq6's second shell before QM/MM, rather than
+  # re-equilibrate. eq6 drifted to Zn-CG 3.72; 6DQH (1.10 A, the only deposit
+  # with a Zn1 AND the wild-type lysine) measures 5.15, and every Zn2-bearing
+  # construct agrees at 4.66-5.48.
+  #
+  # This is an `md` section and NOT a `scan` on purpose (D220). A relaxed scan
+  # cannot converge on this system: `optimizer_constraints` switches the whole
+  # rigid-water block from geomeTRIC `$freeze` to `$set` as soon as any user
+  # constraint appears, so TIP3P O-H distances become convergence criteria that
+  # sit ~7x outside `convergence_cmax`. `scan_aspout` was cancelled for this
+  # after 120 steps, 160 SVD failures and 4.6 GB of dumps in one point. MD uses
+  # harmonic restraints instead of optimiser constraints, so none of that
+  # applies, and the surroundings relax at 300 K rather than downhill.
+  #
+  # Pull ONE coordinate - rule 6: a two-oxygen restraint would assert the
+  # carboxylate's rotation, which is D130's mistake. Staged in two steps so the
+  # 1.4 A displacement is never applied as one impulse. Restraints are eq6's own
+  # list minus the Asp92-Zn pair, so nothing new is asserted, and the attack
+  # coordinate stays on because freeing Asp92 is measured to let the hydroxide
+  # take the vacated face and open O01-C4x (3.48 -> 3.69).
+  #
+  # constraint_exclude_residues is what stops D214 repeating: without it
+  # coordination_redetect re-pins Zn-OD2 at its detected 2.81 and fights the pull.
   asppull:
-    stage: scan
+    stage: md
     inputs:
       pdb_file: md_eq6_results/NVTtrajectory_lastframe.pdb
-      atoms: [B:1:ZN, A:92:CG]
-      start: 3.72
-      end: 5.15
-      points: 15
-      opt_maxiter: 300
-      extra_qm_residues: {A: [93]}
-      resume: true
-      constraints:
+      coordination_redetect: false   # D214: redetect re-pinned Zn-OD2 at 2.81 and
+                                     # held the pulled coordinate at both ends
+      restraints:
         - [C:2:O01, C:1:C4x, 3.47]
-        - [B:1:ZN, C:1:O2x, 2.60]
-        - [B:1:ZN, C:1:O1x, 3.82]
-        - [A:226:NZ, A:92:OD2, 2.79]
-      monitor:
-        - [B:1:ZN, A:92:OD1]
-        - [B:1:ZN, A:92:OD2]
-        - [A:226:NZ, A:92:OD1]
-        - [A:226:NZ, A:92:OD2]
-        - [A:226:NZ, B:1:ZN]
-        - [B:1:ZN, C:2:O01]
-        - [C:2:O01, C:1:C4x]
-        - [B:1:ZN, A:186:OG]
+        - [B:1:ZN, C:1:O2x, 2.60, 500.0]
+        - [B:1:ZN, C:1:O1x, 3.82, 500.0]
+        - [A:226:NZ, A:92:OD2, 2.79, 500.0]
+        - [B:1:ZN, A:92:CG, 4.45, 50.0]   # stage 1: halfway out, gentle k
+      nvt_time: 1000
+      nvt_timestep: 0.002
+      traj_frequency: 500
+      platform: CUDA
+      properties:
+        Precision: mixed
+
+  # stage 2: on to the crystal distance, from stage 1's last frame
+  asppull2:
+    stage: md
+    inputs:
+      pdb_file: md_asppull_results/NVTtrajectory_lastframe.pdb
+      coordination_redetect: false
+      restraints:
+        - [C:2:O01, C:1:C4x, 3.47]
+        - [B:1:ZN, C:1:O2x, 2.60, 500.0]
+        - [B:1:ZN, C:1:O1x, 3.82, 500.0]
+        - [A:226:NZ, A:92:OD2, 2.79, 500.0]
+        - [B:1:ZN, A:92:CG, 5.15, 50.0]   # 6DQH's distance
+      nvt_time: 2000
+      nvt_timestep: 0.002
+      traj_frequency: 500
+      platform: CUDA
+      properties:
+        Precision: mixed
 
   aspcg:
     stage: scan

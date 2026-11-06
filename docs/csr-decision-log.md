@@ -7989,6 +7989,94 @@ measured on the plain double mutant or on dmCSR-1 **S214D**? If the latter, the
 simulated construct and the measured one differ by an active-site mutation, and
 the mutant arm should carry S186D.
 
+**D220 - The Asp92 pull cannot be a `scan`. mcube's optimiser-constraint defect,
+diagnosed in D134 and never fixed, blocks every relaxed scan on this system, and
+it sits on the critical path of the pipeline the user defined. The pull is
+restrained MD instead - config only, ~15 minutes - and it was NOT submitted.**
+(2026-11-06)
+
+D218 chose `scan` for the pull because a relaxed scan is a controlled pull where
+an unconstrained optimiser is not. Checking the log before submitting found that
+it cannot run.
+
+**The defect, in the log's own words (D134).** `optimizer_constraints`
+(`src/mcube/qmmm.py:539`) emits the active-region MM waters as geomeTRIC
+`$freeze` when there is no user constraint, and switches **the whole block to
+`$set` with values the moment one appears - which a scan always supplies**. A
+frozen distance is projected out and a residual on it costs nothing; a `$set`
+distance is a **convergence criterion** checked against `convergence_cmax`, and
+the TIP3P O-H distances sit at 0.069 A against a tolerance seven times smaller,
+so the run **cannot be declared converged however long it runs**. It also wrecks
+the linear algebra: **160 SVD failures in 120 steps**, each dumping a 32 MB file.
+`scan_aspout` was cancelled over it - 2.3 min/step with `maxiter` 300 is 11.5 h
+per point, and **4.6 GB of dumps in a single point**.
+
+D218's `asppull` had **four** user constraints, so it would have triggered this
+immediately, and its 15 points at `opt_maxiter: 300` would have been ~170 h
+against any walltime. **It was written, committed, and would have wasted the
+allocation. Caught by reading D134, not by anything in the tooling.**
+
+**This is on the critical path, which D134 said and nobody carried forward.**
+Its closing line: *"D133 test 1 is not answerable by `scan` as mcube currently
+writes constraints, and the same applies to every `qmmm` run given
+`opt_constraints`."* The pipeline the user defined ends in **a def2-SVP geometry
+optimisation**, and if that optimisation is given any constraint - to hold the
+attack coordinate, say - it hits the same wall. So does `aspcg`. The PMF's
+umbrella windows are safe, because they bias through MD forces rather than
+optimiser constraints.
+
+**The fix that should be made, and it is a library fix rather than a CSR one.**
+D134's option 1: write geomeTRIC's constraint file ourselves so the waters stay
+`$freeze` and only the user's own pairs go in `$set`. ASH's `Optimizer` takes a
+single `constrainvalue` flag for the whole dict, which is why mcube currently
+cannot express the mixture. This is general - it unblocks constrained
+optimisation for every system, not this protein - and it is the shape of change
+the standing instruction asks for. Option 2, `rigid_water: false`, is one config
+line but changes what is being optimised, so it stays the user's call. Option 3,
+shrinking `actradius`, mitigates only.
+
+**What the pull is now.** An `md` section, because MD restraints are harmonic and
+have no convergence criteria, no SVD and no dumps - and the surroundings relax at
+300 K rather than downhill into the nearest minimum, which is the more
+defensible thing to do to a solvated site anyway.
+
+    asppull   nvt_time 1000   Zn-CG restrained at 4.45, k 50   (halfway)
+    asppull2  nvt_time 2000   Zn-CG restrained at 5.15, k 50   (6DQH's distance)
+
+Both carry eq6's own restraint list minus the Asp92-Zn pair, so nothing new is
+asserted, and both set **`coordination_redetect: false`** - which is what stops
+D214 repeating, since redetection re-pins Zn-OD2 at its detected 2.81 and would
+hold the pulled coordinate at both ends again. Staged in two steps so a 1.4 A
+displacement is never applied as one impulse, and at k = 50 rather than 500 -
+the library default, justified in the log from Gervasoni 2022 and Hanzevacki
+2025, leaving 0.11 A RMS of room. Still one coordinate only: Zn-CG, with both
+oxygens free to rotate, per rule 6.
+
+**Cost:** eq6 did 10 ns in 43.7 min on one H100, so 1 + 2 ns is **about 15
+minutes**, against ~170 h for the scan that was nearly submitted.
+
+**Three corrections to D218's config, all found by checking the stage's own
+keys against `eq6`'s working section rather than assuming:** `md` has no
+`monitor` key (monitoring is post-hoc through `site.py shell`), no
+`constraint_exclude_residues` (that is a **preprocess** key; the md-stage
+equivalent is `coordination_redetect: false`), and takes `nvt_time` in **ps**,
+not `time` in ns.
+
+**Not submitted.** The browser pane is hidden, so only the read-only
+`vscode-remote-resource` route is available and the shell must not be driven -
+and the scratch quota has not been checked, which rule 8 requires before any
+write. The config is committed and ready.
+
+**Verified directly from the file rather than from D214's table**, since the pull
+is designed around these numbers: `md_eq6_results/NVTtrajectory_lastframe.pdb`,
+47,979 atoms, one zinc - Zn-OD2 **2.81**, Zn-OD1 **3.87**, Zn-CG **3.72**,
+NZ-OD2 **2.79**, NZ-OD1 **4.86**, Zn-NZ **3.94**, Zn-Ser186 OG **3.81**; sphere
+O01 1.96, HOH3171 1.97, His164 2.13, His88 2.20, mer O2x 2.57, OD2 2.81. Every
+value matches D214. **It also confirms the carboxylate flip the pull is designed
+around:** in `eq6` OD2 does both jobs at once (2.81 to the metal, 2.79 to the
+lysine), where 6DQH splits them (OD1 4.28 to the metal, OD2 2.79 to the lysine,
+and NZ-OD1 closes from 4.86 to 3.94).
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
