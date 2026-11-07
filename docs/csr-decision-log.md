@@ -9236,6 +9236,44 @@ experimental observation now sits beneath that node through the new claim.
 Recorded rather than celebrated: whether that path genuinely anchors it is a
 judgement the validator cannot make.
 
+**D233 - CHUNKS 2-6 ARE NOT RUN. The user's call, taken after D232: stop at
+chunk 1. The ~100 h of CPU that remained was budgeted to decide a question that
+is now decided, and it would have been spent on a Hamiltonian this project no
+longer trusts for this carboxylate's position, on a complex that has already
+dissociated by 22 ps.** (2026-11-07)
+
+The decision was put to the user with the arithmetic rather than a
+recommendation, because the trade is theirs: chunks 2-6 were 50 ps increments
+to 300 ps, and their stated purpose in D228 was to give the Asp92 question
+enough sampling to close. D232 closed it at 32 ps, in the affirmative, with no
+recrossing in 24 consecutive ps. More GFN2 would have measured the same bias
+for longer.
+
+**What is given up, said plainly rather than argued away.** Three things were
+on offer past 50 ps and are now not available: whether the chelate is stable on
+a 100-300 ps timescale or eventually breaks; whether the Lys226 proton moves
+later than 32 ps, which would have bounded D204's conditionality from the other
+side; and a long GFN2 reference trajectory against which the def2-SVP
+optimisation's geometry could have been compared frame-for-frame. The first two
+are questions about GFN2's behaviour, not about CSR-1, so the project loses
+little. The third is a real loss and is recorded as one: the def2-SVP leg will
+be compared against the crystals and against chunk 1's 32 ps only.
+
+**Chunk 1 itself still finishes.** Job 32416288 runs to 50 ps on its own and
+nothing was cancelled - killing it would have thrown out work already paid for,
+and the final 18 ps cost nothing extra. The one-shot wakeup at 19:13 reads them
+and reports only what they add or contradict; D232's reading is not reopened by
+them, because a 24 ps non-recrossing is not overturned by 18 ps more of the
+same contact.
+
+**What this unblocks.** The def2-SVP QM/MM geometry optimisation from
+`md_relax10_results/NVTtrajectory_lastframe.pdb` is now the next leg and the
+instrument of record for Asp92's position, with the def2-TZVP single point
+after it. It is not blocked by D134, since that defect fires only when a
+`qmmm` run is given `opt_constraints` and this leg supplies none. Item 11's
+GFN2 PMF stays gated on settling its instrument, per D232. Not submitted: no
+job is proposed here.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
