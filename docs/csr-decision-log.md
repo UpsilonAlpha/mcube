@@ -9552,6 +9552,58 @@ that needs hundreds. Four ways out, costed:
    measurement rather than an optimisation, and put the def2-TZVP single point
    on `relax10`'s frame instead of on an optimised one.
 
+**D237 - `aspdft` runs to the wall, the user's decision. Resumable, but NOT by
+`resume: true`, which is a no-op on this leg: the optimise path never calls
+`resolve_resume`, and the route is `traj_frame.py` onto the last frame of
+`geometric_OPTtraj_Full.xyz`. Checked in the source and against the files on
+disk rather than taken on trust.** (2026-11-07)
+
+**What `resume` does and does not do here, read in `src/mcube/qmmm.py` rather
+than assumed.** `resolve_resume(inputs, pdb_file)` is called inside
+`if not inputs.get("skip_equilibrate")` - the QM/MM **MD** branch only. This
+section sets `skip_equilibrate: true`, so a `resume: true` on it would be
+silently ignored, and there is no checkpoint restart of a geomeTRIC
+optimisation anywhere in mcube. The work is still not lost, which is the part
+that matters, but the mechanism is manual.
+
+**The route, with the files confirmed present on disk:**
+
+    geometric_OPTtraj_Full.xyz        6,550,513 B   the whole system, every step
+    geometric_OPTtraj_QMregion.xyz       29,017 B
+    pyscf.chk                        11,969,816 B   SCF guess
+    QM_MM_optimized.pdb                     404      not written yet, as expected
+    constraints.txt                         404      NO constraint block at all
+
+Then `python docs/csr/traj_frame.py <Full.xyz> <template.pdb> <out.pdb> [index]`,
+default index -1, template `md_relax10_results/NVTtrajectory_lastframe.pdb`
+(same system, same atom order, which the script checks rather than assumes - it
+verifies the atom count and that every element agrees with the template's atom
+name). The file is streamed, so its eventual few hundred MB is not a problem.
+A new section then takes that PDB as its `pdb_file`. This is exactly how D106
+recovered a geometry from an optimisation that never reached its end.
+
+**What a restart costs, so it is not discovered later:** geomeTRIC's
+accumulated approximate Hessian and its trust radius go with the old process,
+so the first few steps of a restart re-learn curvature that was already paid
+for. At ~115 min a step that is a few hours, which is the price of the manual
+route and is worth stating next to "it is resumable". The SCF guess does carry
+over in `pyscf.chk`.
+
+**`constraints.txt` is absent, which is the design condition confirmed by
+measurement rather than by reading the config.** D134's defect fires only when a
+`qmmm` run is handed `opt_constraints`, and D137's `$set` water trap only when
+rigid water puts pairs in the block. No constraints file at all means geomeTRIC
+was given neither, so convergence is not gated on anything artificial. That was
+the argument for supplying none; this is the check on it.
+
+**Nothing submitted. The job keeps running to its 48 h wall (started 15:10:22 on
+7 Nov, so about 15:10 on 9 Nov), expected to reach ~25 steps against
+`opt_maxiter: 60`.** The three questions the next check should answer are
+whether the ~115 min rate holds, whether the energy is still falling
+monotonically, and whether Asp92 continues to move *away* from the zinc - the
+third being the one that matters, since three steps is a direction and twenty-five
+is an argument.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
