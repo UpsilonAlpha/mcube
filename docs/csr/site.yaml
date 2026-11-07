@@ -2324,6 +2324,58 @@ sections:
       opt_maxiter: 300
       rigid_water: false
 
+  # ---- Does letting the environment relax change the answer? (D241) ----
+  #
+  # D240 left a confound it could not remove: both optimisations differ from
+  # D232's 300 K dynamics in TWO ways, being 0 K **and** holding the MM
+  # environment frozen (the active region is the QM atoms only, D235). So the
+  # chelate's absence from both minima is consistent with needing thermal
+  # energy, with needing the second shell to relax, or with both.
+  #
+  # This removes one of the two. It continues from `aspxtb`'s **converged**
+  # minimum - the only converged QM/MM geometry in the project - and reopens the
+  # 8 A active region, so ~485 atoms are free where 124 were. Same Hamiltonian,
+  # same QM region, same charge, nothing constrained: only `pdb_file` and
+  # `actradius` differ from `aspxtb`, and the `require.same_as` gate refuses to
+  # write this section if anything else does.
+  #
+  # **Pre-registered, before the result (D178):**
+  #   - **Asp92 comes in toward ~2.5 A once the environment is free** -> the
+  #     frozen shell was holding it out, D240's narrowing was premature, and the
+  #     0 K-versus-300 K half of the confound is the one that does not matter.
+  #   - **Asp92 stays out, near 5 A** -> the frozen environment was not the
+  #     reason, so the chelate needs thermal energy. D240's narrowing stands and
+  #     strengthens: GFN2's minimum is not where the chelation lives, under
+  #     either treatment of the environment.
+  #   - **It does not converge in 300 steps** -> the expected outcome, not a
+  #     failure; the channel project's flexible-water 8 A runs were monotonic and
+  #     still unconverged at 300. Read the trajectory's direction instead, which
+  #     is what the first two readings actually turn on.
+  #
+  # **Not expected to converge, and that is designed for.** Our own 8 A xTB
+  # optimisation of this system ran at ~159 s a step with geomeTRIC's linear
+  # algebra over 467 active atoms as the cost driver, so 300 steps is ~13 h and
+  # fits the wall. `rigid_water` stays false: the channel project's 8 A runs
+  # climbed 30-45 kcal/mol UPHILL with good step quality because the rigid-water
+  # constraints degenerate TRIC's coordinate system, and with no constraints at
+  # all geomeTRIC gets no constraint block (confirmed for `aspdft` by
+  # `constraints.txt` being absent, D237).
+  aspxtb8:
+    stage: qmmm
+    submit: {partition: general, cores: 8, mem: 32G, time: "24:00:00"}
+    require:
+      unset: [restraints, opt_constraints, constraints]
+      same_as: {section: aspxtb, except: [pdb_file, actradius]}
+    inputs:
+      pdb_file: protdft/qmmm_aspxtb/QM_MM_optimized.pdb
+      qm_residues: *qmreg_michrk
+      charge: 2
+      actradius: 8
+      skip_equilibrate: true
+      skip_optimize: false
+      opt_maxiter: 300
+      rigid_water: false
+
   aspcg:
     stage: scan
     inputs:
