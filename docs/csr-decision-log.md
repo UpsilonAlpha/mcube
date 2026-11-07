@@ -9746,6 +9746,101 @@ change and a line in `running-on-bunya.md`, with no behaviour change, and it is
 the difference between a general library and a library with a project's script
 in its docs directory.
 
+**D240 - THE MATCHED COMPARISON ANSWERS ITS SECOND PRE-REGISTERED OUTCOME, AND
+IT RETRACTS WHAT I WROTE THIS AFTERNOON. GFN2's own minimum from the
+crystal-consistent frame puts Asp92 FURTHER OUT than the crystal - Zn-OD2
+5.153 -> 5.383, Zn-OD1 4.327 -> 4.952 - with the salt bridge tightening to
+2.718 and the substrate carbonyl taking the open site at 2.282. Converged in 87
+steps and 3.8 minutes. So `aspdft`'s outward drift is NOT a DFT-versus-GFN2
+difference, and D236's reading of it as "the first direct evidence that GFN2's
+chelate is the Hamiltonian's" is wrong and is retracted.** (2026-11-07)
+
+**`aspxtb`, job 32461816, converged.** `converged: true`, 87 optimisation
+steps, `opt_energy` -430.99370531860416 Eh at GFN2-xTB, **228 seconds of
+walltime**. Energy fell monotonically, -430.7337 -> -430.9937 Eh (-163
+kcal/mol). Everything but `qm_engine` was identical to `aspdft` and the
+`same_as` gate refused to write the section until that was true, which is the
+only reason the pair can be read against each other at all.
+
+**The measurement, on `QM_MM_optimized.pdb`:**
+
+    pair          start   GFN2 min   [6DQH]    [aspdft, 3 steps]
+    Zn-OD2        5.153    5.383     [5.14]        5.087
+    Zn-OD1        4.327    4.952     [4.28]        4.544
+    Zn-CG         5.192    5.564     [5.15]        5.198
+    Zn-NZ         5.276    5.195     [5.27]        5.269
+    NZ-OD2        2.880    2.718     [2.79]        2.766
+    His88 NE2     2.178    2.083                   2.222
+    His164 NE2    2.126    2.010                   2.114
+    Zn-OH O01     2.035    1.775
+    Zn-O2x        2.610    2.282
+    O01-C4x       3.481    3.673
+
+**THE SECOND PRE-REGISTERED OUTCOME, WORD FOR WORD FROM D238: "Both keep it out
+-> D232's chelation needed 300 K, so GFN2 makes a barrier crossing too easy
+rather than putting the minimum in the wrong place. A different, weaker claim,
+and `gfn2-over-coordinates-zn1-from-a-crystal-consistent-start` would have to be
+narrowed to say exactly that."** That is what happened, and it is honoured
+rather than re-spun. The pre-registration is what makes this cheap to accept:
+the reading was fixed before the result, so there is nothing to argue about.
+
+**WHAT IS RETRACTED, and it is six hours old.** D236 closed with: *"the DFT
+gradient at the crystal-consistent geometry does not pull Asp92 onto the metal,
+and it improves the salt bridge. That is the first direct evidence that GFN2's
+chelate is the Hamiltonian's and not the enzyme's."* **GFN2 does the same thing
+and more of it** - it moves the carboxylate 0.23 A further out where DFT moved it
+0.07, and tightens the same salt bridge to the same place. So `aspdft`'s three
+steps say nothing about GFN2 versus DFT. They say that *neither* method's
+gradient, from this start, points the carboxylate at the metal. Entered in
+`retractions.md`. The numbers in D236 stand; the inference does not.
+
+**TWO DIFFERENCES FROM D232, NOT ONE, AND THEY CANNOT BE SEPARATED BY WHAT HAS
+RUN.** D232 was 50 ps of 300 K dynamics with the whole system free. Both
+optimisations are 0 K **and** have the MM environment frozen at the MM geometry,
+because the active region is the QM atoms only (D235). So the chelate's absence
+here is consistent with needing thermal energy, with needing the second shell to
+relax, or with both. Saying "it needed 300 K" would be picking one of three
+explanations because it is the one I thought of first. What the pair does
+establish is narrower and still worth having: **the chelate is not where GFN2's
+gradient goes from a crystal-consistent start with this environment held.**
+
+**A new observation, recorded carefully because it is `ours` and the method is
+on trial.** GFN2's minimum pulls the substrate carbonyl onto the zinc at
+**2.282 A**, from 2.610 at the start, where 7UHI/7UHJ give 2.53/2.63. The
+coordination that `no-usable-michaelis-complex-exists-yet` records as missing
+from the docked pose (5.43 A) is present in this geometry and slightly short of
+the deposited values. That is **not** a resolution of that node: the pose was
+inherited from the same docking, the method is one this project has just spent
+two days distrusting, and a single minimum is not a measurement of a distance.
+It is recorded because it is the first geometry in the project where the carbonyl
+is on the metal without a restraint holding it there.
+
+**And the other thing that moved: both optimisations tighten the Zn-Lys226 salt
+bridge onto the crystal value** - 2.880 -> 2.718 at GFN2 and -> 2.766 at DFT,
+against 6DQH's 2.79. Two methods, same direction, from an MM geometry that had
+drifted 0.09 A long. That is the one place where agreement between two methods is
+worth something here, because the thing they agree with is a measurement.
+
+**Costs and the comparison that is now available.** 228 seconds against the DFT
+arm's 110-118 minutes **per step**: GFN2/MM optimisation of this system with a
+QM-only active region is free, which is worth knowing for its own sake, since the
+8 A active region version of the same calculation took 159 s a step and 111 steps
+without finishing (D105/D106). Cutting the active region to the QM atoms did not
+only fix the channel project's convergence failure - it made the xTB arm
+instantaneous.
+
+**Housekeeping.** One pre-existing wart surfaced in the `.err`:
+`python: can't open file '/scratch/.../CSR_mich/../mcube/docs/csr/site.py'`,
+after `[DONE]`. `run.slurm` runs a post-stage `site.py` check through a relative
+path that is wrong from this run directory, so that check has silently not been
+running. It did not affect the optimisation. Not fixed here; named so it is not
+rediscovered.
+
+**Library.** 784 passed, 7 skipped locally (the ASH-gated ones) with the
+`require:`/`submit:` work in place, and the eight launchers' gates verified
+end-to-end on Bunya: `--dry-run` on all eight sections passes and reproduces
+exactly the `sbatch` lines the deleted scripts used, GPU qos and gres included.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

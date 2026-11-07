@@ -2,8 +2,8 @@
 type: observation
 evidence: ours
 status: supported
-entries: [D235, D236]
-checked: [D236]
+entries: [D235, D236, D240]
+checked: [D236, D240]
 ---
 
 # Through three wb97x-v/def2-SVP QM/MM optimisation steps from the crystal-consistent frame, Asp92 moves away from Zn1 rather than toward it, and the Lys226 salt bridge tightens onto the crystal value
@@ -41,12 +41,19 @@ reached. And it is **not a matched comparison with GFN2**: that was 50 ps of
 to cross a barrier it might find. The matched test — a GFN2 optimisation from
 this same frame — has not been run.
 
-**What it does establish** is narrow and new: the DFT gradient at a geometry four
-crystals support does not point the carboxylate at the metal, where GFN2's
-dynamics took it from 4.34 to 2.01 Å within 8 ps
-([[aspqm2-chunk1-asp92-chelates-zn1-under-gfn2]]). Until now the case that this
-was the Hamiltonian's doing rested on a cluster benchmark and on the crystals;
-this is the first measurement of the DFT gradient on the protein itself.
+**The inference first drawn from this is RETRACTED (D240).** D236 read it as the
+first direct evidence that GFN2's chelate is the Hamiltonian's rather than the
+enzyme's. **GFN2 does the same thing and more of it**: its own converged minimum
+from this identical start moves Asp92 0.23 Å further out where DFT moved it 0.07,
+and tightens the same salt bridge to the same place
+([[gfn2-minimum-puts-asp92-further-out-than-the-crystal]]). So these three steps
+say nothing about DFT versus GFN2. The numbers stand; the inference does not.
+
+**What survives** is that neither method's gradient, from a crystal-consistent
+start with the environment frozen, points the carboxylate at the metal - which
+is about where the chelate is *not*, and is the half of
+[[gfn2-over-coordinates-zn1-from-a-crystal-consistent-start]] that locates the
+bias in the barrier rather than in the minimum.
 
 ## Supports
 - [[gfn2-over-coordinates-zn1-from-a-crystal-consistent-start]]
