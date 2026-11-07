@@ -127,6 +127,7 @@ The grep traps. Read the right-hand column before quoting the left.
 | **D204** | the reactant is Zn–OH₂ with neutral Lys226 "in a correctly built Michaelis complex and not only in a degraded one" | its own closing section (Zn–Asp92 at 1.78 Å) and D206, which rejects that geometry on the structural criterion |
 | **D225** | "**No 100 ns trajectory survives**, so the 10-vs-100 comparison cannot be made directly" | **D226.** True of the DCD, false as written. `wt100c` finished its full 100 ns and its `NVTtrajectory_lastframe.pdb`, `NVTtrajectory_firstframe.pdb`, NPT frames and 5000-row `nvtsim.csv` are all on disk — in `CSR/CSR_wt/`, not `CSR_mich/`, which is why one directory's listing was reported as a general absence. The comparison was made from them. **Its conclusion — 10 ns is enough — survives and is now measured rather than inferred.** |
 | **D225 (box drift)** | "box volume drift **+5.396** nm³ ... eight times larger" marks `asppull3` as still relaxing, and *"the box is still accommodating the 1.3–2.2 Å displacement of the Asp92/Lys226 pair"* | **D231.** The statistic is last-decile-minus-first-decile, and NPT box volume steps once then plateaus, so it measures how far the box had to travel, not convergence. All three runs plateau in decile 1 and reach the same ~480.7 nm³; by final-three-decile spread `asppull3` (0.51) beats `eq6` (1.07). The displacement needed no accommodation. **D225's other reason — RMSD still climbing over 2 ns — stands, and is sufficient.** |
+| **D216** (mechanism) | *"deprotonating Lys226 removes what holds Asp92 off the metal, so Asp92 moving onto Zn1 is **downstream of the Lys226 proton transfer**"*, offered as the testable explanation of the collapse | **D232.** The test ran. Over 32 ps of unrestrained GFN2 from the crystal geometry, **all three Lys226 NZ hydrogens stay on the nitrogen** (0.98-1.09 A), the hydroxide keeps exactly one H, the salt bridge holds at 2.87 A mean - and Asp92 chelates the zinc anyway, bidentate at 2.10/2.29 A from 8 ps on. The transfer is not a precondition for the collapse. The measurement that D216 was explaining stands; the explanation does not. |
 
 ---
 
@@ -134,6 +135,7 @@ The grep traps. Read the right-hand column before quoting the left.
 
 | entry | claim | overturned by |
 |---|---|---|
+| D204 | Lys226 hands its proton to the zinc-bound oxygen "within 2 ps of becoming quantum", stated as a property of the enzyme | **D232.** Same QM region, same charge, 32 ps from a start with the carboxylate on the lysine instead of the metal: **no transfer at all**. Real, and conditional on the starting geometry rather than general - which matters because `nucleophile-is-zn-bound-water-with-neutral-lys226` rests on it. |
 | D12, D13 | MBLs bind the C3 carboxylate with a Lys, and Lys226 is it | D107 — it is BBL Lys263, the Zn2 position *(marked)* |
 | D32 | Arg90 NH1···O1x at 99% occupancy | D148 — 0% over 5,000 frames; pose-dependent |
 | D44 | tier B: every published number re-optimised at DFT/MM | D47 — "tier B (D44) is reversed" |

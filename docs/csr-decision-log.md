@@ -9100,6 +9100,142 @@ hours at :21, since chunk 1 is ~19.5 h at the measured 2.57 ps/h. Its prompt
 carries the starting distances so the next check can read the chemistry off the
 running job without a shell, and instructs it to stretch its own cadence again.
 
+**D232 - THE PRE-REGISTERED QUESTION IS ANSWERED, IN THE AFFIRMATIVE: GFN2
+brings Asp92 onto Zn1 as a BIDENTATE chelate within 8 ps from the crystal
+geometry, with Lys226 still protonated and the salt bridge still formed. The
+question open since D9 closes; def2-SVP is now the only admissible instrument
+for this carboxylate's position, exactly as written down before the result.**
+(2026-11-07)
+
+**Read off the live job without a shell**, at 32 of 50 ps - job 32416288,
+32,122 `STARTING XTB INTERFACE` calls at 11:36, i.e. 2.45 ps/h against the 2.57
+estimated, finishing about 18:50 today. The code-server session had moved to
+`bun147/52687`; the node in my notes was dead and the base was read from the
+live tab. `QM_MM.dcd` is in `protdft/qmmm_aspqm2/` - `run.slurm` puts every
+non-`md` stage in `protdft/<section>`, which is why the obvious paths 404'd -
+and it parsed to the exact byte: 47,979 atoms matching the topology PDB,
+32 frames at 1 ps, cubic box 78.332 A.
+
+**The measurement, over all 32 frames rather than a frame (D198's lesson).**
+
+    ps          1     4     7     8     9    15    20    25    32
+    Zn-OD2    4.34  4.34  3.54  2.36  2.01  2.27  2.03  2.07  2.12
+    Zn-OD1    5.90  5.59  4.74  3.52  3.41  2.31  2.28  2.23  2.29
+    Zn-O2x    2.50  2.12  2.21  2.51  2.60  4.83  4.94  6.31  5.81
+
+    occupancy inside 2.5 A, 32 frames:
+      His88 NE2 100% (2.09)   His164 NE2 100% (2.12)   OH O01 100% (1.83)
+      Asp92 OD2  78% (2.10)   Asp92 OD1   53% (2.29)   mer O2x  19% (2.16)
+      HOH3171     3%          HOH3095      0%
+    coordination number: 3 at 1 ps, 4 through 13 ps, 5 from 14 ps on
+
+**The carboxylate crosses the boundary between 7 and 8 ps and does not come
+back for the remaining 24 ps.** It is a **chelate, not a contact**: Zn-CG falls
+5.50 -> 2.52 A (min 2.34), which is where a symmetric bidentate carboxylate puts
+its own carbon, and both oxygens are inside 2.5 A from 15 ps.
+
+**Checked by a second route that shares no code with the first.** `xtb_.xyz`,
+the live 130-atom QM region handed to xTB after frame 32, gives the zinc's
+neighbours inside 2.9 A as **O 1.813, N 2.023, O 2.030, O 2.074, N 2.294,
+C 2.389** - two histidine nitrogens, the hydroxide, *two* carboxylate oxygens
+and the carboxylate carbon. Different file, different writer, same sphere. This
+is the discipline the transposed-rotation bug in D226 taught.
+
+**Against the pre-registered readings, which are not revised.** The question
+node written on 2026-11-06 said: beyond ~4 A closes it in the negative; **inside
+~2.5 A closes it in the affirmative and makes def2-SVP the only admissible
+instrument**; between, or drifting, means 50 ps was too short. The second one
+happened, and it is not a marginal reading of it - 2.10 A mean at 78%
+occupancy, bidentate, 24 consecutive ps, no recrossing. **The question is
+answered in the affirmative.** The second pre-registered reading is also
+upheld: **HOH3095 leaves** (0% inside 2.5 A, HOH3171 3%), which is what rule 4
+and the H-R-H site predict - the sphere is five-coordinate anyway, because the
+carboxylate's two oxygens took the vacated places.
+
+**Why this test is admissible where every earlier closure was not.** D206 rule
+3 excludes single points and excludes two methods agreeing about a geometry one
+of them was handed. This is dynamics, unrestrained, from a geometry four
+deposits support. Every earlier collapse - D49, D51, D201's batch 1, D211's
+1.93 A mean - began either with the carboxylate already on the metal or with
+Lys226 deprotonated, so none tested the Hamiltonian. This one began with Asp92
+4.3 A out and a formed salt bridge, and GFN2 moved it anyway.
+
+**THREE THINGS DID NOT HAPPEN, AND EACH KILLS AN EXPLANATION THAT WAS ON
+OFFER.**
+
+1. **Lys226 kept its proton.** All three NZ hydrogens at 0.98-1.09 A in every
+   frame; O01 carries exactly one hydrogen (0.98-0.99 A) throughout, so it is
+   still a hydroxide. D216 proposed that Asp92 moving onto Zn1 is **downstream
+   of the Lys226 proton transfer** - deprotonate the lysine and you remove what
+   holds the carboxylate out. That mechanism is **refuted as a requirement**:
+   no proton moved and the carboxylate came in regardless.
+2. **The salt bridge held.** NZ-OD2 mean **2.87 A** (min 2.53, max 4.24)
+   against 6DQH's 2.79. The carboxylate is bonded to the metal at 2.10 A *and*
+   hydrogen-bonded to the ammonium at 2.87 A **at the same time, for 24 ps**.
+   Holding the lysine contact does not keep the carboxylate off the zinc, which
+   was the hope behind restraining it there.
+3. **The carboxylate arrived first; the substrate was displaced afterwards.**
+   Zn-OD2 crosses inward between 7 and 8 ps, Zn-O2x crosses outward between 8
+   and 9 ps - one frame later. So no vacancy opened first for the carboxylate to
+   fill, and the ordering is the carboxylate taking the carbonyl's place rather
+   than filling a gap it found.
+
+**AND A COUNTER-OBSERVATION TO A NODE THE PROJECT HOLDS.** D204's finding -
+Lys226 hands HZ3 to the hydroxide within 2 ps of becoming quantum - is the same
+QM region at the same charge. Here, 32 ps and **no transfer at all**. 32 ps
+against 2 ps is not undersampling. So that result is real but **not general**:
+the transfer happens in the lineage that began with Asp92 already on the metal
+and does not happen in the lineage that began with the carboxylate on the
+lysine. Whether the proton moves may depend on the carboxylate's position - and
+that position is now a method artefact. The node
+`nucleophile-is-zn-bound-water-with-neutral-lys226` rests on D204, and that is
+now a conditional rather than a general result. Recorded as a caveat on the
+node, not as a demotion: the observation happened.
+
+**What this run is NOT, said plainly.** The Michaelis complex dissociates. With
+nothing restrained the carbonyl leaves the metal (mean 4.32 A) and the attack
+coordinate O01-C4x goes from 3.4-4.5 A through 22 ps to 5.6-6.2 A after it.
+By criterion 6 this is not a Michaelis complex past ~22 ps, so **nothing
+energetic may be taken from these frames**. The measurement asked where the
+carboxylate goes, and that is all it answers.
+
+**What it costs, and what it does not.** The def2-SVP QM/MM optimisation stops
+being a refinement of the GFN2 answer and becomes the instrument of record for
+Asp92's position - and it is not blocked by D134, because that defect fires only
+when a `qmmm` run is given `opt_constraints`, which this leg is not. The planned
+Zn-Asp92 PMF (item 11, ~8,500 core hours at GFN2) would now measure this bias
+rather than the free energy: a GFN2 PMF returns "one minimum near 2.1 A"
+whatever the truth is, so the shape could not be interpreted, and the
+equilibrium question's instrument needs settling before that run is worth
+buying. It overturns **no** crystallographic claim: a method artefact cannot
+refute `the-lysine-holds-asp92-where-a-zn2-would`, which rests on four
+deposits. What it says is that our method cannot reproduce them.
+
+**One further reading, offered as a possibility rather than a result.** GFN2's
+answer is not an equilibrium between the lysine and the metal but **both at
+once** - a carboxylate bridging a metal and a cationic side chain, which is
+what "bridging aspartate" means literally. If that arrangement is real rather
+than an artefact, the equilibrium framing of item 11 is the wrong question.
+Deciding which needs a method that is not itself on trial.
+
+**Argument map.** Two nodes added: the observation
+`aspqm2-chunk1-asp92-chelates-zn1-under-gfn2` (`ours`) and the claim
+`gfn2-over-coordinates-zn1-from-a-crystal-consistent-start`, which answers the
+question. The question node is **void with a `superseded-by` edge**, keeping its
+predictions readable above the result, which is the point of having written them
+first; its three supporters are repointed at the claim. The validator went from
+1 finding to 6 on the first pass and every one was mine: an evidence class on a
+claim, the claim citing the question's retracted lineage (D58/D133/D195/D197/
+D206) as though they were its own support, two live claims resting on a node I
+had just voided, and the claim resting on `ours` alone. All fixed - the claim's
+other half is the crystal (`zinc-bound-crystal-holds-asp92-off-the-metal`,
+experimental), which it must be, since "over-coordinates" names nothing without
+a measured distance. **It now reports no findings at all**, and that includes
+the known `no-usable-michaelis-complex-exists-yet` one, which cleared because an
+experimental observation now sits beneath that node through the new claim.
+Recorded rather than celebrated: whether that path genuinely anchors it is a
+judgement the validator cannot make.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

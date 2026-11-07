@@ -1,7 +1,7 @@
 ---
 type: question
 status: open
-entries: [D216]
+entries: [D216, D232]
 ---
 
 # Is Asp92 in equilibrium between Lys226 and Zn1, rather than committed to one of them?
@@ -38,6 +38,21 @@ for the ~8,500 core hours than the one the plan currently carries.
 starts with the carboxylate pinned at 2.79 A from the metal, 1.5 A inside the
 crystal distance, so the sampling would begin inside the basin the question is
 about. The scan should span at least 2.0-5.5 A to cover both candidate minima.
+
+**The instrument is now the problem, measured 2026-11-07 (D232).** The PMF as
+planned is GFN2, and GFN2 has just been shown to put this carboxylate on this
+metal from a start where the crystal puts it 4.3 A away, with the lysine contact
+intact ([[gfn2-over-coordinates-zn1-from-a-crystal-consistent-start]]). A GFN2
+PMF would therefore return "one minimum near 2.1 A" whatever the truth is, which
+is the third of the three readings above - so the shape could not be
+interpreted. One further datum from the same run, which bears on the question
+itself rather than the method: GFN2's answer is not an equilibrium between the
+two partners but **both at once** - OD2 bonded to the zinc at 2.10 A and
+hydrogen-bonded to the ammonium at 2.87 A for 24 ps, with no recrossing. If that
+arrangement is real rather than an artefact it is a *bridging* carboxylate in
+the literal sense, between a metal and a cationic side chain, and the
+equilibrium framing is the wrong one. Deciding which needs a method that is not
+on trial.
 
 ## Requires
 - [[zinc-bound-crystal-holds-asp92-off-the-metal]]

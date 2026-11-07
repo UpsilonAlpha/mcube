@@ -1,7 +1,7 @@
 ---
 type: question
-status: open
-entries: [D9, D58, D59, D133, D195, D197, D206, D208, D231]
+status: void
+entries: [D9, D58, D59, D133, D195, D197, D206, D208, D231, D232]
 ---
 
 # Does GFN2-xTB over-coordinate the zinc?
@@ -29,6 +29,28 @@ GFN2 *under*-binds (D198). Same magnitude as Imhof's 7.55 for AM1/d, so a real
 error, and one contact on one geometry pair rather than a statement about
 coordination number. The cluster-model benchmark (plan item 7, open since D9) is
 what would settle it.
+
+## ANSWERED 2026-11-07 (D232), in the affirmative, as pre-registered
+
+**The test below ran and reported, and the prediction it would satisfy was
+written first.** `aspqm2` chunk 1 brought Asp92 onto the zinc as a **bidentate
+chelate within 8 ps** - OD2 2.10 A at 78% occupancy, OD1 2.29 A at 53%, Zn-CG
+2.52 A - and held it for the remaining 24 ps with **Lys226 still protonated and
+the salt bridge still formed at 2.87 A**. That is the second of the three
+outcomes listed below, word for word, and it closes this question in the
+**affirmative**.
+
+Nothing here is revised to fit. The answer now lives in
+[[gfn2-over-coordinates-zn1-from-a-crystal-consistent-start]] as a claim that
+can be argued with; this node is kept for the record, with the predictions it
+made still readable above the result, which is the whole point of having made
+them.
+
+Second reading, also as pre-registered: **HOH3095 does leave** - 0% occupancy
+inside 2.5 A over 32 frames, and HOH3171 only 3% - so
+[[csr1-zn1-site-is-h-r-h]]'s expectation that the extra water goes is upheld.
+The sphere is five-coordinate anyway, because the carboxylate's two oxygens took
+the vacated places.
 
 ## An admissible test now exists, and is running (D231)
 
@@ -69,5 +91,6 @@ this and was not asked to.
 coordination number in enzymes appears to exist" has no recorded search
 (`retractions.md` section 4).
 
-## Supports
-- [[no-usable-michaelis-complex-exists-yet]]
+
+## Superseded by
+- [[gfn2-over-coordinates-zn1-from-a-crystal-consistent-start]]

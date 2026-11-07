@@ -44,5 +44,5 @@ above.
 about the energy functions, not about the site.
 
 ## Supports
-- [[question-does-gfn2-over-coordinate-the-zinc]]
+- [[gfn2-over-coordinates-zn1-from-a-crystal-consistent-start]]
 - [[question-does-restraining-asp92-lower-the-barrier]]

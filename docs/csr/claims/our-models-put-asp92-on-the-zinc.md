@@ -29,4 +29,4 @@ named the default; nobody had both halves.
 
 ## Supports
 - [[asp92-is-a-zn1-ligand-in-our-models]]
-- [[question-does-gfn2-over-coordinate-the-zinc]]
+- [[gfn2-over-coordinates-zn1-from-a-crystal-consistent-start]]

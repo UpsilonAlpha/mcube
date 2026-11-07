@@ -34,5 +34,18 @@ corroborates the protonation state "independently" is overturned: both
 observables come from the same trajectory on the same geometry
 (`retractions.md` section 3).
 
+**Conditional on the starting geometry, measured 2026-11-07 (D232).** The same
+QM region and the same charge, run for 32 ps from a start where Asp92 is 4.3 A
+from the metal and the salt bridge is formed, shows **no transfer at all**: all
+three Lys226 NZ hydrogens stay on the nitrogen at 0.98-1.09 A for every frame
+and O01 keeps exactly one hydrogen
+([[aspqm2-chunk1-asp92-chelates-zn1-under-gfn2]]). 32 ps against the 2 ps this
+entry reports is not undersampling. So what this node records is real but
+**not general**: the transfer happens in the lineage that began with Asp92
+already on the metal, and does not happen in the lineage that began with the
+carboxylate on the lysine. Whether the proton moves may depend on the
+carboxylate's position, and that position is itself now a method artefact
+([[gfn2-over-coordinates-zn1-from-a-crystal-consistent-start]]).
+
 ## Supports
 - [[nucleophile-is-zn-bound-water-with-neutral-lys226]]

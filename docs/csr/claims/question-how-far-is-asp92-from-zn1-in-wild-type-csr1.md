@@ -36,7 +36,7 @@ reopened.
 does not need the distance.
 
 ## Supports
-- [[question-does-gfn2-over-coordinate-the-zinc]]
+- [[gfn2-over-coordinates-zn1-from-a-crystal-consistent-start]]
 
 ## Supported by
 - [[wild-type-csr1-crystals-contain-no-metal]]
