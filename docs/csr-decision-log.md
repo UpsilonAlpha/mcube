@@ -9426,6 +9426,132 @@ rather than buying more steps. 60 steps is not expected to converge if their
 27-100 range transfers; the next chunk starts from this run's
 `QM_MM_optimized.pdb`, which mcube writes even on non-convergence.
 
+**D236 - THE FIRST DFT ANSWER POINTS THE OTHER WAY: through three
+wb97x-v/def2-SVP QM/MM optimisation steps Asp92 does NOT approach Zn1, and the
+Lys226 salt bridge tightens from 2.88 to 2.77 A toward 6DQH's 2.79. AND the leg
+is mis-sized: a step costs 110-118 min, not the predicted 20-35, so the 48 h
+wall buys ~25 steps against `opt_maxiter: 60` - the job will be killed by the
+wall rather than by maxiter, and a wall kill writes no `QM_MM_optimized.pdb`.**
+(2026-11-07)
+
+**COST, measured from ASH's own timers rather than estimated.** Job 32453561
+started 15:10:22 and had completed three gradient steps by 19:35:
+
+    step 1   QM/MM run  6603.7 s   110.1 min
+    step 2   QM/MM run  7073.4 s   117.9 min
+      of which  pySCF run_SCF            5230.6 s   87.2 min   (74%)
+                pyscf_gradient           1377.1 s   23.0 min
+                pyscf_newpointcharge_grad  464.8 s    7.7 min
+                MM step                      0.6 s
+
+1,211 basis functions for the 124-atom QM region, density fitting on. **The SCF
+is three quarters of the cost**, which is where the prediction went wrong: the
+band of 20-35 min a step came from scaling the channel project's 4.6 min at ~50
+QM atoms with r2SCAN, and wb97x-v's range-separated exchange plus VV10 nonlocal
+correlation is a different animal. The extrapolation was out by 3.4-5.9x. Their
+warning that wb97x-v would cost more than a meta-GGA was in their message and I
+did not weight it heavily enough.
+
+**So the sizing is wrong in the dangerous direction.** At ~115 min a step, 48 h
+is ~25 steps. ASH raises `GeomOptNotConvergedError` at `opt_maxiter` and mcube
+catches it, keeps the last geometry and writes `QM_MM_optimized.pdb`; a walltime
+kill writes nothing. With maxiter 60 and a 25-step budget, the wall arrives
+first. **It is recoverable and nothing is lost**:
+`geometric_OPTtraj_Full.xyz` is written every step and `docs/csr/traj_frame.py`
+reads one frame of it onto a PDB template, which is exactly how D106 recovered a
+geometry from the same situation. But it is a recovery, not a plan, and the
+honest statement is that this job was submitted with a maxiter it cannot reach.
+
+**The optimisation itself is healthy, which is the part the channel project's
+experience was most useful for.** Energy falls every step, monotonically:
+
+    -5201.1362  ->  -5201.3065  ->  -5201.3341  ->  -5201.3519 Eh
+    deltas (kcal/mol):   -106.9      -17.3        -11.2
+    step 2: Trust 1.414e-01, Grad 1.199e-02/5.638e-02 rms/max, Quality 0.645
+    step 3: Trust 1.414e-01 (=), Grad 6.038e-03/2.503e-02, Quality 0.871
+
+**No SVD errors in the .out and no `LinAlgError` in the .err** - counted, zero
+each, and the `.err` was checked separately from the `.out` because conflating
+them produced a wrong conclusion in this project once already (D106). The trust
+radius is steady rather than collapsing and the gradient is falling. This is NOT
+the channel project's 8 A failure: there the energy climbed 30-45 kcal/mol with
+Quality ~1. Cutting the active region to the QM atoms was the right call.
+Convergence is still far off - `grms` 6.0e-03 against the 1e-04 criterion.
+
+**THE GEOMETRY, AND THE MAPPING CHECKED BEFORE IT WAS TRUSTED.** The QM-region
+geometry blocks in the `.out` were mapped to atom names through
+`qmmm_aspdft.results.qm_atoms` and the input PDB. The check that the mapping is
+right: the first block reproduces `relax10`'s recorded start to 0.003 A -
+Zn-OD2 5.153 (5.15), Zn-OD1 4.327 (4.33), Zn-CG 5.192 (5.19), Zn-NZ 5.276
+(5.28), NZ-OD2 2.880 (2.88). Only then the rest:
+
+    step        0      0'     0''     1       2     [6DQH]
+    Zn-OD2    5.153  5.176  5.140  5.106  5.087   [5.14]
+    Zn-OD1    4.327  4.474  4.549  4.509  4.544   [4.28]
+    Zn-CG     5.192  5.175  5.243  5.216  5.198   [5.15]
+    Zn-NZ     5.276  5.277  5.289  5.287  5.269   [5.27]
+    NZ-OD2    2.880  2.854  2.780  2.799  2.766   [2.79]
+    His88 NE2 2.178  2.170  2.197  2.216  2.222
+    His164NE2 2.126  2.126  2.122  2.118  2.114
+
+**Asp92 does not move toward the zinc. The salt bridge tightens onto the crystal
+value.** Where GFN2 took Zn-OD2 from 4.34 to 2.01 A within 8 ps and held it for
+24 ps more, the DFT gradient at the same geometry points the carboxylate
+nowhere: Zn-OD2 drifts 0.07 A *outward* over three steps and Zn-OD1 0.22 A
+outward, while NZ-OD2 closes from 2.880 to 2.766 against 6DQH's 2.79.
+
+**What this is NOT, because the temptation to overclaim here is large.** Three
+steps is a direction, not a result: the total displacement is rms 2.7e-02 A, the
+gradient is two orders of magnitude from the convergence criterion, and no
+stationary point has been reached. And the comparison with GFN2 is not clean -
+**that was 50 ps of dynamics at 300 K and this is a zero-temperature
+optimisation**, which has no thermal energy to cross a barrier it might find. A
+GFN2 *optimisation* from this same frame would be the matched comparison and has
+not been run. What can be said is narrow and is worth saying: the DFT gradient
+at the crystal-consistent geometry does not pull Asp92 onto the metal, and it
+improves the salt bridge. That is the first direct evidence that GFN2's chelate
+is the Hamiltonian's and not the enzyme's, as opposed to an inference from a
+cluster benchmark.
+
+**JOB 2, `aspqm2` chunk 1, finished at its full 50 ps** - 50 frames exactly,
+28,791,676 bytes, parsed at the same stride as D232. The last 18 ps add nothing
+and contradict nothing:
+
+    ps 33-50:  Zn-OD2 1.91-2.28   Zn-OD1 1.97-2.44   Zn-CG 2.36-2.62
+               NZ-OD2 2.57-3.25   Zn-O2x 5.73-6.71   O01-C4x 5.86-7.63
+               Zn-O01 1.73-1.96
+
+The chelate holds for the whole run with no recrossing, and **OD1 and OD2 now
+exchange places frame to frame** (OD1 is the shorter contact at 34, 37, 38, 44
+and 49 ps), so it is a symmetric bidentate carboxylate rather than one oxygen
+bound with the other nearby. The hydroxide stays on the metal throughout. The
+substrate continues to leave - O01-C4x goes from ~6.0 A at 33 ps to 7.4 A at
+50 - which only strengthens D232's statement that **nothing energetic may be
+taken from these frames**. D232 is not reopened and not revised.
+
+**Chunks 2-6 remain cancelled and nothing was submitted.**
+
+**The question the user has to answer, with the arithmetic rather than a
+recommendation.** As configured this leg cannot converge: ~25 steps of a budget
+that needs hundreds. Four ways out, costed:
+1. **Let it run to the wall** and recover the geometry from
+   `geometric_OPTtraj_Full.xyz` with `traj_frame.py`. Cost: already spent, 48 h
+   of 32 cores (~1,500 core-hours). Decides: the direction of the DFT gradient
+   over ~25 steps, which is what the table above is already showing. Does not
+   give a stationary point, so no energy may be quoted from it.
+2. **Cut the QM region** from 124 atoms to the metal, two histidines, the
+   hydroxide, Asp92 and Lys226 (~60 atoms, roughly 600 basis functions). SCF
+   cost falls faster than linearly, so plausibly 15-25 min a step and a
+   converged optimisation inside one 48 h job. Loses Arg90, Asn225 and the
+   substrate from the QM region, which is a real loss for anything mechanistic
+   but may be acceptable for the single question of where the carboxylate sits.
+3. **Change the functional to r2SCAN**, the channel project's choice, whose SCF
+   was 49 s at their size. Cheapest fix by far, but it leaves the level of
+   D215's cluster benchmark, so that calibration point stops being comparable.
+4. **Accept the direction and stop**, treating this as a gradient-direction
+   measurement rather than an optimisation, and put the def2-TZVP single point
+   on `relax10`'s frame instead of on an optimised one.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
