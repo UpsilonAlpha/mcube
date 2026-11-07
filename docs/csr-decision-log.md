@@ -9274,6 +9274,75 @@ after it. It is not blocked by D134, since that defect fires only when a
 GFN2 PMF stays gated on settling its instrument, per D232. Not submitted: no
 job is proposed here.
 
+**D234 - THE QM/MM EQUILIBRATION IS SKIPPED AND THE def2-SVP OPTIMISATION GOES
+STRAIGHT ON THE MM FRAME. The user's instruction, immediately after D233:
+"maybe skip the qm/mm equilibration and go straight to def2-svp geometry
+optimisation then. long QM/MM is only really practical with xtb." Section
+`aspdft` and launcher `docs/csr/aspdft.sh` are written and gated; NOT YET
+SUBMITTED - the code-server pane is hidden, so only the read-only route is
+available.** (2026-11-07)
+
+**This amends the pipeline as written.** The protocol was "100ns MD, 300ps full
+xtb QMMM, a geometry optimisation at def2-svp, singlepoint at def2tsvp". The
+300 ps xTB QM/MM leg is now 32-50 ps and stops there (D233), and the DFT
+optimisation starts from the **MM** frame rather than from the end of a QM/MM
+equilibration. The user's reason is the general one and is recorded as such:
+long QM/MM is only practical at xTB. The arithmetic agrees - a DFT QM/MM MD step
+costs what a DFT gradient costs, so 1 ps at 1 fs would be 1,000 gradients.
+
+**It starts from `relax10`'s last frame, NOT from chunk 1's.** This is the
+decision that makes the run admissible. Chunk 1's geometry already has Asp92
+bidentate on Zn1, so starting there hands DFT the answer and D206 rule 3
+excludes the result - two methods agreeing about a geometry one of them was
+given. `relax10`'s frame is the crystal-consistent one: Zn-OD1 4.33 against
+6DQH's 4.28 with nothing restraining it, held over 10 ns (D231). Starting there,
+the carboxylate's position is something DFT decides rather than inherits.
+
+**Nothing is constrained, and the gate refuses rather than warns.** Two reasons,
+both already paid for: a restrained carboxylate measures the restraint; and
+D134 - `opt_constraints` on a `qmmm` run switches geomeTRIC's whole block to
+`$set` the moment an active-region MM water appears, after which convergence
+cannot be reached. Supplying none keeps it on `$freeze` only, which is why this
+leg is not blocked by that defect. `rigid_water: false` for D137's reason.
+
+**The active region stays at the base 8 A (~485 atoms, ~1,455 DOF).** Shrinking
+it is not a saving: it pulls the active/frozen boundary in against the site and
+the optimiser then drives active MM atoms into the frozen wall - the MM term
+went -240 to +1139 Eh that way once already, with the QM term sane throughout.
+
+**COST, stated before the run rather than after.** The only measured figure at
+this level is **~26 min per wb97x-v/def2-SVP/MM single point on 119 QM atoms on
+8 cores**. This region is 124 QM + 6 link = 130 atoms, and a gradient is dearer
+than an energy. 32 cores should bring a step under ~15 min, but that is an
+extrapolation. So `opt_maxiter` is **25**, not the base 300: ASH raises at
+maxiter, mcube catches it, keeps the last geometry and writes
+`QM_MM_optimized.pdb` with `converged: false`, whereas a walltime kill writes no
+PDB at all. 25 steps fit inside 24 h even at 50 min per step, which makes the
+first job a rate measurement that is also real work. **A converged optimisation
+is not expected from it**: 1,455 DOF typically needs 100-400 steps, so on the
+extrapolated rate the full leg is ~2,000-3,000 core-hours and three to six
+chunks, each starting from the previous `QM_MM_optimized.pdb`. That number is
+the one to check against the measured rate before buying the rest, and the
+mutant arm will cost the same again.
+
+**Level:** wb97x-v/def2-SVP, the library default functional stated explicitly
+because it is the level D215's cluster benchmark used - so this geometry and
+that calibration point are comparable rather than merely both "DFT".
+
+**Not submitted.** `aspdft.sh` has to run in the code-server terminal and the
+pane is hidden, which leaves only the read-only `fetch` route (bunya working
+rules). The base `qmmm.inputs` was confirmed through that route - `actradius: 8`,
+`actregion_origin: B:1:ZN`, `cores: 4`, `opt_maxiter: 300` - and `aspqm2`'s
+recorded region is 124 QM atoms, so the section's overrides are the only things
+that differ. The launcher prints `rquota` before it submits anything.
+
+**The per-step cost is being asked for rather than guessed.** On the user's
+suggestion the ion-channel QM/MM umbrella-sampling session was asked for its own
+measured DFT/MM gradient timings, PySCF core scaling at 8 vs 32, how many
+geomeTRIC steps a protein optimisation of this size took in their hands, and
+whether TRIC degenerated. A "we only ever ran xTB" is as useful an answer as a
+number, because it would confirm the user's general claim independently.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

@@ -2121,6 +2121,65 @@ sections:
       resume: true
       rigid_water: false
 
+  # ---- The def2-SVP QM/MM geometry optimisation (D233/D234). ----
+  #
+  # The instrument of record for Asp92's position. D232 showed GFN2 chelates the
+  # carboxylate onto Zn1 within 8 ps from a crystal-consistent start, so the
+  # semiempirical answer is a method artefact and only DFT can say where the
+  # carboxylate sits. The user's decision (D233): skip the QM/MM equilibration
+  # entirely - long QM/MM is only practical at xTB - and optimise at def2-SVP
+  # directly from the MM frame.
+  #
+  # **It starts from `relax10`'s last frame, NOT from chunk 1's.** Chunk 1's
+  # geometry already has Asp92 bidentate on the zinc, which is the thing being
+  # tested; starting there would hand DFT the answer and D206 rule 3 would
+  # exclude the result. `relax10` is the crystal-consistent start, matching
+  # 6DQH's Zn-OD1 to 0.05 A with nothing restraining it (D231).
+  #
+  # `skip_equilibrate: true` is the user's instruction and also the only
+  # affordable choice: a DFT QM/MM MD step costs what a gradient costs.
+  #
+  # **Nothing is constrained, deliberately and for two reasons.** The carboxylate
+  # has to be free or the run measures the restraint; and D134 - a $set block
+  # appears the moment a qmmm run is given `opt_constraints`, which makes
+  # convergence impossible. Supplying none keeps geomeTRIC on $freeze only.
+  # `rigid_water: false` for the same reason (D137).
+  #
+  # `actradius` stays at the base 8 A (~485 atoms). Shrinking it is not a saving:
+  # it pulls the active/frozen boundary in against the site and the optimiser
+  # then drives active MM atoms into the frozen wall - the MM term went from
+  # -240 to +1139 Eh that way once already.
+  #
+  # **COST, and why `opt_maxiter` is 25 rather than the base 300.** The only
+  # measured figure for this level is ~26 min per wb97x-v/def2-SVP/MM single
+  # point on 119 QM atoms on 8 cores; a gradient is dearer than an energy, and
+  # this region is 130 atoms. 32 cores should bring a step under ~15 min, but
+  # that is an extrapolation, not a measurement. ASH raises at `opt_maxiter` and
+  # mcube catches it, keeps the last geometry and writes `QM_MM_optimized.pdb`
+  # with `converged: false` - whereas a walltime kill writes no PDB at all. So
+  # the first job is sized to reach its own maxiter inside 24 h even if a step
+  # costs 50 min, which makes it a rate measurement that is also real work.
+  # Chunk 2 onwards sets `pdb_file` to this run's `QM_MM_optimized.pdb` and an
+  # `opt_maxiter` sized from the measured rate.
+  #
+  # The functional is the library default and is stated anyway: wb97x-v is the
+  # level D215's cluster benchmark used, so this geometry and that calibration
+  # point are at the same level and can be compared.
+  aspdft:
+    stage: qmmm
+    inputs:
+      pdb_file: md_relax10_results/NVTtrajectory_lastframe.pdb
+      qm_residues: *qmreg_michrk
+      charge: 2
+      qm_engine: dft
+      dft_functional: wb97x-v
+      dft_basis: def2-svp
+      dft_cores: 32           # match --cpus-per-task; DFT scales, unlike xTB
+      skip_equilibrate: true
+      skip_optimize: false
+      opt_maxiter: 25
+      rigid_water: false
+
   aspcg:
     stage: scan
     inputs:
