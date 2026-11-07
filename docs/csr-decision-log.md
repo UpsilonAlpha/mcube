@@ -9604,6 +9604,92 @@ monotonically, and whether Asp92 continues to move *away* from the zinc - the
 third being the one that matters, since three steps is a direction and twenty-five
 is an argument.
 
+**D238 - THE MATCHED COMPARISON IS RUNNING: `aspxtb`, job 32461816, GFN2 from
+the same frame with the same QM region, charge, active region, optimiser and
+criteria as `aspdft`, and nothing constrained - one key different. AND the gate
+is config rather than a script: `sections.py` now takes a declarative
+`require:` and `submit:` block, because the launcher I had started writing for
+this arm was the fourth copy of the same shell script and they had already
+diverged.** (2026-11-07)
+
+**Why the comparison was needed, which D236 had already said against itself.**
+"GFN2 chelates Asp92, DFT does not" was not yet a statement about the
+Hamiltonians: D232 was 50 ps of 300 K dynamics and `aspdft` is a 0 K
+optimisation, which has no thermal energy to cross a barrier it might find. So
+the difference could have been dynamics versus minimisation. `aspxtb` removes
+that confound by changing only `qm_engine`.
+
+**Pre-registered, before the result, per D178.**
+- **GFN2 minimises Asp92 inside ~2.5 A where DFT holds it near 5** -> the
+  cleanest statement of the bias available: one structure, one variable. D232
+  stops being the only evidence and stops being answerable by the
+  dynamics-versus-minimisation objection.
+- **Both keep it out** -> D232's chelation needed 300 K, so GFN2 makes a
+  barrier crossing too easy rather than putting the minimum in the wrong place.
+  A different, weaker claim, and
+  `gfn2-over-coordinates-zn1-from-a-crystal-consistent-start` would have to be
+  narrowed to say exactly that.
+- **Both bring it in** -> the approach is not a QM-level artefact at all, and
+  the finger points at the force field or the starting pose instead. The
+  expensive outcome.
+
+Cheap, which is why it is worth running at all rather than arguing about:
+`opt_maxiter` is the base 300 because an xTB step is minutes, so unlike the DFT
+arm this one can actually reach a minimum. 8 cores - xTB does not scale and the
+DFT arm has the cores.
+
+**THE LIBRARY CHANGE, which is the user's point and the more durable half of
+this entry.** I started writing `docs/csr/aspxtb.sh` and was told, correctly,
+that a config option should not need a script. Every `docs/csr/*.sh` was the
+same six lines - module load, conda activate, rquota, `sections.py`, a
+hand-written preflight, `sbatch` - with only the preflight differing, and **they
+had already drifted apart: `aspqm2.sh` printed a WARNING where restraints were
+set and `aspdft.sh` REFUSED.** A gate written once per run is a gate that is
+wrong somewhere, and nothing in either run's output would say so.
+
+So `sections.py` takes two optional blocks beside `stage` and `inputs`:
+
+    require:
+      unset: [restraints, opt_constraints, constraints]
+      equals: {charge: 2, rigid_water: false}
+      same_as: {section: aspdft, except: [qm_engine, dft_basis, opt_maxiter]}
+    submit: {cores: 8, mem: 16G, time: "24:00:00", partition: general}
+
+checked in the existing "check everything before writing anything" pass, so a
+failing gate writes no section at all. `--dry-run` checks and prints the sbatch
+line without touching `config.yaml`; `--submit` runs it. The runner is
+`run.slurm` beside the site file, so no path comes from the caller.
+
+**`same_as` is the one that earns its keep**, and it is not a convenience: it
+refuses to write an arm that differs from its reference in anything but the
+named keys, which is the only way a two-arm comparison can be *kept* true as
+either arm is edited later. It compares against the reference **as written in
+`config.yaml`** - what the job will actually read - falling back to the site
+file only if the reference has not been written yet, and saying which it used.
+A test pins that precedence by giving the site file a different charge from the
+config and checking the config wins.
+
+**Eleven tests, `tests/test_sections_require.py`, and one of them caught a real
+bug** - a `"..." + NL + "..." % (...)` where `%` bound to the last fragment
+only, so the `same_as` failure path raised `TypeError` instead of reporting the
+difference. That is the error path, i.e. exactly the code that only runs when
+something is already wrong, which is why it is worth having a test for it.
+35 passed with the existing `test_sections_structures.py`.
+
+**Submitted through the generic path, with the gate's own output read rather
+than assumed.** `--dry-run` first: `DRY RUN - config.yaml not touched. Checks
+passed for: qmmm_aspxtb`, and the printed line
+`sbatch -J aspxtb -p general --cpus-per-task=8 --mem=16G -t 24:00:00
+.../run.slurm qmmm qmmm_aspxtb`. Then `--submit`: `Submitted batch job
+32461816`. **No file was added for this arm.**
+
+**Still to do, and not done here:** the four existing launchers are now
+redundant and should become `require:`/`submit:` blocks, with their divergent
+preflights reconciled rather than carried over - `aspqm2.sh`'s warning is the
+wrong behaviour and `aspdft.sh`'s refusal is the right one. And `sections.py`
+itself belongs in `src/mcube/` as `python -m mcube.sections`, since nothing in
+it is CSR-specific; it sits in `docs/csr/` only for historical reasons.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
