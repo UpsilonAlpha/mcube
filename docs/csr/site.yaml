@@ -2214,6 +2214,72 @@ sections:
       opt_maxiter: 60
       rigid_water: false
 
+  # ---- The GFN2 half of the matched comparison (D238). ----
+  #
+  # `aspdft` measures where the DFT gradient takes Asp92 from the
+  # crystal-consistent frame. On its own that is not a clean comparison with
+  # D232's chelation, and D236 said so: **D232 was 50 ps of 300 K dynamics and
+  # `aspdft` is a 0 K optimisation**, which has no thermal energy to cross a
+  # barrier it might find. So "GFN2 moves it, DFT does not" could be a
+  # difference between dynamics and minimisation rather than between
+  # Hamiltonians.
+  #
+  # This section removes that confound. It is `aspdft` with one key changed -
+  # `qm_engine` back to its default xtb - so the frame, the QM region, the
+  # charge, the active region, the optimiser, its convergence criteria and the
+  # absence of constraints are all identical. **The only difference is the
+  # Hamiltonian**, which is what makes the pair interpretable: if GFN2
+  # minimises Asp92 onto the zinc from a start where DFT minimises it away,
+  # that is the Hamiltonian, measured rather than inferred from a cluster
+  # benchmark (D215) or from a trajectory at a different temperature.
+  #
+  # **Pre-registered readings, before the result, per D178:**
+  #   - **GFN2 pulls Asp92 inside ~2.5 A while DFT holds it near 5** -> the
+  #     cleanest possible statement of the bias, on one structure with one
+  #     variable changed. D232 stops being the only evidence and stops being
+  #     vulnerable to the dynamics-vs-minimisation objection.
+  #   - **Both keep it out** -> D232's chelation needed 300 K, so it is a
+  #     barrier-crossing GFN2 makes too easy rather than a minimum GFN2 puts in
+  #     the wrong place. A different and weaker claim, and
+  #     `gfn2-over-coordinates-zn1-from-a-crystal-consistent-start` would have
+  #     to be narrowed to say so.
+  #   - **Both bring it in** -> the approach is not a method artefact and the
+  #     crystals are being reproduced by neither. That would be the expensive
+  #     outcome and it would point at the force field or the starting pose
+  #     rather than at the QM level.
+  #
+  # Cheap, which is the other reason to run it: the 8 A xTB optimisation of this
+  # system ran at ~159 s a step, and most of that was geomeTRIC's linear
+  # algebra over 467 active atoms rather than xTB itself. With the active region
+  # cut to the 124 QM atoms both parts shrink, so `opt_maxiter` can be the base
+  # 300 and a converged minimum is reachable inside one job - unlike the DFT
+  # leg, whose 48 h buys ~25 steps (D236).
+  #
+  # 8 cores, not 32: xTB does not scale and the DFT leg has the cores.
+  # The gate is `require:`, not a launcher script. `same_as` is what makes this
+  # a controlled comparison: it refuses to write the section if anything other
+  # than the QM level and the step budget differs from `aspdft`, which no
+  # hand-written check could be trusted to keep true as either arm is edited.
+  aspxtb:
+    stage: qmmm
+    require:
+      unset: [restraints, opt_constraints, constraints]
+      equals: {charge: 2, rigid_water: false, skip_equilibrate: true,
+               skip_optimize: false}
+      same_as:
+        section: aspdft
+        except: [qm_engine, dft_functional, dft_basis, dft_cores, opt_maxiter]
+    submit: {cores: 8, mem: 16G, time: "24:00:00", partition: general}
+    inputs:
+      pdb_file: md_relax10_results/NVTtrajectory_lastframe.pdb
+      qm_residues: *qmreg_michrk
+      charge: 2
+      actradius: 0            # identical to aspdft (D235)
+      skip_equilibrate: true
+      skip_optimize: false
+      opt_maxiter: 300
+      rigid_water: false
+
   aspcg:
     stage: scan
     inputs:

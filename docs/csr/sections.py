@@ -18,6 +18,28 @@ The structure is `inputs.pdb_file` (for `neb`, `reactant_pdb` and
 any more and no structure on the command line, so one place says which structure
 a calculation used and that place is checked here. Paths are read against the
 config's directory, as mcube reads them.
+
+Two optional blocks beside `stage` and `inputs` keep a new calculation from
+needing a hand-written launcher, which is what every `docs/csr/*.sh` was and
+why they kept diverging:
+
+    require:                    # refused before anything is written
+      unset: [restraints, opt_constraints, constraints]
+      equals: {charge: 2, rigid_water: false}
+      same_as: {section: aspdft, except: [qm_engine, dft_basis, opt_maxiter]}
+    submit: {cores: 8, mem: 16G, time: "24:00:00", partition: general}
+
+`unset` names keys that must be absent or falsy, `equals` keys that must hold a
+given value, and `same_as` says this section is another one with a named list of
+differences - which is the only way a two-arm comparison can be trusted, since a
+comparison with a second variable changed by accident decides nothing. `same_as`
+compares against the reference section **as written in config.yaml**, i.e. what
+the job will actually read, falling back to site.yaml if it has not been written
+yet and saying which it used.
+
+`submit` is the resources, and `--submit` runs the `sbatch` line this script
+prints (`--dry-run` prints it and writes nothing). So a new arm is a section in
+site.yaml and nothing else.
 """
 from __future__ import annotations
 
@@ -106,7 +128,105 @@ def atom_index(pdb_path):
     return index
 
 
-def main(site_file, names):
+# Keys that are properties of the submission rather than of the calculation, so
+# they never reach `inputs` and never take part in a `same_as` comparison.
+SUBMIT_KEYS = ("cores", "mem", "time", "partition", "extra")
+
+NL = chr(10)
+
+
+def _flat(value):
+    """A value as it compares: YAML's bools and numbers are not strings."""
+    return value
+
+
+def check_require(name, inputs, require, reference_inputs, reference_from):
+    """Problems with a section's own `require:` block, as a list of strings.
+
+    Every check is declarative and lives in site.yaml, so a new arm needs no
+    script. `same_as` is the one that earns its keep: it is what makes a pair of
+    runs a controlled comparison rather than two runs.
+    """
+    problems = []
+    if not isinstance(require, dict):
+        return ["%s: `require` must be a mapping, not %s"
+                % (name, type(require).__name__)]
+    unknown = sorted(set(require) - {"unset", "equals", "same_as"})
+    if unknown:
+        problems.append("%s: require has no %s - only unset, equals, same_as"
+                        % (name, ", ".join(unknown)))
+
+    for key in require.get("unset") or []:
+        if inputs.get(key):
+            problems.append("%s: `%s` must not be set here, and is: %r"
+                            % (name, key, inputs[key]))
+
+    for key, want in (require.get("equals") or {}).items():
+        got = inputs.get(key)
+        if _flat(got) != _flat(want):
+            problems.append("%s: `%s` is %r, and require.equals says %r"
+                            % (name, key, got, want))
+
+    same = require.get("same_as")
+    if same:
+        if isinstance(same, str):
+            same = {"section": same}
+        ref = same.get("section")
+        allowed = set(same.get("except") or [])
+        if not ref:
+            problems.append("%s: require.same_as needs a `section`" % name)
+        elif reference_inputs is None:
+            problems.append(
+                "%s: require.same_as names `%s`, which is neither in "
+                "config.yaml nor defined in this site file, so there is "
+                "nothing to compare against" % (name, ref))
+        else:
+            diff = []
+            for key in sorted(set(reference_inputs) | set(inputs)):
+                if key in allowed:
+                    continue
+                if _flat(reference_inputs.get(key)) != _flat(inputs.get(key)):
+                    diff.append("%s: %s=%r %s=%r"
+                                % (key, ref, reference_inputs.get(key),
+                                   name, inputs.get(key)))
+            if diff:
+                problems.append(
+                    ("%s: require.same_as says this is `%s` apart from %s, but "
+                     "these also differ (reference read from %s):" + NL + "      %s")
+                    % (name, ref, ", ".join(sorted(allowed)) or "nothing",
+                       reference_from, (NL + "      ").join(diff)))
+    return problems
+
+
+def reference_for(ref, available, written):
+    """(inputs, where) for a `same_as` reference: config.yaml wins over site.yaml.
+
+    config.yaml is what the job reads, so it is the honest thing to compare
+    against; site.yaml is the fallback for a reference not written yet, and
+    which one was used is reported rather than left to be guessed.
+    """
+    body = available.get(ref) or {}
+    section = "%s_%s" % (body.get("stage", "qmmm"), ref)
+    from_config = (written.get(section) or {}).get("inputs")
+    if from_config is not None:
+        return dict(from_config), "config.yaml (%s)" % section
+    if body.get("inputs") is not None:
+        return dict(body["inputs"]), "this site file (not yet in config.yaml)"
+    return None, "nowhere"
+
+
+def sbatch_command(name, section, stage, submit, runner):
+    """The sbatch line for a section's `submit:` block, as a list of words."""
+    submit = submit or {}
+    cmd = ["sbatch", "-J", name, "-p", str(submit.get("partition", "general")),
+           "--cpus-per-task=%s" % submit.get("cores", 4),
+           "--mem=%s" % submit.get("mem", "16G"),
+           "-t", str(submit.get("time", "24:00:00"))]
+    cmd += [str(x) for x in (submit.get("extra") or [])]
+    return cmd + [runner, stage, section]
+
+
+def main(site_file, names, submit=False, dry_run=False):
     spec = yaml.safe_load(open(site_file))
     available = spec.get("sections") or {}
     if not names or names == ["--list"]:
@@ -129,6 +249,9 @@ def main(site_file, names):
     if not config.is_file():
         raise SystemExit("no config.yaml here; run this from the run directory")
     home = config.resolve().parent
+    # What the jobs actually read, so a `same_as` reference compares against the
+    # written section rather than against the site file's intention.
+    written = yaml.safe_load(open(config)) or {}
     # Check everything before writing anything.
     planned, problems = {}, []
     for name in names:
@@ -181,8 +304,16 @@ def main(site_file, names):
                     "%s: residues not in %s: %s. These are deleted by name, so "
                     "the name has to match what is there."
                     % (name, given[0][1], ", ".join(missing)))
+        if body.get("require"):
+            same = (body["require"].get("same_as") or {})
+            ref = same if isinstance(same, str) else same.get("section")
+            ref_inputs, ref_from = (reference_for(ref, available, written)
+                                    if ref else (None, "nowhere"))
+            problems += check_require(name, inputs, body["require"],
+                                      ref_inputs, ref_from)
         planned[section] = (inputs, given[0][1] if given else None,
-                            sels + resids)
+                            sels + resids, body.get("submit"),
+                            stage, name)
 
     if problems:
         print("NOT WRITING. Problems:")
@@ -190,20 +321,47 @@ def main(site_file, names):
             print("  -", p)
         raise SystemExit(1)
 
+    # The runner lives beside the site file, so nothing here needs a path from
+    # the caller and the same command works from any run directory.
+    runner = str((Path(site_file).resolve().parent / "run.slurm"))
+
+    if dry_run:
+        print("DRY RUN - config.yaml not touched. Checks passed for: %s"
+              % ", ".join(planned))
+        for section, (_, _, _, sub, stage, name) in planned.items():
+            print("  " + " ".join(sbatch_command(name, section, stage, sub, runner)))
+        return
+
     with _locked(config):
         data = yaml.safe_load(open(config))
-        for section, (inputs, _, _) in planned.items():
+        for section, (inputs, _, _, _, _, _) in planned.items():
             data[section] = {"inputs": inputs}
         yaml.safe_dump(data, open("config.yaml.edit.tmp", "w"),
                        sort_keys=False, default_flow_style=False)
         os.replace("config.yaml.edit.tmp", config)
 
-    for section, (inputs, start, sels) in planned.items():
+    for section, (inputs, start, sels, _, _, _) in planned.items():
         print("%-26s pdb=%s  %d selectors checked"
               % (section, start or "(from the previous stage)", len(sels)))
+
+    for section, (_, _, _, sub, stage, name) in planned.items():
+        if not sub:
+            continue
+        cmd = sbatch_command(name, section, stage, sub, runner)
+        print("submit: " + " ".join(cmd))
+        if submit:
+            import subprocess
+            print(subprocess.run(cmd, capture_output=True, text=True).stdout.strip()
+                  or "sbatch produced no stdout - check the error output")
 
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         raise SystemExit(__doc__)
-    main(sys.argv[1], sys.argv[2:])
+    argv = sys.argv[1:]
+    do_submit = "--submit" in argv
+    dry = "--dry-run" in argv
+    rest = [a for a in argv if a in ("--list",) or not a.startswith("--")]
+    if not rest:
+        raise SystemExit(__doc__)
+    main(rest[0], rest[1:], submit=do_submit, dry_run=dry)
