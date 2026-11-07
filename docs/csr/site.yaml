@@ -2145,22 +2145,55 @@ sections:
   # convergence impossible. Supplying none keeps geomeTRIC on $freeze only.
   # `rigid_water: false` for the same reason (D137).
   #
-  # `actradius` stays at the base 8 A (~485 atoms). Shrinking it is not a saving:
-  # it pulls the active/frozen boundary in against the site and the optimiser
-  # then drives active MM atoms into the frozen wall - the MM term went from
-  # -240 to +1139 Eh that way once already.
+  # **`actradius: 0` - the active region is the QM atoms ONLY, and that is the
+  # one setting the channel project's measured experience changed (D235).** Their
+  # r2SCAN/def2-SVP QM/MM optimisations with an 8 A active region containing MM
+  # waters never converged in 150 steps, and the energy climbed 30-45 kcal/mol
+  # after a minimum while geomeTRIC rated every step good. With the active region
+  # cut to the QM atoms, the same jobs converged in 44 steps, and all 60 of their
+  # round-2 jobs in 27-100.
   #
-  # **COST, and why `opt_maxiter` is 25 rather than the base 300.** The only
-  # measured figure for this level is ~26 min per wb97x-v/def2-SVP/MM single
-  # point on 119 QM atoms on 8 cores; a gradient is dearer than an energy, and
-  # this region is 130 atoms. 32 cores should bring a step under ~15 min, but
-  # that is an extrapolation, not a measurement. ASH raises at `opt_maxiter` and
-  # mcube catches it, keeps the last geometry and writes `QM_MM_optimized.pdb`
-  # with `converged: false` - whereas a walltime kill writes no PDB at all. So
-  # the first job is sized to reach its own maxiter inside 24 h even if a step
-  # costs 50 min, which makes it a rate measurement that is also real work.
-  # Chunk 2 onwards sets `pdb_file` to this run's `QM_MM_optimized.pdb` and an
-  # `opt_maxiter` sized from the measured rate.
+  # This does NOT contradict this project's own 5 A failure, which is why both
+  # records can be kept. That run blew the MM term from -240 to +1139 Eh because
+  # a *partially* shrunk region leaves active MM atoms pressed against frozen
+  # neighbours and the optimiser drives them into the wall. With the region cut
+  # to the QM atoms there are **no active MM atoms at all**, so that failure mode
+  # has nothing to act on. mcube returns `list(qm_atoms)` directly when
+  # `actradius` is falsy, so no `actregiondefine` call is made and the QM region
+  # is trivially contained in the active one.
+  #
+  # **What the frozen environment costs, stated rather than buried.** The second
+  # shell cannot relax: Ser186, the bulk waters and the backbone are held at the
+  # MM geometry the 10 ns trajectory ended on. Everything the question turns on is
+  # quantum and free - Zn, hydroxide, substrate, Asp92, Lys226, Arg90, Asn225,
+  # His88, His164 - so the carboxylate's position is decided by DFT against a
+  # fixed environment rather than a relaxed one. That is the standard
+  # minimum-refinement approximation and it is what makes the leg affordable.
+  #
+  # No `opt_coordsystem` override. ASH switches TRIC to HDLC by itself whenever an
+  # active region is set, and the SVD degeneracies both projects hit came from
+  # rigid-water *constraints*, of which this run has none - `rigid_water` is off
+  # (the library default since D137) and no `opt_constraints` are supplied, so
+  # geomeTRIC gets no constraint block at all. `cart` is the fallback if it
+  # degenerates anyway, and `cart` refuses to run with constraints present.
+  #
+  # **COST.** Two measured anchors, neither exactly this calculation: ~26 min per
+  # wb97x-v/def2-SVP/MM single point on 119 QM atoms on 8 cores (D215's level,
+  # this project), and 4.6 min per r2SCAN/def2-SVP/MM optimisation step on ~50 QM
+  # atoms with 64k MM charges on 32 cores, of which SCF 49 s, gradient 62 s and
+  # the remaining 2.8 min the point-charge terms (the channel project). Scaling
+  # their QM part to 124 atoms gives ~20 min a step, and wb97x-v costs more per
+  # SCF than a meta-GGA with no VV10, so 20-35 min is the honest band. Their core
+  # scaling was only 1.25x for 16 -> 32 at 28 QM atoms, so 32 cores is not assumed
+  # to buy 4x. `opt_maxiter: 60` against a 48 h wall is sized for the top of that
+  # band: ASH raises at maxiter and mcube keeps the last geometry and writes
+  # `QM_MM_optimized.pdb` with `converged: false`, whereas a walltime kill writes
+  # no PDB at all. If 60 steps is not enough, chunk 2 sets `pdb_file` to this
+  # run's `QM_MM_optimized.pdb`.
+  #
+  # One thing to watch in the log, from their experience: the DFT grid adds
+  # ~1e-4 Eh/A of gradient noise, comparable with geomeTRIC's own thresholds, so
+  # formal convergence can stall near a minimum that is physically reached.
   #
   # The functional is the library default and is stated anyway: wb97x-v is the
   # level D215's cluster benchmark used, so this geometry and that calibration
@@ -2175,9 +2208,10 @@ sections:
       dft_functional: wb97x-v
       dft_basis: def2-svp
       dft_cores: 32           # match --cpus-per-task; DFT scales, unlike xTB
+      actradius: 0            # active region = the QM atoms only (D235)
       skip_equilibrate: true
       skip_optimize: false
-      opt_maxiter: 25
+      opt_maxiter: 60
       rigid_water: false
 
   aspcg:

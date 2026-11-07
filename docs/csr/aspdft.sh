@@ -10,11 +10,13 @@
 # from a geometry that already has Asp92 on the metal would hand DFT the answer
 # and D206 rule 3 would exclude the result. The gate below refuses anything else.
 #
-# `opt_maxiter: 25` so the job reaches its own maxiter inside the wall even if a
-# step costs 50 min: ASH raises there, mcube keeps the last geometry and writes
+# The active region is the QM atoms ONLY (`actradius: 0`), on the channel
+# project's measured experience (D235): an 8 A region with MM waters never
+# converged in 150 steps there and the energy climbed, while a QM-only region
+# converged in 44. `opt_maxiter: 60` against a 48 h wall, sized for 20-35 min a
+# step: ASH raises at maxiter and mcube keeps the last geometry and writes
 # `QM_MM_optimized.pdb` with `converged: false`, whereas a walltime kill writes
-# no PDB. The next chunk starts from that PDB with a maxiter sized from the rate
-# this one measures.
+# no PDB. The next chunk starts from that PDB.
 #
 # 32 cores, not 8: DFT scales with cores where xTB does not.
 #
@@ -54,7 +56,14 @@ for k in ("pdb_file", "charge", "qm_engine", "dft_functional", "dft_basis",
           "rigid_water"):
     print(f"    {k}: {i.get(k)}")
 print("    qm_residues:", i.get("qm_residues"))
-print("    actradius:", i.get("actradius", (d.get("qmmm") or {}).get("inputs", {}).get("actradius")))
+act = i.get("actradius", (d.get("qmmm") or {}).get("inputs", {}).get("actradius"))
+print("    actradius:", act)
+# The active region must be the QM atoms only. A partially shrunk region is the
+# one configuration that is known to fail here: the 5 A rerun drove active MM
+# atoms into frozen neighbours and the MM term went -240 -> +1139 Eh.
+if act:
+    raise SystemExit(f"actradius is {act!r} - this leg wants the QM atoms only (0), "
+                     "not a partial shell (D235)")
 
 # D134: a $set block appears the moment a qmmm run is given opt_constraints, and
 # convergence then cannot be reached. Nothing may be constrained here - that is
@@ -89,7 +98,7 @@ PY
 
 echo "=== sbatch"
 sbatch -J aspdft -p general \
-  --cpus-per-task=32 --mem=120G -t 24:00:00 \
+  --cpus-per-task=32 --mem=120G -t 48:00:00 \
   "$R/run.slurm" qmmm qmmm_aspdft
 
 echo "=== queue"
