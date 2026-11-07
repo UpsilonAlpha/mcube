@@ -106,6 +106,24 @@ class TestUnsetAndEquals:
         mod.main(file, ["arm"])
         assert written(home, "qmmm_arm")["rigid_water"] is False
 
+    def test_zero_does_not_satisfy_a_false_requirement(self, mod, home):
+        """Python says False == 0; a gate that cannot tell them apart is a gate
+        that will one day pass something it was written to stop."""
+        file = site(home, {"arm": {
+            "stage": "qmmm",
+            "require": {"equals": {"rigid_water": False}},
+            "inputs": dict(BASE, rigid_water=0)}})
+        with pytest.raises(SystemExit):
+            mod.main(file, ["arm"])
+
+    def test_false_does_not_satisfy_a_zero_requirement(self, mod, home):
+        file = site(home, {"arm": {
+            "stage": "qmmm",
+            "require": {"equals": {"actradius": 0}},
+            "inputs": dict(BASE, actradius=False)}})
+        with pytest.raises(SystemExit):
+            mod.main(file, ["arm"])
+
     def test_an_unknown_require_key_is_refused_rather_than_ignored(self, mod, home):
         """A typo in a gate is a gate that does not run, which is the worst case."""
         file = site(home, {"arm": {

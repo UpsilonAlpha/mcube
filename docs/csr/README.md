@@ -13,10 +13,42 @@ the file that gets edited in place when something changes.
 | File | What it is |
 | --- | --- |
 | `site.yaml` | the active site (atoms, candidate bases, near-attack criteria), the named Michaelis hypotheses, and every calculation we run |
-| `sections.py` | adds calculations from `site.yaml` to `config.yaml`, refusing to write if a selector does not resolve — restraint pairs included (D128) |
+| `sections.py` | adds calculations from `site.yaml` to `config.yaml`, refusing to write if a selector does not resolve — restraint pairs included (D128) — or if the section's own `require:` block does not hold, and submits it from its `submit:` block with `--submit` (`--dry-run` checks and prints the `sbatch` line without writing) |
 | `site.py` | all the geometry analysis and the acceptance gate: `sphere`, `shell`, `nucleophiles`, `acceptors`, `joint`, `poses`, `graft`, `check` |
 | `run.slurm` | one job script for every mcube stage; resources come from the `sbatch` line |
 | `cleanup.sh` | reclaim space and inodes in a run directory |
+
+**Submitting a calculation, and why there are no `*.sh` launchers any more.**
+There used to be one per run - `relax10.sh`, `aspqm2.sh`, `aspdft.sh` and the
+rest - each the same six lines with a hand-written preflight in the middle, and
+they had drifted: two of them *warned* where a third *refused* on the same
+condition. A gate written once per run is a gate that is wrong somewhere, and
+nothing in the output of either run would have said so. The checks and the
+resources are config now (D238, D239), so a new arm is a `site.yaml` edit and
+nothing else:
+
+```
+require:                    # refused before anything is written
+  unset: [restraints, opt_constraints, constraints]
+  equals: {charge: 2, rigid_water: false}
+  same_as: {section: aspdft, except: [qm_engine, dft_basis, opt_maxiter]}
+submit: {partition: general, cores: 8, mem: 16G, time: "24:00:00"}
+```
+
+Then, from the run directory with the ASH env active:
+
+```
+python $R/sections.py $R/site.yaml <name> --dry-run   # check, print, write nothing
+python $R/sections.py $R/site.yaml <name> --submit    # write and sbatch
+```
+
+`same_as` is the one worth reaching for deliberately: it refuses to write an arm
+that differs from its reference in anything but the keys named, which is the only
+way a two-arm comparison stays controlled as either arm is edited later. It
+compares against the reference as written in `config.yaml` - what the job will
+actually read - and says so when it has to fall back to the site file. A GPU run
+puts its qos and gres in `submit.extra`, because `run.slurm` hardcodes
+`--qos=normal` and `gpu_cuda` rejects it.
 
 **Reference values:**
 

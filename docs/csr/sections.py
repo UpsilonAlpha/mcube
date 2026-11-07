@@ -136,8 +136,15 @@ NL = chr(10)
 
 
 def _flat(value):
-    """A value as it compares: YAML's bools and numbers are not strings."""
-    return value
+    """A value as it compares, with `false` and `0` kept apart.
+
+    Python says `False == 0` and `True == 1`, so without this a gate reading
+    `equals: {rigid_water: false}` would be satisfied by `rigid_water: 0`, and
+    `actradius: 0` by `actradius: false`. Those mean the same thing today and a
+    gate that cannot tell them apart is a gate that will one day pass something
+    it was written to stop. Comparing (is-a-bool, value) costs nothing.
+    """
+    return (isinstance(value, bool), value)
 
 
 def check_require(name, inputs, require, reference_inputs, reference_from):

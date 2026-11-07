@@ -9690,6 +9690,62 @@ wrong behaviour and `aspdft.sh`'s refusal is the right one. And `sections.py`
 itself belongs in `src/mcube/` as `python -m mcube.sections`, since nothing in
 it is CSR-specific; it sits in `docs/csr/` only for historical reasons.
 
+**D239 - THE EIGHT LAUNCHER SCRIPTS ARE GONE. Every gate and every `sbatch`
+line they held is now a `require:`/`submit:` block on its own section in
+site.yaml, and the divergence between them is reconciled rather than carried
+over: where `aspqm.sh` and `aspqm2.sh` printed `[WARNING]` for a restrained
+carboxylate, the config refuses.** (2026-11-07)
+
+Deleted: `asppull.sh`, `asppull2.sh`, `asppull3.sh`, `eq6.sh`, `relax10.sh`,
+`aspqm.sh`, `aspqm2.sh`, `aspdft.sh`. Kept, because they are analysis rather
+than submission: `cleanup.sh`, `convergence.sh`, `conv_relax10.sh`.
+
+**Nothing was thrown away.** Each script's preflight is in the section it
+guarded, with the reason beside it, and each one's resources are a `submit:`
+block:
+
+    relax10   require.unset [skip_npt, skip_nvt, gentle], equals nvt_time 10000
+              (D227: `gentle` is 40 ps of 300 K MD before NPT for nothing)
+    aspqm     require.unset [restraints, opt_constraints, constraints]
+    aspqm2    the same, plus equals pdb_file = relax10's last frame, charge 2,
+              rigid_water false (D228: the 2 ns frame is what job 32384737 was
+              cancelled for using)
+    aspdft    the same, plus actradius 0, qm_engine dft, dft_basis def2-svp,
+              skip_equilibrate true, skip_optimize false
+    md arms   submit {partition: gpu_cuda, cores: 4, mem: 32G, extra: [--qos=gpu,
+              --gres=gpu:h100:1]} - the qos goes in `extra` because run.slurm
+              hardcodes --qos=normal and gpu_cuda rejects it
+    qmmm arms submit {partition: general, ...}, 8 cores for xTB and 32 for DFT
+
+**What the three "section is in config.yaml" checks were worth: nothing.**
+Every launcher opened by asserting that `sections.py` had written its section,
+which `sections.py` already guarantees by refusing to write anything when any
+section fails. Three of the eight preflights were only that. The checks that
+mattered were in two scripts, and one of those two was wrong.
+
+**One sharp edge found while writing the checker, and fixed.** `equals` compared
+with `==`, and Python says `False == 0`, so `equals: {rigid_water: false}` would
+have been satisfied by `rigid_water: 0` and `actradius: 0` by
+`actradius: false`. Those mean the same thing to mcube today. A gate that cannot
+tell them apart is a gate that will one day pass something it was written to
+stop, so the comparison is on `(isinstance(value, bool), value)` and two tests
+pin it. This is the second bug the tests found in the error paths of this
+checker, the first being a string-formatting precedence error that made the
+`same_as` failure path raise `TypeError` instead of naming the difference.
+
+**`docs/csr/README.md`** now documents the route - `--dry-run` to check and
+print the `sbatch` line without writing, `--submit` to write and submit - and
+says why there are no launchers, since the obvious next move for anyone adding
+an arm is to copy the last script.
+
+**Still not done, and named so it is not rediscovered:** `sections.py` belongs
+in `src/mcube/` as `python -m mcube.sections`. Nothing in it is CSR-specific -
+it takes a site file and section names - and it sits in `docs/csr/` only because
+that is where it was first written. Moving it is an import change, a test-path
+change and a line in `running-on-bunya.md`, with no behaviour change, and it is
+the difference between a general library and a library with a project's script
+in its docs directory.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

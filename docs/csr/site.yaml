@@ -1818,6 +1818,8 @@ sections:
   # Cost: eq5's own 10 ns at this timestep, on one GPU.
   eq6:
     stage: md
+    submit: {partition: gpu_cuda, cores: 4, mem: 32G, time: "06:00:00",
+             extra: [--qos=gpu, --gres=gpu:h100:1]}
     inputs:
       pdb_file: preprocess_results/finalsystem.pdb
       coordination_redetect: true
@@ -1910,6 +1912,8 @@ sections:
   # coordination_redetect re-pins Zn-OD2 at its detected 2.81 and fights the pull.
   asppull:
     stage: md
+    submit: {partition: gpu_cuda, cores: 4, mem: 32G, time: "01:00:00",
+             extra: [--qos=gpu, --gres=gpu:h100:1]}
     inputs:
       pdb_file: md_eq6_results/NVTtrajectory_lastframe.pdb
       coordination_redetect: false   # D214: redetect re-pinned Zn-OD2 at 2.81 and
@@ -1932,6 +1936,8 @@ sections:
   # stage 2: on to the crystal distance, from stage 1's last frame
   asppull2:
     stage: md
+    submit: {partition: gpu_cuda, cores: 4, mem: 32G, time: "01:00:00",
+             extra: [--qos=gpu, --gres=gpu:h100:1]}
     inputs:
       pdb_file: md_asppull_results/NVTtrajectory_lastframe.pdb
       coordination_redetect: false
@@ -1980,6 +1986,8 @@ sections:
   # be trusted for coordination, then let QM/MM decide where it goes.
   asppull3:
     stage: md
+    submit: {partition: gpu_cuda, cores: 4, mem: 32G, time: "01:00:00",
+             extra: [--qos=gpu, --gres=gpu:h100:1]}
     inputs:
       pdb_file: md_asppull2_results/NVTtrajectory_lastframe.pdb
       coordination_redetect: false
@@ -2056,6 +2064,13 @@ sections:
   # convergence.py afterwards and require eq6's plateau before QM/MM.
   relax10:
     stage: md
+    submit: {partition: gpu_cuda, cores: 4, mem: 32G, time: "03:00:00",
+             extra: [--qos=gpu, --gres=gpu:h100:1]}
+    # From relax10.sh: the run is NPT then 10 ns of NVT production, and
+    # `gentle` would spend 40 ps of 300 K MD before NPT for nothing (D227).
+    require:
+      unset: [skip_npt, skip_nvt, gentle]
+      equals: {nvt_time: 10000}
     inputs:
       pdb_file: md_asppull3_results/NVTtrajectory_lastframe.pdb
       # Standard mcube: minimise -> NPT box equilibration -> NVT production.
@@ -2093,6 +2108,13 @@ sections:
   # (D226, D228). Do not re-run it: `resume: true` would continue those 5.16 ps.
   aspqm:
     stage: qmmm
+    submit: {partition: general, cores: 8, mem: 16G, time: "24:00:00"}
+    # Reconciled when these moved out of the launchers (D239): `aspqm.sh` and
+    # `aspqm2.sh` only WARNED here while `aspdft.sh` refused. Refusing is right -
+    # a restrained carboxylate measures the restraint, and D134's $set switch
+    # makes convergence unreachable the moment `opt_constraints` appear.
+    require:
+      unset: [restraints, opt_constraints, constraints]
     inputs:
       pdb_file: md_asppull3_results/NVTtrajectory_lastframe.pdb
       qm_residues: *qmreg_michrk
@@ -2111,6 +2133,17 @@ sections:
   # `time` to 100, 150, 200, 250, 300 and re-running, one at a time (D228).
   aspqm2:
     stage: qmmm
+    submit: {partition: general, cores: 8, mem: 16G, time: "24:00:00"}
+    # Reconciled when these moved out of the launchers (D239): `aspqm.sh` and
+    # `aspqm2.sh` only WARNED here while `aspdft.sh` refused. Refusing is right -
+    # a restrained carboxylate measures the restraint, and D134's $set switch
+    # makes convergence unreachable the moment `opt_constraints` appear.
+    require:
+      unset: [restraints, opt_constraints, constraints]
+      # The point of this section is that it starts from the END of the 10 ns,
+      # not the unrelaxed 2 ns frame that job 32384737 was cancelled for (D228).
+      equals: {pdb_file: md_relax10_results/NVTtrajectory_lastframe.pdb,
+               charge: 2, rigid_water: false}
     inputs:
       pdb_file: md_relax10_results/NVTtrajectory_lastframe.pdb
       qm_residues: *qmreg_michrk
@@ -2200,6 +2233,17 @@ sections:
   # point are at the same level and can be compared.
   aspdft:
     stage: qmmm
+    submit: {partition: general, cores: 32, mem: 120G, time: "48:00:00"}
+    # Reconciled when these moved out of the launchers (D239): `aspqm.sh` and
+    # `aspqm2.sh` only WARNED here while `aspdft.sh` refused. Refusing is right -
+    # a restrained carboxylate measures the restraint, and D134's $set switch
+    # makes convergence unreachable the moment `opt_constraints` appear.
+    require:
+      unset: [restraints, opt_constraints, constraints]
+      equals: {pdb_file: md_relax10_results/NVTtrajectory_lastframe.pdb,
+               charge: 2, rigid_water: false, actradius: 0,
+               skip_equilibrate: true, skip_optimize: false,
+               qm_engine: dft, dft_basis: def2-svp}
     inputs:
       pdb_file: md_relax10_results/NVTtrajectory_lastframe.pdb
       qm_residues: *qmreg_michrk
