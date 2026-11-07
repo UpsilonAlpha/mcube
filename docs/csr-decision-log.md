@@ -9841,6 +9841,70 @@ rediscovered.
 end-to-end on Bunya: `--dry-run` on all eight sections passes and reproduces
 exactly the `sbatch` lines the deleted scripts used, GPU qos and gres included.
 
+**D241 - `aspxtb8` reopens the 8 A active region from the converged xTB
+minimum, to remove one of the two differences D240 could not separate. Written,
+gated and SUBMITTED - but the submission is UNCONFIRMED: the code-server session
+died between the `sbatch` and the read, so whether job landed is not known and
+must be checked before anything is resubmitted.** (2026-11-08, 00:0x AEST)
+
+**Why: D240's confound, halved.** Both optimisations differ from D232's 300 K
+dynamics in two ways at once - they are 0 K **and** they hold the MM environment
+frozen, because the active region is the QM atoms only (D235). So the chelate's
+absence from both minima is consistent with needing thermal energy, with needing
+the second shell to relax, or with both. `aspxtb8` removes the second: same
+Hamiltonian, same QM region, same charge, nothing constrained, but ~485 active
+atoms instead of 124. Only `pdb_file` and `actradius` differ from `aspxtb`, and
+the `require.same_as` gate refuses to write the section if anything else does.
+
+**It starts from `aspxtb`'s converged minimum, which is the only converged QM/MM
+geometry in this project.** The user asked for the *DFT* geometry and it does not
+exist yet: `aspdft` was on **step 4 of ~25** at 8:50 elapsed, `grms` 6.0e-03
+against the 1e-04 criterion, so it will hit its 48 h wall far from a stationary
+point. Asked rather than substituted, and the answer was the xTB minimum at xTB.
+
+**Pre-registered, before the result, per D178:**
+- **Asp92 comes in toward ~2.5 A once the environment is free** -> the frozen
+  shell was holding it out, D240's narrowing was premature, and the
+  0 K-versus-300 K half of the confound is the half that does not matter.
+- **Asp92 stays out near 5 A** -> the frozen environment was not the reason, so
+  the chelate needs thermal energy. D240's narrowing stands and strengthens.
+- **No convergence in 300 steps** -> expected, not a failure. The channel
+  project's flexible-water 8 A runs were monotonic and still unconverged at 300.
+  Read the trajectory's direction, which is what the first two readings turn on.
+
+Starting geometry, from `aspxtb`'s `QM_MM_optimized.pdb`: Zn-OD2 5.383,
+Zn-OD1 4.952, Zn-CG 5.564, Zn-NZ 5.195, NZ-OD2 2.718, Zn-O2x 2.282,
+Zn-OH 1.775, O01-C4x 3.673.
+
+`rigid_water` stays false. The channel project's 8 A runs climbed 30-45 kcal/mol
+UPHILL with good step quality because rigid-water constraints degenerate TRIC's
+coordinate system; with no constraints at all geomeTRIC gets no constraint block,
+which `aspdft`'s absent `constraints.txt` confirmed by measurement (D237). 8
+cores and 32 GB, 24 h: our own 8 A xTB optimisation ran at ~159 s a step with
+geomeTRIC's linear algebra over 467 active atoms as the cost driver, so 300 steps
+is ~13 h.
+
+**WHAT IS NOT KNOWN, and why no resubmission may happen until it is.** The
+`--dry-run` passed and printed the exact line
+(`sbatch -J aspxtb8 -p general --cpus-per-task=8 --mem=32G -t 24:00:00
+.../run.slurm qmmm qmmm_aspxtb8`) with quota at 238/300 GB and
+724,722/1,000,000 inodes. The `--submit` was then typed and entered, and the
+next read returned **`Failed to connect to bun147:52687`** - the interactive
+code-server job had ended. So the submission is in one of three states and the
+log that would say which is unreachable:
+
+1. `qmmm_aspxtb8` is absent from `config.yaml` -> nothing happened at all.
+2. It is present and `sacct` shows a job -> it landed; read it.
+3. It is present and `sacct` shows nothing -> the section was written and the
+   `sbatch` did not run, so submitting again is correct.
+
+`sections.py` writes the section **before** it submits, so the config is the
+discriminator and must be read first. **Submitting blind would risk a duplicate
+8-core job**, which is exactly the kind of waste the `[OK]`-before-`sbatch`
+discipline exists to prevent. The jobs already running are unaffected either way:
+`aspdft` (32453561) and anything else are separate Slurm jobs and `/scratch`
+survives the session moving, which is why nothing is written to the node.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
