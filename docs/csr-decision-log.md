@@ -9343,6 +9343,89 @@ geomeTRIC steps a protein optimisation of this size took in their hands, and
 whether TRIC degenerated. A "we only ever ran xTB" is as useful an answer as a
 number, because it would confirm the user's general claim independently.
 
+**D235 - THE def2-SVP QM/MM OPTIMISATION IS SUBMITTED: job 32453561, `aspdft`,
+wb97x-v/def2-SVP, 124 QM atoms, the active region cut to the QM atoms only, 60
+steps against a 48 h wall, nothing constrained. The active region is NOT the
+8 A one the base config gives, and that single change came from the ion-channel
+project's measured experience rather than from our own extrapolation - the user
+sent me to ask them.** (2026-11-07)
+
+**What the channel session measured, which this project had no equivalent of.**
+Their QM/MM optimisations are r2SCAN/def2-SVP through the same mcube `qmmm`
+stage, ASH + PySCF, density fitting on, 32 cores on `general`:
+
+- **An 8 A active region containing MM waters never converged in 150 steps**,
+  and worse, the energy **climbed 30-45 kcal/mol** after a minimum around step
+  40-120 while geomeTRIC rated every step good (Quality ~1), with repeated
+  `SVD Error` in the internal coordinates. A finite-difference check ruled out
+  an energy/gradient mismatch (they agree to 0.4 kcal/mol/A), so the geometry
+  was being driven uphill by the coordinate system, not by a bad gradient.
+- **Cutting the active region to the QM atoms converged it in 44 steps**, energy
+  falling every step, and all 60 of their round-2 jobs then converged in 27-100.
+- `rigid_water: false` plus `opt_coordsystem: cart` was the other fix:
+  monotonic, never uphill, but **not converged at 300 steps** - the gradient met
+  the thresholds while the energy crept ~1 kcal/mol per 50 steps out of the
+  floppy water network. So flexible water is not a substitute for a small
+  active region; it trades a wrong answer for a slow one.
+- Cost: **4.6 min per optimisation step** at ~50 QM atoms in a 124k-atom system
+  with ~64k MM point charges - SCF 49 s, gradient 62 s, and the remaining 2.8 min
+  the QM-MM point-charge terms. At 28-31 QM atoms in a water box, 18.6 s a step.
+- Core scaling was **1.25x for 16 -> 32 cores** at 28 QM atoms. It flattens.
+- DFT/MM MD ran at 7-9 ps/day at 28 QM atoms against ~40x that with xTB/MM, so
+  their conclusion is the user's: DFT/MM for minima and single points, xTB for
+  dynamics. That is now two independent projects saying it.
+
+**The two records do not contradict each other, and keeping both is the point.**
+This project ruled out a 5 A active region for the opposite-looking reason: the
+MM term went -240 -> +1139 Eh while the QM term stayed sane, because a
+*partially* shrunk region leaves active MM atoms pressed against frozen
+neighbours and the optimiser drives them into the wall. With the region cut to
+the QM atoms there are **no active MM atoms at all**, so that failure mode has
+nothing to act on. 5 A is still ruled out; 0 is a different setting, not a more
+extreme version of it. mcube returns `list(qm_atoms)` directly when `actradius`
+is falsy, so no `actregiondefine` call happens and the QM region is trivially
+contained in the active one.
+
+**What the frozen environment costs, said rather than buried.** The second shell
+cannot relax: Ser186, the bulk waters and the backbone stay at the MM geometry
+the 10 ns trajectory ended on. Everything the question turns on is quantum and
+free - Zn, hydroxide, substrate, Asp92, Lys226, Arg90, Asn225, His88, His164 -
+so Asp92's position is decided by DFT against a fixed environment rather than a
+relaxed one. That is the standard minimum-refinement approximation, it is what
+makes the leg affordable, and it belongs in the methods section rather than in a
+footnote.
+
+**Also taken from them, and not acted on yet:** SCF trouble on a divalent metal
+next to bare MM charges is to be met with damping, level shift and a Newton
+fallback (their Ln3+ clusters needed all three, and one Lu cluster flipped
+between two SCF solutions 0.34 Eh apart on successive steps - so watch for energy
+jumps between steps rather than only for non-convergence). The DFT grid adds
+~1e-4 Eh/A of gradient noise, comparable with geomeTRIC's own thresholds, so
+formal convergence can stall at a minimum that has physically been reached.
+Their default auxbasis was fine and was never tuned. Their one memory blowup was
+PCM-specific (96 GB was not enough for dense PCM matrices on 74-77 atoms) and
+plain QM/MM showed none; this job has 120 GB and no PCM.
+
+**Submitted, with the gate's output read rather than assumed.** Job **32453561**,
+`general`, 32 cores, 120 GB, 48 h. The launcher printed
+`[OK] def2-SVP optimisation from relax10's last frame, charge 2, nothing
+constrained, no QM/MM MD`, and `config.yaml` shows `qm_engine: dft`,
+`dft_functional: wb97x-v`, `dft_basis: def2-svp`, `dft_cores: 32`,
+`actradius: 0`, `opt_maxiter: 60`, `rigid_water: False`,
+`skip_equilibrate: True`, `skip_optimize: False`, and the `michaelis_rk` region
+at charge 2. Quota before submitting: scratch 238/300 GB, 724,499/1,000,000
+inodes. `aspqm2` was still running at 16:45 h elapsed and was left alone.
+
+**What to read first, and what would make it worth stopping.** Output in
+`protdft/aspdft-32453561.out`, run directory `protdft/qmmm_aspdft/`. The first
+numbers wanted are the **wall time per step** (against the 20-35 min band
+predicted) and, from `optimization_energies.log`, **whether the energy falls
+monotonically**. A climbing energy with good step quality is the channel
+project's 8 A failure reproduced at a QM-only region, and it would mean stopping
+rather than buying more steps. 60 steps is not expected to converge if their
+27-100 range transfers; the next chunk starts from this run's
+`QM_MM_optimized.pdb`, which mcube writes even on non-convergence.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
