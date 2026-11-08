@@ -9905,6 +9905,103 @@ discipline exists to prevent. The jobs already running are unaffected either way
 `aspdft` (32453561) and anything else are separate Slurm jobs and `/scratch`
 survives the session moving, which is why nothing is written to the node.
 
+**D242 - D241'S UNKNOWN RESOLVES TO "NOTHING HAPPENED": `qmmm_aspxtb8` was
+absent from `config.yaml` and `sacct` showed no such job, so the 7 Nov
+`--submit` never ran. Resubmitted, job **32489558**. And `aspdft`, now 13
+steps in, OVERTURNS ITS OWN FIRST THREE STEPS: Asp92's outward drift reverses
+at step 6 and the carboxylate comes back to the crystal distance, while
+Lys226 moves monotonically ONTO the zinc.** (2026-11-08, 14:49 AEST)
+
+**The submission question, answered by measurement rather than assumption.**
+`config.yaml`'s section list read `michqm, michrk, aspqm, aspqm2, aspdft,
+aspxtb` - no `aspxtb8` - and `sacct -X -S 2026-11-07` showed no job of that
+name. `sections.py` writes the section before it submits, so an absent section
+means the process never got that far: state 1 of D241's three, and a blind
+resubmission would have been correct after all. It was still right to check,
+because the cost of being wrong was a duplicate 8-core job and the cost of
+checking was two fetches. Dry-run passed and reproduced the line exactly;
+`--submit` then returned `Submitted batch job 32489558`. Quota 238/300 GB,
+724,739/1,000,000 inodes.
+
+**A fresh code-server shell inherits no conda environment, and this cost one
+wasted batch.** `python .../sections.py` died with
+`ModuleNotFoundError: No module named 'mcube'`. The fix is the three lines
+`run.slurm` itself uses - `module load miniforge/26.1.0-0`,
+`source $ROOTMINIFORGE/etc/profile.d/conda.sh`, `conda activate ASH`. Also:
+the log read empty immediately after those three, because `module load` takes
+a few seconds and the fetch beat it. A blank log right after a `module load`
+is a timing artefact, not a failure.
+
+**`aspdft` (32453561): 13 completed steps, 23.6 h elapsed, still running, and
+the mapping re-verified - geometry block 0 reproduces 5.153 / 4.327 / 5.192 /
+5.276 / 2.880 / 2.178 / 2.126 exactly.**
+
+    step   Zn-OD2  Zn-OD1  Zn-CG  Zn-NZ  NZ-OD2  H88NE2  H164NE2
+     0     5.153   4.327   5.192  5.276  2.880   2.178   2.126
+     2     5.140   4.549   5.243  5.289  2.780   2.197   2.122
+     4     5.087   4.544   5.198  5.269  2.766   2.222   2.114
+     6     5.073   4.536   5.206  5.213  2.699   2.235   2.097
+     8     5.118   4.518   5.215  5.164  2.729   2.213   2.094
+    10     5.143   4.527   5.224  5.145  2.740   2.180   2.085
+    12     5.135   4.538   5.235  5.137  2.717   2.162   2.074
+    13     5.134   4.546   5.237  5.131  2.713   2.162   2.073
+    6DQH   5.14    4.28    5.15   5.27   2.79
+
+**THE ANSWER TO "DOES Asp92 KEEP MOVING AWAY" IS NO, AND THREE STEPS WAS A
+DIRECTION THAT DID NOT HOLD.** Zn-OD2 falls to a minimum of 5.073 at step 6
+and then climbs back, settling at 5.134 - which is 6DQH's 5.14 to within
+0.006 A. Over the last four steps it moves 5.143 -> 5.141 -> 5.135 -> 5.134,
+and Zn-CG and Zn-OD1 are flat to +/-0.005 A over the same span. So the DFT
+minimum does not push the carboxylate out and does not pull it in: **it holds
+Asp92 where the crystal has it.** D240's survival claim - that neither
+gradient points the carboxylate at the metal - stands and is in fact
+strengthened, because the metal-ward displacement is now zero rather than
+negative. What does not stand is the *wording* of the observation node, whose
+title says Asp92 "moves away from Zn1". By step 13 it has not.
+
+**THE NEW MONOTONE IS LYS226, AND IT IS THE THESIS'S OWN ATOM.** Zn-NZ runs
+5.276 -> 5.289 -> 5.269 -> 5.213 -> 5.164 -> 5.145 -> 5.137 -> 5.131 with no
+reversal after step 2: the lysine ammonium moves 0.145 A closer to the zinc
+while holding its salt bridge to Asp92 OD2 at 2.70-2.73. Read carefully: this
+is Lys226 taking up position in the vacant Zn2 subsite, which is what
+"Lys replaces Zn2" asserts, and it is the first time any unrestrained
+calculation here has produced that motion rather than had it imposed. It is
+also 0.145 A in a geometry optimisation that has not converged, so it is a
+direction and not a distance, and 6DQH's 5.27 is where the crystal puts NZ -
+so the optimisation is moving AWAY from the crystal on this one coordinate
+while settling onto it on the others. That is worth saying out loud rather
+than harvesting the half that flatters the thesis.
+
+**Energy, monotonic throughout, and the optimiser is healthy.**
+-5201.1362 -> -5201.3871 Eh over 13 steps, every step downhill, step quality
+1.07-1.20 for the last six, trust radius grown from 1.000e-01 and capped at
+3.000e-01, `Displace` rms down to 1.231e-02. **Zero `SVD Error` in the `.out`
+and zero `LinAlgError` in the `.err`, counted in their own files.** This is
+the opposite of the channel project's 8 A failure - no climb, no degenerate
+coordinates - which is what `actradius: 0` was chosen for.
+
+**IT WILL NOT CONVERGE BEFORE THE WALL, BUT THE GEOMETRY IS ALREADY SETTLED,
+AND THOSE TWO FACTS TOGETHER DECIDE D236'S OPEN QUESTION.** `Grad` rms falls
+3.656e-02 -> 1.339e-03, but the last five steps decay only ~8% each, so 1e-04
+is roughly 30 more steps away. The rate has improved - 110.1 and 117.9 min at
+the start, then 109.3, 96.0, 91.1 min, the SCF reusing `pyscf.chk` - and
+24.4 h of wall remain, which buys about 16 steps, reaching grms ~4e-04 at step
+~29 against `opt_maxiter: 60`. So: no `QM_MM_optimized.pdb`, recovery via
+`traj_frame.py` on `geometric_OPTtraj_Full.xyz` as planned. **But the distances
+that matter are flat to +/-0.005 A over the last four steps.** Another 16
+steps of DFT, or a continuation costing another 48 h, would buy a tighter
+gradient and no different answer about where Asp92 and Lys226 sit. The fourth
+of D236's options - stop at the gradient direction and put the def2-TZVP
+single point on the recovered frame - is the one the numbers now support, and
+it is the cheapest. Not acted on; the user's call.
+
+**One thing a continuation WOULD buy, stated so it is not lost.** Zn-NZ is
+still falling at step 13 and has not turned over the way Zn-OD2 did. If that
+motion is the thesis's own, then where it stops is a number worth having, and
+only more steps give it. That is an argument for a continuation on this
+coordinate specifically - about 29 h to flatten it at the current rate - not
+for finishing the optimisation to 1e-04.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
