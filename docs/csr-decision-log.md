@@ -10002,6 +10002,29 @@ only more steps give it. That is an argument for a continuation on this
 coordinate specifically - about 29 h to flatten it at the current rate - not
 for finishing the optimisation to 1e-04.
 
+**D243 - the user's decision, against the recommendation D242 argued for:
+`aspdft` RUNS TO ITS WALL. The def2-TZVP single point waits for the frame that
+wall produces.** (2026-11-08)
+
+D242 made the case for stopping: the distances are flat to +/-0.005 A over four
+steps, 1e-04 is ~30 steps away and the wall buys ~16, so the remaining compute
+buys a tighter gradient and no different answer about Asp92. The answer is **let
+it run**, and the reason D242 itself named is the one that makes this right:
+**Zn-NZ has not turned over.** Lys226 is still moving onto the metal at step 13
+with no reversal since step 2, and where that motion stops is a number the
+thesis wants. Only more steps give it. Stopping would have saved ~24 h of one
+32-core job and thrown away the only coordinate still carrying information.
+
+So: no continuation section, no resize, nothing submitted. The job ends at its
+48 h wall ~15:10 on 9 Nov at ~29 steps and **writes no `QM_MM_optimized.pdb`**.
+Recovery is `python docs/csr/traj_frame.py
+protdft/qmmm_aspdft/geometric_OPTtraj_Full.xyz
+md_relax10_results/NVTtrajectory_lastframe.pdb <out.pdb>`, and the def2-TZVP
+single point takes that frame. What to read at the wall is Zn-NZ's last four or
+five steps: if it has flattened, the number is real and the salt-bridge geometry
+is measured; if it is still falling, say so and do not report a distance as
+though the optimiser had settled on it.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
