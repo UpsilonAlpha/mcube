@@ -10659,6 +10659,87 @@ so pointing both QM/MM observations directly at
 A note rather than a finding, which is the right severity: the measurements
 stand, their reading as Michaelis-complex geometry does not.
 
+**D251 - THE CHANNEL FOR GETTING FILES OFF BUNYA IS THE GIT REMOTE, WHICH BOTH
+MACHINES ALREADY HAVE. The user said so after I had tried three worse things.
+Three water-stripped frames are now tracked in `docs/csr/structures/`, each
+verified on arrival against distances the log already records.** (2026-11-09,
+user: "why not just push and pull through github?")
+
+## What was wrong with my reasoning, in order
+
+1. **"`scp` can't authenticate."** True and checked - `~/.ssh/` holds only
+   `known_hosts` - but it is an answer to the wrong question.
+2. **"The read route costs context."** Also true: `javascript_tool` returns the
+   bytes into context and `Write` emits them again, so a 3.7 MB frame is ~2.4 M
+   tokens round trip. I reported this as a hard limit **without first asking
+   what was actually in the file.**
+3. **91% of it is bulk water** - 43,668 of 47,979 atoms in `relax10`'s frame,
+   3.37 MB of 3.71. Everything this project measures is in the other 341 kB.
+   That reframing should have come first and did not.
+4. **Then I tried browser downloads**, which worked twice and was blocked the
+   third time by Chrome's automatic-download limit, at which point I was
+   solving a self-inflicted problem with increasingly indirect tricks. The user
+   stopped it: *"stop trying do download files this way"*, and then named the
+   obvious route.
+5. **The obvious route.** Bunya has the same `mcube` checkout and the same
+   GitHub remote this session has been pushing to all day. A 343 kB frame goes
+   `git push` there, `git pull` here. No credentials, no browser, no context.
+   **I had used that remote nine times in this session without once seeing it as
+   a transport.**
+
+## What was built
+
+**`docs/csr/strip_water.py`.** Drops bulk water, **keeps** waters with any atom
+within `--shell` (default 5.0 A) of `--metal` (default `B:1:ZN`), because
+whether a water holds the open coordination site is a result here (D191's
+resident waters at 97.0%/89.3%, D214's four-coordinate sphere) and not noise.
+`CRYST1` is preserved; `CONECT` records survive for atoms that survive, since a
+grafted ligand without them is unbonded to whatever reads it next (D160). It
+refuses to overwrite an existing output.
+
+    file        from     to        water dropped   waters kept within 5 A
+    relax10     3.7 MB   343.2 kB     43,656              4
+    aspxtb8     3.7 MB   342.9 kB     43,659              3
+    prodpull    3.8 MB   343.8 kB     45,249              6
+
+**Tracked, not ignored.** `.gitignore` now admits `*_nowat.pdb` and
+`l1_in_relax10.pdb` while still excluding full frames, trajectories and `.csv`.
+A new `.gitattributes` marks `*.pdb`, `*.xyz` and `*.cif` as `-text`: the first
+pull arrived ~4 kB larger per file because git had converted LF to CRLF on
+checkout, which is harmless for a fixed-column format but means the round trip
+was not byte-exact. Now it is.
+
+## The verification, which is also a test of the stripper
+
+Every frame was checked **after arriving locally** by recomputing distances the
+decision log independently records:
+
+    file                 Zn-OD2  Zn-OD1  Zn-CG  Zn-NZ   source entry
+    relax10_nowat.pdb     5.153   4.327   5.192  5.276   D238/D245
+    aspxtb8_nowat.pdb     5.092   5.830   5.777  5.044   D244
+    prodpull_nowat.pdb    4.465   4.852   5.131  5.474   D250
+
+All reproduced to the third decimal. That is what makes the files trustworthy
+rather than plausible, and it is the same check that caught nothing wrong - the
+point being that it was run, not that it passed. **It also matters because the
+user warned the downloaded copies might be "replacing each other":** the two
+that had landed by then were confirmed distinct by size, by md5, and by these
+distances before anything was concluded from them.
+
+## What is still only on Bunya, and why that is fine
+
+The full solvated frames, `prod_finalsystem.pdb`, the `nvtsim.csv` pair and the
+43.7 MB `geometric_OPTtraj_Full.xyz`. They are job inputs rather than analysis
+inputs, they are regenerable, and `pull-from-bunya.sh` fetches them with one
+interactive authentication when wanted. `/scratch/user/uquadhik/strip/` is a
+scratch staging directory and can be deleted - its contents are in git now.
+
+**The general rule, written down because I missed it for an hour:** before
+declaring a transfer impossible, ask (a) how much of the file is actually
+needed, and (b) what shared infrastructure already moves bytes between the two
+machines. Here the answers were 9% and "the git remote you have been pushing to
+all day".
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
