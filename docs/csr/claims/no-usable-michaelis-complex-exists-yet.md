@@ -1,8 +1,8 @@
 ---
 type: claim
 status: supported
-entries: [D156, D158, D159, D178, D191, D192, D194, D195, D197, D198, D200, D201, D207, D214, D231, D246]
-checked: [D158, D159, D178, D191, D192, D194, D195, D197, D198, D200, D201, D246]
+entries: [D156, D158, D159, D178, D191, D192, D194, D195, D197, D198, D200, D201, D207, D214, D231, D246, D247]
+checked: [D158, D159, D178, D191, D192, D194, D195, D197, D198, D200, D201, D246, D247]
 ---
 
 # No usable Michaelis complex has been built, and that is what blocks the mechanism
@@ -98,6 +98,31 @@ node open.**
    site at 97.9% occupancy, unrestrained, while the carbonyl was inside 2.5 Å
    in 0.3% of frames. That is a pose defect established without the discarded
    argument.
+
+**MEASURED 2026-11-09 (D247): the equilibration bent one coordinate and left
+the body behind.** 7UHI's moxalactam transferred into `relax10`'s own frame,
+fit RMSD **0.310 Å** — the best in this project's history of doing this,
+against 0.622 into `CSR_wt` and 0.851 into `CSR_ligand`:
+
+| quantity | `relax10` | 7UHI transferred |
+| --- | --- | --- |
+| ligand centroid to Zn1 | **7.28** | **4.77** |
+| **centroid separation** | **6.20** | — |
+| β-lactam carbonyl to Zn1 | 2.610 (restrained) | 3.15 |
+| C3 carboxylate O to Zn1 | 5.656 / 6.813 | 1.85 / 3.98 |
+
+The nine docked poses spanned 0.98–3.66 Å by centroid and `scan_00` gave 5.15,
+which D156 called further than any of them. **`relax10` is 6.20 Å.** The
+carbonyl reads 2.610 only because `eq6` restrained that one atom; the molecule's
+heavy-atom centroid is 2.51 Å further from the metal than L1's, and the C3
+carboxylate L1 anchors is 5.7–6.8 Å out. Frames and atom counts differ, so
+tenths mean nothing — 2.5 Å does. **This does not revive
+"dissociation-implies-bad-pose"**; nothing in it rests on a ligand leaving.
+
+The transfer also puts L1's carboxylate oxygen **1.85 Å** from our zinc — a
+clash — where `CSR_wt` gave 2.54, so this frame's metal sits differently with
+respect to its own histidine pair and the transferred pose needs D156 §5.2's
+clash check before it can be used.
 
 **The 5AXO route is half built and stalled.** `CSR_prod` transferred 5AXO's LMP
 into the CSR-1 frame, mapped it onto our atom names by graph isomorphism, and

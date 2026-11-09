@@ -10286,6 +10286,87 @@ frame, to find out whether the restrained equilibration moved the ligand toward
 the experimental mode or only bent one coordinate. That is the number neither
 route has, and it costs no compute.
 
+**D247 - MEASURED: THE RESTRAINED EQUILIBRATION DID NOT REPAIR THE POSE, IT
+BENT ONE COORDINATE. `relax10`'s ligand centroid is 6.20 A from 7UHI's
+transferred moxalactam - worse than all nine docked poses (max 3.66) and worse
+than the 5.15 A D156 already called "further than any of the nine". The
+carbonyl sits at 2.610 A only because a restraint holds that one atom; the
+molecule's body is 7.28 A from the zinc where L1's is 4.77.** (2026-11-09,
+user: "update the argmap, then measure")
+
+**The measurement, on files that already existed; no job, no queue.**
+
+    python $R/refstruct.py transfer /scratch/user/uquadhik/refs/7UHI.pdb \
+      md_relax10_results/NVTtrajectory_lastframe.pdb \
+      --ligand=A:303:MX0 --zn=B:1:ZN \
+      --fit=A:105:NE2=A:88:NE2,A:181:NE2=A:164:NE2,A:109:CG=A:92:CG \
+      --out=l1_in_relax10.pdb
+
+**The fit is the best in this project's history of doing this: RMSD 0.310 A**
+over the three site atoms (His88 NE2 0.389, His164 NE2 0.316, Asp92 CG 0.193),
+against 0.622 A into `CSR_wt` and 0.851 A into `CSR_ligand` in D156. So the
+comparison below is better founded than the one that condemned pose 2, not
+worse. The ligand is **MX0** (moxalactam, chain A residue 303, 23 atoms); the
+earlier search for "MOX" finds nothing.
+
+| quantity | `relax10` | 7UHI transferred |
+| --- | --- | --- |
+| ligand centroid to Zn1 | **7.28** | **4.77** |
+| centroid separation | **6.20** | - |
+| beta-lactam carbonyl to Zn1 | 2.610 (`O2x`, RESTRAINED) | 3.15 (`O1`) |
+| 1-hydroxyethyl OH to Zn1 | 3.860 (`O1x`) | - |
+| C3 carboxylate O to Zn1 | 5.656 / 6.813 (`O4x`/`O3x`) | 1.85 / 3.98 |
+
+**THE FAILURE MODE IS "RIGHT COORDINATE, WRONG BODY", AND IT IS NOW A NUMBER.**
+`eq6` restrained `Zn-O2x` in to ~2.6 A and `relax10` held it, so the one
+coordinate anybody looks at reads correctly. **The rest of the molecule is
+swung away:** its heavy-atom centroid sits 2.51 A further from the metal than
+L1's does, and its C3 carboxylate - the group L1 anchors - is 5.7-6.8 A out.
+D156 predicted exactly this about pose 4 in the other direction ("the right
+position in the wrong orientation"); this is the complement, an atom in the
+right place attached to a body in the wrong one.
+
+**Against D156's own table, in D156's own units.** The nine docked poses gave
+centroids 0.98-3.66 A; `scan_aspin/scan_00.pdb` gave 5.15 A, which D156 called
+"further from the experimental pose than any of the nine docked poses was".
+`relax10` is **6.20 A**. **Caveat stated rather than buried:** those three
+numbers come from three different target frames (`CSR_ligand`, `CSR_wt`,
+`CSR_mich`) with fit RMSDs 0.851, 0.622 and 0.310 A, and moxalactam has 23
+heavy atoms against meropenem's 26, so a centroid difference of a few tenths
+means nothing. **2.5 A does.**
+
+**A second thing the transfer exposes, and it is not about the ligand.** L1's
+C3-carboxylate oxygen lands **1.85 A** from our zinc after the fit - too short
+for any real contact, i.e. a clash. In `CSR_wt` the same atom came back at
+2.54 A and L1's own carbonyl at 2.85 (D156). So `relax10`'s metal sits
+measurably differently with respect to its own histidine pair than `CSR_wt`'s
+did, and **the transferred pose cannot be dropped into this frame without the
+clash check D156 section 5.2 already required.** That is a fact about our
+model's metal placement, recorded here because it will bite whoever builds the
+replacement.
+
+**WHAT THIS DOES AND DOES NOT ESTABLISH.** It does not revive
+"dissociation-implies-bad-pose" - D194 discarded that for the third time and
+D246 for the fourth, and nothing here rests on a ligand leaving. What it
+establishes is narrower and harder: **the structure every QM/MM number from
+this week was computed on has its substrate 6.2 A from the only experimental
+B3 Michaelis geometry, and the equilibration that made it pass its gate did not
+move it closer.** D207's warning applies verbatim - a path run from this
+reactant "would spend its barrier moving meropenem across the site, and the
+number at the top would not be a chemical barrier at all."
+
+**What survives of this week's work, stated so it is not thrown out.** The
+Asp92 and Lys226 results do not depend on the substrate's body: Zn-NZ settling
+at 5.140 with the salt bridge at 2.73 (D244), Asp92 held at the crystal
+distance by both Hamiltonians (D245), and GFN2 over-binding the zinc while
+still keeping Asp92 out. Those are second-shell measurements around a metal
+whose own coordination `eq6` reproduced. **The barrier is what cannot be built
+on this reactant**, which is plan item 6 and nothing earlier.
+
+**Nothing submitted.** `l1_in_relax10.pdb` is written in `CSR_mich/` as the
+reference geometry for whatever is built next. Quota 239/300 GB,
+725,128/1,000,000 inodes.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
