@@ -56,5 +56,17 @@ one water — and two bulk waters are present instead. MM cannot decide
 coordination, so whether HOH3095 leaves is the QM/MM question recorded in
 [[question-does-gfn2-over-coordinate-the-zinc]].
 
+**WHAT THIS FRAME IS NOT, MEASURED 2026-11-09 (D247).** Its ligand's
+heavy-atom centroid is **6.20 Å** from 7UHI's transferred moxalactam — further
+than all nine docked poses (0.98–3.66 Å) and further than `scan_00` (5.15 Å).
+`eq6` restrained `Zn–O2x` in to ~2.6 Å and this run held it, so the carbonyl
+reads correctly while the body sits 2.51 Å further from the metal than L1's
+does, with the C3 carboxylate 5.7–6.8 Å out. **Everything measured on this
+frame inherits that**, which is why the QM/MM observations now declare it as a
+`requires` premise and why
+[[question-is-the-reactant-pose-experiment-anchored]] is open. The Asp92 and
+Lys226 distances below are measurements of the **resting** site — they match
+substrate-free 6DQH to 0.13 Å — and not of a Michaelis complex.
+
 ## Supports
 - [[csr1-zn1-site-is-h-r-h]]

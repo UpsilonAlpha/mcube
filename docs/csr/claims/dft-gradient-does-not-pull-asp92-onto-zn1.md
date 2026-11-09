@@ -118,3 +118,6 @@ than two methods agreeing.
 
 ## Supports
 - [[gfn2-over-coordinates-zn1-from-a-crystal-consistent-start]]
+
+## Requires
+- [[relax10-holds-the-crystal-geometry-for-10-ns]]

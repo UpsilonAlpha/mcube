@@ -73,3 +73,6 @@ has been distrusting for two days, and one minimum is not a measurement.
 
 ## Supports
 - [[gfn2-over-coordinates-zn1-from-a-crystal-consistent-start]]
+
+## Requires
+- [[relax10-holds-the-crystal-geometry-for-10-ns]]

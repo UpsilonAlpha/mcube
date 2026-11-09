@@ -10367,6 +10367,80 @@ on this reactant**, which is plan item 6 and nothing earlier.
 reference geometry for whatever is built next. Quota 239/300 GB,
 725,128/1,000,000 inodes.
 
+**D248 - WHY THE ARGUMENT MAP COULD NOT CATCH D246/D247, AND THE STRUCTURAL FIX.
+No observation in the map declared which STRUCTURE it was measured on, so a
+defect in a reactant could not propagate to the results computed on it. Three
+provenance edges and one standing question node close it; the validator now
+notes the pose question on every run until it is answered.** (2026-11-09, user:
+"the argmap is supposed to catch things like this, keep it updated")
+
+**The gap, stated exactly.** The map's checks fire along `supports`, `refutes`,
+`requires` and `superseded-by` edges. `requires` is the one that propagates:
+`premise_closure` walks it outbound from each **thesis**, and "a premise of a
+premise is a premise". So anything the thesis depends on is re-examined on every
+run - **provided there is an edge.** There was none for structures:
+
+- `dft-gradient-does-not-pull-asp92-onto-zn1` and
+  `gfn2-minimum-puts-asp92-further-out-than-the-crystal` were both measured on
+  `relax10`'s last frame and **neither said so**. Their only edge was
+  `supports`, upward.
+- `relax10-holds-the-crystal-geometry-for-10-ns` supported
+  `csr1-zn1-site-is-h-r-h` and nothing else. Nothing recorded that the frame it
+  describes has a standing problem.
+- **No node asked whether our reactant is the right one at all.** Check [2]
+  ("supported claims with a standing refutation") can only fire on edges that
+  exist, and check [3] can only note premises something requires.
+
+So the map was a map of *claims about CSR-1* with no representation of the
+*artefacts the claims were computed from*. A 1,500 core-hour def2-SVP leg ran on
+a reactant whose defect D156 had measured eight days earlier, and the map was
+working correctly throughout. **It was not a validator bug; it was a missing
+relation.**
+
+**What check [4] DID catch, which is the half that worked.** Adding D158/D159/
+D178 to a node's `entries:` fired immediately - all three are in
+`retractions.md` - and following those pointers is what surfaced D192's
+overturning of D178, D194's withdrawal of D192 and D197's supersession of D194
+(D246). Entry-level retraction tracking works. Structure-level provenance did
+not exist.
+
+**The fix, four changes, all factually true rather than constructed to make a
+check fire.**
+
+1. **Provenance edges.** Both QM/MM observation nodes now carry
+   `## Requires -> relax10-holds-the-crystal-geometry-for-10-ns`. That is simply
+   what they were run from, and it gives any reader one hop from a result to its
+   reactant.
+2. **The structure node carries its own defect.**
+   `relax10-holds-the-crystal-geometry-for-10-ns` now opens its own caveat
+   section with D247's 6.20 A centroid separation, and says that the Asp92 and
+   Lys226 distances beneath it are measurements of the **resting** site rather
+   than of a Michaelis complex.
+3. **A new standing question node:**
+   `question-is-the-reactant-pose-experiment-anchored`. It holds D247's table,
+   D178's route of record, and - written down because this is the fourth
+   derivation - the two arguments that are NOT available: "the substrate
+   dissociated so the pose is wrong" (discarded D89, D192, D194, D246) and "the
+   uncoordinated carbonyl is a regression" (a design decision, D98).
+4. **It is hung where it will be seen.** `## Required by
+   question-does-restraining-asp92-lower-the-barrier`, which is itself required
+   by the thesis - so it enters the premise closure as a premise of a premise.
+   The first placement attempted, under `thesis-mechanism-differs-from-canonical-b3`,
+   did **not** work: that node is `type: claim`, not `type: thesis`, and the
+   closure starts only from theses. Checked by running the validator rather than
+   by assuming, which is how the second placement was found.
+
+**Confirmed by measurement:** the premise count went 9 -> 10 and check [3] now
+prints `question-is-the-reactant-pose-experiment-anchored: an open question
+gating question-does-restraining-asp92-lower-the-barrier (status open)` on every
+run. No findings; 21 notes.
+
+**The general rule this installs, worth applying beyond the pose.** An
+observation computed from a built structure should declare that structure as a
+`requires` premise. Any node in the map that reads as a fact about CSR-1 but is
+actually a fact about one of our files is a place the map cannot warn us, and
+that is precisely the failure mode it exists to prevent.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
