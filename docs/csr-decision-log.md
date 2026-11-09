@@ -10835,6 +10835,101 @@ has now shown converges in 103 steps when nothing is constrained.
 Nothing submitted, and nothing in this entry can run until `prodrelax10` has
 produced a frame — `prodpull2` is the next step and is scheduled.
 
+**D253 - `aspdft` ended TIMEOUT at 28 steps and the final frame is recovered,
+measured and committed. Zn-NZ reads **5.140** at steps 23, 24, 25 and 27 - four
+readings, flat to the third decimal - so D244's reading does not need
+withdrawing; it strengthens. Four of five site distances land within 0.14 A of
+6DQH with nothing restrained, and the carbonyl ends at **2.501 A**, unrestrained,
+against 7UHI's 2.53.** (2026-11-09)
+
+## The end state, from `sacct` rather than from arithmetic
+
+    JobID        State     Start                End                  Elapsed     Timelimit
+    32453561     TIMEOUT   2026-11-07T15:10:16  2026-11-09T15:40:29  2-00:30:13  2-00:00:00
+
+**It ran 30 minutes PAST its 48 h limit** - Slurm's grace period between SIGTERM
+and SIGKILL - which is why reads at 15:32 and 15:41 found it alive and mid-SCF
+on step 28 when the scheduled check expected it finished at 15:10. The check's
+own premise was wrong and `sacct` settled it in one command. **No
+`QM_MM_optimized.pdb`, as a wall kill predicts.**
+
+## The recovery
+
+    python docs/csr/traj_frame.py \
+      protdft/qmmm_aspdft/geometric_OPTtraj_Full.xyz \
+      md_relax10_results/NVTtrajectory_lastframe.pdb \
+      protdft/qmmm_aspdft/aspdft_final_step27.pdb
+
+`[INFO] frame -1 of 28, energy -5201.390805536154` - identical to step 27's
+energy in the `.err`, which is what makes the frame the right one rather than a
+plausible one. 47,979 atoms, coordinates from the trajectory and everything else
+from the template, as D106's route did.
+
+**It is also in git**, stripped: `docs/csr/structures/aspdft_final_nowat.pdb`,
+342.9 kB from 3.7 MB, 43,659 bulk water atoms dropped and the 3 waters within
+5 A of the zinc kept (D251's channel - pushed from the Bunya checkout, pulled
+locally, re-measured on arrival and identical).
+
+## The final geometry, and the question D243 kept the job running for
+
+| | step 13 | step 25 | **step 27** | 6DQH |
+| --- | --- | --- | --- | --- |
+| Zn-OD2 | 5.134 | 5.123 | **5.122** | 5.14 |
+| Zn-OD1 | 4.546 | 4.534 | **4.528** | 4.28 |
+| Zn-CG | 5.237 | 5.223 | **5.219** | 5.15 |
+| **Zn-NZ** | 5.131 | 5.140 | **5.140** | 5.27 |
+| NZ-OD2 | 2.713 | 2.729 | **2.732** | 2.79 |
+| His88 NE2 | 2.162 | | **2.136** | |
+| His164 NE2 | 2.073 | | **2.094** | |
+
+**Zn-NZ: 5.140 at step 23, 5.140 at 24, 5.140 at 25, 5.140 at 27.** The
+scheduled check was instructed to withdraw the settled-distance claim if the
+coordinate had started moving again in the last two steps. It has not. **Lys226's
+ammonium sits 5.14 A from Zn1, 0.13 A closer than 6DQH's 5.27**, and that is now
+a distance held across four readings rather than a trend.
+
+**Four of five within 0.14 A of the crystal** - OD2 by 0.018, CG by 0.069, NZ by
+0.130, the salt bridge by 0.058 - with OD1 the outlier at 0.248. Nothing was
+restrained.
+
+**Convergence, stated as it is:** `grms` 2.467e-04 at step 27 against the 1e-04
+criterion, having been 2.201e-04 at step 26 - it **rose**, so the last steps are
+oscillating in the floor rather than closing on it. Energy monotonic at all 28
+steps, -5201.1362 -> -5201.3908055362 Eh, every step a negative change, quality
+1.45-1.50 at the end, trust at its 3.000e-01 cap. **Zero `SVD Error` in the
+`.out` and zero `LinAlgError` in the `.err`**, counted in their own files. This
+is a settled geometry at an unconverged gradient, which is weaker than a
+stationary point and is what should be said wherever these numbers are used.
+
+## One new number, recorded with its caveat
+
+**Zn-O2x ends at 2.501 A.** `relax10` held the carbonyl at 2.610 by restraint;
+this optimisation restrained nothing and DFT pulled it to 2.501, against
+7UHI/7UHJ's measured 2.53/2.63. Also `Zn-O01` (hydroxide) 1.910, `O01-C4x`
+3.577, `Zn-N1x` 4.845.
+
+**What that is not.** It is one coordinate agreeing with the crystal inside a
+pose whose ligand centroid is **6.20 A** from the experimental mode (D247). The
+carbonyl was placed near 2.6 A by a restraint and DFT moved it 0.11 A; that the
+destination matches L1 is worth recording and is not evidence the pose is right.
+The restraint itself was necessary - MM cannot model coordination within 3-4 A
+of the metal (D186, user) - and
+[[question-is-the-reactant-pose-experiment-anchored]] stays open.
+
+## Housekeeping, nothing deleted
+
+`protdft/qmmm_aspdft/geometric_OPTtraj_Full.xyz` is **43.7 MB** and is now
+**redundant for its main purpose**: the final frame is recovered, measured and
+committed. What it still holds is the intermediate geometries, so re-measuring
+any step other than 0, 13, 16, 19, 22-25 and 27 needs it, and a restart could
+re-derive a geometry from it (though not geomeTRIC's Hessian or trust radius,
+which the kill took). **Flagged, not removed.** Quota 240/300 GB,
+725,244/1,000,000 inodes.
+
+**The def2-TZVP single point is not costed here**, because the user dropped it
+after the scheduled check was written: *"Skip the def2-TZVP points, focus on the
+original plan scan -> NEB -> TS -> frequencies -> IRC"* (D252).
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

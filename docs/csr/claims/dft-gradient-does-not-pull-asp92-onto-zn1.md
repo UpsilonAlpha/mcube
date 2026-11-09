@@ -2,11 +2,11 @@
 type: observation
 evidence: ours
 status: supported
-entries: [D235, D236, D240, D242, D244, D245]
-checked: [D236, D240, D242, D244, D245]
+entries: [D235, D236, D240, D242, D244, D245, D253]
+checked: [D236, D240, D242, D244, D245, D253]
 ---
 
-# Through twenty-five wb97x-v/def2-SVP QM/MM optimisation steps from the crystal-consistent frame, the gradient holds Asp92 at the crystal distance from Zn1 rather than pulling it on, and moves Lys226 onto the metal instead
+# Through twenty-eight wb97x-v/def2-SVP QM/MM optimisation steps from the crystal-consistent frame, the gradient holds Asp92 at the crystal distance from Zn1 rather than pulling it on, and moves Lys226 onto the metal instead
 
 `aspdft`, job 32453561: wb97x-v/def2-SVP QM/MM, 124 QM atoms, active region cut
 to the QM atoms, **nothing constrained**, started from
@@ -36,13 +36,30 @@ its salt bridge at 2.73: the motion the thesis asserts, 0.13 Å closer to the
 zinc than 6DQH's 5.27. **Letting the job run past step 13 is what turned this
 into a measurement** — at step 13 it read 5.131 and was still falling.
 
-| | step 13 | step 16 | step 22 | step 25 | 6DQH |
-| --- | --- | --- | --- | --- | --- |
-| Zn–OD2 | 5.134 | 5.133 | 5.117 | **5.123** | 5.14 |
-| Zn–OD1 | 4.546 | 4.553 | 4.535 | **4.534** | 4.28 |
-| Zn–CG | 5.237 | 5.237 | 5.220 | **5.223** | 5.15 |
-| Zn–NZ | 5.131 | 5.120 | 5.138 | **5.140** | 5.27 |
-| NZ–OD2 | 2.713 | 2.726 | 2.735 | **2.729** | 2.79 |
+| | step 13 | step 16 | step 22 | step 25 | **step 27** | 6DQH |
+| --- | --- | --- | --- | --- | --- | --- |
+| Zn–OD2 | 5.134 | 5.133 | 5.117 | 5.123 | **5.122** | 5.14 |
+| Zn–OD1 | 4.546 | 4.553 | 4.535 | 4.534 | **4.528** | 4.28 |
+| Zn–CG | 5.237 | 5.237 | 5.220 | 5.223 | **5.219** | 5.15 |
+| Zn–NZ | 5.131 | 5.120 | 5.138 | 5.140 | **5.140** | 5.27 |
+| NZ–OD2 | 2.713 | 2.726 | 2.735 | 2.729 | **2.732** | 2.79 |
+
+**The run ended TIMEOUT at step 28 (D253)**, 30 minutes into Slurm's grace
+period past its 48 h limit, writing no `QM_MM_optimized.pdb`. The final frame
+was recovered with `traj_frame.py` — `frame -1 of 28, energy
+-5201.390805536154`, matching step 27's energy exactly — and is committed,
+water-stripped, as `docs/csr/structures/aspdft_final_nowat.pdb`.
+**Zn–NZ reads 5.140 at steps 23, 24, 25 and 27**, so the settled-distance claim
+holds across four readings. Final `grms` 2.467e-04, having **risen** from
+2.201e-04 at step 26: the last steps oscillate in the gradient floor rather
+than closing on the 1e-04 criterion. A settled geometry at an unconverged
+gradient, which is weaker than a stationary point.
+
+**Unrestrained, the carbonyl ends at Zn–O2x 2.501 Å** (`relax10` held it at
+2.610 by restraint; 7UHI/7UHJ measure 2.53/2.63), with Zn–O01 1.910,
+O01–C4x 3.577 and Zn–N1x 4.845. One coordinate agreeing with the crystal
+inside a pose whose centroid is 6.20 Å from the experimental mode is worth
+recording and is not evidence the pose is right.
 
 **Four of those five are within 0.14 Å of the crystal**, the fifth (OD1) 0.25 Å
 out, from an optimisation with nothing constrained. Through step 24 the energy
