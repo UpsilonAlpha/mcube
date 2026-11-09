@@ -10977,6 +10977,73 @@ convergence gate.
 at 15:41), so the next check will most likely find it gone and should tell the
 user and stop rather than sign in.
 
+**D255 - `prodpull2` done clean and `prodpull3` submitted (32523567). Stage 2's
+k=500 restraints hit their targets to within 0.004 A, which is D191's "of order
+500" confirmed by measurement rather than inferred. Zn-NZ came back from its
+overshoot but went 0.055 A past the target the other way. Zn-OD2, still
+unrestrained, drifted out on its own and is 0.576 A short of the crystal - which
+is what stage 3 asserts directly.** (2026-11-09)
+
+## `prodpull2` (32523206): 2 ns, no NaN
+
+`[DONE] md_prodpull2` at 15:55. `nvtsim.csv` reaches 1999.99997 ps over
+1,000,000 steps, so `Timestep: 0.002 ps` was applied; the `.err` is 89 bytes
+holding only the OMP note, with **no `Particle coordinate is NaN`**. Final PE
+-659,979 kJ/mol, T 301.3 K.
+
+| pair | start | stage 1 | **stage 2** | 6DQH | stage-2 restraint |
+| --- | --- | --- | --- | --- | --- |
+| Zn-OD2 | 2.795 | 4.465 | **4.564** | 5.14 | **none** |
+| Zn-OD1 | 3.811 | 4.852 | **4.884** | 4.28 | none |
+| Zn-CG | 3.692 | 5.131 | **5.148** | 5.15 | 5.15 at k=500 |
+| Zn-NZ | 4.356 | 5.474 | **5.215** | 5.27 | 5.27 at k=500 |
+| NZ-OD2 | 2.987 | 2.788 | **2.786** | 2.79 | 2.79 at k=500 |
+| His88 NE2 | 2.223 | 2.223 | **2.229** | | none |
+| His164 NE2 | 2.089 | 2.197 | **2.109** | | none |
+
+**k = 500 holds to within 0.004 A, and that is a measurement this project needed.**
+Zn-CG lands 0.002 A from its target and the salt bridge 0.004 A. D191 measured
+the opposite case - 50 kcal/mol/A^2 could not hold Asp92 OD2 at 2.80, giving a
+mean of 2.44 against a distribution maximum of 2.97 - and concluded that holding
+a mean within ~0.05 A "needs of order 500". That estimate is now confirmed
+against three restraints at once.
+
+**Zn-NZ came back, and then some.** 5.474 -> 5.215 against a 5.27 target: the
+stiffening recovered the stage-1 overshoot and carried it 0.055 A past the
+target in the other direction. Small, and inside the spread a 300 K trajectory's
+last frame carries, but worth writing down rather than reporting as "on target".
+
+**Zn-OD2 is still unrestrained and still moving outward on its own** - 4.465 ->
+4.564, carried by the CG restraint rather than pulled directly. It is **0.576 A
+short of 6DQH's 5.14**, which is exactly the gap `prodpull3` closes by dropping
+the CG handle and asserting Zn-OD2 5.14 at k=500.
+
+**The site held, for the third stage running.** His88 NE2 2.229 (from 2.223) and
+His164 2.109 - which has come back toward its 2.089 start from stage 1's 2.197.
+Both inside the 2.0-2.2 band. D223's failure mode on the reactant, where the
+lysine moved instead of the carboxylate, has not appeared on this arm at any
+stage.
+
+## Stage 3
+
+`--dry-run` passed - the `require.same_as` gate accepted `prodpull3` against
+`prodpull2` with only `pdb_file` and `restraints` differing - and printed the
+line it then ran:
+
+    sbatch -J prodpull3 -p gpu_cuda --cpus-per-task=4 --mem=32G -t 01:00:00 \
+      --qos=gpu --gres=gpu:h100:1 .../run.slurm md md_prodpull3
+
+`Submitted batch job 32523567`. After it, `prodrelax10` (10 ns, ~45 min) and
+then the convergence gate before `prodqm`. **`prodrelax10` is also the real test
+of D249's timestep diagnosis**: `prod100c` died at 22.68 ns on 4 fs, and three
+clean 2 ns stages say nothing about that, so even a clean 10 ns will be
+consistent with D249 without confirming it.
+
+**Quota is moving: 242/300 GB**, up from 239 this afternoon, with 725,320
+inodes. Three 2 ns trajectories at `traj_frequency: 5000` account for it. Worth
+a `cleanup.sh` pass before `prodrelax10`'s 10 ns lands, since the standing
+instruction is to keep only last frames of superseded runs.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
