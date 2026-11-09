@@ -10210,6 +10210,82 @@ has no direct evidence, because GFN2's own minima keep Asp92 out, so GFN2 is
 not placing a spurious minimum - only its 300 K dynamics reach the chelate, and
 no run here measures a barrier.
 
+**D246 - I RECOMMENDED A ROUTE D178 HAD ALREADY REJECTED, AND THEN RE-DERIVED
+THE ONE ARGUMENT D194 EXISTS TO STOP. Both corrected in the argument map before
+any measurement. The user caught the first ("we did a whole thing transferring
+SMB-1's hydrolysed meropenem pose before you went back to pose 2"); the
+validator's check [4] caught the second.** (2026-11-09, user)
+
+**Error 1: I quoted a superseded route as the plan.** Asked what was next for
+the paper, I gave D156 section 5.2's route - transfer 7UHI's moxalactam, graft
+meropenem's substituents onto its core. **D178, the plan of record, rejected
+exactly that** as "strictly harder and less direct than re-forming a bond in a
+molecule that is already meropenem", and adopted instead:
+
+    prod100c -> prodpost gates -> prodqm -> prodopt -> recombine
+    (100 ns)    (shell + H)       (50 ps)   (opt)      (re-form C4x-N1x)
+
+built from **5AXO** - SMB-1 with *hydrolysed meropenem*, our own substrate in a
+B3 enzyme, measured - so that the structure `recombine` ends on **is** the
+Michaelis complex, anchored through the product and on the product's own
+topology, hence a valid NEB partner by construction. `CSR_prod` had already
+transferred LMP into our frame and mapped it onto our atom names by graph
+isomorphism (D159). I had read D156 and not D178. **The lesson is the one
+already written at the top of this log: use `state.md` and the plan of record
+for a current value, not whichever entry the search returned first.**
+
+**Error 2, worse, and the map's own validator caught it.** Adding D158/D159/
+D178 to the node's `entries:` made check [4] fire, because all three are in
+`retractions.md`. Reading the superseding entries in order:
+
+- **D192** overturned D178's scoping: 7UHI becomes the **source** for the
+  Michaelis geometry, not merely the check, because "restraining a wrong pose
+  harder only freezes the wrong pose".
+- **D194** then **withdrew D192's diagnosis**. It is a consolidation entry
+  whose stated purpose is to stop one argument being re-derived:
+  *"dissociation-implies-bad-pose"* was raised and discarded at D89, again at
+  D192, and D194 records the third discard. The real cause of `wt100c`/
+  `prod100c` losing the substrate was **one config line** - an Asp92 OD1
+  restraint written *instead of* the attack restraint rather than beside it.
+  Docked pose 2 with an **uncoordinated** carbonyl, held by one attack
+  restraint, is what the project deliberately chose to study (D98: "Nothing
+  asserts the carbonyl coordinates the zinc"), and D194 withdraws "transfer a
+  different pose" as a proposal to undo a decision rather than fix a
+  regression.
+- **D197** then superseded D194.
+
+**My draft of the node said the project "resumed the condemned pose". That is
+the discarded argument for the fourth time, and it is now struck from the
+node.** D194 is explicit that the uncoordinated carbonyl is a design decision,
+not a defect, and that reaching for the pose to explain a ligand leaving is the
+pattern it exists to break. Written into the node as a standing warning so the
+fifth derivation does not happen.
+
+**WHAT SURVIVES, AND IT IS ENOUGH TO KEEP THE NODE OPEN.** Two things that owe
+nothing to the dissociation argument:
+
+1. **D156's measurement.** Against 7UHI's transferred moxalactam, pose 2 is the
+   **second-worst of nine** by centroid (3.66 A), carbonyl 4.90 A against L1's
+   2.27, C3 carboxylate 8.14 A against 2.82.
+2. **D197.** With the attack restraint restored, every restraint held to better
+   than 0.11 A **and the structure was still rejected** - the pose's own
+   1-hydroxyethyl `O1x` took the fourth coordination site at 97.9% occupancy,
+   unrestrained, while the carbonyl was inside 2.5 A in 0.3% of frames.
+
+**And the state of the two routes, plainly.** The 5AXO route is half built and
+stalled at `prod100c`'s NaN and gate failure (D191). Everything built since -
+`eq6`, `relax10`, `aspqm2`, `aspdft`, `aspxtb`, `aspxtb8` - descends from pose
+2, with `eq6` restraining the carbonyl in to ~2.6 A, which is the step that
+made it pass. So this week's QM/MM numbers hold a carbonyl that a restraint
+placed, and `aspxtb`/`aspxtb8` keeping it at 2.21-2.28 A unrestrained is that
+pose being self-consistent at the QM level, not being chosen.
+
+**Nothing submitted, nothing deleted.** The next step is a measurement on a
+file that already exists: `refstruct.py transfer` 7UHI onto `relax10`'s last
+frame, to find out whether the restrained equilibration moved the ligand toward
+the experimental mode or only bent one coordinate. That is the number neither
+route has, and it costs no compute.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
