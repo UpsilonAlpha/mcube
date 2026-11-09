@@ -10441,6 +10441,117 @@ observation computed from a built structure should declare that structure as a
 actually a fact about one of our files is a place the map cannot warn us, and
 that is precisely the failure mode it exists to prevent.
 
+**D249 - `prod100c`'s NaN DIAGNOSED, and the cause is not one of the three
+candidates the log listed: the product arm ran at **4 fs** because it never
+received the timestep fix this project wrote down at `eq5` and applied to every
+reactant section. Measured alongside it: the product's Asp92 is at 2.795 A from
+the zinc where 6DQH puts it at 5.14, so the restart is the staged pull, not a
+resubmission.** (2026-11-09, user: "Diagnose and then restart")
+
+## The NaN
+
+`openmm.OpenMMException: Particle coordinate is NaN` inside
+`LangevinMiddleIntegrator.step`, from `protdft/prod100c-31423830.err`. The
+`.out` contains **no** energetic warning, and `nvtsim.csv` shows why: **the
+trajectory was perfectly stable to its last frame.**
+
+    time (ps)   PE (kJ/mol)    T (K)
+       20        -659442       299.3
+     5680        -659649       300.7
+    11340        -658486       302.7
+    17000        -660134       300.0
+    20400        -659002       300.2
+    22660        -659373       300.6
+    22680        -659020       300.2   <- last frame before the NaN
+
+1,135 rows, PE inside -658,300 to -660,400 for the whole 22.68 ns, T 299-303 K.
+No drift, no spike, no precursor at 20 ps reporting resolution.
+
+**That kills candidate 1.** A grafted close contact relaxing would blow up in
+the first picoseconds, not after 22.68 ns of flat dynamics. It also rules out a
+degrading system. What remains is a single local event, arriving stochastically
+out of a stable trajectory - the signature of an under-resolved integration
+timestep.
+
+**And the settings, read from the `.out`:**
+
+    Timestep: 0.004 ps          <- the production NVT, 25,000,000 steps
+    OpenMM autoconstraints: HBonds
+    OpenMM hydrogenmass: 1.5 Da
+    OpenMM rigidwater constraints: True
+    Using platform: CUDA ; Properties: {'Precision': 'mixed'}
+
+**4 fs with a hydrogen mass of 1.5 Da and only HBonds constrained.** The
+standard pairing for 4 fs is hydrogen mass repartitioning to ~3-4 Da; at 1.5 Da
+the fastest unconstrained motions are under-resolved, and the product's ligand
+is the only OpenFF-parameterised molecule in the system.
+
+## THE FIX WAS ALREADY WRITTEN DOWN, FOR THE OTHER ARM
+
+From `site.yaml`'s `eq5` comment, written weeks ago:
+
+> **2 fs, not 4.** The timestep is stated here because this run directory
+> inherits `nvt_timestep: 0.004` from CSR_crystal_v2, and 4 fs against a ~53 fs
+> restrained period is 13 steps per period - below the >=20 that keeps a stiff
+> harmonic integrating cleanly. At 2 fs it is 26.
+
+Every reactant section since carries `nvt_timestep: 0.002` explicitly - `eq5`,
+`eq6`, `asppull`, `asppull2`, `asppull3`, `relax10`. **`md_prod100c` has no
+`nvt_timestep` at all**, so it inherited 0.004 from the run directory's base
+`md` inputs. One arm was fixed; the other was never touched.
+
+**One correction to my own reasoning, because `eq5`'s arithmetic does not
+transfer.** That note concerns k = 500 restraints, whose ~53 fs period gives 13
+steps at 4 fs. `md_prod100c`'s only restraint is k = **50**, whose period is
+~3.2x longer, so 4 fs gives ~42 steps per period and that specific argument
+does **not** condemn it. The condemnation here is the general one above - 1.5 Da
+hydrogen mass at 4 fs - plus the empirical fact that **every section in this
+project that completed used 2 fs, and the one production run that used 4 fs
+NaN'd out of a stable trajectory.** Stated this way rather than borrowing
+`eq5`'s numbers, which would have been a false precision.
+
+**This is the same failure pattern as D246/D248:** a correction landed on the
+reactant lineage and was never carried across to the product arm. Twice now -
+the timestep and Asp92 - which is why the provenance edges added in D248 matter
+beyond the pose.
+
+## And the restart is not a resubmission
+
+Measured on `CSR_prod/preprocess_results/finalsystem.pdb`, against 6DQH:
+
+    pair        product start   6DQH    displacement needed
+    Zn-OD2          2.795       5.14         +2.35
+    Zn-OD1          3.811       4.28         +0.47
+    Zn-CG           3.692       5.15         +1.46
+    Zn-NZ           4.356       5.27         +0.91
+    NZ-OD2          2.987       2.79         -0.20
+    Zn-His88 NE2    2.223
+    Zn-His164 NE2   2.089
+
+**Asp92 has to move ~2.3 A outward**, which is the job `asppull` did on the
+reactant in **three** stages (D222-D224) after D220 established it cannot be a
+`scan` and D218 set the conditions. The old `md_prod100c` restraint
+`[B:1:ZN, A:92:OD1, 3.81, 50.0]` targets the **retracted** 3.81 A - D216 voided
+that number when 6DQH gave 4.28/5.14 - and `coordination_redetect: true` adds
+`A:92:OD2 2.8`, the other retracted value. So restarting `prod100c` as
+configured would fix the NaN and reproduce D191's Asp92 gate failure exactly.
+
+**What the restart needs, three changes and not one:**
+
+1. `nvt_timestep: 0.002`.
+2. Asp92/Lys226 restrained at **6DQH's** distances at k = 500, staged as
+   `asppull`/`asppull2`/`asppull3` were, with `coordination_redetect: false` so
+   the retracted values cannot be re-added.
+3. **No substrate restraint** - D159 measured that nothing of the hydrolysed
+   product is within coordination range of Zn1; everything that binds, binds the
+   Zn2 CSR-1 does not have. This is where the product arm differs from the
+   reactant's, whose stages all carry `[C:2:O01, C:1:C4x, 3.47]` and the two
+   `O2x`/`O1x` terms.
+
+10 ns at 2 fs, `gentle: false`, NPT **not** skipped (D225's box data), to match
+`relax10` - ~45 min on one H100 at `eq6`'s measured rate. Nothing submitted in
+this entry; the sections are written next.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

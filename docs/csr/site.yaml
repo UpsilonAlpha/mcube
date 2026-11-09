@@ -2768,6 +2768,129 @@ sections:
   # independent routes to one species, from two different crystal structures.
   # They should agree, and a disagreement is a result about the model rather
   # than about CSR-1.
+  # ---- the product arm's Asp92 repair, D249 ----
+  #
+  # WHY THESE EXIST. `prod100c` (31423830) NaN'd at 22.68 ns out of a perfectly
+  # stable trajectory because it ran at **4 fs**: it has no `nvt_timestep`, so
+  # it inherited 0.004 from the run directory's base `md` inputs. Every reactant
+  # section states 0.002 explicitly - `eq5` wrote the reason down weeks ago and
+  # the product arm never received it. 1.5 Da hydrogen mass with HBonds-only
+  # constraints does not support 4 fs.
+  #
+  # AND IT NEEDS MORE THAN THE TIMESTEP. `finalsystem.pdb` has Asp92 at
+  # Zn-OD2 2.795, Zn-OD1 3.811, Zn-CG 3.692, Zn-NZ 4.356 where 6DQH gives
+  # 5.14 / 4.28 / 5.15 / 5.27 - so the carboxylate must move ~2.3 A outward,
+  # which is `asppull`'s three-stage job (D218/D220/D222-D224). The old
+  # `md_prod100c` restraint targets 3.81, the value D216 VOIDED, and
+  # `coordination_redetect: true` re-adds the voided 2.80 - so both are off here.
+  #
+  # WHAT DIFFERS FROM THE REACTANT'S PULL, and it is the one real difference:
+  # **no substrate restraint at all.** D159 measured that nothing of the
+  # hydrolysed product is within coordination range of Zn1; everything that
+  # binds, binds the Zn2 CSR-1 does not have. Writing an `O2x`/`O1x` term here
+  # would transplant a Zn2 bond into a one-metal enzyme.
+  #
+  # Staging mirrors the reactant: stage 1 moves the pair with CG and NZ soft,
+  # stage 2 stiffens them, stage 3 asserts 6DQH's OD2 distance directly. 2 ns a
+  # stage at 2 fs, ~7 min each on one H100.
+  prodpull:
+    stage: md
+    submit: {partition: gpu_cuda, cores: 4, mem: 32G, time: "01:00:00",
+             extra: [--qos=gpu, --gres=gpu:h100:1]}
+    require:
+      unset: [skip_npt, skip_nvt, gentle]
+      equals: {nvt_timestep: 0.002, coordination_redetect: false,
+               nvt_time: 2000}
+    inputs:
+      pdb_file: preprocess_results/finalsystem.pdb
+      coordination_redetect: false
+      restraints:
+        - [A:226:NZ, A:92:OD2, 2.79, 500.0]
+        - [B:1:ZN, A:92:CG, 5.15, 50.0]
+        - [B:1:ZN, A:226:NZ, 5.27, 50.0]
+      nvt_time: 2000
+      nvt_timestep: 0.002
+      traj_frequency: 5000
+      platform: CUDA
+      properties:
+        Precision: mixed
+
+  prodpull2:
+    stage: md
+    submit: {partition: gpu_cuda, cores: 4, mem: 32G, time: "01:00:00",
+             extra: [--qos=gpu, --gres=gpu:h100:1]}
+    require:
+      unset: [skip_npt, skip_nvt, gentle]
+      same_as: {section: prodpull, except: [pdb_file, restraints]}
+    inputs:
+      pdb_file: md_prodpull_results/NVTtrajectory_lastframe.pdb
+      coordination_redetect: false
+      restraints:
+        - [A:226:NZ, A:92:OD2, 2.79, 500.0]
+        - [B:1:ZN, A:92:CG, 5.15, 500.0]
+        - [B:1:ZN, A:226:NZ, 5.27, 500.0]
+      nvt_time: 2000
+      nvt_timestep: 0.002
+      traj_frequency: 5000
+      platform: CUDA
+      properties:
+        Precision: mixed
+
+  prodpull3:
+    stage: md
+    submit: {partition: gpu_cuda, cores: 4, mem: 32G, time: "01:00:00",
+             extra: [--qos=gpu, --gres=gpu:h100:1]}
+    require:
+      unset: [skip_npt, skip_nvt, gentle]
+      same_as: {section: prodpull2, except: [pdb_file, restraints]}
+    inputs:
+      pdb_file: md_prodpull2_results/NVTtrajectory_lastframe.pdb
+      coordination_redetect: false
+      restraints:
+        - [A:226:NZ, A:92:OD2, 2.79, 500.0]
+        - [B:1:ZN, A:226:NZ, 5.27, 500.0]
+        - [B:1:ZN, A:92:OD2, 5.14, 500.0]
+      nvt_time: 2000
+      nvt_timestep: 0.002
+      traj_frequency: 5000
+      platform: CUDA
+      properties:
+        Precision: mixed
+
+  # ---- prodrelax10: the product arm's match to `relax10` ----
+  #
+  # 10 ns, the length `eq6` demonstrated is sufficient (D225/D226), at 2 fs,
+  # `gentle: false` so this continues rather than re-annealing from 1 K, NPT NOT
+  # skipped because D225's box data says the box is still accommodating the
+  # Asp92/Lys226 displacement after a 2 ns pull. ~45 min on one H100.
+  #
+  # Gate before `prodqm`: `convergence.py`, requiring eq6's plateau - CA RMSD
+  # flat over the final three deciles, T drift under 0.2 K, restraints held to
+  # ~0.1 A - and Asp92 OUTSIDE the 2.50 A coordination radius with the zinc
+  # four-coordinate. `prod100c` failed exactly those two (6-coordinate in
+  # 852/1134 frames, Asp92 OD2 mean 2.37), which is what this arm is repairing.
+  prodrelax10:
+    stage: md
+    submit: {partition: gpu_cuda, cores: 4, mem: 32G, time: "04:00:00",
+             extra: [--qos=gpu, --gres=gpu:h100:1]}
+    require:
+      unset: [skip_npt, skip_nvt, gentle]
+      equals: {nvt_time: 10000, nvt_timestep: 0.002,
+               coordination_redetect: false}
+    inputs:
+      pdb_file: md_prodpull3_results/NVTtrajectory_lastframe.pdb
+      coordination_redetect: false
+      restraints:
+        - [A:226:NZ, A:92:OD2, 2.79, 500.0]
+        - [B:1:ZN, A:226:NZ, 5.27, 500.0]
+        - [B:1:ZN, A:92:OD2, 5.14, 500.0]
+      nvt_time: 10000
+      nvt_timestep: 0.002
+      traj_frequency: 5000
+      platform: CUDA
+      properties:
+        Precision: mixed
+
   prodopt:
     stage: qmmm
     inputs:
