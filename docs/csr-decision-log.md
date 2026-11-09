@@ -10552,6 +10552,113 @@ configured would fix the NaN and reproduce D191's Asp92 gate failure exactly.
 `relax10` - ~45 min on one H100 at `eq6`'s measured rate. Nothing submitted in
 this entry; the sections are written next.
 
+**D250 - `prodpull` COMPLETED with no NaN, and stage 1 alone moved Asp92 most
+of the way: Zn-OD2 2.795 -> 4.465 with nothing restraining OD2, Zn-CG onto
+6DQH's 5.15 to within 0.019, and both histidines held. The 2 fs timestep is NOT
+yet vindicated - 2 ns proves nothing about a failure that took 22.68 ns to
+appear. Also: the large coordinate files CANNOT be pulled local from here, and
+why.** (2026-11-09, user: "check progress, see if there's another NaN, ensure
+necessary files are pulled local")
+
+## `prodpull` (32517345): done in 9.7 minutes, 2 ns, no NaN
+
+`[DONE] md_prodpull`. `nvtsim.csv` reaches 1999.99997 ps over 1,000,000 steps,
+so **`Timestep: 0.002 ps` was applied** to the production NVT as configured.
+Final PE -659,404 kJ/mol and T 299.4 K - inside the same band `prod100c` held.
+The `.err` is 89 bytes and contains only the OMP thread note: **no
+`Particle coordinate is NaN`.**
+
+| pair | start | **prodpull** | 6DQH | stage-1 restraint |
+| --- | --- | --- | --- | --- |
+| Zn-OD2 | 2.795 | **4.465** | 5.14 | none |
+| Zn-OD1 | 3.811 | **4.852** | 4.28 | none |
+| Zn-CG | 3.692 | **5.131** | 5.15 | 5.15 at k=50 |
+| Zn-NZ | 4.356 | **5.474** | 5.27 | 5.27 at k=50 |
+| NZ-OD2 | 2.987 | **2.788** | 2.79 | 2.79 at k=500 |
+| His88 NE2 | 2.223 | 2.223 | | none |
+| His164 NE2 | 2.089 | 2.197 | | none |
+
+**The restrained targets were met at k=50, which the reactant's stage 1 did
+not manage.** Zn-CG landed 0.019 A from its target and the salt bridge 0.002 A
+from its own, where D222 found the reactant's stage 1 moved Zn-CG only 0.10 A
+and needed k=500 in stage 2. The likely reason is the one real difference
+between the arms: **the product carries no substrate restraints** (D159), so
+nothing is pulling against the carboxylate.
+
+**Asp92's OD2 came out 1.67 A with nothing restraining it**, carried by the CG
+restraint - it is still 0.68 A short of 6DQH's 5.14, which is what stage 3
+asserts directly. **Zn-NZ overshot**, 5.474 against 5.27, so stage 2's
+stiffening to k=500 has something to do after all even though CG is already
+there.
+
+**THE SITE HELD, which was the thing that could have gone wrong.** His88 NE2 is
+unchanged at 2.223 and His164 moved 0.108 to 2.197. D223's failure mode on the
+reactant - the lysine moving instead of the carboxylate - did not occur, and
+neither histidine was dragged off the metal.
+
+**THE TIMESTEP HYPOTHESIS IS NOT YET TESTED, and saying otherwise would be the
+easy mistake here.** `prod100c` ran **22.68 ns** at 4 fs before it died.
+`prodpull` ran **2 ns** at 2 fs. Two nanoseconds of survival is not evidence
+about a failure whose own arrival took eleven times longer. The test is
+`prodrelax10`'s 10 ns - and even that is shorter than 22.68 ns, so a clean 10 ns
+will be consistent with D249 without confirming it. What would confirm it is a
+4 fs control that dies again, which is not worth the GPU time. **Recorded as
+unresolved rather than closed.**
+
+## `aspdft` at its wall, read in passing
+
+27 steps at 15:12, `grms` **2.201e-04** at step 26, energy monotonic to
+-5201.3907476815 Eh, trust still growing to 2.396e-01, quality 1.50. That is
+converging **faster** than D242's ~8%-a-step extrapolation predicted (it
+forecast ~4e-04 at the wall), so a stationary point at 1e-04 is no longer out of
+reach in the final steps. No `QM_MM_optimized.pdb` yet; the trajectory is
+43.7 MB. The 15:37 check reads the final state.
+
+## The local-files question, answered with a constraint rather than a result
+
+**The large files cannot be pulled from here.** Two independent reasons, both
+checked rather than assumed:
+
+1. **There is no SSH private key on this machine.** `~/.ssh/` contains only
+   `known_hosts`, which does hold `bunya.rcc.uq.edu.au`. So `scp` would have to
+   prompt for credentials, and an interactive prompt cannot be answered from
+   this side.
+2. **The code-server read route returns file contents through the assistant's
+   context.** That is fine for a 2 kB reference and useless for a 3.8 MB
+   solvated frame, let alone the 43.7 MB optimisation trajectory.
+
+**What was pulled:** `docs/csr/structures/l1_in_relax10.pdb` - 7UHI's
+moxalactam (`MX0`, 23 atoms) fitted into `relax10`'s frame, the reference D247
+measured the 6.20 A centroid separation against. Small, and the one file that is
+genuinely an analysis input rather than a job input.
+
+**What was written instead of the rest:** `docs/csr/structures/` with a
+`README.md` and `pull-from-bunya.sh`, a plain `scp` script the user runs
+themself. **Every one of its eight source paths was verified to resolve before
+it was committed** - 3.83, 3.83, 0.09, 0.02, 3.71, 3.71, 3.71 MB and the
+43.73 MB trajectory - which caught a real error: `CSR_prod` is at
+`/scratch/user/uquadhik/CSR/CSR_prod`, not `/scratch/user/uquadhik/CSR_prod`,
+and the first draft of the script had four wrong paths. `*.pdb`, `*.csv`,
+`*.xyz` and `*.dcd` under that directory are gitignored; the script and README
+are not.
+
+## And the argument map got the edge it was still missing
+
+D248 added provenance but hung the pose question off the *barrier* question, so
+nothing warned anyone reading the QM/MM results themselves. **Check 3b turns out
+to walk `requires` from every `supported` node, not only from theses** - read
+from `argmap.py` after a memory note asserted it, rather than taken on trust -
+so pointing both QM/MM observations directly at
+`question-is-the-reactant-pose-experiment-anchored` now prints, on every run:
+
+    . dft-gradient-does-not-pull-asp92-onto-zn1: gated by the open question
+      question-is-the-reactant-pose-experiment-anchored
+    . gfn2-minimum-puts-asp92-further-out-than-the-crystal: gated by the open
+      question question-is-the-reactant-pose-experiment-anchored
+
+A note rather than a finding, which is the right severity: the measurements
+stand, their reading as Michaelis-complex geometry does not.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

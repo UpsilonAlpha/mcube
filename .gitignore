@@ -3,3 +3,10 @@ __pycache__/
 *.egg-info/
 build/
 dist/
+
+# Large coordinate files pulled from Bunya (D250); regenerable there
+docs/csr/structures/*.pdb
+docs/csr/structures/*.csv
+docs/csr/structures/*.xyz
+docs/csr/structures/*.dcd
+!docs/csr/structures/README.md
