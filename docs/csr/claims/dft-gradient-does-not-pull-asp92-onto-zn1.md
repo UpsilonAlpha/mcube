@@ -2,11 +2,11 @@
 type: observation
 evidence: ours
 status: supported
-entries: [D235, D236, D240, D242]
-checked: [D236, D240, D242]
+entries: [D235, D236, D240, D242, D244]
+checked: [D236, D240, D242, D244]
 ---
 
-# Through thirteen wb97x-v/def2-SVP QM/MM optimisation steps from the crystal-consistent frame, the gradient holds Asp92 at the crystal distance from Zn1 rather than pulling it on, and moves Lys226 onto the metal instead
+# Through twenty-five wb97x-v/def2-SVP QM/MM optimisation steps from the crystal-consistent frame, the gradient holds Asp92 at the crystal distance from Zn1 rather than pulling it on, and moves Lys226 onto the metal instead
 
 `aspdft`, job 32453561: wb97x-v/def2-SVP QM/MM, 124 QM atoms, active region cut
 to the QM atoms, **nothing constrained**, started from
@@ -28,13 +28,29 @@ an outward drift; by step 13 the carboxylate sits 0.006 Å from where 6DQH puts
 it, flat to ±0.005 Å over the last four steps, with Zn–CG and Zn–OD1 flat on
 the same span. The gradient neither pushes Asp92 out nor pulls it in.
 
-**Lys226 is the one coordinate still moving, and it moves onto the metal.**
-Zn–NZ falls 5.276 → 5.131 with no reversal after step 2, the ammonium taking
-up position in the vacant Zn2 subsite while holding its salt bridge at
-2.70–2.73 — unrestrained, and the motion the thesis asserts. Two things keep
-this from being a result: it is 0.145 Å in an optimisation whose gradient rms
-is 1.3e−03 against a 1e−04 criterion, and it moves *away* from 6DQH's 5.27
-while the other coordinates settle onto their crystal values.
+**Lys226 moved onto the metal and then STOPPED (D244), so the distance is a
+number and not a direction.** Zn–NZ fell 5.276 → 5.120 by step 16, came back,
+and reads **5.140 at steps 23, 24 and 25** — flat to the third decimal. The
+ammonium takes up position in the vacant Zn2 subsite, unrestrained, holding
+its salt bridge at 2.73: the motion the thesis asserts, 0.13 Å closer to the
+zinc than 6DQH's 5.27. **Letting the job run past step 13 is what turned this
+into a measurement** — at step 13 it read 5.131 and was still falling.
+
+| | step 13 | step 16 | step 22 | step 25 | 6DQH |
+| --- | --- | --- | --- | --- | --- |
+| Zn–OD2 | 5.134 | 5.133 | 5.117 | **5.123** | 5.14 |
+| Zn–OD1 | 4.546 | 4.553 | 4.535 | **4.534** | 4.28 |
+| Zn–CG | 5.237 | 5.237 | 5.220 | **5.223** | 5.15 |
+| Zn–NZ | 5.131 | 5.120 | 5.138 | **5.140** | 5.27 |
+| NZ–OD2 | 2.713 | 2.726 | 2.735 | **2.729** | 2.79 |
+
+**Four of those five are within 0.14 Å of the crystal**, the fifth (OD1) 0.25 Å
+out, from an optimisation with nothing constrained. Through step 24 the energy
+is monotonic at every step (−5201.1362 → −5201.3906 Eh), quality 1.15–1.35,
+trust growing again to 1.198e−01, gradient rms **3.820e−04**. Zero `SVD Error`
+and zero `LinAlgError`. The step rate did not keep improving — 124/132/116 min
+against 91 at step 13 — so the 48 h wall lands near step 27 and writes no
+`QM_MM_optimized.pdb`.
 
 Energy falls monotonically at every one of thirteen steps, −5201.1362 →
 −5201.3871 Eh; step quality 1.07–1.20 over the last six; trust radius grown

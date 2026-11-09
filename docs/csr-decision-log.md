@@ -10025,6 +10025,117 @@ five steps: if it has flattened, the number is real and the salt-bridge geometry
 is measured; if it is still falling, say so and do not report a distance as
 though the optimiser had settled on it.
 
+**D244 - BOTH QUESTIONS ANSWERED. `aspxtb8` converged in 103 steps with 479
+active atoms and gives D241's SECOND pre-registered outcome: freeing the
+second shell does NOT bring Asp92 in, so the frozen environment was not the
+reason and D240's narrowing stands. And `aspdft`'s Zn-NZ HAS TURNED OVER AND
+FLATTENED at 5.140 for three steps, so Lys226's distance is now a measured
+number rather than a direction - 0.13 A closer to the zinc than 6DQH.**
+(2026-11-09)
+
+## `aspxtb8` (32489558): converged, 103 steps, 479 active atoms, 15.3 minutes
+
+`converged: True`, `opt_energy` -431.5060340007243 Eh, `actatoms_count: 479`,
+`actatoms_structure` the `aspxtb` minimum, zero `SVD Error`. Only `pdb_file`
+and `actradius` differed from `aspxtb`, enforced by the `same_as` gate.
+
+    pair         aspxtb min   aspxtb8 min   6DQH    aspdft step 25
+    Zn-OD2         5.383        5.092       5.14        5.123
+    Zn-OD1         4.952        5.830       4.28        4.534
+    Zn-CG          5.564        5.777       5.15        5.223
+    Zn-NZ          5.195        5.044       5.27        5.140
+    NZ-OD2         2.718        2.749       2.79        2.729
+    His88 NE2      2.083        2.063                   2.162
+    His164 NE2     2.010        1.997                   2.073
+    Zn-OH O01      1.775        1.776
+    Zn-O2x         2.282        2.211
+    Zn-N1x                      4.544
+    O01-C4x        3.673        3.626
+
+**THE PRE-REGISTERED READING, HONOURED: outcome 2.** D241's second outcome was
+*"Asp92 stays out near 5 A -> the frozen environment was not the reason, so the
+chelate needs thermal energy. D240's narrowing stands and strengthens."* With
+479 atoms free instead of 124, the carboxylate carbon moves 0.21 A **further
+out** and the nearest oxygen sits at 5.092 A. Nothing approaches 2.5 A. So the
+frozen second shell was not what held Asp92 off the metal, and the remaining
+explanation for D232's chelate is the one left standing: **300 K dynamics, not
+the minimum**. The 0 K-versus-300 K half of D240's confound is the half that
+matters, and the other half is now closed by measurement.
+
+**But the carboxylate ROTATED, and this is new.** OD2 comes IN 0.29 A to 5.092,
+while OD1 goes OUT 0.88 A to 5.830 - the largest Zn-OD1 distance in any
+geometry in this project, against 6DQH's 4.28. The symmetric arrangement of
+`aspxtb`'s minimum breaks: with the second shell free, Asp92 turns so that one
+oxygen faces Lys226 at 2.749 A and the other points away from the metal
+entirely. That is **monodentate to the lysine and nothing to the zinc**, which
+is a sharper version of the thesis's own geometry than the crystal shows - and
+it is 1.55 A off the crystal on Zn-OD1, which is the largest single
+disagreement with 6DQH anywhere in this leg. Both facts go in the same
+sentence or neither does.
+
+**THE ENERGY RISE AT THE END IS NOT THE CHANNEL PROJECT'S FAILURE, AND THE TEST
+I WROTE FOR MYSELF WOULD HAVE MISREAD IT.** Steps 102 and 103 rise by
++6.809e-06 and +4.081e-06 Eh - **0.004 and 0.003 kcal/mol** - with Quality
+**-2.990** and **-1.959**, and the trust radius collapsing 4.933e-03 ->
+2.294e-04 in response. The standing test was "a climb with good geomeTRIC
+Quality means STOP". The quality here is *negative*: geomeTRIC identified the
+steps as bad and shrank the trust radius, which is the healthy response, and
+the magnitudes are numerical noise at a gradient of 3.0e-05. The channel
+project's failure was 30-45 kcal/mol uphill with Quality ~1 - seven orders of
+magnitude larger and with the optimiser believing it. **The test needs the
+magnitude as well as the quality**; recorded so the next check does not stop a
+converged run.
+
+## `aspdft` (32453561): 25 steps, Zn-NZ flattened, ~2 steps of wall left
+
+Mapping re-verified: geometry block 0 reproduces 5.153 / 4.327 / 5.192 / 5.276
+/ 2.880 exactly.
+
+    step   Zn-OD2  Zn-OD1  Zn-CG  Zn-NZ  NZ-OD2
+     13    5.134   4.546   5.237  5.131  2.713
+     16    5.133   4.553   5.237  5.120  2.726
+     19    5.125   4.547   5.230  5.124  2.732
+     22    5.117   4.535   5.220  5.138  2.735
+     23    5.119   4.535   5.220  5.140  2.733
+     24    5.121   4.535   5.222  5.140  2.730
+     25    5.123   4.534   5.223  5.140  2.729
+    6DQH   5.14    4.28    5.15   5.27   2.79
+
+**THE QUESTION D243 KEPT THE JOB RUNNING FOR IS ANSWERED: Zn-NZ TURNED OVER.**
+It reached 5.120 at step 16, came back, and has read **5.140 at steps 23, 24
+and 25** - flat to the third decimal. So the decision to let it run bought
+exactly what D243 said it would: Lys226's ammonium sits **5.14 A from Zn1**,
+0.13 A closer than 6DQH's 5.27, and that is now a distance rather than a
+direction. Had the job been stopped at step 13 the number would have been
+5.131 and still falling, and reporting it would have been wrong.
+
+**The whole site, unrestrained, against the crystal:** Zn-OD2 5.123 (5.14),
+Zn-OD1 4.534 (4.28), Zn-CG 5.223 (5.15), Zn-NZ 5.140 (5.27), NZ-OD2 2.729
+(2.79). **Four of five within 0.14 A**, the fifth (OD1) 0.25 A out. For an
+optimisation with nothing constrained, from a 10 ns MM frame, at
+wb97x-v/def2-SVP, that is close agreement with a measurement.
+
+Energy monotonic at every one of 25 steps, -5201.1362 -> -5201.3906 Eh;
+quality 1.15-1.35 for the last six; trust growing again to 1.198e-01;
+`Grad` rms **3.820e-04** at step 24, better than D242's ~8%-a-step
+extrapolation predicted. Zero `SVD Error` in the `.out` and zero `LinAlgError`
+in the `.err`, counted in their own files. The rate did **not** keep improving:
+124.4, 131.7, 115.8 min for the last three steps, against 91.1 at step 13, so
+`pyscf.chk` reuse is not a trend. At 11:25 on 9 Nov with the wall at ~15:10,
+about **two more steps** will land, ending near step 27 with `grms` ~3.5e-04
+and no `QM_MM_optimized.pdb`.
+
+## What the three runs now say together
+
+Three independent setups - wb97x-v/def2-SVP with 124 active atoms, GFN2 with
+124, GFN2 with 479 - put the nearest Asp92 carboxylate oxygen at **5.09, 5.38
+and 5.12 A** and never on the metal, from a crystal-consistent start. D206
+rule 3 excludes two methods agreeing about a handed geometry, and that
+exclusion does not bite here for the reason D240 gave: the thing they agree
+with is 6DQH's own 5.14, a measurement. What they do not do is settle D232 -
+the chelate GFN2 produced in 50 ps of 300 K dynamics is still unexplained by
+any of these minima, and that is now the single open question on this arm.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
