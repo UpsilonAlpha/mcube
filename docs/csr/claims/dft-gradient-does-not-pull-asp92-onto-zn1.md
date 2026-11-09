@@ -2,8 +2,8 @@
 type: observation
 evidence: ours
 status: supported
-entries: [D235, D236, D240, D242, D244]
-checked: [D236, D240, D242, D244]
+entries: [D235, D236, D240, D242, D244, D245]
+checked: [D236, D240, D242, D244, D245]
 ---
 
 # Through twenty-five wb97x-v/def2-SVP QM/MM optimisation steps from the crystal-consistent frame, the gradient holds Asp92 at the crystal distance from Zn1 rather than pulling it on, and moves Lys226 onto the metal instead
@@ -87,6 +87,34 @@ start with the environment frozen, points the carboxylate at the metal - which
 is about where the chelate is *not*, and is the half of
 [[gfn2-over-coordinates-zn1-from-a-crystal-consistent-start]] that locates the
 bias in the barrier rather than in the minimum.
+
+**THE CROSS-METHOD SPREAD IS UNEVEN, AND ONLY HALF OF IT IS SAFE (D245).**
+This run has `actradius: 0` — 124 active atoms, MM environment frozen — so the
+**matched** comparison is with `aspxtb` (also 124), not with `aspxtb8` (479).
+There is no DFT run with an 8 Å active region.
+
+| pair | DFT/124 | GFN2/124 | GFN2/479 | 6DQH | matched diff |
+| --- | --- | --- | --- | --- | --- |
+| Zn–NZ | 5.140 | 5.195 | 5.044 | 5.27 | **0.055** |
+| NZ–OD2 | 2.729 | 2.718 | 2.749 | 2.79 | **0.011** |
+| Zn–OD2 | 5.123 | 5.383 | 5.092 | 5.14 | 0.260 |
+| Zn–OD1 | 4.534 | 4.952 | 5.830 | 4.28 | **0.418** |
+| Zn–CG | 5.223 | 5.564 | 5.777 | 5.15 | 0.341 |
+| His88 NE2 | 2.162 | 2.083 | 2.063 | | 0.079 |
+| His164 NE2 | 2.073 | 2.010 | 1.997 | | 0.063 |
+
+**Method-independent:** where Lys226 sits, and that Asp92 is not on the metal.
+The salt bridge spans 0.031 Å across all three setups and falls short of the
+crystal in every one. **Not method-independent:** how Asp92 is *turned* —
+Zn–OD1 differs by 0.418 Å matched and spans 1.296 Å across all three, and that
+rotamer is the coordinate the mechanism runs through. Any statement about
+Asp92's orientation must name its run.
+
+**GFN2 over-binds the zinc and still keeps Asp92 out.** It is 0.079 and
+0.063 Å shorter than DFT on the two histidine nitrogens — the known direction
+of GFN2 error, and the same direction Mehmood & Kulik report for too-small QM
+regions. The bias and the result point opposite ways, which is worth more here
+than two methods agreeing.
 
 ## Supports
 - [[gfn2-over-coordinates-zn1-from-a-crystal-consistent-start]]

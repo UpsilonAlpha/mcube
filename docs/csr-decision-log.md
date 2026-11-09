@@ -10136,6 +10136,80 @@ with is 6DQH's own 5.14, a measurement. What they do not do is settle D232 -
 the chelate GFN2 produced in 50 ps of 300 K dynamics is still unexplained by
 any of these minima, and that is now the single open question on this arm.
 
+**D245 - THE CROSS-METHOD SPREAD, COORDINATE BY COORDINATE: DFT and GFN2 agree
+on Lys226 to 0.055 A and on the salt bridge to 0.011 A, and disagree on Asp92's
+carboxylate by 0.26-0.42 A matched and up to 1.30 A unmatched. So "the two
+methods agree" is true of the metal-site core and FALSE of the coordinate the
+thesis is about. Also recorded: there is no DFT run with an 8 A active region,
+and GFN2 over-binds the histidines by 0.06-0.10 A while still not bringing
+Asp92 in.** (2026-11-09)
+
+**The premise that prompted this was wrong and the correction matters.** The
+question asked how the DFT and GFN2 optimisations "with 8 angstrom radius
+actatoms" compare. **`aspdft` has `actradius: 0`** - 124 active atoms, the QM
+region only, MM environment frozen (D235). Only `aspxtb8` has the 8 A /
+479-atom region. So the **matched** pair is `aspdft` vs `aspxtb`, both at 124
+active atoms and differing only in `qm_engine`; `aspxtb8` differs from both in
+active region as well. Any statement of the form "both methods at 8 A agree"
+has no run behind it.
+
+    pair          DFT/124   GFN2/124   GFN2/479   6DQH    matched diff
+    Zn-NZ          5.140      5.195      5.044    5.27       0.055
+    NZ-OD2         2.729      2.718      2.749    2.79       0.011
+    Zn-OD2         5.123      5.383      5.092    5.14       0.260
+    Zn-OD1         4.534      4.952      5.830    4.28       0.418
+    Zn-CG          5.223      5.564      5.777    5.15       0.341
+    His88 NE2      2.162      2.083      2.063               0.079
+    His164 NE2     2.073      2.010      1.997               0.063
+
+**THE LYSINE IS WHERE THE METHODS AGREE.** Matched, 0.055 A on Zn-NZ and
+0.011 A on NZ-OD2. Across all three setups the salt bridge spans 2.718-2.749 -
+a **0.031 A** spread - and all three fall 0.04-0.07 A short of 6DQH's 2.79, the
+same direction in every case. Zn-NZ spans 5.04-5.20, all three within 0.23 A of
+the crystal and all three on the same side of it. For three calculations that
+differ in Hamiltonian, in active region, and in starting geometry, that is as
+close to method-independent as anything on this arm.
+
+**THE CARBOXYLATE IS WHERE THEY DO NOT.** The same matched pair differs by
+0.26 A on Zn-OD2, **0.418 A on Zn-OD1** and 0.341 A on Zn-CG - an order of
+magnitude worse than the lysine. Adding the 8 A run, **Zn-OD1 spans 1.296 A**,
+with GFN2/479 at 5.830 sitting 1.55 A off the crystal while DFT/124 at 4.534
+sits 0.25 A off it. Part of that spread is the active region and not the
+Hamiltonian, which is exactly why the unmatched run cannot be quoted as a
+second opinion on the matched one.
+
+**What this licenses and what it does not.** Two claims survive as
+method-independent: **where Lys226 sits**, and **that Asp92 is not on the
+metal**. A third does not: **how Asp92 is turned** - whether OD1 or OD2 faces
+the metal, and how far the far oxygen swings - is method- and
+active-region-dependent at the 0.4-1.3 A level, and that rotamer is the
+coordinate the thesis's mechanism runs through. Any statement about Asp92's
+orientation needs to name which run it came from.
+
+**A point that runs in the thesis's favour, and it comes from the matched pair
+rather than from agreement.** GFN2 is 0.079 A shorter on His88 NE2 and 0.063 A
+shorter on His164 NE2 than DFT, and `aspxtb8` is shorter still - GFN2
+**over-binds the zinc**, which is the known direction of its error and the same
+direction Mehmood & Kulik report for too-small QM regions (D7's region-size
+caveat). GFN2 binds the metal more tightly than DFT does **and still does not
+bring Asp92 in**. The bias and the result point opposite ways, which is worth
+more than two methods agreeing.
+
+**Caveat on the DFT column.** `aspdft` is at `grms` 3.820e-04 against a 1e-04
+criterion: settled to +/-0.003 A over its last three steps but not a stationary
+point. The matched differences above are 0.011-0.418 A, so the comparison is
+not limited by that, but no DFT number here should be quoted as a converged
+minimum.
+
+**No job was proposed or run for this.** D244 named a DFT optimisation from
+`aspqm2`'s chelated frame as the test that would separate "GFN2's barrier is
+wrong" from "minima are not where the enzyme sits"; the user declined it as not
+worth the compute. **That separation therefore stays open and must not be
+written up as settled.** What is recorded instead is this: the artefact reading
+has no direct evidence, because GFN2's own minima keep Asp92 out, so GFN2 is
+not placing a spurious minimum - only its 300 K dynamics reach the chelate, and
+no run here measures a barrier.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
