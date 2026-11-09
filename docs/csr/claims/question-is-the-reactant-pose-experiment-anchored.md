@@ -1,7 +1,7 @@
 ---
 type: question
 status: open
-entries: [D89, D123, D156, D178, D191, D192, D194, D197, D247]
+entries: [D89, D123, D156, D178, D186, D191, D192, D194, D197, D247, D252]
 ---
 
 # Is the reactant every QM/MM result is computed on an experiment-anchored Michaelis complex, or a docked pose with one coordinate restrained?
@@ -31,6 +31,15 @@ The nine docked poses spanned 0.98–3.66 Å by centroid (D156); `scan_00` gave
 `eq6` restrained `Zn–O2x` in to ~2.6 Å and `relax10` held it, so the one
 coordinate anybody inspects reads correctly while the body sits 2.51 Å further
 from the metal than L1's does. **Right coordinate, wrong body.**
+
+**The restraint is not the defect (D252, the user's correction).** `eq6`'s
+`Zn–O2x` term at ~2.6 Å is **necessary**: MM does not model coordination or
+other metal effects, so anything within 3–4 Å of the zinc is restrained at its
+crystal distance — the D186 rule, stated repeatedly. What is wrong here is not
+that the carbonyl is held but that the restraint was the *only* thing locating
+the ligand, leaving the body free to sit 6.2 Å from the experimental mode. A
+necessary restraint and an unanchored pose are two separate facts, and an
+earlier draft of this node conflated them.
 
 **Two arguments that are NOT available here, and must not be re-derived.**
 

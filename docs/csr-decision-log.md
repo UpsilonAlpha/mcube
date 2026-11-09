@@ -10740,6 +10740,101 @@ needed, and (b) what shared infrastructure already moves bytes between the two
 machines. Here the answers were 9% and "the git remote you have been pushing to
 all day".
 
+**D252 - ITEM 6 IS ALREADY WRITTEN. The whole `scan -> NEB -> TS -> frequencies
+-> IRC` chain exists in `site.yaml` for the PRODUCT arm, eight sections, all
+unrun and none of them submittable by config. They now have `submit:` and
+`require:` blocks. And one gate was deliberately NOT written, because writing
+it would have decided an open question by stealth.** (2026-11-09, user: "Skip
+the def2-TZVP points, focus on the original plan scan -> NEB -> TS ->
+frequencies -> IRC")
+
+## The correction that comes first
+
+I described `eq6`'s carbonyl restraint as what "produced the defect". **The
+user's correction: "The restraint is still necessary if the ligand is <3-4 A of
+the zinc, as MM doesn't accurately model coordination and other metal
+effects."** That is the D186 rule - the 3.0 A radius is "what is affected by the
+metal" - and it stands. The restraint is required and correct.
+
+What I had conflated: *that the carbonyl is restrained* (necessary) with *that
+the restraint was the only thing locating the ligand* (the defect). A pin at one
+atom plus a body free to be 6.2 A out of place is two problems, and only the
+second is one. Corrected in
+[[question-is-the-reactant-pose-experiment-anchored]] as well.
+
+## The chain, which was there all along
+
+| section | stage | from | to |
+| --- | --- | --- | --- |
+| `prodqm` | qmmm | `prodrelax10`'s frame | 50 ps GFN2 QM/MM MD |
+| `prodopt` | qmmm | `prodqm`'s last frame | the product minimum |
+| `recombine` | scan | `prodopt`'s minimum | `C4x-N1x` to 1.39 A, 12 points |
+| `expel` | scan | `recombine/scan_12` | `O6x-C4x` to 3.00 A, 16 points |
+| `pstep2` | neb | `recombine/scan_12` -> `prodopt` | intermediate <-> product |
+| `pstep1` | neb | `expel/scan_16` -> `recombine/scan_12` | Michaelis <-> intermediate |
+| `psaddle2` | ts | `neb_pstep2/saddlepoint` | tsopt + freq + IRC |
+| `psaddle1` | ts | `neb_pstep1/saddlepoint` | tsopt + freq + IRC |
+
+**`expel`'s endpoint IS the Michaelis complex** - `scan_16.pdb`, the structure
+D178 calls `recombine`'s product and the thing the whole product route exists to
+produce. So item 6 is not blocked on a design; it is blocked on
+`prodpull2 -> prodpull3 -> prodrelax10 -> prodqm -> prodopt`, which is running.
+The monitors are already right: `recombine` watches whether the leaving nitrogen
+re-engages the metal, whether Lys226 is the proton's source or sink, and
+**whether Asp92 comes onto the metal en route** - the thesis's own coordinate,
+watched along the path rather than checked at the ends.
+
+## What was added
+
+`submit:` and `require:` on all eight, so none needs a launcher script (D239).
+Costs are grounded where a measurement exists and slack where none does, and the
+difference is stated rather than hidden:
+
+- `prodqm` - 50 ps at the **measured 2.57 ps/h** (D157) is ~19.5 h, so 8 cores,
+  16 GB, 24 h.
+- `prodopt` - `aspxtb` converged in 87 steps and 228 s with a QM-only region, so
+  this is minutes. 24 h is slack, not an estimate.
+- the two scans - 12 and 16 points, each an optimisation of up to 300 steps.
+  24 h on the same reasoning.
+- the two NEBs and the two saddles - 12 images plus a numerical Hessian over the
+  QM atoms, and for the saddles a `tsopt` and an IRC on top. **Not measured by
+  anything this project has run**; 48 h and 32 GB is a guess, and the first one
+  to run should be timed and these numbers replaced.
+
+Gates: `charge: 0` everywhere (Arg90 and Lys226 are MM, D190), `qm_engine`
+unset so nothing silently becomes DFT, `points`/`opt_maxiter`/`resume` on the
+scans, `images`/`method`/`interpolation` on the NEBs, `tsopt`/`freq`/
+`irc_method` on the saddles, and nothing constrained on the two `qmmm` legs.
+
+## THE GATE THAT WAS NOT WRITTEN, AND WHY
+
+`site.yaml`'s own comment before `pstep2` asks for a manual check: *"check the
+active-region counts match across both endpoints and the NEB - `actradius` is
+measured per structure, so one radius can give two slightly different regions,
+and energies over different sets of movable atoms are not comparable."*
+
+My first draft gated `actradius: 0` on all eight, which would have enforced that
+by construction: with a falsy `actradius` the active region is the QM atoms,
+selected by residue name, hence the same set in both endpoints. **That was
+removed before it was committed.** `actradius: 0` also **freezes the MM
+environment**, and the two endpoints are different structures with different
+environments, so their MM energies differ by a constant that does **not** cancel
+in a barrier. D235 chose `actradius: 0` for *optimisations*, where there is one
+structure and the frozen term is a constant; whether it is right for a NEB
+across two structures has never been established here, and the channel project's
+evidence (8 A failed, QM-only converged) was also about an optimisation.
+
+So gating on it would have smuggled an unsettled decision into a config check
+and made it look like policy. The question is recorded in `site.yaml` at the
+point it bites and **must be settled before these sections run.** The honest
+options are: `actradius: 0` with the frozen-environment offset argued to cancel
+or be irrelevant; a shared active region defined once and reused across both
+endpoints; or an 8 A region accepted with its convergence risk, which `aspxtb8`
+has now shown converges in 103 steps when nothing is constrained.
+
+Nothing submitted, and nothing in this entry can run until `prodrelax10` has
+produced a frame — `prodpull2` is the next step and is scheduled.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**

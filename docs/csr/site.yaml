@@ -1536,6 +1536,11 @@ sections:
   # reactant: the hydroxide (-1) is gone and the ligand is -1 in its place.
   prodqm:
     stage: qmmm
+    submit: {partition: general, cores: 8, mem: 16G, time: "24:00:00"}
+    require:
+      unset: [restraints, opt_constraints, constraints, qm_engine]
+      equals: {charge: 0, rigid_water: false, skip_equilibrate: false,
+               skip_optimize: true, time: 50}
     inputs:
       qm_residues: *qmreg_prod
       charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (D190)
@@ -2893,6 +2898,11 @@ sections:
 
   prodopt:
     stage: qmmm
+    submit: {partition: general, cores: 8, mem: 16G, time: "24:00:00"}
+    require:
+      unset: [restraints, opt_constraints, constraints, qm_engine]
+      equals: {charge: 0, rigid_water: false, skip_equilibrate: true,
+               skip_optimize: false}
     inputs:
       qm_residues: *qmreg_prod
       charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (D190)
@@ -2903,6 +2913,10 @@ sections:
 
   recombine:                   # reverse step 2: close the ring to the intermediate
     stage: scan
+    submit: {partition: general, cores: 8, mem: 16G, time: "24:00:00"}
+    require:
+      unset: [qm_engine]
+      equals: {charge: 0, points: 12, opt_maxiter: 300, resume: true}
     inputs:
       qm_residues: *qmreg_prod
       charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (D190)
@@ -2920,6 +2934,10 @@ sections:
 
   expel:                       # reverse step 1: push the nucleophile back off
     stage: scan
+    submit: {partition: general, cores: 8, mem: 16G, time: "24:00:00"}
+    require:
+      unset: [qm_engine]
+      equals: {charge: 0, points: 16, opt_maxiter: 300, resume: true}
     inputs:
       qm_residues: *qmreg_prod
       charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (D190)
@@ -2942,8 +2960,23 @@ sections:
   # and the NEB - `actradius` is measured per structure, so one radius can give
   # two slightly different regions, and energies over different sets of movable
   # atoms are not comparable.
+  #
+  # **That check is NOT in the `require:` gates below, and deliberately (D252).**
+  # `actradius: 0` would make the two regions identical by construction - the
+  # region is then the QM atoms, which are selected by residue name and so are
+  # the same set in both endpoints. But `actradius: 0` also FREEZES the MM
+  # environment, and the two endpoints have different environments, so their MM
+  # energies differ by a constant that does not cancel in a barrier. D235 chose
+  # `actradius: 0` for OPTIMISATIONS, where there is one structure and the
+  # frozen term is constant; whether it is right for a NEB across two
+  # structures has not been established, and gating on it would have smuggled
+  # that decision in. Settle it before these run.
   pstep2:                      # intermediate <-> product
     stage: neb
+    submit: {partition: general, cores: 8, mem: 32G, time: "48:00:00"}
+    require:
+      unset: [qm_engine]
+      equals: {charge: 0, images: 12, method: nebts, interpolation: idpp}
     inputs:
       qm_residues: *qmreg_prod
       charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (D190)
@@ -2955,6 +2988,10 @@ sections:
 
   pstep1:                      # Michaelis complex <-> intermediate
     stage: neb
+    submit: {partition: general, cores: 8, mem: 32G, time: "48:00:00"}
+    require:
+      unset: [qm_engine]
+      equals: {charge: 0, images: 12, method: nebts, interpolation: idpp}
     inputs:
       qm_residues: *qmreg_prod
       charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (D190)
@@ -2970,6 +3007,10 @@ sections:
   # from and not some other pair.
   psaddle2:
     stage: ts
+    submit: {partition: general, cores: 8, mem: 32G, time: "48:00:00"}
+    require:
+      unset: [qm_engine]
+      equals: {charge: 0, tsopt: true, freq: true, irc_method: mode}
     inputs:
       qm_residues: *qmreg_prod
       charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (D190)
@@ -2984,6 +3025,10 @@ sections:
 
   psaddle1:
     stage: ts
+    submit: {partition: general, cores: 8, mem: 32G, time: "48:00:00"}
+    require:
+      unset: [qm_engine]
+      equals: {charge: 0, tsopt: true, freq: true, irc_method: mode}
     inputs:
       qm_residues: *qmreg_prod
       charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (D190)
