@@ -21,7 +21,23 @@ Regenerate `l1_in_relax10.pdb` with, from `CSR_mich/`:
 The ligand residue name is **`MX0`**, not `MOX` — searching for the latter
 finds nothing.
 
-## Why the large files are not here, and how to get them
+## How these got here: the remote, not a download
+
+Both this machine and Bunya have the same `mcube` checkout and the same GitHub
+remote, so a stripped frame travels by `git push` on Bunya and `git pull` here.
+That is the whole mechanism. `*_nowat.pdb` is **tracked** for exactly this
+reason; full solvated frames, trajectories and `.csv` are not.
+
+`.gitattributes` marks `*.pdb`, `*.xyz` and `*.cif` as `-text` so no
+line-ending conversion happens and a round-tripped frame is byte-identical.
+
+Each file was checked after arriving by recomputing distances the decision log
+already records — `relax10` Zn-OD2 5.153 / Zn-OD1 4.327 / Zn-CG 5.192 /
+Zn-NZ 5.276, `aspxtb8` 5.092 / 5.830 / 5.777 / 5.044, `prodpull` 4.465 / 4.852
+/ 5.131 / 5.474 — all reproduced to the third decimal. That is also the test
+that `strip_water.py` is faithful.
+
+## The full solvated frames, and how to get them
 
 There is **no SSH private key on this machine** — `~/.ssh/` holds only
 `known_hosts`, with `bunya.rcc.uq.edu.au` in it. So `scp` cannot authenticate

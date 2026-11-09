@@ -1,0 +1,5 @@
+# Coordinate files keep their bytes: no line-ending conversion, so a frame
+# that round-trips through this remote is byte-identical on both machines.
+*.pdb  -text
+*.xyz  -text
+*.cif  -text
