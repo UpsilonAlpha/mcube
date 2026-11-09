@@ -10930,6 +10930,53 @@ which the kill took). **Flagged, not removed.** Quota 240/300 GB,
 after the scheduled check was written: *"Skip the def2-TZVP points, focus on the
 original plan scan -> NEB -> TS -> frequencies -> IRC"* (D252).
 
+**D254 - `prodpull2` submitted as job 32523206 after stage 1 passed all three
+gates. One thing worth recording about stage 1: it did NOT follow the reactant's
+pattern - it overachieved, moving Zn-CG 1.44 A to within 0.019 of its target at
+k=50, where D222 found the reactant's stage 1 moved Zn-CG only 0.10 A.**
+(2026-11-09)
+
+**The three checks, measured in D250 and restated because the submission turns
+on them:**
+
+1. **It survived.** 2 ns complete (`nvtsim.csv` to 1999.99997 ps over 1,000,000
+   steps), `Timestep: 0.002 ps` confirmed in the `.out` for the production NVT,
+   and the `.err` is 89 bytes holding only an OMP thread note - **no
+   `Particle coordinate is NaN`.** Final PE -659,404 kJ/mol, T 299.4 K.
+2. **Asp92 moved**, and further than expected: Zn-OD2 2.795 -> **4.465** with
+   nothing restraining OD2, Zn-CG 3.692 -> **5.131** against a 5.15 target,
+   salt bridge 2.987 -> **2.788** against 2.79. Zn-NZ overshot to 5.474.
+3. **The site held.** His88 NE2 unchanged at 2.223, His164 2.089 -> 2.197.
+   D223's failure mode on the reactant - the lysine moving instead of the
+   carboxylate - did not occur.
+
+**Which stage pattern this matches: neither.** The scheduled check expected the
+reactant's stage 1, where k=50 on Zn-CG moved it 0.10 A and stage 2's stiffening
+to k=500 did the work (D222). Here k=50 was enough to take CG essentially to its
+target in one stage. **The likely reason is the one real difference between the
+arms:** the product carries **no substrate restraint** (D159 - nothing of the
+hydrolysed meropenem is within coordination range of Zn1, and everything that
+binds binds the Zn2 CSR-1 lacks), so nothing is pulling against the carboxylate
+while it moves. So `prodpull2`'s remaining job is narrower than the reactant's
+was: pull Zn-NZ back from its 5.474 overshoot to 5.27 and hold the pair while
+OD2 continues outward on its own.
+
+**Gate and submission.** `--dry-run` passed - the `require.same_as` block
+accepted `prodpull2` against `prodpull` with only `pdb_file` and `restraints`
+differing - and printed the line it then ran:
+
+    sbatch -J prodpull2 -p gpu_cuda --cpus-per-task=4 --mem=32G -t 01:00:00 \
+      --qos=gpu --gres=gpu:h100:1 .../run.slurm md md_prodpull2
+
+`Submitted batch job 32523206`. Quota 240/300 GB, 725,274/1,000,000 inodes.
+Nothing else submitted: `prodpull3` needs this run's last frame, `prodrelax10`
+needs stage 3's, and `prodqm`/`prodopt` wait on `prodrelax10` passing the
+convergence gate.
+
+**The code-server session expires within minutes** (job 32521288 had 18:41 left
+at 15:41), so the next check will most likely find it gone and should tell the
+user and stop rather than sign in.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
