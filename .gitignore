@@ -4,9 +4,13 @@ __pycache__/
 build/
 dist/
 
-# Large coordinate files pulled from Bunya (D250); regenerable there
+# Coordinate files under docs/csr/structures/ (D250, D251).
+# Water-stripped frames are TRACKED: ~340 kB each, they travel through this
+# remote, which is how they reach a local machine at all (D251). Full solvated
+# frames and trajectories are not - megabytes, and regenerable on Bunya.
 docs/csr/structures/*.pdb
+!docs/csr/structures/*_nowat.pdb
+!docs/csr/structures/l1_in_relax10.pdb
 docs/csr/structures/*.csv
 docs/csr/structures/*.xyz
 docs/csr/structures/*.dcd
-!docs/csr/structures/README.md
