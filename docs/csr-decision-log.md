@@ -11044,6 +11044,117 @@ inodes. Three 2 ns trajectories at `traj_frequency: 5000` account for it. Worth
 a `cleanup.sh` pass before `prodrelax10`'s 10 ns lands, since the standing
 instruction is to keep only last frames of superseded runs.
 
+**D256 - `prodpull3` done, the pull is complete, and `prodrelax10` submitted
+(32603682). Two findings, and the second is the one that matters: the last
+frame's His88 at 2.337 looked out of band and is FINE over the trajectory, but
+measuring the trajectory to check it revealed that **the zinc is six-coordinate
+in 200 of 200 frames, with three resident waters AND the hydrolysed product's
+own `O4x` on the metal at 2.13 A** - which contradicts D159's crystal-based
+conclusion that nothing of the product coordinates Zn1.** (2026-11-11)
+
+## The pull is complete
+
+`[DONE] md_prodpull3` at 16:20 on 9 Nov. 2 ns, `nvtsim.csv` to 1999.99997 ps,
+`.err` 89 bytes with **no `Particle coordinate is NaN`**, final PE
+-659,752 kJ/mol and T 299.0 K. Three clean 2 ns stages.
+
+| pair | start | st1 | st2 | **st3** | 6DQH | st3 restraint |
+| --- | --- | --- | --- | --- | --- | --- |
+| Zn-OD2 | 2.795 | 4.465 | 4.564 | **5.061** | 5.14 | 5.14 at k=500 |
+| Zn-OD1 | 3.811 | 4.852 | 4.884 | **4.708** | 4.28 | none |
+| Zn-CG | 3.692 | 5.131 | 5.148 | **5.297** | 5.15 | **released** |
+| Zn-NZ | 4.356 | 5.474 | 5.215 | **5.251** | 5.27 | 5.27 at k=500 |
+| NZ-OD2 | 2.987 | 2.788 | 2.786 | **2.789** | 2.79 | 2.79 at k=500 |
+| His88 NE2 | 2.223 | 2.223 | 2.229 | **2.337** | | none |
+| His164 NE2 | 2.089 | 2.197 | 2.109 | **2.067** | | none |
+
+**Zn-OD2 reached 5.061 against its 5.14 target - a 0.079 A shortfall where
+stage 2's restraints held to 0.004.** The difference is informative rather than
+a defect: this restraint pulls a carboxylate oxygen **away from a formal +2
+charge**, which is D191's effect (k=50 at 2.80 A gave a mean of 2.44, a 0.36
+shortfall). At 5.14 A the attraction is far weaker, so 0.079 is the same physics
+an order of magnitude smaller. The salt bridge, pulling against nothing, is
+0.001 off.
+
+**Released, Zn-CG drifted OUT to 5.297**, 0.147 past 6DQH's 5.15, while Zn-OD2
+sits 0.079 inside it. So the carboxylate has rotated slightly relative to the
+crystal - oxygen nearer, carbon further - rather than sitting on it.
+
+## His88: the gate question, answered by distribution rather than by one frame
+
+The scheduled check specified His88 and His164 NE2 "near 2.0-2.2" and said to
+stop if either left. **The last frame reads 2.337, outside that band.** Judging
+on it would have stopped the chain. `site.py shell` over all 200 frames says
+otherwise: **His88 NE2 is inside the 2.60 A cutoff in 100.0% of frames, min
+2.09, mean 2.23, max 2.57.** The 2.337 is ordinary spread in a 300 K last frame.
+D223's failure mode has not occurred at any stage of this arm, and D198's lesson
+- an extremum of a distribution is not the distribution - is why that was
+checked instead of assumed.
+
+## THE FINDING: six-coordinate in every frame, and the product is one of the ligands
+
+    == B:1:ZN   200 frames, cutoff 2.60 A
+       ligand            occ%    min  mean   max
+       HOH1:O           100.0   1.94  2.05   2.22
+       HOH3586:O        100.0   1.95  2.07   2.24
+       HOH2:O           100.0   1.99  2.09   2.22
+       hyd1:O4x         100.0   1.96  2.13   2.36
+       HIS164:NE2       100.0   2.06  2.17   2.32
+       HIS88:NE2        100.0   2.09  2.23   2.57
+       coordination number: mean 6.00   6: 200 frames (100%)
+
+**Two separate problems.**
+
+1. **Three bulk waters resident at 100%.** This is D191's artefact again - there
+   it was E:2920 on the reactant's zinc for 97.0% of 100 ns and E:3189 on the
+   product's for 89.3%, and D191 drew the distinction explicitly: *"The
+   paragraph above excuses a water that comes and goes; it does not excuse
+   these."* 100% of 2 ns is residence, not exchange.
+
+2. **`hyd1:O4x` is ON the metal at 2.13 A in every frame, and this is NEW.**
+   `prod100c`'s gate recorded the product's O4x/O5x at **3.11 / 3.15, never
+   inside 2.5 A** - a pass. The pull changed it: as Asp92 was drawn off the
+   metal, the product's own carboxylate took the site it vacated. **That
+   contradicts D159**, which measured in 5AXO that *"nothing of the product is
+   within coordination range of Zn1. Everything that binds, binds Zn2 - the
+   metal CSR-1 does not have"*, and concluded on that basis that the product arm
+   needs **no substrate restraint at all**. The crystal says the product does
+   not coordinate Zn1; our MM says it does, in 100% of frames, once the
+   carboxylate is out of the way.
+
+**What this predicts.** The convergence gate before `prodqm` requires the zinc
+**four-coordinate at 2.50 A with Asp92 outside it**. All six ligands above are
+inside 2.50 on their means. On this trajectory that gate fails - which is
+exactly what `prod100c` failed (6-coordinate in 852/1134 frames).
+
+## Why `prodrelax10` was submitted anyway, and the question that is not mine
+
+Submitted as **32603682** (10 ns, 2 fs, ~45 min on one H100), for three
+reasons, none of which settles the finding above:
+
+- The scheduled check's conditions were met: it survived, the site is intact by
+  the measure that matters, quota allows (241/300 GB, 680,144 inodes).
+- **2 ns of restrained pulling is not the structure the gate is meant to
+  judge.** `prodrelax10`'s 10 ns with the final restraint set is, and a plateau
+  cannot be assessed from a pull.
+- The standing instruction cuts this way: *"don't get hung up on the MM - it
+  cannot decide coordination. focus on getting to QM/MM"*, and *"bulk water will
+  come and go, QM/MM should give us the correct coordination behaviour"*. On that
+  reading the three waters are precisely what not to block on.
+
+**But O4x is not bulk water, and that is the question for the user.** A product
+carboxylate chelating the metal in every frame either (a) is an MM artefact that
+GFN2 will undo, as D200's `O1x` did at the QM/MM level (97.9% -> 10%), or (b)
+needs a restraint holding the product off the metal - which would reverse
+D159's "no substrate restraint" conclusion and, by its own argument,
+transplant a Zn2 bond into a one-metal enzyme. **Those lead to different
+structures and the choice is not mine to make silently.**
+
+Housekeeping: quota 241/300 GB, inodes down to 680,144 from 725,320 (the
+sibling session's archiving). `md_prodpull_results` and `md_prodpull2_results`
+are 1.5 GB each and now superseded; flagged, not deleted, and `cleanup.sh` was
+not run blind.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
