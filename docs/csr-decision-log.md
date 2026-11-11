@@ -11155,6 +11155,102 @@ sibling session's archiving). `md_prodpull_results` and `md_prodpull2_results`
 are 1.5 GB each and now superseded; flagged, not deleted, and `cleanup.sh` was
 not run blind.
 
+**D257 - THE PRODUCT SWAP INTO `relax10`'s FRAME FITS AT 0.232 A - the closest
+this project has managed - AND THE DISTANCE IT PRODUCES IS STILL NOT
+CRYSTALLOGRAPHIC. Our Zn1 lands 1.309 A from the transferred template Zn1, which
+is the entire explanation for the product's C3 carboxylate reading 2.13 A
+against our metal where 5AXO measures it at 3.41. The "two independent routes
+agree" reading was withdrawn before it reached the argument map, on the user's
+instruction to check the transfer first.** (2026-11-11, user: "check the crystal
+derived transfer first", "put nothing into the argmap unverified")
+
+## What was built, and why
+
+The product arm's defect was its **protein**, not its ligand: `prod_start.pdb`
+took the protein from `csr_crystal_start.pdb`, which carries Asp92 at 2.80 -
+the value D216 voided when 6DQH measured 5.14. The reactant arm fixed that
+through `asppull` -> `relax10`, where Asp92 is at 5.153 earned rather than
+imposed; the product arm never received it. The user's instruction: swap, then
+equilibrate 10 ns on mcube defaults, then check.
+
+mcube's preprocess takes **protein and ligand as separate files** and merges
+them (`protein_pdb`, `ligand`, `merge_ligand: true`), so the swap is one file -
+replace the protein, keep `hyd_crystal.pdb`. Both survive in
+`CSR_prod/preprocess_results/` (`product_protein.pdb` 2,170 atoms, ligand-free
+and unsolvated; `hyd_crystal.pdb` 108 lines), though the config's `./` paths to
+them are stale.
+
+The ligand had to be re-transferred, because `hyd_crystal.pdb`'s coordinates are
+in `csr_crystal_start.pdb`'s frame rather than `relax10`'s. `refstruct.py
+transfer` of 5AXO onto `relax10`'s last frame, fitted His72 NE2->His88 NE2,
+His150 NE2->His164 NE2, Asp76 CG->Asp92 CG:
+
+    fit on 3 atoms, RMSD 0.232 A   (0.218 / 0.228 / 0.250)
+
+**The best fit in this project's history of doing this** - against 0.310 A for
+7UHI into `relax10` (D247), 0.622 into `CSR_wt` and 0.851 into `CSR_ligand`
+(D156).
+
+## The check that mattered, and it fails
+
+D156 prescribes it: *does the template's own distance come back?* There, L1's
+Zn1-moxalactam O1 of 2.53 A returned as 2.27-2.85, "the size of the fit error".
+Here **5AXO's own Zn1-O32 is 3.41 A (D159) and it returns as 2.13** - a 1.28 A
+shift from a fit whose residual is 0.232. Transferring both template zincs
+through the same fit says why:
+
+| | value |
+| --- | --- |
+| our Zn1 -> transferred template **Zn1** | **1.309** |
+| our Zn1 -> transferred template Zn2 | 2.831 |
+| transferred Zn1-Zn2 | 3.544 |
+| template Zn1 -> **our** His88 NE2 | **1.857** |
+| template Zn1 -> our His164 NE2 | 2.187 |
+| our Zn1 -> our His88 / His164 NE2 | 2.178 / 2.126 |
+
+**1.857 A is not a Zn-N distance.** The fit aligns the site atoms; the metal is
+not a fit atom, so a distance from the transferred ligand to OUR metal is the
+crystal distance plus the metal offset - and here the offset is five times the
+fit residual.
+
+**WHAT IS RETRACTED, within the hour and before it was recorded.** The reading
+offered to the user was that two independent routes agreed the hydrolysed
+product's C3 carboxylate binds Zn1 at ~2.1 A - the MM trajectory at 2.06
+(D256) and this transfer at 2.13. **They do not agree; they share an artefact.**
+The MM number is MM's and the transfer number is our metal's position. Nothing
+crystallographic says that carboxylate sits 2.1 A from CSR-1's zinc; 3.41 A is
+the measured value, to the template's metal.
+
+**And it inverts the restraint argument.** The user's reasoning for restraining
+it - that the pose is reconstructed from a crystal, so holding it beats letting
+an MM point charge move it - is sound about the pose's *orientation and internal
+geometry*, which are rigid-body-transferred from 5AXO. It does not reach the
+Zn-O32 *distance*, which is ours. Restraining O32 at 2.13 would hold it where
+our metal's displacement puts it: the MM artefact one step removed.
+
+## One positive result from the same transfer
+
+**`relax10`'s Asp92 OD2 is 2.667 A from the transferred Zn2 position**, against
+Asp76 OD2-Zn2 **2.19 A** in 5AXO. Asp92 sits near ligating distance from where a
+second metal would be, in a frame where nothing put it there - which is
+`the-lysine-holds-asp92-where-a-zn2-would` measured in our own coordinates. And
+our zinc is 2.831 A from that Zn2 position, so it is not at the Zn2 site.
+
+## What is NOT established
+
+**Not that our zinc is misplaced.** CSR-1's Zn1 has **two** protein ligands
+where 5AXO has three - His74 ND1 has no counterpart, Arg90 standing at that
+position (D40, `csr1-zn1-site-is-h-r-h`) - so a metal with one fewer ligand
+relaxing elsewhere is expected. `relax10`'s 10 ns of MM is the other candidate.
+Which it is has not been measured, and the two have different consequences: an
+intrinsic difference is a property of the enzyme, while MM drift is a defect in
+the frame every QM/MM result descends from.
+
+**Nothing submitted.** `prodrelax10` (32603682) was cancelled before it computed
+(CANCELLED, 00:00:00 elapsed). The argument map gained one node,
+`our-zn1-sits-13-angstrom-from-the-transferred-template-zn1`, holding only
+measured numbers; 46 supported nodes, 11 on `ours`, no findings.
+
 ## Resources (see `running-on-bunya.md`)
 
 **D20 – Job resources.**
