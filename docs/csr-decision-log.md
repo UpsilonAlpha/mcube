@@ -11351,6 +11351,106 @@ crystallographic metal in an H-R-H site does exist, and ¶257's "no CSR-1 crysta
 has a metal in an unmutated H-R-H site" was wrong. It is not the chosen route
 here, but it is the right fallback if the `aspxtb8` build fails.
 
+**¶259 - THE WILD-TYPE METAL, MEASURED FROM THE USER'S OWN 2-METAL STRUCTURE:
+our QM-relaxed zinc sits 1.06-1.37 A from their crystallographic Zn1, depending
+on the fit, and **Arg90 CZ is the worst-fitting atom in every variant at ~1 A**.
+So the metal's displacement and the arginine's are coupled, and both are on our
+side. Also settled: pose 2's one measured defect is GONE at QM/MM level, so the
+ligand needs no replacing - and the reason Asp92's protonation has never been
+verified is that `propka`/`pdb2pqr` were never installed.** (2026-11-13, user:
+"please model the wild type metal from here", "if the 5.15A is irrelevant, why
+not just stick with the pose 2 ligand", "Why haven't we verified the protonation
+state of Asp yet?")
+
+## 1. Pose 2's ligand is fine, and the 6.20 A centroid is the weaker objection
+
+Measured on `aspxtb8`'s converged QM/MM minimum:
+
+    Zn-O2x  (beta-lactam carbonyl)  2.211
+    Zn-O01  (hydroxide)             1.776
+    Zn-C4x  (electrophile)          3.284
+    Zn-O1x  (1-hydroxyethyl OH)     4.199
+
+**¶197's rejection of pose 2 was one specific thing:** the pose's own `O1x`
+took the metal's fourth coordination site in **97.9%** of MM frames while the
+carbonyl was inside 2.5 A in **0.3%**. ¶200 found `O1x` was an MM artefact that
+fell to 10% at GFN2. Here it is at **4.199 A** - gone - and the sphere's
+composition is the Michaelis one: carbonyl and hydroxide on the metal with the
+electrophile at near-attack distance.
+
+**So the defect pose 2 was causing is resolved at the level the chemistry is
+computed at.** The 6.20 A centroid separation (¶247) is a different and weaker
+statement - that the ligand's *body* is not where L1's is. It limits what can be
+said about the **binding mode** and about the C3 carboxylate's anchoring
+(Arg229 at 10+ A, ¶256), not about the barrier. ¶207's warning - that a path
+from a wrong reactant "would spend its barrier moving meropenem across the
+site" - applies to a reactant whose *reacting atoms* are misplaced. They are
+not. **The centroid was being treated as disqualifying when the measured,
+surviving defect was the composition.**
+
+## 2. Why Asp92's protonation has never been verified
+
+Because the tool was never installed. Plan item 5 has read **"blocked on one pip
+install"** since **¶7**: neither `propka` nor `pdb2pqr` is in the ASH env, both
+are pure Python, and ¶185 left it as the user's call since it is their
+environment. Not a scientific obstacle - an unmade decision about two packages.
+
+Partial evidence exists on both sides and has never been compared: `ohH`
+(¶118/¶119) ran 20 h of QM/MM MD on the **Lys226-protonated** species, and
+`asph` (¶153) is the **Asp92-protonated** diagnostic, whose result is now a map
+node (`the-asp92-zn1-contact-in-our-models-is-purely-electrostatic`). What is
+missing is the comparison that picks the resting pair, and
+`question-what-is-lys226-pka` stays open.
+
+## 3. The user's own Zn1, and what it says about ours
+
+`dmCSR_mutant_2metal_refine_16.pdb` (1.47 A, P2(1)2(1)2(1)), at
+`Undergrad/Honours/SCIE4481/bioinformatic_data/MM/Structure/CSR/`. Numbering is
+**ours - 14** (theirs = BBL - 42, ours = BBL - 28): His74 [88], Arg76 [90],
+Asp78 [92], His150 [164], His212 [226, from Lys].
+
+    ZN B1  occ 1.00  B 14.9   HOH S1 2.03, Asp78 OD2 2.06, His79 NE2 2.11,
+                              His212 NE2 2.18, HOH S2 2.43, HOH S157 2.51
+    ZN B2  occ 0.53  B 11.9   HOH S2 1.98, HOH S1 2.01, His150 NE2 2.05,
+                              His74 NE2 2.23, HOH S185 2.29
+    Zn-Zn  3.23
+
+**B2 is the Zn1 site and it is five-coordinate: two histidines and three
+waters.** Asp78 is on B1, the Zn2, at 2.06 - as in every B3 structure.
+
+**Three caveats, stated because they bound what this reference can settle.**
+Occupancy is 0.53. Zn-Zn is 3.23 A. And **`HOH S1` and `HOH S2` bridge the two
+metals** (S1: 2.01 to Zn1, 2.03 to Zn2; S2: 1.98 and 2.43), which is the same
+thing the record flags for 6NC5 - "one site of a water-bridged zinc cluster, not
+an isolated four-coordinate sphere". So this Zn1's position is partly set by a
+Zn2 the wild type does not have. What is clean is the two **histidine**
+distances, from a metal that was actually present.
+
+**Superposing it onto `aspxtb8`'s QM/MM minimum**, varying the fit to remove
+atoms that differ by design:
+
+    fit atoms                           fit RMSD   Zn offset   worst atom
+    2 His NE2 + Asp CG                    0.432      1.37      Asp92 CG 0.523
+    2 His NE2 + Arg90 CZ                  0.752      1.19      Arg90 CZ 0.949
+    2 His NE2 + 2 His ND1 + Arg90 CZ      0.703      1.06      Arg90 CZ 1.059
+
+**The offset shrinks as the fit becomes more relevant and does not collapse:
+~1.1 A at best.** Against ¶257's 1.31 A from 5AXO's Zn1, two independent
+crystallographic references agree our metal is about an angstrom out - so that
+offset is ours and not an artefact of the 5AXO template, which ¶257 could not
+rule out.
+
+**And Arg90 CZ is the worst-fitting atom in every variant, at ~1 A.** Arg90
+stands at the third Zn1 ligand position
+(`arg90-stands-at-the-third-zn1-ligand-position`, 4.02 A from the metal in
+6NC5), so the metal's displacement and the arginine's are coupled. **The
+rebuild should therefore place the metal and Arg90 together from this crystal,
+not the metal alone** - placing the metal against an arginine that is itself 1 A
+out would import the same error through a different door.
+
+Nothing submitted. The measurements are local; `refstruct.py transfer` ran on
+the committed `docs/csr/structures/aspxtb8_nowat.pdb`.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
