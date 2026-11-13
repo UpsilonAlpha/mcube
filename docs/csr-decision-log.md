@@ -11451,6 +11451,91 @@ out would import the same error through a different door.
 Nothing submitted. The measurements are local; `refstruct.py transfer` ran on
 the committed `docs/csr/structures/aspxtb8_nowat.pdb`.
 
+**¶260 - THE SITE DEFECT, MEASURED WITHOUT ANY SUPERPOSITION: our models hold
+the two Zn1 histidines **13-19 degrees too closed**, QM/MM opens the angle by
+only 3.7 degrees, and Arg90 sits 6.64 A from the metal where two independent
+crystals give 4.14 and 4.60. One defect explains the metal offsets of ¶257 and
+¶259. Also settled: **we never moved away from pose 2** - the pipeline has used
+it throughout - and the CSR-1 crystals are not on scratch at all.**
+(2026-11-13, user: "did you compare arg90 between the apo CSR-1 wt crystal and
+the dmCSR crystal?", "Why did we move away from pose 2 if it's fine?",
+"propka exists on bunya via protonpottsmpnn")
+
+## The comparison the user asked for, and it is the strongest measurement of the day
+
+**Nothing here is superposed.** Every number is internal to one structure, so no
+fit error enters. 6DN4 and 6DQH were downloaded from the PDB - **the CSR-1
+crystals are not on scratch**: `refs/` holds only 5AXO, 5B15 and 7UHI, the
+di-zinc templates, and a `find` over scratch returns nothing for 6DN4. So
+¶216's 6DQH measurements and ¶40's 6NC5 work were done from files that no
+longer exist there.
+
+    structure                      N-Zn-N   Zn-His88   Zn-His164
+    6DQH, R118H, 1.10 A             95.9      2.080      2.054
+    dmCSR-1 2-metal, ours, 1.47 A  102.2      2.230      2.046
+    aspxtb8, converged GFN2 QM/MM   86.6      2.063      1.997
+    relax10, 10 ns MM               82.9      2.178      2.126
+
+**The bond lengths are right everywhere; the angle is not.** The crystals open
+N-Zn-N to **96-102 degrees**. Our MM frame closes it to **82.9** and QM/MM
+recovers only **3.7 degrees**, ending at 86.6 - still 9-16 short.
+
+**That bounds what QM/MM can be trusted for here**, and it is a real
+qualification of the standing instruction that QM/MM gives the correct
+coordination behaviour. It does: the Zn-N distances and the identity of the
+donors are right. What it does not touch is the **scaffold** - the angle is set
+by the backbone holding the two histidines, which is MM in every QM/MM run and
+frozen outright under `actradius: 0` (¶235).
+
+**Arg90, which is what the user asked about:**
+
+    structure                  Arg CZ-Zn   Arg CZ-His88   Arg CZ-Asp92 CG
+    6DN4, apo WT, no metal          -           5.98            7.23
+    6DQH, R118H                   4.14          5.01            7.58
+    dmCSR-1 2-metal               4.60          5.32            8.05
+    aspxtb8 QM/MM                 6.64          6.82            8.95
+
+Ours is the outlier on every coordinate and worst against the metal - **6.64 A
+where two crystals give 4.14 and 4.60.** And the control the user asked for
+answers itself: **the apo wild type, with no metal at all, still holds the
+arginine closer to the histidines (5.98) than our metal-bound model does
+(6.82)**, so the displacement is not a consequence of the metal being present or
+absent. The apo-versus-dmCSR difference is small - 5.98 against 5.32 to His88,
+7.23 against 8.05 to Asp92 - so Arg90 barely moves on metal binding. Ours has
+moved a long way further than that.
+
+**One defect, two apparent offsets.** A metal position taken from our own frames
+inherits the closed angle, which is why `aspxtb8`'s zinc reads 1.06 A from our
+own crystal's Zn1 and 1.31 A from 5AXO's. So the rebuild takes the metal **and
+the histidine geometry** from a crystal, not the metal alone - recorded as the
+map node `our-his-zn-his-angle-is-13-19-degrees-too-closed`.
+
+## We never moved away from pose 2
+
+Asked why, the answer is that we did not. Every QM/MM result in this project
+uses docked pose 2: `eq6`, `relax10`, `aspqm2`, `aspdft`, `aspxtb`, `aspxtb8`,
+and before them `CSR_crystal`, `CSR_nac`, `CSR_unrestrained2`, `CSR_wt` and
+`CSR_crystal_v2` (¶194's table). **¶156 recorded the pose as condemned on
+1 November and the pipeline never followed.** The only thing that moved was a
+plan proposed in this session, on the strength of the 6.20 A centroid (¶247),
+and ¶259 withdrew it once the measured defect - `O1x` holding the metal's
+fourth site in 97.9% of MM frames - turned out to be fixed at QM/MM level
+(4.199 A in `aspxtb8`). **So there is nothing to undo**, and the earlier plan to
+swap the ligand is abandoned rather than merely deferred.
+
+## propka
+
+It is available on Bunya through `protonpottsmpnn`, so plan item 5's "blocked on
+one pip install" is wrong as of today and the block was never real. It will be
+run for a number and recorded as **weak evidence**: the user's own caveat is
+that propka is not trustworthy for metalloproteins, which is the same reason
+¶185 left the install to them. The test that would actually decide Asp92's
+protonation is the QM/MM comparison between the Lys226-protonated species
+(`ohH`, ¶118/¶119, 20 h already run) and the Asp92-protonated one (`asph`,
+¶153), which has never been made.
+
+Nothing submitted. 6DN4 and 6DQH are in the session scratchpad, not the repo.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
