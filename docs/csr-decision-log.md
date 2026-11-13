@@ -11698,6 +11698,92 @@ through the git remote (¶251) and touches no model - and the `require:`/
 ¶238/¶239. Both are named here so they are not silently assumed to have been
 cleared by this entry.
 
+**¶263 - POSE 2 HAS NOTHING COORDINATING THE ZINC - nearest ligand atom 3.134 A
+and it is the wrong atom - which is an argument ¶194 never addressed, because it
+needs no trajectory. The user's correction to it: 3.13 A is still inside the
+zone where the zinc POLARISES the ligand, which is why restraining it was
+justified. And the zinc model stays **12-6 IOD**: 12-6-4 was never in mcube and
+is contraindicated for MBLs.** (2026-11-13, user: "Are you saying this pose has
+nothing from the ligand within 3 angstroms of the zinc?", "the reason the
+previous ligand was restrained at 3.4A is because it's likely it was still
+*polarised* by the zinc", "ah yep good catch, stick with IOD")
+
+## The static measurement
+
+`CSR_wt/preprocess_results/finalsystem.pdb` - docked pose 2, before any
+dynamics, minimum image applied:
+
+    atom                        Zn distance
+    O1x  (1-hydroxyethyl OH)       3.134
+    C2x                            3.649
+    C1x                            4.252
+    C3x                            4.952
+    C4x  (the electrophile)        5.280
+
+**Nothing inside 3.0 A, and the nearest atom is the wrong one** - a side-chain
+hydroxyl rather than the beta-lactam carbonyl, whose oxygen is at 5.43 A
+(¶192). 7UHI, the only experimental B3 Michaelis complex, puts its carbonyl on
+the metal at **2.53 A**. Reproduces ¶192's 3.13 exactly.
+
+**Why this is not the argument ¶194 discarded.** ¶194 rejected
+"it dissociated, therefore the pose is bad" - correctly: `wt100c`'s substrate
+loss was one config line, an Asp92 restraint written instead of the attack
+restraint rather than beside it. That rebuttal is about a *trajectory*. This is
+a property of the built structure, measured before anything runs, and the
+rebuttal does not reach it. Four previous derivations of the discarded argument
+(¶89, ¶192, ¶194, ¶246) all went through dissociation; this one does not.
+
+**For the record, the contact in the current structures was placed rather than
+found:** `CSR_mich`'s preprocess start has Zn-O2x at **1.940 A**, which is why
+`relax10` reads 2.610 and `aspxtb8` 2.211.
+
+## The user's correction, which I had overstated
+
+I wrote that the pose has "no metal contact at all" and that a ligand with
+nothing in the coordination sphere "is not bound in any chemical sense". **Too
+strong.** 3.13 A is outside coordination and **inside the polarising zone**, and
+a 12-6 potential cannot represent that - `ions.py` says so in terms: it "knows
+only distance and atom type, so it cannot tell a ligand from a non-ligand".
+That is the same reasoning the 3.0 A restraint rule rests on, so the attack
+restraint is not a crutch propping up a pose that fails to bind; it compensates
+for a polarisation the force field omits. The claim it does **not** support is
+that the carbonyl coordinates the metal - ¶98 said as much when it set the term
+- and pose 2's 5.43 A carbonyl against 7UHI's 2.53 is untouched by it. Node
+corrected rather than left standing.
+
+Also corrected: my framing that "MM can't keep a docked ligand bound". The user:
+"an MM model should keep a docked ligand bound". Right - and the force field
+behaved correctly here.
+
+## The zinc model: IOD, not 12-6-4
+
+Asked to "keep using the 12-6-4 model for zinc that should be in mcube",
+checked rather than complied, and the premise does not hold:
+
+- **`src/mcube/ions.py` is Li/Merz 12-6 IOD**, not 12-6-4. Its job is narrow:
+  Amber's stock Zn-O pair minimum sits at ~**1.69 A** against a real 2.0-2.1 A
+  bond, so a non-coordinating donor can collapse onto the metal; IOD moves it to
+  ~**1.89 A**. Better radii, nothing more - and it explicitly "does not solve
+  over-coordination".
+- **The 12-6-4 rows in that file (`LM_1264_TIP3P`) are a diagnostic**, present to
+  show that OpenMM's stock `amber14/tip3p.xml` lanthanide values *are* 12-6-4
+  rows carrying no C4 term, i.e. a known-wrong 12-6 model. **No C4 term is
+  implemented**, so there was nothing to keep using.
+- **The record declined it deliberately:** "12-6-4 is contraindicated for MBLs:
+  Gervasoni found it *enhanced* water intrusion, kept the zincs octahedral, and
+  QM/MM could not repair Zn-Zn from those frames. ¶87 declining to implement it
+  was right."
+
+Worth adding: "kept the zincs octahedral" is the same over-coordination
+signature as the two defects ¶260 measured in our own frames - the His-Zn-His
+angle 13-19 deg too closed and Arg90 2 A out - so 12-6-4 would plausibly worsen
+them rather than fix the polarisation gap.
+
+**Decision: stay with IOD** (user). The polarisation concern is real and the
+project's answer to it remains IOD radii plus per-atom coordination restraints
+within 3.0 A, with QM/MM as the designed remedy for residual creep - which is
+Gervasoni's own workflow.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**

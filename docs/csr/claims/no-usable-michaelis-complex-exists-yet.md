@@ -1,7 +1,7 @@
 ---
 type: claim
 status: supported
-entries: [¶156, ¶158, ¶159, ¶178, ¶191, ¶192, ¶194, ¶195, ¶197, ¶198, ¶200, ¶201, ¶207, ¶214, ¶231, ¶246, ¶247]
+entries: [¶156, ¶158, ¶159, ¶178, ¶191, ¶192, ¶194, ¶195, ¶197, ¶198, ¶200, ¶201, ¶207, ¶214, ¶231, ¶246, ¶247, ¶263]
 checked: [¶158, ¶159, ¶178, ¶191, ¶192, ¶194, ¶195, ¶197, ¶198, ¶200, ¶201, ¶246, ¶247]
 ---
 
@@ -49,6 +49,40 @@ The record, compressed:
 What does not exist is a pose anchored to experiment. The docked complex puts
 the carbonyl at 5.43 Å with one attack restraint, while 7UHI/7UHJ — the only
 experimental B3 Michaelis complexes — put theirs at 2.53/2.63 Å (¶123).
+
+**THE STATIC ARGUMENT, which needs no trajectory and which ¶194 never
+addressed (¶263, the user's).** Measured in `CSR_wt/preprocess_results/
+finalsystem.pdb` — pose 2 as docked, before any dynamics:
+
+| atom | Zn distance |
+| --- | --- |
+| `O1x` (1-hydroxyethyl OH) | **3.134** |
+| `C2x` | 3.649 |
+| `C4x` (the electrophile) | **5.280** |
+
+**Nothing is inside 3.0 Å, and the nearest atom is the wrong one** — a
+side-chain hydroxyl, not the β-lactam carbonyl, whose oxygen is at 5.43 Å
+(¶192). 7UHI, the only experimental B3 Michaelis complex, puts its carbonyl on
+the metal at **2.53 Å**.
+
+So the pose has **nothing coordinating the metal**, which is a property of the
+built structure rather than an inference from a run. ¶194 was right to discard
+"it dissociated, therefore the pose is bad" — the proximate cause of `wt100c`'s
+loss was one config line — but that rebuttal does not reach this.
+
+**What 3.13 Å does mean, on the user's correction (¶263).** It is outside
+coordination and **inside the zone where the zinc polarises the ligand**, and a
+12-6 potential cannot represent that: `ions.py` says so in terms — it "knows
+only distance and atom type, so it cannot tell a ligand from a non-ligand".
+That is the same reasoning the 3.0 Å restraint rule rests on, so restraining
+the ligand there was justified, and the restraint is not a crutch for a pose
+that fails to bind. What it is not is evidence that the carbonyl coordinates
+the metal — ¶98 said as much when it set the term — and the gap between
+pose 2's 5.43 Å carbonyl and 7UHI's 2.53 Å is unaffected by it.
+
+The contact in the current structures was placed, not found:
+`CSR_mich`'s preprocess start has `Zn-O2x` at **1.940 Å**, which is why
+`relax10` reads 2.610 and `aspxtb8` 2.211.
 
 **THAT CHOICE WAS MADE, AND IT WAS NEITHER OF THEM (¶178), THOUGH THE SCOPING
 HAS SINCE MOVED.** The plan of record
