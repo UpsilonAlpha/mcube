@@ -1,23 +1,23 @@
 ---
 type: question
 status: void
-entries: [D9, D58, D59, D133, D195, D197, D206, D208, D231, D232]
+entries: [¶9, ¶58, ¶59, ¶133, ¶195, ¶197, ¶206, ¶208, ¶231, ¶232]
 ---
 
 # Does GFN2-xTB over-coordinate the zinc?
 
-**Open since D9 (2026-10-15), and every closure of it has been withdrawn.**
-The three closures - standing rule 3, D133, and project memory - all rest on
-D58, which is retracted (D59 said so at the time, then re-asserted it in its
-own closing line; D206 retracts it in place). The fourth, D195's 1.94 -> 2.56 A
-relaxation, is reclassed by D197 as a bond-length relaxation *within* the
+**Open since ¶9 (2026-10-15), and every closure of it has been withdrawn.**
+The three closures - standing rule 3, ¶133, and project memory - all rest on
+¶58, which is retracted (¶59 said so at the time, then re-asserted it in its
+own closing line; ¶206 retracts it in place). The fourth, ¶195's 1.94 -> 2.56 A
+relaxation, is reclassed by ¶197 as a bond-length relaxation *within* the
 coordinated basin rather than a rejection of a wrongly-placed donor.
 
-**No admissible test exists.** D206 rule 3 is why: a single point cannot
+**No admissible test exists.** ¶206 rule 3 is why: a single point cannot
 promote the geometry it was handed, and neither can agreement between two
 methods on the same handed geometry.
 
-**It no longer gates anything** (D208 section 3). The discrepancy against the
+**It no longer gates anything** (¶208 section 3). The discrepancy against the
 crystals is too large to be a method artefact alone -
 [[our-models-put-asp92-on-the-zinc]] against 3.94-4.20 A in five deposited
 structures - so the geometry is wrong whatever produced it, and attributing the
@@ -25,12 +25,12 @@ error is a secondary question.
 
 **What partly answered it, in the opposite direction to the worry:** on the
 meropenem 1-hydroxyethyl contact, dd = GFN2 - DFT = **-5.92 kcal/mol**, i.e.
-GFN2 *under*-binds (D198). Same magnitude as Imhof's 7.55 for AM1/d, so a real
+GFN2 *under*-binds (¶198). Same magnitude as Imhof's 7.55 for AM1/d, so a real
 error, and one contact on one geometry pair rather than a statement about
-coordination number. The cluster-model benchmark (plan item 7, open since D9) is
+coordination number. The cluster-model benchmark (plan item 7, open since ¶9) is
 what would settle it.
 
-## ANSWERED 2026-11-07 (D232), in the affirmative, as pre-registered
+## ANSWERED 2026-11-07 (¶232), in the affirmative, as pre-registered
 
 **The test below ran and reported, and the prediction it would satisfy was
 written first.** `aspqm2` chunk 1 brought Asp92 onto the zinc as a **bidentate
@@ -52,17 +52,17 @@ inside 2.5 A over 32 frames, and HOH3171 only 3% - so
 The sphere is five-coordinate anyway, because the carboxylate's two oxygens took
 the vacated places.
 
-## An admissible test now exists, and is running (D231)
+## An admissible test now exists, and is running (¶231)
 
-**Pre-registered before the result, per D178.** `aspqm2` chunk 1, job
+**Pre-registered before the result, per ¶178.** `aspqm2` chunk 1, job
 32416288: 50 ps of GFN2-xTB/MM dynamics, **nothing restrained**, starting from
 `md_relax10`'s last frame, whose Asp92 sits where four crystals put it
 ([[relax10-holds-the-crystal-geometry-for-10-ns]]).
 
-This escapes D206 rule 3, which closes the door on single points and on two
+This escapes ¶206 rule 3, which closes the door on single points and on two
 methods agreeing about a handed geometry. It is neither: it is *dynamics*, free
 to move, begun from a geometry the crystals support rather than one already
-collapsed. D211's collapse to a 1.93 A mean is not a counter-example because
+collapsed. ¶211's collapse to a 1.93 A mean is not a counter-example because
 that lineage **began** collapsed and with Lys226 deprotonated, so it tested
 nothing. Starting distances: Zn-OD2 5.15, Zn-OD1 4.33, Zn-CG 5.19, Zn-NZ 5.28,
 NZ-OD2 2.88, and a five-donor sphere at 2.50 A (HOH3095 2.02, hydroxide 2.04,
@@ -87,7 +87,7 @@ leaves**, which [[csr1-zn1-site-is-h-r-h]] predicts it should, since an H-R-H
 site has room for two histidines, a hydroxide and one water. MM cannot decide
 this and was not asked to.
 
-**A literature-absence claim to distrust:** D197's "no GFN2 benchmark for zinc
+**A literature-absence claim to distrust:** ¶197's "no GFN2 benchmark for zinc
 coordination number in enzymes appears to exist" has no recorded search
 (`retractions.md` section 4).
 

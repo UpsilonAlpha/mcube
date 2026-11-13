@@ -13,7 +13,7 @@ the file that gets edited in place when something changes.
 | File | What it is |
 | --- | --- |
 | `site.yaml` | the active site (atoms, candidate bases, near-attack criteria), the named Michaelis hypotheses, and every calculation we run |
-| `sections.py` | adds calculations from `site.yaml` to `config.yaml`, refusing to write if a selector does not resolve — restraint pairs included (D128) — or if the section's own `require:` block does not hold, and submits it from its `submit:` block with `--submit` (`--dry-run` checks and prints the `sbatch` line without writing) |
+| `sections.py` | adds calculations from `site.yaml` to `config.yaml`, refusing to write if a selector does not resolve — restraint pairs included (¶128) — or if the section's own `require:` block does not hold, and submits it from its `submit:` block with `--submit` (`--dry-run` checks and prints the `sbatch` line without writing) |
 | `site.py` | all the geometry analysis and the acceptance gate: `sphere`, `shell`, `nucleophiles`, `acceptors`, `joint`, `poses`, `graft`, `check` |
 | `run.slurm` | one job script for every mcube stage; resources come from the `sbatch` line |
 | `cleanup.sh` | reclaim space and inodes in a run directory |
@@ -24,7 +24,7 @@ rest - each the same six lines with a hand-written preflight in the middle, and
 they had drifted: two of them *warned* where a third *refused* on the same
 condition. A gate written once per run is a gate that is wrong somewhere, and
 nothing in the output of either run would have said so. The checks and the
-resources are config now (D238, D239), so a new arm is a `site.yaml` edit and
+resources are config now (¶238, ¶239), so a new arm is a `site.yaml` edit and
 nothing else:
 
 ```
@@ -54,8 +54,8 @@ puts its qos and gres in `submit.extra`, because `run.slurm` hardcodes
 
 | File | What it is |
 | --- | --- |
-| `refstruct.py` | deposited structures, measured so every reference number is re-derivable rather than quoted (D125). `shell` and `centre` for one structure; `similarity` for identity and CA RMSD between two (D158); `transfer` to put a deposited complex's ligand into our frame on a named atom correspondence, and `match` to put our atom names on it by graph isomorphism (D156, D159) |
-| `make_product_run.py` | builds the hydrolysed-product run directory from the reactant's: substrate out, hydroxide back to a water, grafted ligand in, every other preprocess input inherited so the two states stay comparable (D159). Writes into `preprocess_results/`, because `run.slurm` runs preprocess there |
+| `refstruct.py` | deposited structures, measured so every reference number is re-derivable rather than quoted (¶125). `shell` and `centre` for one structure; `similarity` for identity and CA RMSD between two (¶158); `transfer` to put a deposited complex's ligand into our frame on a named atom correspondence, and `match` to put our atom names on it by graph isomorphism (¶156, ¶159) |
+| `make_product_run.py` | builds the hydrolysed-product run directory from the reactant's: substrate out, hydroxide back to a water, grafted ligand in, every other preprocess input inherited so the two states stay comparable (¶159). Writes into `preprocess_results/`, because `run.slurm` runs preprocess there |
 | `reference-structures.md` | the PDB IDs, ligand codes, exact commands and measured tables behind those numbers |
 | `job-inventory.md` | every job that has run, from `sacct`, with the decision-log entry that read it, each system's QM region, and the structures that are live inputs today |
 
@@ -69,7 +69,7 @@ if the contact *is* one. A Zn–O/N bond is 1.9–2.2 Å.
 At `cutoff: 3.0` the crystal's second-shell Asp92 OD2 contact at **2.80 Å** was
 detected as a ligand and held there; the carboxylate rotated its other oxygen
 onto the metal at 1.99 Å, and two QM/MM arms ran on a five-coordinate zinc
-against the crystal's four. **2.5 is defensible, 3.0 is not** (D120). The
+against the crystal's four. **2.5 is defensible, 3.0 is not** (¶120). The
 library default is 2.8, so set it explicitly.
 
 `md` reports every pair it is about to restrain that is longer than `LIGAND_MAX`
@@ -78,7 +78,7 @@ library default is 2.8, so set it explicitly.
 `preprocess.inputs.coordination_warn_above` where the chemistry warrants it — an
 Ln–O bond reaches 2.4–2.5 Å. **Do not silence it by raising the detection
 cutoff**, and do not hand-write a long restraint to correct a shell that is
-already wrong: rebuild from a structure whose sphere is right (D130).
+already wrong: rebuild from a structure whose sphere is right (¶130).
 
 Holding a contact where the structure already has it is the rule this pipeline
 runs on and it is sound. What it cannot do is decide whether the contact is a
@@ -88,12 +88,12 @@ bond — that is what the threshold above is for.
 
 | File | What it is |
 | --- | --- |
-| `traj_frame.py` | writes one frame of an xyz trajectory onto a PDB template, validating the atom count and the element-vs-name order. Kept because `postprocess.export_frames` (D172) reads a trajectory through MDAnalysis against a topology, and whether that covers the optimiser's own xyz output has not been checked |
+| `traj_frame.py` | writes one frame of an xyz trajectory onto a PDB template, validating the atom count and the element-vs-name order. Kept because `postprocess.export_frames` (¶172) reads a trajectory through MDAnalysis against a topology, and whether that covers the optimiser's own xyz output has not been checked |
 
-Contacts over a trajectory are a `postprocess` stage now (D168), driven by
+Contacts over a trajectory are a `postprocess` stage now (¶168), driven by
 `site.yaml`'s `monitor`; `traj_contacts.py` is in `../../archive/`.
 
-**Building the ohH arm of the protonation test** (D112-D114). Only needed while
+**Building the ohH arm of the protonation test** (¶112-¶114). Only needed while
 that comparison is open; see `site.yaml`'s `ohHmin` and `ohH` sections.
 
 | File | What it is |
@@ -106,7 +106,7 @@ terminal, which silently truncates long payloads.
 
 The two `check_ohH_*` validators, `make_ohH_config.py` and `migrate_paths.py`
 are in `../../archive/` as of 2026-11-02: the first two are superseded by
-`preprocess.hydrogen_report` (D172), which runs on every system rather than one
+`preprocess.hydrogen_report` (¶172), which runs on every system rather than one
 arm by hand, and the others were one-shots whose job is done.
 
 ## Running something
@@ -126,7 +126,7 @@ The starting structure belongs in the section's `pdb_file` (a NEB's two
 endpoints in `reactant_pdb` and `product_pdb`), and there is no longer any way to
 pass one on the command line: `run.slurm` takes no third argument and no stage
 takes `--pdb`. `md` had always read its structure from the config and ignored a
-`--pdb`, which could silently equilibrate preprocess's own output instead (D114);
+`--pdb`, which could silently equilibrate preprocess's own output instead (¶114);
 every stage now works that way, so `config.yaml` describes the run on its own.
 
 Paths in `inputs` are read against the config's directory, whichever directory
@@ -137,7 +137,7 @@ those itself, from the directory the stage runs in, which is why they carry
 `actradius` and `actregion_origin` on the structure the section runs on, and the
 list it used is written to `active_atoms_used` beside the run, with its path,
 count, structure and a per-atom fingerprint recorded in that section's results.
-An `actatoms` or `actatoms_from` key is refused. That is the D115 lesson applied
+An `actatoms` or `actatoms_from` key is refused. That is the ¶115 lesson applied
 to the one remaining index list: a region derived on one frame and applied to
 another freezes the wrong atoms, and re-deriving is cheaper than guarding it.
 
@@ -187,7 +187,7 @@ python $D/site.py check        --site=$D/site.yaml structure.pdb --at=start|reac
   average, because a site flipping between 4 and 5 and a site sitting at 4.5 are
   different things. Donors just outside the cutoff are listed too, so a
   borderline call looks borderline instead of absent. This is the mode that
-  found D120, and it is the right instrument for any claim about the sphere.
+  found ¶120, and it is the right instrument for any claim about the sphere.
 - **`nucleophiles`** — for one structure: every water near the electrophile, its
   attack distance and angle, whether it is metal-bound, and for each of its
   protons what lies within hydrogen-bond reach.
@@ -219,12 +219,12 @@ python $D/site.py check        --site=$D/site.yaml structure.pdb --at=start|reac
   criterion *within* a mechanism: "the closest substrate oxygen must be the
   β-lactam carbonyl" is a fact about the carbonyl-on-metal mechanism, which is
   the thing under test, and a gate that rejects a rival hypothesis by assuming
-  the favoured one is not a gate (D127).
+  the favoured one is not a gate (¶127).
 
   **A coordination criterion returns a count, and a count is not a
   composition.** Four donors inside the cutoff can be the wrong four. Where the
   identity of the sphere is the claim, read it off `shell`'s occupancies rather
-  than off `check`'s number (D129, D130).
+  than off `check`'s number (¶129, ¶130).
 
 ## Why the selector check exists
 
@@ -234,7 +234,7 @@ of compute were lost to a 2D grid whose second coordinate began 4.35 Å apart �
 which drags a group across space rather than transferring a proton. Check the
 coordinate against the structure it will actually start from.
 
-`restraints` is in that list as of D128, and it was the one place missing: a
+`restraints` is in that list as of ¶128, and it was the one place missing: a
 section whose only selectors were its restraint pairs printed `0 selectors
 checked` and was written anyway, while `md.md_restraints` resolves those same
 pairs hours into the run.

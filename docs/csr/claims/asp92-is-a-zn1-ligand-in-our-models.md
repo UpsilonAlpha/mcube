@@ -1,15 +1,15 @@
 ---
 type: claim
 status: void
-checked: [D51, D57, D58, D102, D133, D134, D138, D157, D201, D204]
-entries: [D51, D57, D58, D102, D133, D134, D138, D157, D201, D204]
+checked: [¶51, ¶57, ¶58, ¶102, ¶133, ¶134, ¶138, ¶157, ¶201, ¶204]
+entries: [¶51, ¶57, ¶58, ¶102, ¶133, ¶134, ¶138, ¶157, ¶201, ¶204]
 ---
 
 # Asp92 coordinates the zinc in every model this project has built
 
 Standing rule 3 records it as holding "at every level of theory we have run":
-MM at 100 ns (D102), unconstrained GFN2-xTB at 25 ps (D51), DFT single points
-(D58/D60), and QM/MM with no MM restraints at all (D201).
+MM at 100 ns (¶102), unconstrained GFN2-xTB at 25 ps (¶51), DFT single points
+(¶58/¶60), and QM/MM with no MM restraints at all (¶201).
 
 **It is carried here as a `claim`, not an observation, and its status is a
 deliberate flag.** The measurement is real and lives at
@@ -18,15 +18,15 @@ holds is the *conclusion* drawn from it - that the coordination is a real
 feature of the enzyme - and almost every entry behind that conclusion is
 retracted, reclassed or inadmissible:
 
-- D58's inference is retracted (D59 at the time, D206 in place).
-- D102, D134 and D138 are "inadmissible, not merely caveated" (D144).
-- D157 section 3 cites those three as corroboration, so it cannot stand either.
-- D201 section 4's conclusion is overturned in `retractions.md` section 3.
-- D57's curve has our own model on both axes.
+- ¶58's inference is retracted (¶59 at the time, ¶206 in place).
+- ¶102, ¶134 and ¶138 are "inadmissible, not merely caveated" (¶144).
+- ¶157 section 3 cites those three as corroboration, so it cannot stand either.
+- ¶201 section 4's conclusion is overturned in `retractions.md` section 3.
+- ¶57's curve has our own model on both axes.
 
 **Against the crystals it is wrong by 2 A or more.** The cost is not small
-(D208): every structure built to hold Asp92 at 2.80 A has that contact too
-short, including D130's hand-written pair, the `finalsystem.pdb` lineage, both
+(¶208): every structure built to hold Asp92 at 2.80 A has that contact too
+short, including ¶130's hand-written pair, the `finalsystem.pdb` lineage, both
 100 ns arms and the `michrk` start frame. The restraint target for any rebuild
 is "do not restrain it, and let the run say where it goes".
 
@@ -51,7 +51,7 @@ positively where the carboxylate sits in the wild type - the second shell, held
 by Lys226 ([[lys226-salt-bridges-asp92-in-wild-type-crystals]]) - so there is a
 replacement, not just a refutation. And the body's prescription, "do not restrain
 it, and let the run say where it goes", is **superseded by the user's standing
-rule** (D174, D186, restated 2026-11-05): Asp92 is affected by the metal and is
+rule** (¶174, ¶186, restated 2026-11-05): Asp92 is affected by the metal and is
 to be restrained at its structural distance, the 3.0 A radius being "what is
 affected by the metal" rather than a coordination test. `eq6` was built that way
-(D214).
+(¶214).

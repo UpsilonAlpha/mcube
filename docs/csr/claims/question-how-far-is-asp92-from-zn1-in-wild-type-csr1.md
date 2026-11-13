@@ -1,7 +1,7 @@
 ---
 type: question
 status: open
-entries: [D145, D151, D179, D184, D208]
+entries: [¶145, ¶151, ¶179, ¶184, ¶208]
 ---
 
 # How far is Asp92 from Zn1 in wild-type CSR-1?
@@ -10,10 +10,10 @@ entries: [D145, D151, D179, D184, D208]
 been quoted as "the crystal's" value and none of them is one:
 
 - **2.80 A** - our own model's number. It appears nowhere in any PDB file
-  (D208). It was nonetheless the restraint target, the gate value and the
+  (¶208). It was nonetheless the restraint target, the gate value and the
   reasoning baseline for five weeks.
-- **2.68 A** - D184's superposition of 6NC5's zinc into 6DN4. **Void**: 6DN4
-  contains zero metal atoms (D208), so this is our own geometry, not a
+- **2.68 A** - ¶184's superposition of 6NC5's zinc into 6DN4. **Void**: 6DN4
+  contains zero metal atoms (¶208), so this is our own geometry, not a
   measurement.
 - **4.20 A** - real, measured in 6NC5, but 6NC5 is the Q93H/K226H double mutant
   **with Zn2 occupied**, and that Zn2 ion is what holds the carboxylate
@@ -27,8 +27,8 @@ atoms, zero metal sites.
 **What would settle it.** A wild-type CSR-1 structure with Zn1 occupied and Zn2
 empty, which does not exist; or, failing that, a thermodynamic calculation
 whose geometry is not handed to it (plan item 11, deferred by design). Note
-that D206 rule 3 excludes our own minima from answering it, which is exactly
-why three campaigns on this residue (D51-D59, D120-D145, D173-D200) each
+that ¶206 rule 3 excludes our own minima from answering it, which is exactly
+why three campaigns on this residue (¶51-¶59, ¶120-¶145, ¶173-¶200) each
 reopened.
 
 **What is settled, and is enough for the decision:**

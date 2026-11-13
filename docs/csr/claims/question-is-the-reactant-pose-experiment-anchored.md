@@ -1,7 +1,7 @@
 ---
 type: question
 status: open
-entries: [D89, D123, D156, D178, D186, D191, D192, D194, D197, D247, D252]
+entries: [¶89, ¶123, ¶156, ¶178, ¶186, ¶191, ¶192, ¶194, ¶197, ¶247, ¶252]
 ---
 
 # Is the reactant every QM/MM result is computed on an experiment-anchored Michaelis complex, or a docked pose with one coordinate restrained?
@@ -14,7 +14,7 @@ earlier, and the map could not have flagged it. Provenance edges now exist
 ([[relax10-holds-the-crystal-geometry-for-10-ns]] is `required by` the QM/MM
 observations), and this question is the standing premise they lead to.
 
-**The measurement, D247.** 7UHI's moxalactam transferred into `relax10`'s own
+**The measurement, ¶247.** 7UHI's moxalactam transferred into `relax10`'s own
 frame, fit RMSD **0.310 Å** on His88 NE2 / His164 NE2 / Asp92 CG — the best fit
 this project has achieved, against 0.622 Å into `CSR_wt` and 0.851 Å into
 `CSR_ligand`:
@@ -26,16 +26,16 @@ this project has achieved, against 0.622 Å into `CSR_wt` and 0.851 Å into
 | β-lactam carbonyl to Zn1 | 2.610 (restrained) | 3.15 |
 | C3 carboxylate O to Zn1 | 5.656 / 6.813 | 1.85 / 3.98 |
 
-The nine docked poses spanned 0.98–3.66 Å by centroid (D156); `scan_00` gave
-5.15 Å, which D156 called further than any of them. `relax10` is **6.20 Å**.
+The nine docked poses spanned 0.98–3.66 Å by centroid (¶156); `scan_00` gave
+5.15 Å, which ¶156 called further than any of them. `relax10` is **6.20 Å**.
 `eq6` restrained `Zn–O2x` in to ~2.6 Å and `relax10` held it, so the one
 coordinate anybody inspects reads correctly while the body sits 2.51 Å further
 from the metal than L1's does. **Right coordinate, wrong body.**
 
-**The restraint is not the defect (D252, the user's correction).** `eq6`'s
+**The restraint is not the defect (¶252, the user's correction).** `eq6`'s
 `Zn–O2x` term at ~2.6 Å is **necessary**: MM does not model coordination or
 other metal effects, so anything within 3–4 Å of the zinc is restrained at its
-crystal distance — the D186 rule, stated repeatedly. What is wrong here is not
+crystal distance — the ¶186 rule, stated repeatedly. What is wrong here is not
 that the carbonyl is held but that the restraint was the *only* thing locating
 the ligand, leaving the body free to sit 6.2 Å from the experimental mode. A
 necessary restraint and an unanchored pose are two separate facts, and an
@@ -43,21 +43,21 @@ earlier draft of this node conflated them.
 
 **Two arguments that are NOT available here, and must not be re-derived.**
 
-1. **"The substrate dissociated, so the pose is wrong."** Discarded at D89,
-   re-derived and discarded at D192, consolidated as discarded at D194, and
+1. **"The substrate dissociated, so the pose is wrong."** Discarded at ¶89,
+   re-derived and discarded at ¶192, consolidated as discarded at ¶194, and
    re-derived a fourth time in a draft of
-   [[no-usable-michaelis-complex-exists-yet]] on 2026-11-09 (D246). The
+   [[no-usable-michaelis-complex-exists-yet]] on 2026-11-09 (¶246). The
    `wt100c`/`prod100c` substrate loss was **one config line** — an Asp92 OD1
    restraint written *instead of* the attack restraint rather than beside it.
 2. **"The uncoordinated carbonyl is a regression."** It is a design decision
-   (D98: *"Nothing asserts the carbonyl coordinates the zinc"*), and D194
+   (¶98: *"Nothing asserts the carbonyl coordinates the zinc"*), and ¶194
    withdraws "transfer a different pose" as a proposal to undo a decision.
 
-What survives without either: D156's centroid measurement, D197's rejection of
+What survives without either: ¶156's centroid measurement, ¶197's rejection of
 the equilibrated structure on `O1x` occupancy (97.9% unrestrained in the fourth
-coordination site, carbonyl inside 2.5 Å in 0.3% of frames), and D247 above.
+coordination site, carbonyl inside 2.5 Å in 0.3% of frames), and ¶247 above.
 
-**What would answer it.** The route of record, D178, builds the Michaelis
+**What would answer it.** The route of record, ¶178, builds the Michaelis
 complex from **5AXO** — SMB-1 with hydrolysed meropenem, our own substrate in a
 B3 enzyme, measured — by re-forming the `C4x–N1x` bond:
 
@@ -66,21 +66,21 @@ B3 enzyme, measured — by re-forming the `C4x–N1x` bond:
 
 so the structure `recombine` ends on **is** the complex, anchored through the
 product and on the product's own topology, hence a valid NEB partner by
-construction. D178 scoped 7UHI as the check; **D192 made it the source**, and
-that part of D192 stands. D178 also rejected the alternative — grafting
+construction. ¶178 scoped 7UHI as the check; **¶192 made it the source**, and
+that part of ¶192 stands. ¶178 also rejected the alternative — grafting
 meropenem's substituents onto 7UHI's transferred moxalactam core — as "strictly
 harder and less direct than re-forming a bond in a molecule that is already
-meropenem", so that route is not to be re-proposed (D246).
+meropenem", so that route is not to be re-proposed (¶246).
 
 The route is half built: `CSR_prod` transferred LMP into our frame and mapped it
-onto our atom names by graph isomorphism (D159), and `prod100c` then NaN'd at
-22.68 ns and failed the gate (D191). **One practical obstacle on top of the
-NaN:** D247's transfer lands L1's carboxylate oxygen 1.85 Å from our zinc, a
-clash, so the clash check D156 §5.2 required is not optional.
+onto our atom names by graph isomorphism (¶159), and `prod100c` then NaN'd at
+22.68 ns and failed the gate (¶191). **One practical obstacle on top of the
+NaN:** ¶247's transfer lands L1's carboxylate oxygen 1.85 Å from our zinc, a
+clash, so the clash check ¶156 §5.2 required is not optional.
 
 **What does not depend on the answer.** The method-comparison results are
 common-mode — both Hamiltonians saw the same structure — so the matched
-DFT-versus-GFN2 agreement on Lys226 and disagreement on the carboxylate (D245)
+DFT-versus-GFN2 agreement on Lys226 and disagreement on the carboxylate (¶245)
 hold regardless. The Asp92 and Lys226 distances are good measurements of the
 **resting** site, matching substrate-free 6DQH to within 0.13 Å on four of five
 coordinates; they cannot be captioned as Michaelis-complex geometry. **The

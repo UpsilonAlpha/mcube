@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-"""Build the gas-phase cluster models for the GFN2-vs-DFT benchmark (P1/D187).
+"""Build the gas-phase cluster models for the GFN2-vs-DFT benchmark (P1/¶187).
 
 The question this exists to answer is narrow and was asked by the user on
 2026-11-03: **does GFN2-xTB hold meropenem's 6-(1-hydroxyethyl) oxygen O1x on
 the zinc when DFT would not?** `md_eq5` found O1x coordinated in 97.9% of
-10,000 frames at 2.18 A mean (D197), closer than the restrained carbonyl and as
+10,000 frames at 2.18 A mean (¶197), closer than the restrained carbonyl and as
 close as the anionic hydroxide, and nothing in the MM or QM/MM machinery can
 say whether that is real:
 
@@ -12,17 +12,17 @@ say whether that is real:
   cannot tell an alcohol oxygen from a hydroxide: every oxygen in reach is
   rewarded for approaching, and the Li/Merz IOD parameters the run DOES apply
   move the Zn-O minimum to ~1.89 A rather than removing the problem
-  (`ions.py`'s own note; corrected in D199). MM MD is also documented to
+  (`ions.py`'s own note; corrected in ¶199). MM MD is also documented to
   overfavour octahedral zinc (PMID 34748329).
 - QM/MM MD cannot, because **no QM/MM run in this project has ever crossed the
-  coordination boundary in either direction** (D197 corrections): held in, a
+  coordination boundary in either direction** (¶197 corrections): held in, a
   donor stays in; left out, it goes further out. Ligand exchange at Zn(II) is
   slower than the tens of ps affordable, so the trajectory length is what would
   be measured, not the chemistry.
 
 What is left is a thermodynamic comparison on fixed geometries, which is
 Imhof's own protocol - the paper this project's method follows - and the reason
-plan item 7 has been open since D9. Imhof found AM1/d made a 4 -> 5 coordination
+plan item 7 has been open since ¶9. Imhof found AM1/d made a 4 -> 5 coordination
 change **7.55 kcal/mol** too favourable; the equivalent number for GFN2 is
 unmeasured and no GFN2 benchmark for zinc coordination number in enzymes
 appears to exist.
@@ -45,13 +45,13 @@ atom by hand would put a strained geometry into one bracket only, and a
 single-point energy on it would report that strain as chemistry.
 
 **What this does NOT do.** It does not optimise either cluster, so these are not
-binding energies. `sp` is a single-point stage by construction (D188) and an
+binding energies. `sp` is a single-point stage by construction (¶188) and an
 optimisation at both levels is a separate, larger job. The difference-of-
 differences is still the method comparison, which is what is being asked; a
 reader wanting a binding energy needs the optimisations as well, and that should
 be said wherever this number is quoted.
 
-**The truncation, read from CONECT records rather than guessed** (D187 is
+**The truncation, read from CONECT records rather than guessed** (¶187 is
 explicit that this is the one thing not to infer from distances - inferring
 bonding by distance already put a spurious O-O bond in a strained geometry
 once). From `mer_crystal.pdb`'s 51 CONECT records the real topology is:
@@ -65,21 +65,21 @@ once). From `mer_crystal.pdb`'s 51 CONECT records the real topology is:
 so the fragment keeping BOTH oxygens of interest is the intact beta-lactam ring
 plus the hydroxyethyl: C4x, O2x, N1x, C3x, C17x, C2x, O1x, C1x.
 
-**The C3 carboxylate is deliberately left out, which departs from D187's scope**
+**The C3 carboxylate is deliberately left out, which departs from ¶187's scope**
 (it expected a ~15-atom fragment of net -1, implying the carboxylate). Two
 reasons. It sits 5.93 and 7.05 A from the zinc through the whole of `md_eq5`
-(D197), so it is not part of this contact. And in a *gas-phase* cluster a bare
+(¶197), so it is not part of this contact. And in a *gas-phase* cluster a bare
 carboxylate 6 A from a dication adds an enormous charge-separation term to both
 brackets; it would largely cancel in `dd`, but it also destabilises the SCF and
 makes a 1-10 kcal/mol effect ride on a far bigger number. Leaving it out makes
 the cluster neutral, which is the better-behaved calculation. The site part of
-D187's scope is unchanged.
+¶187's scope is unchanged.
 
 **Charge and multiplicity.** Zn(2+) + acetate(-1) + hydroxide(-1) + two neutral
 4-methylimidazoles + a neutral fragment = **0**, multiplicity 1 for d10 Zn(II).
 Every `sp` section states `charge` explicitly: a section left at an inherited
 value converges its SCF on the wrong species while looking entirely normal
-(D152).
+(¶152).
 
 Usage, from the run directory:
 

@@ -2,8 +2,8 @@
 type: observation
 evidence: ours
 status: supported
-entries: [D156, D159, D257]
-checked: [D159]
+entries: [¶156, ¶159, ¶257]
+checked: [¶159]
 ---
 
 # Our Zn1 sits 1.31 Å from where 5AXO's Zn1 lands after a site fit, so any transfer-derived distance measured against OUR metal carries that offset
@@ -32,7 +32,7 @@ distance.
 The fit aligns the *site atoms*; **the metal is not a fit atom.** So a distance
 from the transferred ligand to OUR metal is the crystal distance plus the metal
 offset, and the offset here is larger than the fit residual by a factor of five.
-Concretely: 5AXO's own Zn1–O32 is **3.41 Å** (D159, measured in 5AXO), and the
+Concretely: 5AXO's own Zn1–O32 is **3.41 Å** (¶159, measured in 5AXO), and the
 transferred ligand's O32 reads **2.13 Å** against our zinc — the difference is
 the 1.31 Å displacement, not a prediction.
 
@@ -42,7 +42,7 @@ that the hydrolysed product's C3 carboxylate binds Zn1 at ~2.1 Å — the MM
 trajectory (2.06) and this transfer (2.13). **They do not agree; they share an
 artefact.** The MM number is MM's, and the transfer number is our metal's
 position. Nothing crystallographic says that carboxylate is 2.1 Å from CSR-1's
-zinc. Caught by the check D156 prescribes for exactly this — *does the
+zinc. Caught by the check ¶156 prescribes for exactly this — *does the
 template's own distance come back?* — and not by inspection of the fit RMSD,
 which looked excellent throughout.
 

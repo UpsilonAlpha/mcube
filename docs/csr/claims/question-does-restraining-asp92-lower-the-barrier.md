@@ -1,7 +1,7 @@
 ---
 type: question
 status: open
-entries: [D157, D213, D214]
+entries: [¶157, ¶213, ¶214]
 ---
 
 # Does holding Asp92 off Zn1 actually lower the hydrolysis barrier, and by how much?
@@ -14,7 +14,7 @@ and nothing computed has tested it.
 in this project ([[no-reaction-coordinate-has-ever-been-computed]]). The one
 relevant profile that does exist, `scan_znasp` in `CSR_crystal_v2`, is along the
 Zn-Asp92 distance rather than along the reaction, and it is on the lineage whose
-pose was pulled onto the metal by hand (D68): 2.05 -> 3.05 A costs
+pose was pulled onto the metal by hand (¶68): 2.05 -> 3.05 A costs
 **+8.46 kcal/mol, monotonically uphill, minimum at 2.175 A**. That says the
 energy function prefers the carboxylate on the metal; it says nothing about
 hydrolysis.

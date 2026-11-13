@@ -2,8 +2,8 @@
 type: observation
 status: supported
 evidence: ours
-entries: [D231, D232]
-checked: [D232]
+entries: [¶231, ¶232]
+checked: [¶232]
 ---
 
 # From a crystal-consistent start with the salt bridge intact, GFN2 brings Asp92 onto Zn1 as a bidentate chelate within 8 ps and keeps it there
@@ -47,7 +47,7 @@ agree without sharing any code.
   every frame, and O01 carries exactly one hydrogen (0.98–0.99 Å) throughout —
   it is still a hydroxide. So the collapse is **not** downstream of the Lys226
   proton transfer, which is how [[zinc-bound-crystal-holds-asp92-off-the-metal]]
-  and D216 proposed to explain it away. See the caveat this puts on
+  and ¶216 proposed to explain it away. See the caveat this puts on
   [[lys226-protonates-the-nucleophile-under-qmmm]].
 - **The salt bridge held.** NZ–OD2 mean **2.87 Å** (min 2.53, max 4.24) against
   2.79 Å in 6DQH. The carboxylate is bonded to the metal at 2.10 Å *and*

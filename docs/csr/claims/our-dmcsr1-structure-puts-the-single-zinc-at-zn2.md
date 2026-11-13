@@ -2,8 +2,8 @@
 type: observation
 evidence: experimental
 status: supported
-entries: [D217]
-checked: [D217]
+entries: [¶217]
+checked: [¶217]
 ---
 
 # Our own dmCSR-1 S214D structure, at 1.27 A, puts the single zinc at Zn2 with Asp92 as its ligand, and Zn1 at half occupancy

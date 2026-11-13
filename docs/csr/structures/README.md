@@ -9,7 +9,7 @@ control.
 
 | file | source on Bunya | what it is |
 | --- | --- | --- |
-| `l1_in_relax10.pdb` | written by `refstruct.py transfer`, D247 | 7UHI's moxalactam (`MX0`, 23 atoms) fitted onto `relax10`'s zinc site, RMSD 0.310 Å. The experimental Michaelis geometry **in our frame** — the reference D247 measured the 6.20 Å centroid separation against |
+| `l1_in_relax10.pdb` | written by `refstruct.py transfer`, ¶247 | 7UHI's moxalactam (`MX0`, 23 atoms) fitted onto `relax10`'s zinc site, RMSD 0.310 Å. The experimental Michaelis geometry **in our frame** — the reference ¶247 measured the 6.20 Å centroid separation against |
 
 Regenerate `l1_in_relax10.pdb` with, from `CSR_mich/`:
 

@@ -2,8 +2,8 @@
 type: observation
 evidence: ours
 status: supported
-entries: [D238, D240, D244]
-checked: [D240, D244]
+entries: [¶238, ¶240, ¶244]
+checked: [¶240, ¶244]
 ---
 
 # GFN2's own minimum from the crystal-consistent frame puts Asp92 further from Zn1 than the crystal does, and pulls the substrate carbonyl onto the metal instead
@@ -25,12 +25,12 @@ write the section otherwise, not by inspection.
 | Zn–O2x | 2.610 | **2.282** | | |
 | O01–C4x | 3.481 | 3.673 | | |
 
-**This was pre-registered as the second of three outcomes (D238), and it is the
+**This was pre-registered as the second of three outcomes (¶238), and it is the
 one that happened.** The written reading was: both methods keeping Asp92 out
-means D232's chelation is not a minimum GFN2 puts in the wrong place, and the
+means ¶232's chelation is not a minimum GFN2 puts in the wrong place, and the
 claim about over-coordination has to be narrowed to say so.
 
-**Two differences from D232, and ONE OF THEM IS NOW CLOSED (D244).** That was
+**Two differences from ¶232, and ONE OF THEM IS NOW CLOSED (¶244).** That was
 50 ps at 300 K with the whole system free; this is 0 K **and** had the MM
 environment frozen, because the active region was the QM atoms only. `aspxtb8`
 (job 32489558) repeated it with **479 active atoms** instead of 124 — same
@@ -47,9 +47,9 @@ bring Asp92 in.**
 | NZ–OD2 | 2.718 | **2.749** | 2.79 |
 | Zn–O2x | 2.282 | 2.211 | |
 
-This was **pre-registered as the second of three outcomes in D241**, and it is
+This was **pre-registered as the second of three outcomes in ¶241**, and it is
 the one that happened: the frozen shell was not what held the carboxylate off
-the metal, so of the two explanations for D232's chelate only **thermal
+the metal, so of the two explanations for ¶232's chelate only **thermal
 energy** is left. The carboxylate also *rotates* once the shell is free — OD2
 in 0.29 Å to the crystal distance, OD1 out 0.88 Å to the largest Zn–OD1
 distance anywhere in this project, 1.55 Å off 6DQH. Monodentate to Lys226 and

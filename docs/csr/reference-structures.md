@@ -20,7 +20,7 @@ so a borderline contact is visible instead of hidden by the cutoff.
 ## CSR-1 itself — the sphere every other number is referenced against
 
 This belongs first and was missing from this file until 2026-10-29, which is
-part of why D120 took three weeks to find: the number that decides whether a
+part of why ¶120 took three weeks to find: the number that decides whether a
 model's metal site is right was recorded only in a decision entry.
 
 ```bash
@@ -33,12 +33,12 @@ python refstruct.py shell 6nc5.pdb
 | zinc | donors within 3.2 Å | what it is |
 | --- | --- | --- |
 | **ZN302** | HOH485 **1.90**, His163 NE2 **2.09**, HOH493 **2.14**, His87 NE2 **2.22** | **the site we model.** Wild-type ligands |
-| ZN301 | Asp91 OD2 1.95, His92 NE2 2.01, His225 NE2 2.04, HOH493 2.08 | the Zn2 site — **present only because of the mutations**, see below. **Asp91 here is our Asp92**: the numbering is ours minus one, so the aspartate whose coordination we keep arguing about is a **Zn2 ligand** (D133) |
+| ZN301 | Asp91 OD2 1.95, His92 NE2 2.01, His225 NE2 2.04, HOH493 2.08 | the Zn2 site — **present only because of the mutations**, see below. **Asp91 here is our Asp92**: the numbering is ours minus one, so the aspartate whose coordination we keep arguing about is a **Zn2 ligand** (¶133) |
 | ZN303 | HOH485 1.88, HOH516 1.96, HOH504 2.13, acetate 2.79 | adventitious (3.39 Å from ZN302) |
 | ZN304–306 | Glu115/Glu141/His111/Asp129/Glu123, phosphate | adventitious surface sites |
 
 **ZN302 has four donors: two histidines and two waters. No carboxylate.** Asp92
-(BBL D120) sits at **2.80 Å** on OD2 — a second-shell contact, not a ligand.
+(BBL ¶120) sits at **2.80 Å** on OD2 — a second-shell contact, not a ligand.
 
 **Why ZN301 does not contradict "CSR-1 is mononuclear", and in fact proves it.**
 6NC5 is an engineered construct, titled the *HARLDQ motif*, and its `SEQADV`
@@ -68,7 +68,7 @@ Three consequences, all of them load-bearing:
 
 1. **Any model whose zinc carries five ligands, or a carboxylate, is wrong.** A
    saturated metal has no site for the substrate carbonyl, which is a sufficient
-   explanation of substrate loss without blaming the QM method (D120).
+   explanation of substrate loss without blaming the QM method (¶120).
 2. **2.80 Å is where Asp92 belongs, and it is not a bond.** Restraining it there
    is what rotated OD1 onto the metal. See `## Standing constraints` in the
    decision log and `LIGAND_MAX` in `preprocess.py`.
@@ -76,9 +76,9 @@ Three consequences, all of them load-bearing:
    Zn2-site** (GOB-18, Sfh-I, CphA), so none of those analogies transfers
    cleanly — which is why the thermolysin and carboxypeptidase A rows below,
    mononuclear hydrolases with one zinc doing both jobs, carry the criteria
-   instead (D124).
+   instead (¶124).
 
-`6DN4` is the apo/second CSR-1 entry used as a cross-check in D120.
+`6DN4` is the apo/second CSR-1 entry used as a cross-check in ¶120.
 
 ## The two mononuclear zinc hydrolases with transition-state analogues bound
 
@@ -106,12 +106,12 @@ files that means extra hits — 1TMN's `C1` carboxylate 7–8 Å from the metal,
 the centre whose oxygens are the ones near the zinc.
 
 **What this fixes, and what it does not.** It establishes that one metal can
-carry both oxygens, which is what D123 wrongly denied, and it sets the shape of
+carry both oxygens, which is what ¶123 wrongly denied, and it sets the shape of
 the criterion: one oxygen tight (2.01, 2.19), the other **loose** (2.41, 2.98).
 It does **not** validate an approach angle. Both are post-attack geometries —
 the two oxygens are bonded to the same tetrahedral centre, so 117–119° is a
 consequence of that bonding. Note also that 7CPA's O···O of 2.68 Å is the same
-as D34's 2.67–2.77 Å, which failed: **oxygen separation does not discriminate**.
+as ¶34's 2.67–2.77 Å, which failed: **oxygen separation does not discriminate**.
 The approach angle has to be measured on our own trajectory.
 
 ## The mononuclear metallo-β-lactamases, and why none of them transfers
@@ -122,7 +122,7 @@ The approach angle has to be measured on our own trajectory.
 | **1X8I**, **1X8G** | CphA (B2, mono-Zn) | Zn2 (Asp-Cys-His) | the route ruled out twice |
 | **7UHI**, **7UHJ** | L1 (B3, di-Zn), intact moxalactam | Zn1 + Zn2 | the only measured Michaelis complex: carbonyl O1 at 2.53/2.63 Å from Zn1 |
 | **7UHH**, **7UHK** | L1, the 20 ms and 80 ms snapshots of the same series | Zn1 + Zn2 | the intact β-lactam is seen to 100 ms; cleavage at 150 ms |
-| **5B15** | SMB-1 (B3, di-Zn) + **hydrolysed doripenem** | Zn1 + Zn2 | the structure Mu & Xu built their ampicillin Michaelis model from, by swapping the ligand on its core (D155). A carbapenem, so the core match to meropenem is closer than the swap they published |
+| **5B15** | SMB-1 (B3, di-Zn) + **hydrolysed doripenem** | Zn1 + Zn2 | the structure Mu & Xu built their ampicillin Michaelis model from, by swapping the ligand on its core (¶155). A carbapenem, so the core match to meropenem is closer than the swap they published |
 
 **Every mononuclear MBL in the literature carries its zinc in the Zn2 site.**
 CSR-1's is in Zn1 (His87/His163 = BBL H116/H196). It appears to be the only
@@ -154,11 +154,11 @@ CSR-1's Gln93 is BBL **121**, a Zn2 position. Same residue type, different site.
   <https://www.jbc.org/content/282/25/18286.long>
 - Horsfall et al., on GOB Met221 —
   <https://www.pure.ed.ac.uk/ws/files/8432406/FEBS_2010_Horsfall.pdf>
-- Das & Nair, **NDM-1 QM/MM**, arXiv:1702.01239 — cited in D40 for weak
-  carbonyl coordination, and **withdrawn for B3** in D123: L1's time-resolved
+- Das & Nair, **NDM-1 QM/MM**, arXiv:1702.01239 — cited in ¶40 for weak
+  carbonyl coordination, and **withdrawn for B3** in ¶123: L1's time-resolved
   snapshots measure 2.53–2.63 Å.
 
-## Putting a template's ligand in our frame (D156)
+## Putting a template's ligand in our frame (¶156)
 
 ```
 R=/scratch/user/uquadhik/refs          # 7UHI.pdb, 5AXO.pdb, 5B15.pdb from RCSB
@@ -183,7 +183,7 @@ The correspondences above were read off `refstruct.py shell` on each deposited
 file, not taken from the papers. **5AXR is not the hydrolysed-meropenem
 structure** (it is the 2-mercaptoethanesulfonate complex); 5AXO is.
 
-## How alike are the B3 enzymes we borrow from (D158)
+## How alike are the B3 enzymes we borrow from (¶158)
 
 ```
 python refstruct.py similarity 7UHI.pdb:A 5AXO.pdb:A 6nc5.pdb:A
@@ -200,7 +200,7 @@ mutations, and the only CSR-1 crystal carrying a metal. The identities are the
 ordinary B3 spread; what the table is for is the comparison *between* pairs,
 and L1 is closer to CSR-1 than it is to SMB-1.
 
-## Where Asp92 sits, across CSR-1's own three crystals (D179)
+## Where Asp92 sits, across CSR-1's own three crystals (¶179)
 
 `shell` needs a metal and the wild-type structures have none, so this is
 `pair`: the same two atoms in each file, with no superposition, so the answer
@@ -228,5 +228,5 @@ that the same site is being measured in each.
 is:** close in the only well-ordered wild-type copy, far in a mutant whose
 side chain is disordered (B 53–66) and in the construct that engineers a
 zinc-binding histidine into the position next to it. The 4.20 Å figure quoted
-from D145 onward as "the crystal's Asp92 distance" is 6NC5's — the engineered
+from ¶145 onward as "the crystal's Asp92 distance" is 6NC5's — the engineered
 one.

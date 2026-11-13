@@ -35,13 +35,13 @@ site:
   # Reported for every structure, so the whole first shell is always visible.
   monitor:
     Zn-Asp92 OD2: [B:1:ZN, A:92:OD2]
-    # D120: every monitor, scan and constraint in this file named OD2, which is
+    # ¶120: every monitor, scan and constraint in this file named OD2, which is
     # the oxygen that does NOT coordinate. OD1 was the one that migrated onto the
     # metal, at 1.99-2.07 A, and nothing was watching it.
     Zn-Asp92 OD1: [B:1:ZN, A:92:OD1]
     # The carboxylate CARBON, not an oxygen: a profile along Zn-OD1 is
     # contaminated every time the carboxylate rotates OD2 in and OD1 out, which
-    # is exactly the motion D120 was about. Zn-CG moves only when the whole
+    # is exactly the motion ¶120 was about. Zn-CG moves only when the whole
     # group moves, which is the coordinate the free energy is wanted along -
     # the same choice the classical carboxylate-cation PMFs make.
     Zn-Asp92 CG: [B:1:ZN, A:92:CG]
@@ -50,7 +50,7 @@ site:
     Zn-His88: [B:1:ZN, A:88:NE2]
     Zn-His164: [B:1:ZN, A:164:NE2]
     Zn-mer O2x: [B:1:ZN, C:1:O2x]
-    # D144: O1x, the 6-alpha-hydroxyethyl oxygen, is the closest substrate atom
+    # ¶144: O1x, the 6-alpha-hydroxyethyl oxygen, is the closest substrate atom
     # to the zinc in every run we have (3.00 A minimum over 5,000 frames,
     # against the carbonyl's 5.98) and the ligand the `substituent_on_metal`
     # hypothesis is about - and it was in no monitor, so no report ever printed
@@ -60,11 +60,11 @@ site:
     HOH485-C4x: [D:1:O, C:1:C4x]
     C4x-N1x: [C:1:C4x, C:1:N1x]
 
-    # ---- the RQK triad and the residues that hold the substrate (D148) ----
+    # ---- the RQK triad and the residues that hold the substrate (¶148) ----
     # Arg90 (BBL R118) stands where Zn1's third histidine would be; Gln93
     # (Q121) and Lys226 (K263) stand on two of Zn2's three ligand positions,
-    # which is why there is no Zn2. **Asp92 (D120) is NOT orphaned, corrected
-    # D209:** Lys226's ammonium holds its OD2 at 2.99 A in 6DN4 and 2.83 A in
+    # which is why there is no Zn2. **Asp92 (¶120) is NOT orphaned, corrected
+    # ¶209:** Lys226's ammonium holds its OD2 at 2.99 A in 6DN4 and 2.83 A in
     # 6DQ2, i.e. the lysine does on one side what Zn2 does at ~2.1 A in every
     # canonical B3. 6NC5 lacks the contact only because its `SEQADV` records
     # Lys226His as an engineered mutation - the lysine had to be removed before
@@ -82,12 +82,12 @@ site:
     Arg90 NH1-O01: [A:90:NH1, C:2:O01]
     Arg90 NH1-HOH485: [A:90:NH1, D:1:O]
     Lys226 NZ-O01: [A:226:NZ, C:2:O01]
-    # D209/D210: the salt bridge, and it had never been monitored anywhere.
+    # ¶209/¶210: the salt bridge, and it had never been monitored anywhere.
     # Lys254 NZ - Asp120 OD2 is 2.99 A in 6DN4 and 2.83 A in 6DQ2 (our Lys226 -
     # Asp92; both deposits are BBL numbering). OD2 is the BRIDGING oxygen: 2.76 A
     # from the zinc on one side by superposition, 2.99 A from the lysine on the
     # other, with OD1 pointing away from both (3.90 and 5.06 A). Both oxygens are
-    # here because D120 is what happens when only one of them is watched.
+    # here because ¶120 is what happens when only one of them is watched.
     Lys226 NZ-Asp92 OD2: [A:226:NZ, A:92:OD2]
     Lys226 NZ-Asp92 OD1: [A:226:NZ, A:92:OD1]
     Lys226 NZ-mer O3x: [A:226:NZ, C:1:O3x]
@@ -98,7 +98,7 @@ site:
     Asn225 ND2-O01: [A:225:ND2, C:2:O01]
 
   # `site.py contacts` - the pairs above over a trajectory. 3.5 A is the usual
-  # polar-contact convention for heavy-atom pairs, and the same number D32's
+  # polar-contact convention for heavy-atom pairs, and the same number ¶32's
   # one-off analysis used, so its occupancies can be compared with these.
   contacts:
     cutoff: 3.5
@@ -131,7 +131,7 @@ site:
     metals: [B:1:ZN]
 
   # `site.py check` - the acceptance criteria for a Michaelis complex, which is
-  # the guard that was missing in D123. Everything here was already measured and
+  # the guard that was missing in ¶123. Everything here was already measured and
   # recorded; what did not exist was a command that reads a structure and says
   # whether it qualifies, so the October pose was accepted by eye with its
   # carbonyl 5.43 A from the metal and ran for two weeks.
@@ -143,11 +143,11 @@ site:
   # attack distance and angle of it would reject a structure for not yet being
   # the thing the simulation is meant to produce. Run the check at BOTH ends -
   # `--at=start` on the grafted structure, `--at=reactant` on the last frame -
-  # because D120's five-coordinate zinc appeared during the MM, not before it.
-  # A criterion is only a criterion WITHIN a mechanism. D125 wrote "the closest
+  # because ¶120's five-coordinate zinc appeared during the MM, not before it.
+  # A criterion is only a criterion WITHIN a mechanism. ¶125 wrote "the closest
   # substrate oxygen must be the beta-lactam carbonyl" as though it were a fact
   # about Michaelis complexes. It is a fact about the carbonyl-on-metal
-  # mechanism, and that mechanism is the thing under test: D126 found a
+  # mechanism, and that mechanism is the thing under test: ¶126 found a
   # candidate complex that violates it while satisfying the attack geometry at
   # 3.17 A and 106 degrees. A gate that rejects a competing hypothesis by
   # assuming the first one is not a gate, it is a way of never testing
@@ -157,9 +157,9 @@ site:
 
     # The planned mechanism: the metal holds the beta-lactam carbonyl, loosely,
     # while a metal-bound hydroxide attacks it. Thermolysin and carboxypeptidase
-    # A both do this on one zinc (D124), and L1's time-resolved Michaelis
-    # complexes measure the carbonyl at 2.53-2.63 A from Zn1 (D121). What we do
-    # NOT have is a structure of our own in this arrangement: D126 showed no
+    # A both do this on one zinc (¶124), and L1's time-resolved Michaelis
+    # complexes measure the carbonyl at 2.53-2.63 A from Zn1 (¶121). What we do
+    # NOT have is a structure of our own in this arrangement: ¶126 showed no
     # docked pose puts anything within 5 A of the metal, so a start structure
     # for this hypothesis has to be built by restraint rather than found.
     carbonyl_on_metal:
@@ -168,18 +168,18 @@ site:
         among: [C:1:O2x, C:1:O1x, C:1:O3x, C:1:O4x]
         must_be: C:1:O2x
         required_at: [start, reactant]
-        source: D123; the October pose gave O1x 3.13 and the carbonyl 5.43
+        source: ¶123; the October pose gave O1x 3.13 and the carbonyl 5.43
 
       - name: Zn - carbonyl O2x
         atoms: [B:1:ZN, C:1:O2x]
         range: [2.4, 3.0]
         required_at: [start, reactant]
-        source: loose; L1 7UHJ 2.63, thermolysin 2.41, CPA 2.98 (D121, D124)
+        source: loose; L1 7UHJ 2.63, thermolysin 2.41, CPA 2.98 (¶121, ¶124)
 
       # MOVED to `reactant` only. The 1.9-2.2 A window is from crystal
       # structures, and our MM zinc does not reproduce crystal bond lengths: in
       # the grafted frame the whole sphere is systematically off - hydroxide
-      # 1.86 A (short), His88 2.22 and His164 2.32 A (long) - and D48 and D118
+      # 1.86 A (short), His88 2.22 and His164 2.32 A (long) - and ¶48 and ¶118
       # both measured this bond relaxing from 1.83-1.86 A to 1.99-2.05 A once
       # QM/MM took over. Gating an MM structure on an absolute Zn-donor bond
       # length therefore tests the force field, not the structure. The
@@ -191,10 +191,10 @@ site:
         atoms: [B:1:ZN, C:2:O01]
         range: [1.9, 2.2]
         required_at: [reactant]
-        source: tight; thermolysin 2.01, CPA 2.19 (D124) - crystal values
+        source: tight; thermolysin 2.01, CPA 2.19 (¶124) - crystal values
 
       # FIVE is allowed here, and only here, and the target is still four.
-      # The resting site is four-coordinate - 2 His + 2 waters (D120). On
+      # The resting site is four-coordinate - 2 His + 2 waters (¶120). On
       # binding, the substrate DISPLACES one of those waters and the other
       # becomes the nucleophilic hydroxide, so the complex this project is
       # trying to build is **2 His + hydroxide + carbonyl = four**.
@@ -203,15 +203,15 @@ site:
       # to five-coordinate on substrate binding (reference-structures.md), so
       # a retained second water is a real possibility rather than a build
       # error. And Asp92 OD2 sits at 2.80 A in the crystal as a second-shell
-      # contact (D120): a frame where it drifts inside the 2.5 A measurement
+      # contact (¶120): a frame where it drifts inside the 2.5 A measurement
       # radius counts as five here while not being five-coordinate in any
       # chemical sense. Demanding exactly four would reject both of those for
-      # the wrong reason (user's decision, D196).
+      # the wrong reason (user's decision, ¶196).
       - name: Zn coordination number
         coordination: B:1:ZN
         range: [4, 5]
         required_at: [reactant]
-        source: 2 His + hydroxide + carbonyl = 4; 5 tolerated, see above (D196)
+        source: 2 His + hydroxide + carbonyl = 4; 5 tolerated, see above (¶196)
 
       - name: O01 - C4x (attack)
         atoms: [C:2:O01, C:1:C4x]
@@ -219,7 +219,7 @@ site:
         required_at: [reactant]
         source: near-attack convention; 4.5 A is the outer bound (burgi_dunitz)
 
-      # NOT required at `reactant`, and the reason is measured (D201). The
+      # NOT required at `reactant`, and the reason is measured (¶201). The
       # 95-120 window is a TRANSITION-STATE criterion. At fixed O01...O2x the
       # attack angle is a function of the approach distance alone, and at a
       # reactant separation of 3.0-3.2 A thermolysin's own geometry - the
@@ -228,45 +228,45 @@ site:
       # whose O...O is wider, reaches it at 2.47-2.69 A, i.e. EARLIER along the
       # approach than either reference. Demanding it of a reactant rejects the
       # zinc-bound-nucleophile mechanism by construction, which is what it did
-      # from D33 to D200. `required_at` therefore names a stage `site.py check`
+      # from ¶33 to ¶200. `required_at` therefore names a stage `site.py check`
       # is never called with, so the angle still PRINTS and warns - it is worth
       # watching - but cannot fail a structure. See P10.
       - name: O01 - C4x - O2x angle
         atoms: [C:2:O01, C:1:C4x, C:1:O2x]
         range: [95, 120]
         required_at: [transition_state]
-        source: Burgi-Dunitz, at the TS; 26-38 deg is correct at 3.0-3.2 A (D201)
+        source: Burgi-Dunitz, at the TS; 26-38 deg is correct at 3.0-3.2 A (¶201)
 
       # What the angle was meant to ask, asked at the reactant instead: are the
       # nucleophile and the carbonyl correctly placed relative to each other on
       # one metal. Both windows are measured from 1TMN and 7CPA directly, not
-      # from a review (D201), and both reference enzymes are strongly CIS -
-      # which is why D200's "they must be trans" was withdrawn.
+      # from a review (¶201), and both reference enzymes are strongly CIS -
+      # which is why ¶200's "they must be trans" was withdrawn.
       - name: O01 - Zn - O2x
         atoms: [C:2:O01, B:1:ZN, C:1:O2x]
         range: [45, 95]
         required_at: [reactant]
-        source: measured 1TMN 57.2, 7CPA 60.1; batch 1 71.8 (D201)
+        source: measured 1TMN 57.2, 7CPA 60.1; batch 1 71.8 (¶201)
 
       - name: O01 ... O2x separation
         atoms: [C:2:O01, C:1:O2x]
         range: [2.0, 3.3]
         required_at: [reactant]
-        source: measured 1TMN 2.15, 7CPA 2.68; batch 1 3.05 (D201)
+        source: measured 1TMN 2.15, 7CPA 2.68; batch 1 3.05 (¶201)
 
       - name: Asp92 OD1 - O01
         atoms: [A:92:OD1, C:2:O01]
         range: [2.5, 3.2]
         required_at: [reactant]
-        source: H-bond not coordination; D119 measured 2.82-2.94 at 100% frames
+        source: H-bond not coordination; ¶119 measured 2.82-2.94 at 100% frames
 
-    # The arrangement the grafted pose-2 structure actually presents (D126).
+    # The arrangement the grafted pose-2 structure actually presents (¶126).
     # The metal holds the 6-alpha-hydroxyethyl O1x at 2.66 A, the carbonyl
     # points away at 4.50 A, and the zinc-bound hydroxide sits on the attack
-    # line at 3.17 A and 106 degrees - inside the Burgi-Dunitz window that D34
+    # line at 3.17 A and 106 degrees - inside the Burgi-Dunitz window that ¶34
     # never reached in 791 frames, with Asp92 OD1 at 2.87 A as general base.
     #
-    # It is a hybrid of the two routes D124 separated: the nucleophile is
+    # It is a hybrid of the two routes ¶124 separated: the nucleophile is
     # metal-bound and on the attack line, as in thermolysin and CPA, while the
     # metal holds a substituent oxygen rather than the carbonyl, as GOB-18 does
     # with the C-3 carboxylate. It is listed here as a hypothesis to be tested,
@@ -280,24 +280,24 @@ site:
         among: [C:1:O2x, C:1:O1x, C:1:O3x, C:1:O4x]
         must_be: C:1:O1x
         required_at: [start, reactant]
-        source: D126 measured 2.66 A; GOB-18 binds a substituent, its C-3 COO-
+        source: ¶126 measured 2.66 A; GOB-18 binds a substituent, its C-3 COO-
 
       - name: Zn - O1x (6a-OH)
         atoms: [B:1:ZN, C:1:O1x]
         range: [2.0, 2.8]
         required_at: [start, reactant]
-        source: NOT a reference value - D126's own 2.66 A plus tolerance
+        source: NOT a reference value - ¶126's own 2.66 A plus tolerance
 
       - name: Zn - carbonyl O2x is OUT
         atoms: [B:1:ZN, C:1:O2x]
         range: [3.5, 20.0]
         required_at: [start, reactant]
-        source: the distinguishing negative; D126 measured 4.50 A
+        source: the distinguishing negative; ¶126 measured 4.50 A
 
       # MOVED to `reactant` only. The 1.9-2.2 A window is from crystal
       # structures, and our MM zinc does not reproduce crystal bond lengths: in
       # the grafted frame the whole sphere is systematically off - hydroxide
-      # 1.86 A (short), His88 2.22 and His164 2.32 A (long) - and D48 and D118
+      # 1.86 A (short), His88 2.22 and His164 2.32 A (long) - and ¶48 and ¶118
       # both measured this bond relaxing from 1.83-1.86 A to 1.99-2.05 A once
       # QM/MM took over. Gating an MM structure on an absolute Zn-donor bond
       # length therefore tests the force field, not the structure. The
@@ -309,21 +309,21 @@ site:
         atoms: [B:1:ZN, C:2:O01]
         range: [1.9, 2.2]
         required_at: [reactant]
-        source: tight; thermolysin 2.01, CPA 2.19 (D124) - crystal values
+        source: tight; thermolysin 2.01, CPA 2.19 (¶124) - crystal values
 
       - name: O01 - C4x (attack)
         atoms: [C:2:O01, C:1:C4x]
         range: [3.0, 3.5]
         required_at: [start, reactant]
-        source: D126 measured 3.17 A with no restraint on this coordinate
+        source: ¶126 measured 3.17 A with no restraint on this coordinate
 
       - name: O01 - C4x - O2x angle
         atoms: [C:2:O01, C:1:C4x, C:1:O2x]
         range: [95, 120]
         required_at: [start, reactant]
-        source: D126 measured 106 deg; this is why the hypothesis is listed
+        source: ¶126 measured 106 deg; this is why the hypothesis is listed
 
-      # Five for the same reason as the other hypothesis (D196): the
+      # Five for the same reason as the other hypothesis (¶196): the
       # substituent oxygen displaces a water rather than filling a vacancy
       # the resting site does not have, and a retained second water or a
       # drifting Asp92 OD2 should not fail the frame on its own.
@@ -331,13 +331,13 @@ site:
         coordination: B:1:ZN
         range: [4, 5]
         required_at: [reactant]
-        source: 2 His + hydroxide + O1x = 4; 5 tolerated, see above (D196)
+        source: 2 His + hydroxide + O1x = 4; 5 tolerated, see above (¶196)
 
       - name: Asp92 OD1 - O01
         atoms: [A:92:OD1, C:2:O01]
         range: [2.5, 3.2]
         required_at: [reactant]
-        source: H-bond not coordination; D126 measured 2.87 A
+        source: H-bond not coordination; ¶126 measured 2.87 A
 
 # Calculations. Each becomes a section in config.yaml. The starting structure is
 # `inputs.pdb_file` like any other input - there is no separate `start` key and
@@ -351,11 +351,11 @@ site:
 # NOTE: `forcefields` and `default_forcefields` are the exception - OpenMM
 # resolves those itself, from the directory the stage runs in, which is why they
 # still carry `../` or `../../`.
-# ---- QM regions with the RQK set in MM (D190) ----
+# ---- QM regions with the RQK set in MM (¶190) ----
 #
 # Charge deletion cannot reach a residue that is already quantum: electrostatic
 # embedding has removed its MM charges and `zero_charges` refuses it by name
-# (D153). Arg90 and Lys226 were inside the QM region in all eleven systems, so
+# (¶153). Arg90 and Lys226 were inside the QM region in all eleven systems, so
 # only Gln93 and Arg229 were ever measurable - and the paper's thesis is about
 # R, Q and K. The user's decision is to put **all four in MM**, so the whole set
 # is decomposed one way rather than two of it one way and two another.
@@ -368,7 +368,7 @@ site:
 # hydrolysed product, 0 for the reactant's zwitterion), the hydroxide (-1 on
 # the reactant), Arg90(+1), Lys226(+1). Without the two cations both arms are
 # **0**. A section left at the inherited 2 converges its SCF on the wrong
-# species while looking entirely normal (D152).
+# species while looking entirely normal (¶152).
 #
 # Anchors rather than nine copies: YAML expands them on load, so what
 # `sections.py` writes into a run's config.yaml is the literal mapping.
@@ -388,26 +388,26 @@ qm_regions:
   # forced by what the system is rather than chosen:
   #
   # **No `D: {1: HOH}`.** That water was removed to vacate the carbonyl's
-  # position (D196), so naming it here would refuse the section - which is the
+  # position (¶196), so naming it here would refuse the section - which is the
   # check working, not an obstacle.
   #
-  # **Asn225 is IN.** D197 found Asn225 OD1 coordinating the zinc in 17.9% of
+  # **Asn225 is IN.** ¶197 found Asn225 OD1 coordinating the zinc in 17.9% of
   # `md_eq5`'s frames, and at **2.19 A** in the frame this run starts from -
   # inside the 2.5 A bond radius by any reading. A donor that close left in MM
   # would have a coordinate bond represented by point charges, which is the one
   # thing electrostatic embedding cannot do. It was not in any earlier arm's
-  # region because it was not known to be a donor until D197.
+  # region because it was not known to be a donor until ¶197.
   #
   # Charge is unchanged at **0**: Zn(2+) -1 (Asp92) -1 (hydroxide) + 0 (the
   # reactant's zwitterionic ligand) + 0 (neutral Asn225, two neutral His), with
-  # Arg90 and Lys226 in MM per D190. Stated on the section regardless (D152).
+  # Arg90 and Lys226 in MM per ¶190. Stated on the section regardless (¶152).
   michaelis: &qmreg_mich
     B: {1: ZN}
     C: {2: OH, 1: mer}
     A: {88: HIS, 164: HIS, 92: ASP, 225: ASN}
 
   # The same region with the two RQK cations back INSIDE it (user, 2026-11-04).
-  # This does not revert D190. It splits the four cations by the kind of role
+  # This does not revert ¶190. It splits the four cations by the kind of role
   # each one has, because the user's decision is that **both** measurements have
   # to happen and one region cannot carry both.
   #
@@ -416,35 +416,35 @@ qm_regions:
   # a CHEMICAL one. A residue that transfers a proton has a contribution that
   # deleting a point charge does not represent, whatever region it sits in, so
   # for such a residue deletion is the wrong instrument rather than an
-  # unavailable one. That is why D190's objection does not bind here.
+  # unavailable one. That is why ¶190's objection does not bind here.
   #
   # Which cation is which is measured, not assumed:
   #
   #   Arg90, Lys226   Lys226 NZ ends batch 1 at 2.82 A from the nucleophile, 92%
-  #                   occupancy (D201), and the transfer is downhill in xTB
-  #                   (D29), at DFT (D35) and by 5.2 kcal/mol in a clean sphere
-  #                   (D48). An MM lysine cannot do it, so batch 1 did not test
+  #                   occupancy (¶201), and the transfer is downhill in xTB
+  #                   (¶29), at DFT (¶35) and by 5.2 kcal/mol in a clean sphere
+  #                   (¶48). An MM lysine cannot do it, so batch 1 did not test
   #                   the reactant's protonation state - it excluded it. Arg90
   #                   comes with it: it was inside the region in all eleven
-  #                   pre-D190 systems and it is the other cation in contact
+  #                   pre-¶190 systems and it is the other cation in contact
   #                   range of the substrate's own atoms.  -> QM, here.
   #   Arg229, Gln93   Arg229 holds the substrate carboxylate at 3.62 +/- 0.04 A
-  #                   across all 45 grid points and both trajectories (D150) and
+  #                   across all 45 grid points and both trajectories (¶150) and
   #                   never approaches a transferable proton; Gln93 is an amide.
   #                   Both are second-sphere electrostatics, which is what
   #                   deletion measures.  -> MM, so `zero_charges_qm_only` still
   #                   reaches them and the R and the Q of RQK keep the number
-  #                   D190 was protecting.
+  #                   ¶190 was protecting.
   #
   # So K's catalytic role comes out of this trajectory chemically and R229/Q93's
   # out of deletion. K's electrostatic row, if the paper still wants one, comes
-  # from mutagenesis - D190 already names that as the second campaign - or from
+  # from mutagenesis - ¶190 already names that as the second campaign - or from
   # an `sp` pair run on THESE frames with the all-MM region, where both members
-  # share a region and the difference is still one key apart (D152).
+  # share a region and the difference is still one key apart (¶152).
   #
   # **Charge +2, not 0**: the michaelis region's 0 plus Arg90(+1) and
-  # Lys226(+1). That is the value the eleven pre-D190 systems carried, which is
-  # the arithmetic check on it. Stated on the section regardless (D152).
+  # Lys226(+1). That is the value the eleven pre-¶190 systems carried, which is
+  # the arithmetic check on it. Stated on the section regardless (¶152).
   michaelis_rk: &qmreg_michrk
     B: {1: ZN}
     C: {2: OH, 1: mer}
@@ -452,7 +452,7 @@ qm_regions:
 
 sections:
 
-  # D42. Each of these is an optimisation only; score the result with a
+  # ¶42. Each of these is an optimisation only; score the result with a
   # separate `sp_dft` run on its QM_MM_optimized.pdb, which is how the DFT
   # single point gets 64 cores while the xTB optimisation does not need them.
   cleanR_lysH:                 # proton on Lys226
@@ -477,7 +477,7 @@ sections:
         - [B:1:ZN, C:1:O2x, 2.90]
         - [C:2:O01, A:226:HZ1, 0.98]
 
-  md_pose:                     # D59: is the substrate pose robust?
+  md_pose:                     # ¶59: is the substrate pose robust?
     stage: qmmm
     inputs:
       pdb_file: protdft/coscan/scan_08.pdb
@@ -489,7 +489,7 @@ sections:
       temp: 300
       cores: 4                 # xTB saturates ~4 threads; see docs/csr/README.md
 
-  scan_znasp:                  # D53: pull Asp92 off the zinc
+  scan_znasp:                  # ¶53: pull Asp92 off the zinc
     stage: scan
     inputs:
       pdb_file: protdft/zncheck/relax/QM_MM_optimized.pdb
@@ -500,7 +500,7 @@ sections:
       opt_maxiter: 300
       resume: true
 
-  scan_znco:                   # D58: pull the substrate carbonyl off the zinc
+  scan_znco:                   # ¶58: pull the substrate carbonyl off the zinc
     stage: scan
     inputs:
       pdb_file: protdft/zncheck/relax/QM_MM_optimized.pdb
@@ -511,7 +511,7 @@ sections:
       opt_maxiter: 300
       resume: true
 
-  # D93: the attack distance is the one coordinate that degraded unrestrained
+  # ¶93: the attack distance is the one coordinate that degraded unrestrained
   # (3.47 -> 5.41 A over 500 ps), while the trajectory improved on its own
   # (79 -> 96 degrees). A harmonic distance restraint holds the radial
   # coordinate and leaves both angular ones free, so MD can keep rotating into
@@ -528,9 +528,9 @@ sections:
         - [C:2:O01, C:1:C4x, 3.47]   # Zn-bound O -> beta-lactam carbonyl C
       nvt_time: 1000                       # 1 ns, per the ASH 2b protocol
 
-  # D94: is the 1.79 A Zn-Gln93 contact that MM produced a real minimum on the
-  # QM/MM surface, or an artefact held there by a barrier? Same test D53 ran on
-  # Asp92 and D58 on the carbonyl. An optimisation alone cannot answer it - it
+  # ¶94: is the 1.79 A Zn-Gln93 contact that MM produced a real minimum on the
+  # QM/MM surface, or an artefact held there by a barrier? Same test ¶53 ran on
+  # Asp92 and ¶58 on the carbonyl. An optimisation alone cannot answer it - it
   # only reports the basin it started in - so pull the contact out and read the
   # profile. Needs a preprocess that put Gln93 in the QM region, which happens
   # automatically once it is inside `cutoff` of the metal.
@@ -545,7 +545,7 @@ sections:
       opt_maxiter: 300
       resume: true
 
-  # The same run on a GPU. Measured on an H100 (D99): 845 ns/day against
+  # The same run on a GPU. Measured on an H100 (¶99): 845 ns/day against
   # 2.3 ns/day on 4 CPU cores for this 49k-atom system, so minimisation, NPT
   # and 1 ns of NVT together are minutes rather than most of a day - and a
   # 10-50 ns equilibration becomes one job instead of nine. Kept separate from
@@ -560,9 +560,9 @@ sections:
       platform: CUDA
       properties: {Precision: mixed}
 
-  # 100 ns NVT, the literature equilibration length (D92: Gervasoni 100 ns,
+  # 100 ns NVT, the literature equilibration length (¶92: Gervasoni 100 ns,
   # Guven 50, Lisa 10, Bahena-Mendez 10). About 4-5 h on an H100 at the rate
-  # D100 measured, so one job.
+  # ¶100 measured, so one job.
   #
   # `traj_frequency` is raised from md's 500 deliberately. At 500 and a 4 fs
   # step a frame lands every 2 ps, which over 100 ns is 50,000 frames - and md
@@ -574,7 +574,7 @@ sections:
   #
   # The substrate restraint stays on throughout, as Gervasoni keep theirs
   # through 100 ns of NVT production. It also makes this the test of whether
-  # the 80-degree attack angle rotates given 100x the time of D100's 1 ns -
+  # the 80-degree attack angle rotates given 100x the time of ¶100's 1 ns -
   # which is the prediction of mine that run disproved.
   #
   # GPU is for `md` only. A QM/MM step is bottlenecked on xTB and copies
@@ -589,7 +589,7 @@ sections:
       platform: CUDA
       properties: {Precision: mixed}
 
-  # ---- The ohH arm of the protonation test (D112, M0, D114). ----
+  # ---- The ohH arm of the protonation test (¶112, M0, ¶114). ----
   #
   # The same site with the proton moved from Lys226 NZ onto the nucleophile, to
   # run the test VIM-2 used: equilibrate each protonation state and keep the one
@@ -603,7 +603,7 @@ sections:
   # itself started from, at O01-C4x 3.33 A and 101 degrees - so they differ by
   # where one hydrogen sits and in nothing else. There is no fresh preprocess
   # and no second 100 ns. The lysH arm is `nacqm` (50 ps) continued by
-  # `qmmm_nacarg` (50 ps), which loses the substrate entirely (D111).
+  # `qmmm_nacarg` (50 ps), which loses the substrate entirely (¶111).
   #
   # Build the frame with
   #
@@ -649,7 +649,7 @@ sections:
       skip_npt: true
       skip_nvt: true
       cores: 4                    # physical cores; -c 8 on an SMT node
-      # Required here, and the reason D115 exists. This frame's atom order
+      # Required here, and the reason ¶115 exists. This frame's atom order
       # differs from `processed_pdb`'s by one proton, so the indexed rows in
       # `preprocess.results.coordination` no longer name the atoms they were
       # measured on - applied blindly they restrained meropenem's C1x instead
@@ -663,7 +663,7 @@ sections:
 
   # 50 ps, then another 50 by changing `time` to 100 and resubmitting this same
   # section: `resume: true` restores ASH's state file and runs only the
-  # remainder (D109). `extra_qm_residues` is not optional here even though
+  # remainder (¶109). `extra_qm_residues` is not optional here even though
   # Arg229 is also wanted for its own sake - without it `resolve_qm_region`
   # falls through to preprocess's saved atom *indices*, which are stale against
   # a frame where one hydrogen has moved. With it, the region is rebuilt from
@@ -685,7 +685,7 @@ sections:
       time: 50
       resume: true
 
-  # D107: Arg229 is cationic and contacts the substrate in 89% of frames (D29),
+  # ¶107: Arg229 is cationic and contacts the substrate in 89% of frames (¶29),
   # yet sat outside the QM region - while Lys226, which is *further* from both the
   # C3 carboxylate (4.80 vs 4.38 A) and the leaving nitrogen (6.93 vs 6.61 A), was
   # inside it. If the question is which cations stand in for the absent Zn2 in
@@ -707,14 +707,14 @@ sections:
       skip_equilibrate: false    # qmmm.inputs sets true; without this there is no MD
       skip_optimize: true        # MD only; optimising is a separate decision
 
-  # ---- D123. Back to Vina pose 2, with the carbonyl held on the zinc. ----
+  # ---- ¶123. Back to Vina pose 2, with the carbonyl held on the zinc. ----
   #
   # Everything from `md_nac` onward ran on a pose that presents meropenem's
   # 6-alpha-hydroxyethyl O1x to the zinc (3.13 A) and leaves the beta-lactam
   # carbonyl at 5.43 A. `CSR_ligand`'s hand-picked pose - Vina pose 2, score
   # -5.624, identified by `site.py graft`'s own bond-graph match - presents the
   # carbonyl at **2.55 A**, against 2.53-2.63 A measured in L1's time-resolved
-  # Michaelis complexes (D121). That is the pose to go back to.
+  # Michaelis complexes (¶121). That is the pose to go back to.
   #
   # BUILD, before either section runs. The old system cannot be reused as it
   # stands: it has His164 4.56 A off the metal, Asp92 bidentate on it, a
@@ -734,31 +734,31 @@ sections:
   #
   # Then **remove HOH485**. With the carbonyl inner-sphere the sphere is two His
   # + hydroxide + carbonyl, which is the four-coordinate canonical-equivalent
-  # D41 defined; HOH485 would be a fifth. D34 showed that dropping its restraint
+  # ¶41 defined; HOH485 would be a fifth. ¶34 showed that dropping its restraint
   # is not enough - the water stayed at 1.83 A - so it has to leave the
   # structure. It is the weakest ligand in the crystal anyway: in 6NC5 it bridges
-  # ZN302 to the artefact ZN303 (D40).
+  # ZN302 to the artefact ZN303 (¶40).
   #
   # Removing an atom renumbers the file, so `coordination_redetect: true` is
-  # mandatory below, for the reason D115 records.
+  # mandatory below, for the reason ¶115 records.
 
   # ===========================================================================
   # DO NOT RUN `subst` AS WRITTEN. It was submitted as job 30923516 on
   # 2026-10-29 and cancelled an hour in, for two reasons that the comment block
-  # below does not know about. D130.
+  # below does not know about. ¶130.
   #
-  #   1. Its start structure carries the shell D120 condemned. `subst_start.pdb`
+  #   1. Its start structure carries the shell ¶120 condemned. `subst_start.pdb`
   #      descends from `md_naclong`'s last frame, where Asp92 OD1 sits on the
   #      metal at 1.99 A. No detection cutoff undoes an artefact already in the
-  #      coordinates, and D120 costed the consequence: everything from `md_nac`
+  #      coordinates, and ¶120 costed the consequence: everything from `md_nac`
   #      onward re-run from a shell that matches the crystal.
   #
-  #   2. Its Asp92 restraints reinstate D120's condition rather than correcting
+  #   2. Its Asp92 restraints reinstate ¶120's condition rather than correcting
   #      it. Holding OD2 at 2.80 A is holding a second-shell contact - the exact
-  #      pair, at the exact distance, that D120 identified as the cause - and
+  #      pair, at the exact distance, that ¶120 identified as the cause - and
   #      adding OD1 at 3.81 A to block the rotation asserts the carboxylate's
   #      ORIENTATION where May's single restraint asserted only a distance.
-  #      That is more assumption, not less. D120's own conclusion is that
+  #      That is more assumption, not less. ¶120's own conclusion is that
   #      Asp92 reaching Zn1 is a question to ask, not an assumption to restrain
   #      in, so the design that follows restrains NEITHER oxygen and sets the
   #      detection cutoff tight enough that neither is ever picked up.
@@ -769,7 +769,7 @@ sections:
   # is what does not.
   # ===========================================================================
   # `subst` - the 100 ns NVT for the `substituent_on_metal` hypothesis, which is
-  # the only arrangement we have a structure for. D126/D127.
+  # the only arrangement we have a structure for. ¶126/¶127.
   #
   # Build step:
   #   site.py graft $Q/meropenem.pdbqt ref_mer.pdb \
@@ -796,39 +796,39 @@ sections:
   # What IS restrained is one documented error and one measured distance:
   #
   #   * Asp92 pinned in BOTH oxygens, OD2 at 2.80 and OD1 at 3.81. OD1 is on
-  #     the metal at 1.99 A in the grafted frame, which is D120's artefact, not
-  #     a feature of the enzyme: Asp92 is BBL D120, a Zn2-site ligand, and in
-  #     L1 it sits more than 4 A from Zn1 (D121). Pulling it off is correcting
+  #     the metal at 1.99 A in the grafted frame, which is ¶120's artefact, not
+  #     a feature of the enzyme: Asp92 is BBL ¶120, a Zn2-site ligand, and in
+  #     L1 it sits more than 4 A from Zn1 (¶121). Pulling it off is correcting
   #     a known error, not imposing a hypothesis - which is the distinction
   #     that the carbonyl restraint in `pose2` could not claim.
   #   * Zn-O1x held at 2.66 A, the value the structure already has, so the
   #     coordination that defines this hypothesis is not lost to drift before
   #     anything can be measured. Held where it is, not pulled to a chosen
-  #     number (D93).
+  #     number (¶93).
   #
   # HOH485 is removed in the build step, so the sphere is 2 His + hydroxide +
   # O1x = four. `coordination_redetect: true` is mandatory because removing a
-  # water renumbers the file (D115), and preprocess's own 3.0 A cutoff would
-  # otherwise re-detect Asp92 OD2 and restrain it alone, which is how D120
+  # water renumbers the file (¶115), and preprocess's own 3.0 A cutoff would
+  # otherwise re-detect Asp92 OD2 and restrain it alone, which is how ¶120
   # happened. The explicit pair above wins over a detected one (`md_restraints`).
   #
-  # What this run decides, which is D124's question asked of our own system:
+  # What this run decides, which is ¶124's question asked of our own system:
   # with the carbonyl off the metal and the attack line satisfied, is the
   # nucleophile the zinc-bound hydroxide (thermolysin/CPA) or a second,
   # non-metal-bound water (GOB-18)? `site.py joint` and `site.py acceptors` on
   # the trajectory answer it directly and need no new code. Cost ~3 h on one
-  # H100 at the rate D100 measured. Run those BEFORE committing the 119 h of
-  # QM/MM, which is what D119 said and what was not done.
+  # H100 at the rate ¶100 measured. Run those BEFORE committing the 119 h of
+  # QM/MM, which is what ¶119 said and what was not done.
 
   # One caution on the start check, which returned `accepted` and exit 0. The
   # coordination number is 4, but it is the WRONG four: the sphere at the 2.6 A
   # cutoff is hydroxide 1.86, Asp92 OD1 1.99, His88 2.22, His164 2.32 - and
   # O1x, at 2.66, is just outside it. So the criterion passed on a count while
-  # the composition is still D120's. The restraints below are what swap OD1 out
+  # the composition is still ¶120's. The restraints below are what swap OD1 out
   # for O1x over the run, and the `--at=reactant` check on the last frame is
   # what verifies that it happened. A count is not a composition; do not read
   # the start check as saying the sphere is right.
-  # ---- substopt: relieve the graft's clash before 100 ns is spent on it (D146)
+  # ---- substopt: relieve the graft's clash before 100 ns is spent on it (¶146)
   # ----
   #
   # `subst_start.pdb` was never optimised - it is a docked pose transplanted by
@@ -842,7 +842,7 @@ sections:
   #
   # So: one QM/MM optimisation first, ~10-20 min, with the Zn-O1x contact held
   # at the 2.66 A the structure has (the hypothesis, held where it is, not
-  # pulled - D93) and **nothing on Asp92**, since the question of where the
+  # pulled - ¶93) and **nothing on Asp92**, since the question of where the
   # carboxylate goes is the one we are trying to measure. It answers three
   # things cheaply: whether the proton settles on O01 or on O1x, whether O1x
   # stays on the metal when the rest of the site relaxes, and whether the 106
@@ -856,16 +856,16 @@ sections:
       opt_constraints:
         - [B:1:ZN, C:1:O1x, 2.66]
 
-  # ---- subst, with the restraint list the new rule gives it (D145/D146) ----
+  # ---- subst, with the restraint list the new rule gives it (¶145/¶146) ----
   #
   # Restrain what is within coordination range, at the distance it has in the
   # crystal (user, 2026-10-30). Measured in 6NC5 ZN302: His87 NE2 2.22,
   # His163 NE2 2.09, HOH485 1.90, HOH493 2.14 - and **Asp91 at 4.20/4.22 A**,
-  # nowhere near coordination range (D145). So Asp92 gets a restraint at its
+  # nowhere near coordination range (¶145). So Asp92 gets a restraint at its
   # crystal distance rather than none: the grafted structure has OD1 at 1.99 A,
-  # which is D120's artefact, and leaving it unrestrained is what put it there.
+  # which is ¶120's artefact, and leaving it unrestrained is what put it there.
   # Both oxygens are named, at 4.22 and 4.20, so no orientation is asserted -
-  # D130's objection to the old list, which held OD2 at 2.80 and OD1 at 3.81,
+  # ¶130's objection to the old list, which held OD2 at 2.80 and OD1 at 3.81,
   # does not apply to two equal distances.
   #
   # The hydroxide is held where it is, with no distance given, NOT at the
@@ -876,7 +876,7 @@ sections:
   #
   # HOH485 was removed in the build step, so O1x takes its position and the
   # sphere is 2 His + hydroxide + O1x = four, which is the only vacancy the
-  # crystal leaves (D145).
+  # crystal leaves (¶145).
   #
   # Repoint `pdb_file` at substopt's `QM_MM_optimized.pdb` once that run
   # finishes; sections.py refuses a structure that does not exist yet, so this
@@ -893,14 +893,14 @@ sections:
         - [B:1:ZN, A:164:NE2, 2.09]    # crystal His163
         - [B:1:ZN, C:2:O01]            # held where it is; see above
         - [B:1:ZN, C:1:O1x, 2.66]
-      nvt_time: 100000          # ps; ~3 h on an H100 at the rate D100 measured
+      nvt_time: 100000          # ps; ~3 h on an H100 at the rate ¶100 measured
       traj_frequency: 5000
       platform: CUDA
       properties: {Precision: mixed}
 
   # ===========================================================================
-  # `wt100` - the rebuild. D120 diagnosed the wrong zinc sphere, prescribed the
-  # fix in its closing paragraph, and the fix was never applied (D130); every
+  # `wt100` - the rebuild. ¶120 diagnosed the wrong zinc sphere, prescribed the
+  # fix in its closing paragraph, and the fix was never applied (¶130); every
   # md section above this line was built on a start structure or a restraint set
   # that carries the artefact. This is the first run that does not.
   #
@@ -912,7 +912,7 @@ sections:
   #      is 6NC5's ZN302 sphere with Asp92 correctly in the second shell. Every
   #      later frame has OD1 at 1.99-2.07 A, and no detection cutoff undoes an
   #      artefact already in the coordinates.
-  # **FALSIFIED BY MEASUREMENT (D177).** Point 2 below describes what the
+  # **FALSIFIED BY MEASUREMENT (¶177).** Point 2 below describes what the
   # DETECTOR does and was read as a statement about what the TRAJECTORY does.
   # Over this run's 100 ns the zinc is six-coordinate in 4995 of 5000 frames,
   # Asp92 OD2 bound at 2.07 A mean in 100% of them and OD1 bidentate in 56.7%.
@@ -923,7 +923,7 @@ sections:
   #   2. **The detection cutoff is 2.5 A, set in `preprocess.inputs.cutoff` in
   #      the run directory's config.yaml.** At 3.0 (the default this project
   #      ran at) Asp92 OD2 is inside the sphere and gets a restraint, which is
-  #      exactly how D120 happened. 2.5 is the longest Zn-O distance that is
+  #      exactly how ¶120 happened. 2.5 is the longest Zn-O distance that is
   #      still a bond (`LIGAND_MAX`); it keeps the crystal's four and excludes
   #      the 2.80 contact. This is not a cutoff chosen to produce an answer -
   #      it is the same number `preprocess.py` now warns against exceeding.
@@ -942,10 +942,10 @@ sections:
   # What it decides: whether the crystal's four-coordinate shell is stable over
   # 100 ns of MM, which is the premise every mechanism in the plan rests on and
   # which has never been tested on a correct sphere. Read it with
-  # `site.py shell` for occupancy - a count is not a composition (D129) - and
+  # `site.py shell` for occupancy - a count is not a composition (¶129) - and
   # `site.py check --at=reactant` on the last frame. Cost ~3.4 h on one fast
-  # GPU node at the 0.49 ns/min D131 measured. The substrate is unrestrained,
-  # so expect it to drift off the attack line as it did in D93; that is a
+  # GPU node at the 0.49 ns/min ¶131 measured. The substrate is unrestrained,
+  # so expect it to drift off the attack line as it did in ¶93; that is a
   # separate question and this run is not the test of it.
   wt100:
     stage: md
@@ -958,7 +958,7 @@ sections:
       properties: {Precision: mixed}
 
   # ===========================================================================
-  # ---- wt100b: the same run with the substrate held (D134). ----
+  # ---- wt100b: the same run with the substrate held (¶134). ----
   #
   # wt100 restrained nothing but the four detected zinc donors, and the
   # substrate left: mer O1x outside 2.6 A in every one of 5,000 frames, the
@@ -966,7 +966,7 @@ sections:
   # substrate in it, and `aspin` has no Michaelis start to scan.
   #
   # This adds naclong's substrate restraint - the one Gervasoni keep through
-  # 100 ns (D92) - and nothing else. Asp92 is still free, which is the whole
+  # 100 ns (¶92) - and nothing else. Asp92 is still free, which is the whole
   # point of the wt100 rebuild, so the comparison with wt100 is clean: one
   # restraint differs, and it is not on the zinc.
   wt100b:
@@ -976,23 +976,23 @@ sections:
       coordination_redetect: true
       restraints:
         - [C:2:O01, C:1:C4x, 3.47]
-      nvt_time: 100000          # ps; 3 h 12 m on a full H100 (D134)
+      nvt_time: 100000          # ps; 3 h 12 m on a full H100 (¶134)
       traj_frequency: 5000      # a frame every 20 ps; ~3 GB imaged
       platform: CUDA
       properties: {Precision: mixed}
 
   # `aspout` / `aspin` - is Asp92 on the zinc a basin, or the basin our scans
-  # started in? (D133)
+  # started in? (¶133)
   #
   # Where this stands: MM at 100 ns puts Asp92 OD1 on the metal with nothing
-  # restraining it (D102); 25 ps of unconstrained GFN2-xTB QM/MM MD from a free
-  # start pulls OD2 from 2.80 to 2.09 A (D51); and DFT is 1.6x steeper than xTB
+  # restraining it (¶102); 25 ps of unconstrained GFN2-xTB QM/MM MD from a free
+  # start pulls OD2 from 2.80 to 2.09 A (¶51); and DFT is 1.6x steeper than xTB
   # along that coordinate, 9.1 against 5.7 kcal/mol to reach 2.80 A, so it is
-  # not a semi-empirical artefact (D58, D60). The crystal has it off the metal
+  # not a semi-empirical artefact (¶58, ¶60). The crystal has it off the metal
   # at 2.80 A (6NC5 ZN302). Every level of theory we have run disagrees with the
   # structure, and that - not the restraints - is the open problem.
   #
-  # The one objection none of those runs answers is D94's: a relaxed scan reports
+  # The one objection none of those runs answers is ¶94's: a relaxed scan reports
   # the basin it started in, and `scan_znasp` and `scan_znco` both started bound.
   # So run the same coordinate from both ends and compare the curves.
   #
@@ -1001,7 +1001,7 @@ sections:
   #
   # Curves that lie on each other mean the well near 2.0 A is real on this
   # surface, and the question becomes why the crystal disagrees - which is what
-  # D133's hypothesis is for. Curves that separate mean the earlier scans were
+  # ¶133's hypothesis is for. Curves that separate mean the earlier scans were
   # measuring their own start and the preference is hysteresis.
   #
   # **This is not a free energy, and a free energy is what would settle it.**
@@ -1023,7 +1023,7 @@ sections:
   # own pdb_file.
   #
   # The first attempt at this arm (job 31016878) was cancelled at point 0 of 8
-  # after 4 h 39 m and 120 geomeTRIC steps, converged by no criterion (D137).
+  # after 4 h 39 m and 120 geomeTRIC steps, converged by no criterion (¶137).
   # The scan bond was held fine; what never satisfied was the rigid-water block,
   # because `scan` held the active-region MM waters unconditionally and a scan
   # always sets its own bond, so geomeTRIC got the whole block as `$set` - and a
@@ -1054,14 +1054,14 @@ sections:
   # same substrate. That is the hysteresis test proper - the same path walked
   # back - and it is also the only free-Asp92 start that exists. The two MD
   # candidates are both out: md_wt100's last frame has no substrate in the site
-  # (D134, O1x outside 2.6 A in every frame, carbonyl 7.80 A out, `site.py
+  # (¶134, O1x outside 2.6 A in every frame, carbonyl 7.80 A out, `site.py
   # check` rejects it), and md_wt100b kept the substrate but closed Asp92 right
   # down - OD1 at 2.15 A in 100% of 5,000 frames, bidentate, six-coordinate
-  # throughout (D138) - so neither offers an Asp92 that is off the metal.
+  # throughout (¶138) - so neither offers an Asp92 that is off the metal.
   #
   # If the two curves lie on each other the well near 2.0 A is real on this
   # surface; if they separate, every single-direction scan in the log was
-  # reporting its start (D94) and only a free energy can settle it.
+  # reporting its start (¶94) and only a free energy can settle it.
   aspin:
     stage: scan
     inputs:
@@ -1075,14 +1075,14 @@ sections:
       resume: true
 
   # ---- michaelis2d: can the carbonyl reach the zinc, and what does Asp92 do
-  # when it tries? (D144) ----
+  # when it tries? (¶144) ----
   #
   # Two questions neither the MD nor the 1D scans can answer, because no
   # structure we have ever had the substrate on the metal:
   #   1. does the substrate coordinate the zinc in the Michaelis complex?
   #   2. is Asp92 coordinated when it does?
-  # Every "Asp92 is on the metal" result in this log (D102, D120, D134, D138,
-  # D140, D143) comes from a state where the substrate is NOT coordinated, so
+  # Every "Asp92 is on the metal" result in this log (¶102, ¶120, ¶134, ¶138,
+  # ¶140, ¶143) comes from a state where the substrate is NOT coordinated, so
   # none of them answers question 2 as asked. And the crystal (6NC5) has Asp92
   # OFF at 2.80 A, so the restrained-MD answer is not admissible either: MD
   # cannot be trusted for coordination, and a contact in coordination range
@@ -1093,7 +1093,7 @@ sections:
   # (1.90 -> 3.60, five values spanning bound to the four-coordinate site);
   # within each row the carbonyl is pulled in, Zn-O2x 5.00 -> 2.10 in nine
   # steps, snaking so each point starts from an adjacent one. 45 points at
-  # ~8.5 min (D140's measured rate) is about 6.5 h on 8 cores.
+  # ~8.5 min (¶140's measured rate) is about 6.5 h on 8 cores.
   #
   # What the grid decides, whatever it says:
   #   - a row where the carbonyl reaches ~2.1 A at modest cost says the
@@ -1113,7 +1113,7 @@ sections:
   # `scan_aspin/scan_00.pdb` is aspout's 3.60 A end point re-optimised: two
   # histidines, hydroxide 1.84 and HOH485 2.01, Asp92 at 3.60/4.47, substrate
   # present with O1x 3.89 and the carbonyl 4.69. Waters already relaxed under
-  # the flexible-water model (D142), so no rigid-start strain either.
+  # the flexible-water model (¶142), so no rigid-start strain either.
   #
   # Rows therefore run OUTWARD-IN, 3.60 -> 1.90: the first row is the
   # four-coordinate site with a free face, and Asp92 is only brought back onto
@@ -1137,16 +1137,16 @@ sections:
         - [B:1:ZN, A:92:OD2]        # does the carboxylate go bidentate
         - [B:1:ZN, C:1:O1x]         # the hydroxyethyl O, the other candidate
                                     # ligand - 3.89 A here, and the closest
-                                    # substrate atom in every run (D144)
+                                    # substrate atom in every run (¶144)
         - [B:1:ZN, D:1:O]           # does the water leave to make room
         - [C:2:O01, C:1:C4x]        # the attack distance
       resume: true
 
-  # ---- rwoff / rwon: what did holding the waters cost? (D141) ----
+  # ---- rwoff / rwon: what did holding the waters cost? (¶141) ----
   #
-  # Every QM/MM gradient run in this project before D139 held the active-region
+  # Every QM/MM gradient run in this project before ¶139 held the active-region
   # MM waters rigid, because that was the default and no config ever set the
-  # key. Most of those runs converged anyway (D141's table), so the question
+  # key. Most of those runs converged anyway (¶141's table), so the question
   # left over is not whether they finished but whether the held waters moved
   # their energies.
   #
@@ -1157,9 +1157,9 @@ sections:
   # scan's, which is why `rwoff` is run as the control rather than comparing
   # straight to the scan's -447.32259831 Eh. `rwon - rwoff` is the number.
   #
-  # Agreement to a few tenths of a kcal/mol closes D141: every converged result
+  # Agreement to a few tenths of a kcal/mol closes ¶141: every converged result
   # in the log stands as computed. A larger gap is the size of the correction,
-  # and it would apply to every pre-D139 scan point and constrained
+  # and it would apply to every pre-¶139 scan point and constrained
   # optimisation. About 10 minutes each on 8 cores.
   rwoff:
     stage: qmmm
@@ -1170,7 +1170,7 @@ sections:
       extra_qm_residues: {A: [93]}
       opt_constraints:
         - [B:1:ZN, A:92:OD1, 2.75]
-      rigid_water: false         # the D139 default, stated for the record
+      rigid_water: false         # the ¶139 default, stated for the record
 
   rwon:
     stage: qmmm
@@ -1181,10 +1181,10 @@ sections:
       extra_qm_residues: {A: [93]}
       opt_constraints:
         - [B:1:ZN, A:92:OD1, 2.75]
-      rigid_water: true          # what every pre-D139 run did
+      rigid_water: true          # what every pre-¶139 run did
 
   # ===========================================================================
-  # DO NOT RUN `pose2` AS WRITTEN. D126 (2026-10-29) disproved its premise.
+  # DO NOT RUN `pose2` AS WRITTEN. ¶126 (2026-10-29) disproved its premise.
   #
   # Pose 2 as docked has NOTHING within 7.2 A of the zinc - it is the furthest
   # of the nine poses from the metal - and grafted into four different systems
@@ -1192,20 +1192,20 @@ sections:
   # receptor aligns onto the system backbone at 0.00 A RMSD. The 2.55 A below
   # is not a property of the pose: it is what the MAY RUN'S OWN RESTRAINT
   # produced, measured in `CSR_ligand/preprocess_results/finalsystem.pdb`,
-  # which D123 had already rejected for its metal site (Asp92 bidentate,
+  # which ¶123 had already rejected for its metal site (Asp92 bidentate,
   # His164 off the metal entirely).
   #
   # `site.py check --at=start` REJECTS the grafted structure (exit 1) on the
   # closest-oxygen criterion, the carbonyl distance and the nucleophile
   # distance. It also PASSES the attack distance at 3.17 A and the angle at
-  # 106 degrees - inside the Burgi-Dunitz window D34 never reached in 791
+  # 106 degrees - inside the Burgi-Dunitz window ¶34 never reached in 791
   # frames - which happens *because* the carbonyl is off the metal and the
   # 6-alpha-hydroxyethyl O1x holds the site at 2.66 A instead.
   #
-  # Pulling the carbonyl 4.50 -> 2.55 A would rebuild D34's failed geometry and
+  # Pulling the carbonyl 4.50 -> 2.55 A would rebuild ¶34's failed geometry and
   # destroy that 106 degrees. The section is kept unaltered as the record of
   # what was planned; which Michaelis complex to equilibrate is the user's
-  # decision and is stated at the end of D126.
+  # decision and is stated at the end of ¶126.
   # ===========================================================================
 
   pose2:                       # the constrained 100 ns NVT equilibration
@@ -1214,11 +1214,11 @@ sections:
       pdb_file: md_naclong_results/pose2_start.pdb
       coordination_redetect: true
       restraints:
-        # [SUPERSEDED - D126] "the distance pose 2 already has" is false: pose 2
+        # [SUPERSEDED - ¶126] "the distance pose 2 already has" is false: pose 2
         # has nothing within 7.2 A of the metal, and 2.55 A is the previous
         # restraint's own output rather than a measurement of anything.
         - [B:1:ZN, C:1:O2x, 2.55]
-        # Asp92 pinned in BOTH oxygens. D120: holding OD2 alone at 2.80 let OD1,
+        # Asp92 pinned in BOTH oxygens. ¶120: holding OD2 alone at 2.80 let OD1,
         # which nothing watched, rotate onto the metal (3.81 -> 1.99 A) and take
         # the coordination position the carbonyl needs. Both values are the
         # crystal-derived start's own.
@@ -1228,15 +1228,15 @@ sections:
         # starts at O01-C4x 3.81 A; set this to whatever `site.py sphere` reports
         # for the grafted frame rather than to a number chosen here.
         - [C:2:O01, C:1:C4x]
-      nvt_time: 100000          # ps; ~3 h on an H100 at the rate D100 measured
+      nvt_time: 100000          # ps; ~3 h on an H100 at the rate ¶100 measured
       traj_frequency: 5000      # a frame every 20 ps, ~7 GB (see `naclong`)
       platform: CUDA
       properties: {Precision: mixed}
 
-  # 300 ps of QM/MM MD from that equilibration. At the 1.427 s/step D119
+  # 300 ps of QM/MM MD from that equilibration. At the 1.427 s/step ¶119
   # measured, 300 ps of 1 fs steps is about 119 h of wall time, so this runs as
   # six resumed jobs: set `time` to 50, then 100, 150 ... and resubmit the same
-  # section, which is the D109 pattern `resume: true` exists for.
+  # section, which is the ¶109 pattern `resume: true` exists for.
   #
   # `charge` is NOT set here on purpose. It depends on which residues the region
   # picks up on the new structure, and asserting the wrong value converges the
@@ -1255,12 +1255,12 @@ sections:
       cores: 4                  # xTB saturates ~4 threads; CPU only
   # ---- Which protonation state is the reactant? Blocks every barrier. ----
   #
-  # D96: starting from Lys226-H+ with a Zn-bound hydroxide, a QM/MM optimisation
+  # ¶96: starting from Lys226-H+ with a Zn-bound hydroxide, a QM/MM optimisation
   # moved the proton to O01 on its own, leaving Zn-OH2 and a neutral Lys226. So
   # "the Michaelis complex" is presently two different chemical species and a
   # barrier computed from either is undefined until one is chosen.
   #
-  # These differ from `cleanR_lysH` / `cleanR_ohH` (D42) in what they do NOT
+  # These differ from `cleanR_lysH` / `cleanR_ohH` (¶42) in what they do NOT
   # constrain. Those hold Zn-Asp92 at 2.80 A and Zn-carbonyl at 2.90 A; the
   # first is stale - a free optimisation puts Asp92 at 2.17 - and the second
   # asserts the carbonyl coordinates this zinc, which for a mono-Zn B3 site is
@@ -1408,7 +1408,7 @@ sections:
       freq: true
       irc_method: mode
 
-  # ---- the charge-deletion pair (D152) ----
+  # ---- the charge-deletion pair (¶152) ----
   #
   # Mulholland's decomposition: zero a residue's MM point charges, recompute the
   # energy on an UNCHANGED geometry, and the difference is that residue's
@@ -1421,14 +1421,14 @@ sections:
   # These two run the SAME structure with the SAME settings and differ in one
   # key, which is the only way the difference means anything. Arg229 first: it
   # holds the substrate carboxylate at 3.62 +/- 0.04 A across all 45 grid points
-  # and both trajectories (D150), it is in MM, and it is the residue the paper
+  # and both trajectories (¶150), it is in MM, and it is the residue the paper
   # has to put a number on.
   #
   # The first run also settles an open question in the library: whether the
   # detection in `charge_sequences` finds where this ASH build keeps its point
   # charges. Check `pointcharge_lists` and `verified_after_run` in the results,
   # and that the two energies actually differ.
-  # ---- The hydrolysed-product complex, grafted from SMB-1's 5AXO (D156, D159)
+  # ---- The hydrolysed-product complex, grafted from SMB-1's 5AXO (¶156, ¶159)
   # and run in `CSR_prod`. Both of these are the reactant's protocol with
   # nothing added: `wt100`'s 100 ns and the 50 ps QM/MM MD that `ohH` and
   # `nacarg` ran, because the point of the product run is to be comparable.
@@ -1446,7 +1446,7 @@ sections:
     inputs:
       pdb_file: preprocess_results/finalsystem.pdb
       coordination_redetect: true
-      nvt_time: 100000          # ps; ~3 h on a full H100 (D134, D138)
+      nvt_time: 100000          # ps; ~3 h on a full H100 (¶134, ¶138)
       traj_frequency: 5000      # a frame every 20 ps
       platform: CUDA
       properties: {Precision: mixed}
@@ -1456,11 +1456,11 @@ sections:
   # `donor_elements` from `preprocess.inputs`, applies the minimum image, and
   # saves what it measured into this section's `results` - so the config records
   # the analysis as well as the run. This replaces `site.py shell`, which was
-  # outside the package and took its cutoff from a command line (D167).
+  # outside the package and took its cutoff from a command line (¶167).
   #
   # `per_residue: false` because a carboxylate binding with both oxygens is a
   # different sphere from one binding with one, and keying by residue hides
-  # exactly that - D166 measured Asp92 monodentate at 2.02 in `md_wt100` and
+  # exactly that - ¶166 measured Asp92 monodentate at 2.02 in `md_wt100` and
   # bidentate at 2.06/2.12 in `md_wt100b`.
   prodpost:
     stage: postprocess
@@ -1474,13 +1474,13 @@ sections:
       # the trajectory's OWN first frame, not `finalsystem.pdb`: postprocess
       # refuses a topology whose atoms disagree with the frames, and the first
       # frame is by definition the structure the trajectory was produced from
-      # (D171).
+      # (¶171).
       pdb_file: md_prod100_results/NVTtrajectory_firstframe.pdb
       trajectory: md_prod100_results/NVTtrajectory.dcd
       # Three frames back from the crash (60 ps), as the restart structure. The
       # last frame is the one nearest whatever went wrong, so it is the one not
       # to use; 60 ps is far enough to be clear of it and short enough that
-      # nothing else about the system has changed (D172).
+      # nothing else about the system has changed (¶172).
       export_frames: [-3]
       export_prefix: restart
       # Checked on that exported frame, because it is what the restart will
@@ -1497,9 +1497,9 @@ sections:
       # re-derives atom names from the SDF, so `hyd_crystal.pdb` -> `hyd.pdb`
       # renamed 15 of 53 atoms: O5x->O4x, O6x->O5x, **O01->O6x**, and the
       # hydrogens throughout. Verified by matching coordinates (all 53 within
-      # 0.05 A) and cross-checked against two shell measurements: D159 measured
+      # 0.05 A) and cross-checked against two shell measurements: ¶159 measured
       # our O6x/O5x at 2.92/2.94 from the zinc, and the final system reports
-      # O5x/O4x at the same two distances (D168).
+      # O5x/O4x at the same two distances (¶168).
       #
       # So the nucleophile oxygen - the hydroxide the product absorbed, `O01`
       # everywhere in this log - is **O6x** in the system that is simulated.
@@ -1543,7 +1543,7 @@ sections:
                skip_optimize: true, time: 50}
     inputs:
       qm_residues: *qmreg_prod
-      charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (D190)
+      charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (¶190)
       # **No Gln93 here, deliberately** (user, 2026-11-02): "glutamine was left
       # out deliberately because it's probably not involved/functional as it's
       # neutral and far away from everything". It is the Q of RQK by name, but
@@ -1551,20 +1551,20 @@ sections:
       # angstroms out has none - so it is MM like the rest of the second shell,
       # and the QM region stays as small as the question allows. The sections
       # that do carry it (`aspout`, `aspin`, `michaelis2d`, `rwoff`, `rwon`,
-      # `qmrate`, `asph`) added it for the Asp92 question of D133, where its
+      # `qmrate`, `asph`) added it for the Asp92 question of ¶133, where its
       # amide is a hydrogen-bond partner of the carboxylate - a different
       # question from the barrier. `prodpost` monitors Gln93 NE2 to Asp92 OD1
       # and to the ligand's O2x, so "far away from everything" is measured on
-      # this trajectory rather than assumed (D171).
+      # this trajectory rather than assumed (¶171).
       skip_equilibrate: false   # qmmm.inputs sets true; without this there is no MD
       skip_optimize: true       # MD only, as `nacarg` and `ohH` ran
       time: 50
       rigid_water: false
 
-  # ---- wtpost: the same question asked of the REACTANT arm (D176) ----
+  # ---- wtpost: the same question asked of the REACTANT arm (¶176) ----
   #
   # The product's 34 ns had Asp92 OD2 collapse from 2.80 A to 2.03 because it
-  # was outside the 2.5 A detection cutoff and so was never held (D173). The
+  # was outside the 2.5 A detection cutoff and so was never held (¶173). The
   # reactant's `md_wt100` ran under the same cutoff and the same four
   # restraints - hydroxide, His164, HOH, His88, one donor each - so **Asp92 was
   # free there too**, at the same crystallographic 2.80 A.
@@ -1589,12 +1589,12 @@ sections:
       # No `monitor`, so no contacts: the coordination sphere is the question,
       # and the reactant's pairs would have to be rewritten for its own ligand.
 
-  # ---- wt100c: the reactant arm re-based at 3.0 A (D181) ----
+  # ---- wt100c: the reactant arm re-based at 3.0 A (¶181) ----
   #
   # `md_wt100` and `md_wt100b` are void: the zinc was six-coordinate in 4995 of
   # 5000 frames with Asp92 OD2 bound at 2.07 A in 100% of them, because the
   # 2.5 A cutoff left the 2.80 A contact unrestrained and MM pulled it in
-  # (D177). This is the same correction `prod100c` applies to the product arm,
+  # (¶177). This is the same correction `prod100c` applies to the product arm,
   # and it is applied the same way so the two arms stay a matched pair.
   #
   # At 3.0 A on `CSR_wt/preprocess_results/finalsystem.pdb`, per atom, the
@@ -1608,7 +1608,7 @@ sections:
   # oxygen `mer C:1:O1x` at 3.13, Asp92 OD1 at 3.81, and **Arg90 NH1 at
   # 3.89**. That last one is why 3.0 is a ceiling and not a floor: nitrogen is
   # in `donor_elements`, so the 4.0 A cutoff this project started with
-  # restrained an arginine to the zinc as though it were a ligand (D8).
+  # restrained an arginine to the zinc as though it were a ligand (¶8).
   #
   # **`constraint_exclude_residues: {C: [1]}` stays.** The reactant's substrate
   # must be free to react, which is the documented reason, and here it costs
@@ -1619,14 +1619,14 @@ sections:
   #
   # **Asp92 OD1 at 3.81 is restrained explicitly**, as on the product arm and
   # at the user's instruction. It is outside 3.0 so the rule does not reach it,
-  # and D120 and D130 are both the same failure - OD2 held with OD1 free, and
+  # and ¶120 and ¶130 are both the same failure - OD2 held with OD1 free, and
   # the carboxylate pivoting OD1 onto the metal at 1.99.
   #
   # **What this run answers, and what it does not.** It answers plan item 3:
   # does a site restrained at 3.0 A per atom hold four-coordinate through
   # 100 ns? That question is currently unanswered on either arm. It does NOT
   # give a Michaelis complex: the substrate is still Vina pose 2, which is
-  # 5.15 A from L1's measured pose (D156), and items 1-2 replace it by building
+  # 5.15 A from L1's measured pose (¶156), and items 1-2 replace it by building
   # the reactant from the product through `recombine`. So this is the
   # coordination control, not the reaction's starting structure.
   wt100c:
@@ -1642,9 +1642,9 @@ sections:
       properties:
         Precision: mixed
 
-  # ---- eq5: the Michaelis rebuild - all three properties at once (D196) ----
+  # ---- eq5: the Michaelis rebuild - all three properties at once (¶196) ----
   #
-  # D195 measured 84 equilibrated frames against the Michaelis criteria and
+  # ¶195 measured 84 equilibrated frames against the Michaelis criteria and
   # every one of them failed. Not for one reason: each run had ONE of the three
   # properties and never the other two.
   #
@@ -1663,22 +1663,22 @@ sections:
   #   [C:2:O01, C:1:C4x, 3.47]        the attack coordinate. `nac` and `wt100b`
   #                                   carried this and `wt100c` REPLACED it
   #                                   rather than adding to it, which is why
-  #                                   the substrate left the site (D194).
+  #                                   the substrate left the site (¶194).
   #   [B:1:ZN, C:1:O2x, 2.60, 500]    the carbonyl ON the metal. 2.60 is the
   #                                   middle of the criterion's 2.4-3.0 window
   #                                   and within 0.04 A of what GFN2 chose for
   #                                   itself when QM/MM relaxed crystal_v2's
   #                                   1.94 (it went to 2.56), and of L1's
-  #                                   measured 2.53/2.63 (D121). Not 1.94:
+  #                                   measured 2.53/2.63 (¶121). Not 1.94:
   #                                   that number came from a build decision,
   #                                   nothing measures it, and holding it there
   #                                   is what made crystal_v2's attack angle
   #                                   26-30 deg.
   #   [B:1:ZN, A:92:OD1, 3.81, 500]   OD1 pinned out, as on every arm since
-  #                                   D130. Outside the 3.0 A sweep, so the
+  #                                   ¶130. Outside the 3.0 A sweep, so the
   #                                   rule does not reach it.
   #
-  # **500 kcal/mol/A^2, not 50.** D191 measured a contact restrained at 2.80 A
+  # **500 kcal/mol/A^2, not 50.** ¶191 measured a contact restrained at 2.80 A
   # sitting at a MEAN of 2.44 over 100 ns with a maximum of 2.97 - a 0.36 A
   # offset, which is a systematic force of order 36 kcal/mol/A pulling the
   # carboxylate in, not thermal spread. Offset goes as F/k, so 500 puts it
@@ -1686,7 +1686,7 @@ sections:
   # restrained mode has a ~53 fs period. That is 26 steps at the 2 fs this
   # section sets, which integrates cleanly; at the 4 fs this run directory
   # otherwise inherits it would be 13, which is not enough. This is deliberately a rigid MM
-  # site - MM cannot be trusted for coordination (D174), the MD's job is to
+  # site - MM cannot be trusted for coordination (¶174), the MD's job is to
   # equilibrate the protein and solvent AROUND a site held where the crystal
   # has it, and QM/MM is what then decides the coordination.
   #
@@ -1696,7 +1696,7 @@ sections:
   #
   #   remove_residues: [D:1:HOH]   the water the substrate displaces. The
   #                                resting site is four-coordinate, 2 His + 2
-  #                                waters (D120); one water becomes the
+  #                                waters (¶120); one water becomes the
   #                                nucleophilic hydroxide and the carbonyl
   #                                takes the other's place. Deleting it after
   #                                solvation would do nothing - the solvent
@@ -1715,7 +1715,7 @@ sections:
   # `wtqm` has a start. If they cannot, the pose itself is wrong and that is a
   # result rather than a failure.
   #
-  # 10 ns, not 100. Every 100 ns run in D195's inventory is in the rejected
+  # 10 ns, not 100. Every 100 ns run in ¶195's inventory is in the rejected
   # list, and nothing was learned at 100 that was not visible at 10.
   #
   # **2 fs, not 4.** The timestep is stated here because this run directory
@@ -1742,11 +1742,11 @@ sections:
       properties:
         Precision: mixed
 
-  # ---- eq6: eq5 with the two restraints it was missing (D210) ----
+  # ---- eq6: eq5 with the two restraints it was missing (¶210) ----
   #
   # eq5 is the best equilibration this project has run: every restraint held,
   # Asp92 OD2 at 2.743 A over 10,000 frames and 0.0% inside 2.5 A, and it was
-  # the first structure to hold all three of D196's criteria at once (D197).
+  # the first structure to hold all three of ¶196's criteria at once (¶197).
   # It was rejected for three things, and ONE unrestrained atom caused the one
   # that matters. So this is eq5 plus two lines, not a rebuild.
   #
@@ -1754,27 +1754,27 @@ sections:
   #      October pose - 0.13 A OUTSIDE the 3.0 A detection radius.** Nothing
   #      restrained it, it came onto the metal at 2.06 A with 97.9% occupancy,
   #      and sitting between the hydroxide and the carbonyl at 76.8 degrees from
-  #      both it squeezed the attack angle shut (D197). `fill_restraints` can
+  #      both it squeezed the attack angle shut (¶197). `fill_restraints` can
   #      only hold what is inside the radius WHEN IT LOOKS, so a donor arriving
   #      from outside is the one case detection-time restraints cannot cover -
-  #      the same failure as `prod100b` (D173).
+  #      the same failure as `prod100b` (¶173).
   #      The rule already covers it: the 3.0 A set is "what is affected by the
-  #      metal", not a coordination test (D174, D186, the user twice), and D174
+  #      metal", not a coordination test (¶174, ¶186, the user twice), and ¶174
   #      itself restrained Asp92 OD1 at 3.81 A by explicit judgement for being
   #      affected while outside the radius. An alcohol oxygen 0.13 A outside it
   #      is a stronger case than that one.
   #      **Held at 3.82 A, which is what `CSR_mich/preprocess_results/
   #      finalsystem.pdb` ACTUALLY HAS** - measured 2026-11-05, not taken from
-  #      D197. D197's "3.13 A in the October pose" is a different structure, and
+  #      ¶197. ¶197's "3.13 A in the October pose" is a different structure, and
   #      restraining to it would have pulled O1x 0.69 A TOWARD the metal, which
   #      is the artefact this line exists to prevent. There is no crystal value
   #      for it: no CSR-1 deposit contains the substrate.
-  #      D211 adds the reason this is safe: unrestrained QM/MM keeps O1x at
+  #      ¶211 adds the reason this is safe: unrestrained QM/MM keeps O1x at
   #      4.24 A mean (3.53-5.04) over michrk's 50 frames, where MM pulled it to
   #      2.18 A in 97.9% of eq5's. So the restraint corrects an MM error and the
   #      quantum answer is further out still, not closer in.
   #      Whether O1x genuinely chelates is NOT settled and MM cannot settle it
-  #      (D197/D199): a 12-6 term cannot tell an alcohol from a hydroxide and
+  #      (¶197/¶199): a 12-6 term cannot tell an alcohol from a hydroxide and
   #      rewards every oxygen in reach. Holding it where the structure puts it
   #      is what lets QM/MM answer that, per the standing rule.
   #
@@ -1785,32 +1785,32 @@ sections:
   #      one side by superposition, 2.99 A from the lysine on the other, while
   #      OD1 points away from both (3.90 and 5.06 A). So the carboxylate is held
   #      between two cations, and 6NC5 lacks the contact only because its
-  #      `SEQADV` records Lys226His as an engineered mutation (D209).
+  #      `SEQADV` records Lys226His as an engineered mutation (¶209).
   #      This is the restraint with the most mechanistic content in the file:
   #      the lysine is what holds Asp92 out of the first shell, so an MD that
   #      does not hold it is free to produce the 2.00 A collapse that three
-  #      separate entries have recorded as an artefact. D211 measured that it
+  #      separate entries have recorded as an artefact. ¶211 measured that it
   #      never forms in the michqm/michrk lineage at all: NZ-OD2 mean 4.66 A,
   #      0% of 50 frames inside 3.2 A.
   #      **Held at 2.79 A, the distance finalsystem.pdb already has** - the
   #      start structure is RIGHT about this contact, which nobody had checked.
   #      2.79 sits inside the deposits' own spread (2.83 in 6DQ2, 2.99 in 6DN4),
   #      and holding it where the structure has it is the project's convention
-  #      for every detected contact (D174). Restraining to 6DN4's 2.99 would
+  #      for every detected contact (¶174). Restraining to 6DN4's 2.99 would
   #      pull it 0.20 A outward for no measured reason.
   #
   #   3. **Asp92 OD1 moves from 3.81 to 3.90 A, so this is three changes from
   #      eq5 rather than two.** finalsystem.pdb has OD1 at **4.09 A** and the
-  #      superposition of 6NC5's ZN302 into 6DN4 gives **3.90** (D210). D174's
+  #      superposition of 6NC5's ZN302 into 6DN4 gives **3.90** (¶210). ¶174's
   #      3.81 has no stated source, and at k = 500 it pulls the second
   #      carboxylate oxygen 0.28 A TOWARD the metal - biasing exactly the
-  #      bidentate collapse D120 and D130 record. 3.90 is the crystal-derived
+  #      bidentate collapse ¶120 and ¶130 record. 3.90 is the crystal-derived
   #      number; 4.09 would be the structure's own. Flagged because it breaks
   #      the clean one-restraint-differs comparison with eq5, and that is worth
   #      more than the comparison.
   #
   # Nothing else differs from eq5, so the comparison is clean: two restraints
-  # added, none changed, none removed. Both at k = 500, because D191 measured
+  # added, none changed, none removed. Both at k = 500, because ¶191 measured
   # that 50 kcal/mol/A^2 holds a 2.80 A target at a mean of 2.44/2.37 and
   # holding within ~0.05 A needs of order 500.
   #
@@ -1831,7 +1831,7 @@ sections:
       restraints:
         - [C:2:O01, C:1:C4x, 3.47]
         - [B:1:ZN, C:1:O2x, 2.60, 500.0]
-        - [B:1:ZN, A:92:OD1, 3.90, 500.0]    # was 3.81; see D212
+        - [B:1:ZN, A:92:OD1, 3.90, 500.0]    # was 3.81; see ¶212
         - [B:1:ZN, C:1:O1x, 3.82, 500.0]     # the fifth donor; the structure's own
         - [A:226:NZ, A:92:OD2, 2.79, 500.0]  # the salt bridge, the structure's own
       nvt_time: 10000
@@ -1842,29 +1842,29 @@ sections:
         Precision: mixed
 
   # =========================================================================
-  # ---- The Asp92 free energy: `aspcg` seeds it, `asp` is the PMF (D213) ----
+  # ---- The Asp92 free energy: `aspcg` seeds it, `asp` is the PMF (¶213) ----
   #
-  # **This is the experiment D133 named and D157 costed, and it is the one that
+  # **This is the experiment ¶133 named and ¶157 costed, and it is the one that
   # settles whether Asp92 sits on the zinc.** An equilibrium is a population and
   # only a free energy reports one; every scan in this log reports a minimum, and
-  # D94's objection is that a relaxed scan reports the basin it started in.
+  # ¶94's objection is that a relaxed scan reports the basin it started in.
   #
   # **Why the existing scans cannot seed it, checked 2026-11-05 before
   # submitting anything.** `scan_aspout` and `scan_aspin` are 18 converged
   # points along Zn-Asp92 OD1 and they look like ready-made seeds. They are not
   # usable:
   #
-  #   1. Both descend from `CSR_nac/md_naclong_results`, which D120, D122 and
-  #      D130 all call the condemned shell and which D131 says nothing measured
-  #      on can be cited. `retractions.md` carries D136 for exactly this.
+  #   1. Both descend from `CSR_nac/md_naclong_results`, which ¶120, ¶122 and
+  #      ¶130 all call the condemned shell and which ¶131 says nothing measured
+  #      on can be cited. `retractions.md` carries ¶136 for exactly this.
   #   2. Their range is Zn-OD1 1.90 -> 3.60 A. The wild-type conformer is at
-  #      **OD1 3.90 A** (D210's superposition) and 4.09 A in the start structure,
+  #      **OD1 3.90 A** (¶210's superposition) and 4.09 A in the start structure,
   #      so both arms stop short of the geometry the question is about - which is
-  #      the same error D145/D208 caught in D144's costing.
-  #   3. D157 says it in its own words: "This does not mean the PMF should be run
+  #      the same error ¶145/¶208 caught in ¶144's costing.
+  #   3. ¶157 says it in its own words: "This does not mean the PMF should be run
   #      now ... The order is the rebuilt pose first, this second", because the
   #      pose those scans used is 5.15 A from the only experimental Michaelis
-  #      complex in the family (D156).
+  #      complex in the family (¶156).
   #
   # Seeding from them would have produced an accurate free energy for a
   # condemned shell over a range that misses the answer, at the measured cost of
@@ -1874,15 +1874,15 @@ sections:
   #
   # **The coordinate is Zn-Asp92 CG, not an oxygen.** The `monitor` block says
   # why: a profile along Zn-OD1 is contaminated every time the carboxylate
-  # rotates OD1 out and OD2 in, which is the very motion D120 was about, whereas
+  # rotates OD1 out and OD2 in, which is the very motion ¶120 was about, whereas
   # Zn-CG moves only when the whole group moves. It is also the choice the
   # classical carboxylate-cation PMFs make. Range **2.3 -> 4.8 A** at 0.1 A, the
-  # 26 windows D157 costed: it brackets the bound state and reaches past the
-  # wild-type value, which D210 measures at **Zn-CG 3.71 A** in the superposed
+  # 26 windows ¶157 costed: it brackets the bound state and reaches past the
+  # wild-type value, which ¶210 measures at **Zn-CG 3.71 A** in the superposed
   # frame. k = 150 kcal/mol/A^2, SMB-1's protocol, 45 ps equilibration + 60 ps
   # of data per window.
   #
-  # Cost, measured rather than projected (D157): **40.9 h per window at 2.57
+  # Cost, measured rather than projected (¶157): **40.9 h per window at 2.57
   # ps/h on 8 cores**, so ~8,500 core-hours, every window inside one 72 h
   # allocation, and the 26 run in parallel for about **two days of wall clock**.
   # CPU, not GPU - xTB is the bottleneck and a GPU does not help it (user).
@@ -1892,12 +1892,12 @@ sections:
   # a bonded pair apart is not a seeding method), so each window reads a `seed`
   # from its own results entry. Writing those 26 entries is the one step between
   # the scan finishing and the PMF starting.
-  # D218/D219/D220: repair eq6's second shell before QM/MM, rather than
+  # ¶218/¶219/¶220: repair eq6's second shell before QM/MM, rather than
   # re-equilibrate. eq6 drifted to Zn-CG 3.72; 6DQH (1.10 A, the only deposit
   # with a Zn1 AND the wild-type lysine) measures 5.15, and every Zn2-bearing
   # construct agrees at 4.66-5.48.
   #
-  # This is an `md` section and NOT a `scan` on purpose (D220). A relaxed scan
+  # This is an `md` section and NOT a `scan` on purpose (¶220). A relaxed scan
   # cannot converge on this system: `optimizer_constraints` switches the whole
   # rigid-water block from geomeTRIC `$freeze` to `$set` as soon as any user
   # constraint appears, so TIP3P O-H distances become convergence criteria that
@@ -1907,13 +1907,13 @@ sections:
   # applies, and the surroundings relax at 300 K rather than downhill.
   #
   # Pull ONE coordinate - rule 6: a two-oxygen restraint would assert the
-  # carboxylate's rotation, which is D130's mistake. Staged in two steps so the
+  # carboxylate's rotation, which is ¶130's mistake. Staged in two steps so the
   # 1.4 A displacement is never applied as one impulse. Restraints are eq6's own
   # list minus the Asp92-Zn pair, so nothing new is asserted, and the attack
   # coordinate stays on because freeing Asp92 is measured to let the hydroxide
   # take the vacated face and open O01-C4x (3.48 -> 3.69).
   #
-  # constraint_exclude_residues is what stops D214 repeating: without it
+  # constraint_exclude_residues is what stops ¶214 repeating: without it
   # coordination_redetect re-pins Zn-OD2 at its detected 2.81 and fights the pull.
   asppull:
     stage: md
@@ -1921,7 +1921,7 @@ sections:
              extra: [--qos=gpu, --gres=gpu:h100:1]}
     inputs:
       pdb_file: md_eq6_results/NVTtrajectory_lastframe.pdb
-      coordination_redetect: false   # D214: redetect re-pinned Zn-OD2 at 2.81 and
+      coordination_redetect: false   # ¶214: redetect re-pinned Zn-OD2 at 2.81 and
                                      # held the pulled coordinate at both ends
       restraints:
         - [C:2:O01, C:1:C4x, 3.47]
@@ -1931,7 +1931,7 @@ sections:
         - [B:1:ZN, A:92:CG, 4.45, 50.0]   # stage 1: halfway out, gentle k
       nvt_time: 1000
       nvt_timestep: 0.002
-      traj_frequency: 5000   # D221: scratch is at 294/300 GB. The deliverable
+      traj_frequency: 5000   # ¶221: scratch is at 294/300 GB. The deliverable
                              # is the last frame, not the trajectory; 500 would
                              # write ~1.2 GB per ns, twice over (raw + imaged).
       platform: CUDA
@@ -1952,7 +1952,7 @@ sections:
         - [B:1:ZN, C:1:O1x, 3.82, 500.0]
         - [A:226:NZ, A:92:OD2, 2.79, 500.0]
         - [B:1:ZN, A:92:CG, 5.15, 50.0]   # 6DQH's distance
-        - [B:1:ZN, A:226:NZ, 5.27, 50.0]  # D222: stage 1 moved Zn-CG only 0.10 A
+        - [B:1:ZN, A:226:NZ, 5.27, 50.0]  # ¶222: stage 1 moved Zn-CG only 0.10 A
                                           # of 0.73. The carboxylate is tethered
                                           # to NZ at k=500 and the lysine never
                                           # moved (Zn-NZ 3.94 -> 4.03), so the
@@ -1962,14 +1962,14 @@ sections:
                                           # so no rotation is asserted (rule 6).
       nvt_time: 2000
       nvt_timestep: 0.002
-      traj_frequency: 5000   # D221: scratch is at 294/300 GB. The deliverable
+      traj_frequency: 5000   # ¶221: scratch is at 294/300 GB. The deliverable
                              # is the last frame, not the trajectory; 500 would
                              # write ~1.2 GB per ns, twice over (raw + imaged).
       platform: CUDA
       properties:
         Precision: mixed
 
-  # D223: stage 2 moved the LYSINE (Zn-NZ 4.03 -> 4.85 of 5.27) and confirmed
+  # ¶223: stage 2 moved the LYSINE (Zn-NZ 4.03 -> 4.85 of 5.27) and confirmed
   # stage 1's diagnosis, but the carboxylate still did not follow: Zn-CG reached
   # 3.96 of 5.15. The reason is that Zn-CG is nearly blind to the thing that is
   # wrong. Our OD1 is already at 4.09 against 6DQH's 4.28, while OD2 sits at
@@ -1983,7 +1983,7 @@ sections:
   # near 4.28 of its own accord is then a real test rather than an assertion.
   #
   # k is 500, not 50. Every crystal-derived restraint in eq6 uses 500; the 50 on
-  # the pull was my own inconsistency, and D154 is why it matters: the Asp92-Zn
+  # the pull was my own inconsistency, and ¶154 is why it matters: the Asp92-Zn
   # contact in this model "requires the anionic carboxylate - it is
   # electrostatic, not steric", so MM wants the carboxylate on the metal and a
   # gentle restraint will lose. Fighting the force field here is the POINT of
@@ -2010,7 +2010,7 @@ sections:
       properties:
         Precision: mixed
 
-  # D224: the QM/MM leg of the user's pipeline, from the repaired structure.
+  # ¶224: the QM/MM leg of the user's pipeline, from the repaired structure.
   #
   # Start: `md_asppull3`'s last frame, which matches 6DQH on every Asp92/Lys226
   # distance to within 0.1 A - Zn-OD2 5.05 (5.14), Zn-OD1 4.19 (4.28), Zn-CG
@@ -2021,11 +2021,11 @@ sections:
   # NOTHING is restrained here, verified by reading rather than assumed:
   # `bond_constraints` in qmmm.py is used only by the optimiser and by rigid
   # water, so the equilibrate applies no coordination restraints, and the region
-  # is rebuilt from residue names so D115's stale-index trap cannot fire.
+  # is rebuilt from residue names so ¶115's stale-index trap cannot fire.
   # Asp92 runs free and QM/MM says where it goes, which is the whole point -
   # MM cannot decide coordination (user, repeatedly).
   #
-  # Charge 2 checked independently, not inherited (D152): Zn(2+) - OH(-) +
+  # Charge 2 checked independently, not inherited (¶152): Zn(2+) - OH(-) +
   # meropenem zwitterion(0) - Asp92(-) = 0 for the michaelis region, plus Arg90
   # and Lys226 = +2.
   #
@@ -2036,7 +2036,7 @@ sections:
   # donors inside 2.50 A (a second water, HOH3095 at 2.01, took the space Asp92
   # vacated). Whether that water leaves is what this run is for; if instead the
   # nucleophile drifts, one chunk tells us at 20 h rather than 120.
-  # D225: NOT 100 ns. The length is set by measurement, not by the pipeline's
+  # ¶225: NOT 100 ns. The length is set by measurement, not by the pipeline's
   # round number, and `convergence.py` settled it from trajectories we already
   # had.
   #
@@ -2072,7 +2072,7 @@ sections:
     submit: {partition: gpu_cuda, cores: 4, mem: 32G, time: "03:00:00",
              extra: [--qos=gpu, --gres=gpu:h100:1]}
     # From relax10.sh: the run is NPT then 10 ns of NVT production, and
-    # `gentle` would spend 40 ps of 300 K MD before NPT for nothing (D227).
+    # `gentle` would spend 40 ps of 300 K MD before NPT for nothing (¶227).
     require:
       unset: [skip_npt, skip_nvt, gentle]
       equals: {nvt_time: 10000}
@@ -2088,7 +2088,7 @@ sections:
       # enough for a force-field artefact to develop in a box that has not been
       # equilibrated yet - which on this system means coordination drift, the one
       # thing the run exists to avoid. Starting frame is already 300 K and
-      # equilibrated, so there is nothing to warm up (D227, corrected).
+      # equilibrated, so there is nothing to warm up (¶227, corrected).
       gentle: false
       coordination_redetect: false
       restraints:
@@ -2110,13 +2110,13 @@ sections:
   # still holds that output. It started from `asppull3`'s 2 ns frame, which the
   # convergence analysis showed is not relaxed - box volume drift +5.40 nm3
   # against eq6's +0.65 - so it was a pilot, not the pipeline's QM/MM leg
-  # (D226, D228). Do not re-run it: `resume: true` would continue those 5.16 ps.
+  # (¶226, ¶228). Do not re-run it: `resume: true` would continue those 5.16 ps.
   aspqm:
     stage: qmmm
     submit: {partition: general, cores: 8, mem: 16G, time: "24:00:00"}
-    # Reconciled when these moved out of the launchers (D239): `aspqm.sh` and
+    # Reconciled when these moved out of the launchers (¶239): `aspqm.sh` and
     # `aspqm2.sh` only WARNED here while `aspdft.sh` refused. Refusing is right -
-    # a restrained carboxylate measures the restraint, and D134's $set switch
+    # a restrained carboxylate measures the restraint, and ¶134's $set switch
     # makes convergence unreachable the moment `opt_constraints` appear.
     require:
       unset: [restraints, opt_constraints, constraints]
@@ -2135,18 +2135,18 @@ sections:
   # unrelaxed 2 ns frame. A NEW section name, deliberately, so it writes to a
   # fresh `qmmm_aspqm2_results` and `resume: true` cannot pick up the cancelled
   # run's state file. The 300 ps still goes in six 50 ps chunks by raising
-  # `time` to 100, 150, 200, 250, 300 and re-running, one at a time (D228).
+  # `time` to 100, 150, 200, 250, 300 and re-running, one at a time (¶228).
   aspqm2:
     stage: qmmm
     submit: {partition: general, cores: 8, mem: 16G, time: "24:00:00"}
-    # Reconciled when these moved out of the launchers (D239): `aspqm.sh` and
+    # Reconciled when these moved out of the launchers (¶239): `aspqm.sh` and
     # `aspqm2.sh` only WARNED here while `aspdft.sh` refused. Refusing is right -
-    # a restrained carboxylate measures the restraint, and D134's $set switch
+    # a restrained carboxylate measures the restraint, and ¶134's $set switch
     # makes convergence unreachable the moment `opt_constraints` appear.
     require:
       unset: [restraints, opt_constraints, constraints]
       # The point of this section is that it starts from the END of the 10 ns,
-      # not the unrelaxed 2 ns frame that job 32384737 was cancelled for (D228).
+      # not the unrelaxed 2 ns frame that job 32384737 was cancelled for (¶228).
       equals: {pdb_file: md_relax10_results/NVTtrajectory_lastframe.pdb,
                charge: 2, rigid_water: false}
     inputs:
@@ -2159,32 +2159,32 @@ sections:
       resume: true
       rigid_water: false
 
-  # ---- The def2-SVP QM/MM geometry optimisation (D233/D234). ----
+  # ---- The def2-SVP QM/MM geometry optimisation (¶233/¶234). ----
   #
-  # The instrument of record for Asp92's position. D232 showed GFN2 chelates the
+  # The instrument of record for Asp92's position. ¶232 showed GFN2 chelates the
   # carboxylate onto Zn1 within 8 ps from a crystal-consistent start, so the
   # semiempirical answer is a method artefact and only DFT can say where the
-  # carboxylate sits. The user's decision (D233): skip the QM/MM equilibration
+  # carboxylate sits. The user's decision (¶233): skip the QM/MM equilibration
   # entirely - long QM/MM is only practical at xTB - and optimise at def2-SVP
   # directly from the MM frame.
   #
   # **It starts from `relax10`'s last frame, NOT from chunk 1's.** Chunk 1's
   # geometry already has Asp92 bidentate on the zinc, which is the thing being
-  # tested; starting there would hand DFT the answer and D206 rule 3 would
+  # tested; starting there would hand DFT the answer and ¶206 rule 3 would
   # exclude the result. `relax10` is the crystal-consistent start, matching
-  # 6DQH's Zn-OD1 to 0.05 A with nothing restraining it (D231).
+  # 6DQH's Zn-OD1 to 0.05 A with nothing restraining it (¶231).
   #
   # `skip_equilibrate: true` is the user's instruction and also the only
   # affordable choice: a DFT QM/MM MD step costs what a gradient costs.
   #
   # **Nothing is constrained, deliberately and for two reasons.** The carboxylate
-  # has to be free or the run measures the restraint; and D134 - a $set block
+  # has to be free or the run measures the restraint; and ¶134 - a $set block
   # appears the moment a qmmm run is given `opt_constraints`, which makes
   # convergence impossible. Supplying none keeps geomeTRIC on $freeze only.
-  # `rigid_water: false` for the same reason (D137).
+  # `rigid_water: false` for the same reason (¶137).
   #
   # **`actradius: 0` - the active region is the QM atoms ONLY, and that is the
-  # one setting the channel project's measured experience changed (D235).** Their
+  # one setting the channel project's measured experience changed (¶235).** Their
   # r2SCAN/def2-SVP QM/MM optimisations with an 8 A active region containing MM
   # waters never converged in 150 steps, and the energy climbed 30-45 kcal/mol
   # after a minimum while geomeTRIC rated every step good. With the active region
@@ -2211,12 +2211,12 @@ sections:
   # No `opt_coordsystem` override. ASH switches TRIC to HDLC by itself whenever an
   # active region is set, and the SVD degeneracies both projects hit came from
   # rigid-water *constraints*, of which this run has none - `rigid_water` is off
-  # (the library default since D137) and no `opt_constraints` are supplied, so
+  # (the library default since ¶137) and no `opt_constraints` are supplied, so
   # geomeTRIC gets no constraint block at all. `cart` is the fallback if it
   # degenerates anyway, and `cart` refuses to run with constraints present.
   #
   # **COST.** Two measured anchors, neither exactly this calculation: ~26 min per
-  # wb97x-v/def2-SVP/MM single point on 119 QM atoms on 8 cores (D215's level,
+  # wb97x-v/def2-SVP/MM single point on 119 QM atoms on 8 cores (¶215's level,
   # this project), and 4.6 min per r2SCAN/def2-SVP/MM optimisation step on ~50 QM
   # atoms with 64k MM charges on 32 cores, of which SCF 49 s, gradient 62 s and
   # the remaining 2.8 min the point-charge terms (the channel project). Scaling
@@ -2234,14 +2234,14 @@ sections:
   # formal convergence can stall near a minimum that is physically reached.
   #
   # The functional is the library default and is stated anyway: wb97x-v is the
-  # level D215's cluster benchmark used, so this geometry and that calibration
+  # level ¶215's cluster benchmark used, so this geometry and that calibration
   # point are at the same level and can be compared.
   aspdft:
     stage: qmmm
     submit: {partition: general, cores: 32, mem: 120G, time: "48:00:00"}
-    # Reconciled when these moved out of the launchers (D239): `aspqm.sh` and
+    # Reconciled when these moved out of the launchers (¶239): `aspqm.sh` and
     # `aspqm2.sh` only WARNED here while `aspdft.sh` refused. Refusing is right -
-    # a restrained carboxylate measures the restraint, and D134's $set switch
+    # a restrained carboxylate measures the restraint, and ¶134's $set switch
     # makes convergence unreachable the moment `opt_constraints` appear.
     require:
       unset: [restraints, opt_constraints, constraints]
@@ -2257,17 +2257,17 @@ sections:
       dft_functional: wb97x-v
       dft_basis: def2-svp
       dft_cores: 32           # match --cpus-per-task; DFT scales, unlike xTB
-      actradius: 0            # active region = the QM atoms only (D235)
+      actradius: 0            # active region = the QM atoms only (¶235)
       skip_equilibrate: true
       skip_optimize: false
       opt_maxiter: 60
       rigid_water: false
 
-  # ---- The GFN2 half of the matched comparison (D238). ----
+  # ---- The GFN2 half of the matched comparison (¶238). ----
   #
   # `aspdft` measures where the DFT gradient takes Asp92 from the
   # crystal-consistent frame. On its own that is not a clean comparison with
-  # D232's chelation, and D236 said so: **D232 was 50 ps of 300 K dynamics and
+  # ¶232's chelation, and ¶236 said so: **¶232 was 50 ps of 300 K dynamics and
   # `aspdft` is a 0 K optimisation**, which has no thermal energy to cross a
   # barrier it might find. So "GFN2 moves it, DFT does not" could be a
   # difference between dynamics and minimisation rather than between
@@ -2280,14 +2280,14 @@ sections:
   # Hamiltonian**, which is what makes the pair interpretable: if GFN2
   # minimises Asp92 onto the zinc from a start where DFT minimises it away,
   # that is the Hamiltonian, measured rather than inferred from a cluster
-  # benchmark (D215) or from a trajectory at a different temperature.
+  # benchmark (¶215) or from a trajectory at a different temperature.
   #
-  # **Pre-registered readings, before the result, per D178:**
+  # **Pre-registered readings, before the result, per ¶178:**
   #   - **GFN2 pulls Asp92 inside ~2.5 A while DFT holds it near 5** -> the
   #     cleanest possible statement of the bias, on one structure with one
-  #     variable changed. D232 stops being the only evidence and stops being
+  #     variable changed. ¶232 stops being the only evidence and stops being
   #     vulnerable to the dynamics-vs-minimisation objection.
-  #   - **Both keep it out** -> D232's chelation needed 300 K, so it is a
+  #   - **Both keep it out** -> ¶232's chelation needed 300 K, so it is a
   #     barrier-crossing GFN2 makes too easy rather than a minimum GFN2 puts in
   #     the wrong place. A different and weaker claim, and
   #     `gfn2-over-coordinates-zn1-from-a-crystal-consistent-start` would have
@@ -2302,7 +2302,7 @@ sections:
   # algebra over 467 active atoms rather than xTB itself. With the active region
   # cut to the 124 QM atoms both parts shrink, so `opt_maxiter` can be the base
   # 300 and a converged minimum is reachable inside one job - unlike the DFT
-  # leg, whose 48 h buys ~25 steps (D236).
+  # leg, whose 48 h buys ~25 steps (¶236).
   #
   # 8 cores, not 32: xTB does not scale and the DFT leg has the cores.
   # The gate is `require:`, not a launcher script. `same_as` is what makes this
@@ -2323,17 +2323,17 @@ sections:
       pdb_file: md_relax10_results/NVTtrajectory_lastframe.pdb
       qm_residues: *qmreg_michrk
       charge: 2
-      actradius: 0            # identical to aspdft (D235)
+      actradius: 0            # identical to aspdft (¶235)
       skip_equilibrate: true
       skip_optimize: false
       opt_maxiter: 300
       rigid_water: false
 
-  # ---- Does letting the environment relax change the answer? (D241) ----
+  # ---- Does letting the environment relax change the answer? (¶241) ----
   #
-  # D240 left a confound it could not remove: both optimisations differ from
-  # D232's 300 K dynamics in TWO ways, being 0 K **and** holding the MM
-  # environment frozen (the active region is the QM atoms only, D235). So the
+  # ¶240 left a confound it could not remove: both optimisations differ from
+  # ¶232's 300 K dynamics in TWO ways, being 0 K **and** holding the MM
+  # environment frozen (the active region is the QM atoms only, ¶235). So the
   # chelate's absence from both minima is consistent with needing thermal
   # energy, with needing the second shell to relax, or with both.
   #
@@ -2344,12 +2344,12 @@ sections:
   # `actradius` differ from `aspxtb`, and the `require.same_as` gate refuses to
   # write this section if anything else does.
   #
-  # **Pre-registered, before the result (D178):**
+  # **Pre-registered, before the result (¶178):**
   #   - **Asp92 comes in toward ~2.5 A once the environment is free** -> the
-  #     frozen shell was holding it out, D240's narrowing was premature, and the
+  #     frozen shell was holding it out, ¶240's narrowing was premature, and the
   #     0 K-versus-300 K half of the confound is the one that does not matter.
   #   - **Asp92 stays out, near 5 A** -> the frozen environment was not the
-  #     reason, so the chelate needs thermal energy. D240's narrowing stands and
+  #     reason, so the chelate needs thermal energy. ¶240's narrowing stands and
   #     strengthens: GFN2's minimum is not where the chelation lives, under
   #     either treatment of the environment.
   #   - **It does not converge in 300 steps** -> the expected outcome, not a
@@ -2364,7 +2364,7 @@ sections:
   # climbed 30-45 kcal/mol UPHILL with good step quality because the rigid-water
   # constraints degenerate TRIC's coordinate system, and with no constraints at
   # all geomeTRIC gets no constraint block (confirmed for `aspdft` by
-  # `constraints.txt` being absent, D237).
+  # `constraints.txt` being absent, ¶237).
   aspxtb8:
     stage: qmmm
     submit: {partition: general, cores: 8, mem: 32G, time: "24:00:00"}
@@ -2411,7 +2411,7 @@ sections:
       time: 60
       extra_qm_residues: {A: [93]}
 
-  # ---- wtqm: the reactant's QM/MM MD, matching prodqm (D190) ----
+  # ---- wtqm: the reactant's QM/MM MD, matching prodqm (¶190) ----
   #
   # Same treatment as the product arm so the two stay comparable: the RQK set in
   # MM, charge 0, 50 ps of GFN2-xTB QM/MM MD from the equilibrated frame. Gated
@@ -2423,19 +2423,19 @@ sections:
     stage: qmmm
     inputs:
       qm_residues: *qmreg_wt
-      charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (D190)
+      charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (¶190)
       skip_equilibrate: false   # qmmm.inputs sets true; without this there is no MD
       skip_optimize: true       # MD only, as prodqm runs
       time: 50
       rigid_water: false
 
-  # ---- michqm: the production QM/MM, 300 ps in 50 ps batches (user, D198) ----
+  # ---- michqm: the production QM/MM, 300 ps in 50 ps batches (user, ¶198) ----
   #
   # What it is for: a GFN2-xTB QM/MM trajectory long enough to seed the charge
   # deletion and the NEB. 300 ps total, run as six 50 ps batches by raising
   # `time` and resubmitting - `time` is the **total** wanted and `resume: true`
   # continues from `OpenMM_MD_state.xml`, so a batch is a one-line change and a
-  # walltime-limited run never restarts from zero (D182/D183).
+  # walltime-limited run never restarts from zero (¶182/¶183).
   #
   # **300 ps, not 300 ns.** The user asked for ns and the arithmetic rules it
   # out: at the ~1 s per fs step these runs cost, 300 ns is of order 9 years of
@@ -2452,7 +2452,7 @@ sections:
   #
   # Choosing it over the last frame matters because QM/MM here is hysteretic:
   # no run in this project has crossed the coordination boundary in either
-  # direction (D197 corrections), so whichever donor is on the metal at the
+  # direction (¶197 corrections), so whichever donor is on the metal at the
   # start is the one that will be on it at the end. Starting from the last frame
   # would bake in O1x at 2.06 A and answer nothing. Starting from an extremum of
   # a distribution is still a selection, and anything measured here describes
@@ -2465,19 +2465,19 @@ sections:
     inputs:
       pdb_file: cluster/frame_o1x_off.pdb
       qm_residues: *qmreg_mich
-      charge: 0            # Arg90 and Lys226 are MM (D190); stated, not inherited (D152)
+      charge: 0            # Arg90 and Lys226 are MM (¶190); stated, not inherited (¶152)
       skip_equilibrate: false   # qmmm.inputs sets true; without this there is no MD
       skip_optimize: true       # MD only, as prodqm runs
       time: 50                  # TOTAL ps wanted; raise to 100/150/200/250/300 per batch
       resume: true              # continue rather than overwrite on the next batch
       rigid_water: false
 
-  # ---- michrk: batch 1 continued with the lysine able to act (user, D202) ----
+  # ---- michrk: batch 1 continued with the lysine able to act (user, ¶202) ----
   #
   # Identical to `michqm` in every other key, so the two are a controlled pair:
   # what differs is that Arg90 and Lys226 are quantum and the charge is +2.
   # Batch 1 settled the coordination sphere and refuted the Burgi-Dunitz gate
-  # (D201); it could not say anything about the nucleophile, because the residue
+  # (¶201); it could not say anything about the nucleophile, because the residue
   # sitting 2.82 A from it was a set of fixed point charges.
   #
   # **Starts from batch 1's last frame, not from `frame_o1x_off.pdb`.** That
@@ -2485,7 +2485,7 @@ sections:
   # uses, and it is the frame in which Lys226 NZ has already arrived at 2.82 A -
   # the geometry the question is about. Restarting from frame 4374 would spend
   # picoseconds travelling back to it. Its Asp92 is on the metal at 2.00 A, and
-  # that is deliberate too: D201 watched that move happen spontaneously from the
+  # that is deliberate too: ¶201 watched that move happen spontaneously from the
   # designed four-coordinate start with nothing imposed, so 2.00 A is this
   # model's own answer rather than a bad starting structure. Nothing is
   # restrained here either - the standing rule is that MD gets crystal
@@ -2495,13 +2495,13 @@ sections:
   # A new section rather than a `time` bump on `michqm`: `resume: true` restores
   # `OpenMM_MD_state.xml`, and resuming a state file written with a different QM
   # region and a different total charge is the silent-wrong-species failure of
-  # D152. The new directory starts empty, so there is nothing to clear (D199),
+  # ¶152. The new directory starts empty, so there is nothing to clear (¶199),
   # and batch 1 stays on disk as the control.
   #
   # What it decides: whether Lys226 NH3+ hands its proton to the zinc-bound
   # hydroxide - making the nucleophile a water and the base a neutral amine,
   # which is the only candidate base left now that Asp92 has failed three times
-  # (D201) - or whether D41's canonical B3 reactant survives its first honest
+  # (¶201) - or whether ¶41's canonical B3 reactant survives its first honest
   # test. Either answer is publishable; neither is reachable with the lysine in
   # MM.
   michrk:
@@ -2509,22 +2509,22 @@ sections:
     inputs:
       pdb_file: protdft/qmmm_michqm/QM_MM_lastframe.pdb
       qm_residues: *qmreg_michrk
-      charge: 2            # michaelis 0 + Arg90 + Lys226; stated, not inherited (D152)
+      charge: 2            # michaelis 0 + Arg90 + Lys226; stated, not inherited (¶152)
       skip_equilibrate: false   # qmmm.inputs sets true; without this there is no MD
       skip_optimize: true       # MD only, as michqm ran
       time: 50                  # TOTAL ps wanted; raise per batch as michqm does
       resume: true              # continue rather than overwrite on the next batch
       rigid_water: false
 
-  # ---- The two radii, and why the analysis sets its own (D186) ----
+  # ---- The two radii, and why the analysis sets its own (¶186) ----
   #
   # `preprocess.inputs.cutoff` is **3.0 A** and it answers one question: what
   # is close enough to the metal to be AFFECTED by it, and therefore has to be
   # held at the distance the crystal has rather than left for the force field
   # to pull in. That set is not the coordination sphere. It is deliberately
   # wider than it, because the contacts between 2.5 and 3.0 A are exactly the
-  # ones that are not bonds and will become bonds if nothing holds them (D174,
-  # D177).
+  # ones that are not bonds and will become bonds if nothing holds them (¶174,
+  # ¶177).
   #
   # **The coordination number is a different measurement and takes a stricter
   # radius: 2.5 A**, the longest Zn-O distance that is still a bond
@@ -2585,7 +2585,7 @@ sections:
         cutoff: 3.5
       # The reactant's own names: its substrate is `mer` in chain C, its
       # nucleophile the hydroxide `OH C:2:O01`, and the second water is `D:1:O`
-      # - the chains are not the product's (D181).
+      # - the chains are not the product's (¶181).
       monitor:
         Zn-Asp92 OD2: [B:1:ZN, A:92:OD2]
         Zn-Asp92 OD1: [B:1:ZN, A:92:OD1]
@@ -2598,17 +2598,17 @@ sections:
         Zn-Arg90 NH1: [B:1:ZN, A:90:NH1]
         O01-mer C4x: [C:2:O01, C:1:C4x]
         Lys226 NZ-O01: [A:226:NZ, C:2:O01]
-        # D209/D210: the salt bridge, and it had never been monitored anywhere.
+        # ¶209/¶210: the salt bridge, and it had never been monitored anywhere.
         # Lys254 NZ - Asp120 OD2 is 2.99 A in 6DN4 and 2.83 A in 6DQ2 (our Lys226 -
         # Asp92; both deposits are BBL numbering). OD2 is the BRIDGING oxygen: 2.76 A
         # from the zinc on one side by superposition, 2.99 A from the lysine on the
         # other, with OD1 pointing away from both (3.90 and 5.06 A). Both oxygens are
-        # here because D120 is what happens when only one of them is watched.
+        # here because ¶120 is what happens when only one of them is watched.
         Lys226 NZ-Asp92 OD2: [A:226:NZ, A:92:OD2]
         Lys226 NZ-Asp92 OD1: [A:226:NZ, A:92:OD1]
         Gln93 NE2-Asp92 OD1: [A:93:NE2, A:92:OD1]
 
-  # ---- michpost: did the Michaelis sphere hold for 10 ns? (D197) ----
+  # ---- michpost: did the Michaelis sphere hold for 10 ns? (¶197) ----
   #
   # `md_eq5`'s last frame has the three configured restraints exactly where they
   # were set - carbonyl O2x 2.645 against 2.60, Asp92 OD1 3.782 against 3.81,
@@ -2627,10 +2627,10 @@ sections:
   #
   # `cutoff: 2.5`, stated and not inherited: with it unset `postprocess` falls
   # back to the 3.0 A restraint radius and would count what is merely affected
-  # by the metal as bonded to it (D186).
+  # by the metal as bonded to it (¶186).
   #
   # No `Zn-HOH D1` here: this build has no `D:1:HOH`. Removing it is what made
-  # the sphere the Michaelis one (D196), and `sections.py` would refuse the
+  # the sphere the Michaelis one (¶196), and `sections.py` would refuse the
   # section for naming an atom the structure does not have - which is the check
   # working.
   michpost:
@@ -2657,17 +2657,17 @@ sections:
         Zn-Arg90 NH1: [B:1:ZN, A:90:NH1]
         O01-mer C4x: [C:2:O01, C:1:C4x]
         Lys226 NZ-O01: [A:226:NZ, C:2:O01]
-        # D209/D210: the salt bridge, and it had never been monitored anywhere.
+        # ¶209/¶210: the salt bridge, and it had never been monitored anywhere.
         # Lys254 NZ - Asp120 OD2 is 2.99 A in 6DN4 and 2.83 A in 6DQ2 (our Lys226 -
         # Asp92; both deposits are BBL numbering). OD2 is the BRIDGING oxygen: 2.76 A
         # from the zinc on one side by superposition, 2.99 A from the lysine on the
         # other, with OD1 pointing away from both (3.90 and 5.06 A). Both oxygens are
-        # here because D120 is what happens when only one of them is watched.
+        # here because ¶120 is what happens when only one of them is watched.
         Lys226 NZ-Asp92 OD2: [A:226:NZ, A:92:OD2]
         Lys226 NZ-Asp92 OD1: [A:226:NZ, A:92:OD1]
         Gln93 NE2-Asp92 OD1: [A:93:NE2, A:92:OD1]
 
-  # ---- prod100b: WITHDRAWN, do not submit (D173) ----
+  # ---- prod100b: WITHDRAWN, do not submit (¶173) ----
   #
   # This resumed from frame 1704 on the assumption that the 34 ns before the
   # NaN were sound. They were not. `prodpost` on that trajectory found the zinc
@@ -2696,15 +2696,15 @@ sections:
       properties:
         Precision: mixed
 
-  # ---- prod100c: detection at 3.0 A, every contact it finds restrained (D174)
+  # ---- prod100c: detection at 3.0 A, every contact it finds restrained (¶174)
   #
   # The rule, already established and which I had not applied: **anything
   # within 3 A of the zinc is affected by it and is restrained at its
   # crystallographic distance.** Detecting at 2.5 A was my own reading of
-  # D120/D130, and it is wrong in the way that matters: the cutoff decides
+  # ¶120/¶130, and it is wrong in the way that matters: the cutoff decides
   # which contacts are *held*, so everything from 2.5 to 3.0 A was left free to
   # collapse instead. That is what happened - Asp92 OD2 went 2.80 -> 2.03 and
-  # the ligand turned over, O2x travelling 4.75 A onto the metal (D173).
+  # the ligand turned over, O2x travelling 4.75 A onto the metal (¶173).
   #
   # At 3.0 A on `finalsystem.pdb` the sweep is seven contacts: HOH C:1 1.90,
   # His164 2.09, HOH C:2 2.14, His88 2.22, **Asp92 OD2 2.80**, **hyd O5x 2.92**
@@ -2718,7 +2718,7 @@ sections:
   # the product's own two zinc contacts unheld.
   #
   # **One restraint beyond the sweep, and it is a judgement: Asp92 OD1 at
-  # 3.81 A.** D120 and D130 are the same failure twice - OD2 held at 2.80 with
+  # 3.81 A.** ¶120 and ¶130 are the same failure twice - OD2 held at 2.80 with
   # OD1 free, and the carboxylate pivoted OD1 onto the metal at 1.99. A
   # monodentate restraint on a bidentate group holds a distance, not a
   # geometry. OD1 is outside 3 A so the rule does not reach it, but it is
@@ -2738,7 +2738,7 @@ sections:
       properties:
         Precision: mixed
 
-  # ---- The product arm's reaction coordinate (D170) ----
+  # ---- The product arm's reaction coordinate (¶170) ----
   #
   # Order: `prodopt` (a stationary product), then the two scans BACKWARDS along
   # the reaction, then NEB over each step. Nothing here can be submitted until
@@ -2765,15 +2765,15 @@ sections:
   #
   # **The atom names are the parameterised ones.** `C4x` and `N1x` happen to be
   # unchanged, but the nucleophile oxygen this log calls `O01` is `O6x` here
-  # (D168). Check `preprocess.results.ligand_atom_map` before adding any ligand
-  # selector - preprocess now records and warns about the renaming (D169).
+  # (¶168). Check `preprocess.results.ligand_atom_map` before adding any ligand
+  # selector - preprocess now records and warns about the renaming (¶169).
   #
   # **What this arm buys beyond a second path.** The reactant arm reaches the
   # intermediate forwards (`attack`) and this one reaches it backwards: two
   # independent routes to one species, from two different crystal structures.
   # They should agree, and a disagreement is a result about the model rather
   # than about CSR-1.
-  # ---- the product arm's Asp92 repair, D249 ----
+  # ---- the product arm's Asp92 repair, ¶249 ----
   #
   # WHY THESE EXIST. `prod100c` (31423830) NaN'd at 22.68 ns out of a perfectly
   # stable trajectory because it ran at **4 fs**: it has no `nvt_timestep`, so
@@ -2785,12 +2785,12 @@ sections:
   # AND IT NEEDS MORE THAN THE TIMESTEP. `finalsystem.pdb` has Asp92 at
   # Zn-OD2 2.795, Zn-OD1 3.811, Zn-CG 3.692, Zn-NZ 4.356 where 6DQH gives
   # 5.14 / 4.28 / 5.15 / 5.27 - so the carboxylate must move ~2.3 A outward,
-  # which is `asppull`'s three-stage job (D218/D220/D222-D224). The old
-  # `md_prod100c` restraint targets 3.81, the value D216 VOIDED, and
+  # which is `asppull`'s three-stage job (¶218/¶220/¶222-¶224). The old
+  # `md_prod100c` restraint targets 3.81, the value ¶216 VOIDED, and
   # `coordination_redetect: true` re-adds the voided 2.80 - so both are off here.
   #
   # WHAT DIFFERS FROM THE REACTANT'S PULL, and it is the one real difference:
-  # **no substrate restraint at all.** D159 measured that nothing of the
+  # **no substrate restraint at all.** ¶159 measured that nothing of the
   # hydrolysed product is within coordination range of Zn1; everything that
   # binds, binds the Zn2 CSR-1 does not have. Writing an `O2x`/`O1x` term here
   # would transplant a Zn2 bond into a one-metal enzyme.
@@ -2864,9 +2864,9 @@ sections:
 
   # ---- prodrelax10: the product arm's match to `relax10` ----
   #
-  # 10 ns, the length `eq6` demonstrated is sufficient (D225/D226), at 2 fs,
+  # 10 ns, the length `eq6` demonstrated is sufficient (¶225/¶226), at 2 fs,
   # `gentle: false` so this continues rather than re-annealing from 1 K, NPT NOT
-  # skipped because D225's box data says the box is still accommodating the
+  # skipped because ¶225's box data says the box is still accommodating the
   # Asp92/Lys226 displacement after a 2 ns pull. ~45 min on one H100.
   #
   # Gate before `prodqm`: `convergence.py`, requiring eq6's plateau - CA RMSD
@@ -2905,7 +2905,7 @@ sections:
                skip_optimize: false}
     inputs:
       qm_residues: *qmreg_prod
-      charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (D190)
+      charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (¶190)
       pdb_file: protdft/qmmm_prodqm/lastframe.pdb   # fill in from prodqm
       skip_equilibrate: true
       skip_optimize: false
@@ -2919,7 +2919,7 @@ sections:
       equals: {charge: 0, points: 12, opt_maxiter: 300, resume: true}
     inputs:
       qm_residues: *qmreg_prod
-      charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (D190)
+      charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (¶190)
       pdb_file: protdft/qmmm_prodopt/QM_MM_optimized.pdb
       atoms: [D:1:C4x, D:1:N1x]
       end: 1.39                # as measured in the reactant's optimised complex
@@ -2940,7 +2940,7 @@ sections:
       equals: {charge: 0, points: 16, opt_maxiter: 300, resume: true}
     inputs:
       qm_residues: *qmreg_prod
-      charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (D190)
+      charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (¶190)
       pdb_file: protdft/scan_recombine/scan_12.pdb
       atoms: [D:1:O6x, D:1:C4x]
       end: 3.00                # where `attack` starts from on the reactant arm
@@ -2961,12 +2961,12 @@ sections:
   # two slightly different regions, and energies over different sets of movable
   # atoms are not comparable.
   #
-  # **That check is NOT in the `require:` gates below, and deliberately (D252).**
+  # **That check is NOT in the `require:` gates below, and deliberately (¶252).**
   # `actradius: 0` would make the two regions identical by construction - the
   # region is then the QM atoms, which are selected by residue name and so are
   # the same set in both endpoints. But `actradius: 0` also FREEZES the MM
   # environment, and the two endpoints have different environments, so their MM
-  # energies differ by a constant that does not cancel in a barrier. D235 chose
+  # energies differ by a constant that does not cancel in a barrier. ¶235 chose
   # `actradius: 0` for OPTIMISATIONS, where there is one structure and the
   # frozen term is constant; whether it is right for a NEB across two
   # structures has not been established, and gating on it would have smuggled
@@ -2979,7 +2979,7 @@ sections:
       equals: {charge: 0, images: 12, method: nebts, interpolation: idpp}
     inputs:
       qm_residues: *qmreg_prod
-      charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (D190)
+      charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (¶190)
       reactant_pdb: protdft/scan_recombine/scan_12.pdb
       product_pdb: protdft/qmmm_prodopt/QM_MM_optimized.pdb
       images: 12
@@ -2994,7 +2994,7 @@ sections:
       equals: {charge: 0, images: 12, method: nebts, interpolation: idpp}
     inputs:
       qm_residues: *qmreg_prod
-      charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (D190)
+      charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (¶190)
       reactant_pdb: protdft/scan_expel/scan_16.pdb
       product_pdb: protdft/scan_recombine/scan_12.pdb
       images: 12
@@ -3013,7 +3013,7 @@ sections:
       equals: {charge: 0, tsopt: true, freq: true, irc_method: mode}
     inputs:
       qm_residues: *qmreg_prod
-      charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (D190)
+      charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (¶190)
       pdb_file: protdft/neb_pstep2/saddlepoint.pdb
       hessian_atoms: [D:1:C4x, D:1:N1x, D:1:O6x, A:226:NZ, B:1:ZN]
       monitor:
@@ -3031,7 +3031,7 @@ sections:
       equals: {charge: 0, tsopt: true, freq: true, irc_method: mode}
     inputs:
       qm_residues: *qmreg_prod
-      charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (D190)
+      charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (¶190)
       pdb_file: protdft/neb_pstep1/saddlepoint.pdb
       hessian_atoms: [D:1:O6x, D:1:C4x, D:1:O2x, B:1:ZN]
       monitor:
@@ -3041,9 +3041,9 @@ sections:
       freq: true
       irc_method: mode
 
-  # ---- qmrate: what does QM/MM MD actually cost? (D152) ----
+  # ---- qmrate: what does QM/MM MD actually cost? (¶152) ----
   #
-  # D151 costed umbrella sampling at ~62 h per window from 1.7 ps/h, and that
+  # ¶151 costed umbrella sampling at ~62 h per window from 1.7 ps/h, and that
   # figure came from a job that was CANCELLED before it had run long enough to
   # measure - so the 13,000 core-hours the entry quotes rests on a soft number.
   # 3 ps on 8 cores from the same structure and the same QM region every
@@ -3058,12 +3058,12 @@ sections:
     inputs:
       pdb_file: protdft/scan_aspin/scan_08.pdb
       extra_qm_residues: {A: [93]}
-      skip_equilibrate: false    # MD *is* the equilibrate step - D153
+      skip_equilibrate: false    # MD *is* the equilibrate step - ¶153
       skip_optimize: true
       time: 3
       rigid_water: false
 
-  # ---- asph: does a NEUTRAL Asp92 stay on the zinc? (D152) ----
+  # ---- asph: does a NEUTRAL Asp92 stay on the zinc? (¶152) ----
   #
   # The user's test (2026-10-30): "obviously protonating asp prevents it from
   # coordinating - might be worthwhile doing a quick semi-empirical QM/MM run
@@ -3103,7 +3103,7 @@ sections:
   # Names here carry NO stage prefix: `sections.py` writes each one as `<stage>_<name>`,
   # so the name `qmmm_ref` under `stage: sp` is the mcube section `sp_qmmm_ref`.
   # Naming it `sp_qmmm_ref` here gives the key `sp_sp_qmmm_ref`, and jobs 31176144/
-  # 31176145 died in 8 s on exactly that (D152). sections.py now refuses it.
+  # 31176145 died in 8 s on exactly that (¶152). sections.py now refuses it.
   qmmm_ref:
     stage: sp
     inputs: &sp_cd
@@ -3120,7 +3120,7 @@ sections:
   # this way: `preprocess.results.qm_residues` puts Arg90 and Lys226 INSIDE the
   # QM region, where electrostatic embedding has already removed their MM
   # charges, so deleting them again cannot change the energy and the difference
-  # would be noise reported as a contribution (D153). `charge_deletion` refuses
+  # would be noise reported as a contribution (¶153). `charge_deletion` refuses
   # them by name. Gln93 is in MM for these two sections - they do not set
   # `extra_qm_residues`, unlike the scans - so it has charges to delete.
   qmmm_q93:
@@ -3134,8 +3134,8 @@ sections:
     inputs: &sp_only
       sp_cores: 64
 
-  # D63: is xTB's 22.4 kcal/mol for pulling the carbonyl off real? Same check
-  # as D58 did for Asp92, on three points of the carbonyl scan. Separate
+  # ¶63: is xTB's 22.4 kcal/mol for pulling the carbonyl off real? Same check
+  # as ¶58 did for Asp92, on three points of the carbonyl scan. Separate
   # sections because each run writes its results back into its own.
   co0:
     stage: sp
@@ -3153,12 +3153,12 @@ sections:
       <<: *sp_only
       pdb_file: protdft/coscan/scan_08.pdb   # Zn-O2x 4.00 A
 
-  # ---- The GFN2-vs-DFT cluster benchmark (P1, open since D9; built D188) ----
+  # ---- The GFN2-vs-DFT cluster benchmark (P1, open since ¶9; built ¶188) ----
   #
   # The question: does GFN2-xTB hold meropenem's 6-(1-hydroxyethyl) oxygen O1x
   # on the zinc when DFT would not? `md_eq5` found O1x coordinated in 97.9% of
   # 10,000 frames at 2.18 A mean, closer than the restrained carbonyl and as
-  # close as the anionic hydroxide (D197), and neither MM nor QM/MM MD can
+  # close as the anionic hydroxide (¶197), and neither MM nor QM/MM MD can
   # adjudicate it - MM overfavours octahedral zinc, and no QM/MM run here has
   # ever crossed the coordination boundary in either direction, because ligand
   # exchange at Zn(II) is slower than the affordable trajectory.
@@ -3176,7 +3176,7 @@ sections:
   # Geometries from `docs/csr/build-cluster.py`: the shortest and longest
   # Zn-O1x frames of the same trajectory, so neither bracket carries a build
   # difference or a hand displacement. 51 atoms, `charge: 0` **stated** and not
-  # inherited (D152), mult 1 for d10 Zn(II).
+  # inherited (¶152), mult 1 for d10 Zn(II).
   #
   # These are single points, so they are NOT binding energies - `sp` is a
   # single-point stage by construction and optimising both clusters at both
@@ -3198,17 +3198,17 @@ sections:
   # O2x` is the carbonyl, restrained in every previous run and **unrestrained**
   # here for the first time, so this is the first test of whether it stays on
   # the metal by itself. `Asp92 OD1-O01` is the proton relay, 5.67 A at the
-  # start and also unrestrained. `Zn-Asn225 OD1` is here because D198 found
+  # start and also unrestrained. `Zn-Asn225 OD1` is here because ¶198 found
   # Asn225 taking the site O1x vacated, which is how a sphere stays
   # five-coordinate while looking as though it emptied.
   #
   # `monitor_angles` is the attack angle, and the whole reason `postprocess`
   # now has one: 68 degrees at the start against the 95-120 a nucleophile
-  # approaching a trigonal carbon needs. D198 measured it with a one-off script
+  # approaching a trigonal carbon needs. ¶198 measured it with a one-off script
   # on three frames, so there is no record of it in any config - the failure
-  # D168 records for contacts, repeated.
+  # ¶168 records for contacts, repeated.
   #
-  # `cutoff: 2.5` stated and not inherited, for the D186 reason: unset,
+  # `cutoff: 2.5` stated and not inherited, for the ¶186 reason: unset,
   # `postprocess` falls back to the 3.0 A restraint radius and counts what is
   # merely affected by the metal as bonded to it.
   michqmpost:
@@ -3238,12 +3238,12 @@ sections:
         O01-mer C4x: [C:2:O01, C:1:C4x]
         Asp92 OD1-O01: [A:92:OD1, C:2:O01]
         Lys226 NZ-O01: [A:226:NZ, C:2:O01]
-        # D209/D210: the salt bridge, and it had never been monitored anywhere.
+        # ¶209/¶210: the salt bridge, and it had never been monitored anywhere.
         # Lys254 NZ - Asp120 OD2 is 2.99 A in 6DN4 and 2.83 A in 6DQ2 (our Lys226 -
         # Asp92; both deposits are BBL numbering). OD2 is the BRIDGING oxygen: 2.76 A
         # from the zinc on one side by superposition, 2.99 A from the lysine on the
         # other, with OD1 pointing away from both (3.90 and 5.06 A). Both oxygens are
-        # here because D120 is what happens when only one of them is watched.
+        # here because ¶120 is what happens when only one of them is watched.
         Lys226 NZ-Asp92 OD2: [A:226:NZ, A:92:OD2]
         Lys226 NZ-Asp92 OD1: [A:226:NZ, A:92:OD1]
         Gln93 NE2-Asp92 OD1: [A:93:NE2, A:92:OD1]
@@ -3269,7 +3269,7 @@ sections:
   # Every key michqmpost has, pointing at `qmmm_michrk` instead, so the two
   # reports are comparable line for line and a difference between them is a
   # difference between the two regions rather than between two analyses. What
-  # is added is the set of pairs that answer D202, and nothing is removed.
+  # is added is the set of pairs that answer ¶202, and nothing is removed.
   #
   # This section is the reason `postprocess` gained a per-pair cutoff. A
   # proton-transfer coordinate is a BOND length, and the section cutoff is a
@@ -3306,17 +3306,17 @@ sections:
         O01-mer C4x: [C:2:O01, C:1:C4x]
         Asp92 OD1-O01: [A:92:OD1, C:2:O01]
         Lys226 NZ-O01: [A:226:NZ, C:2:O01]
-        # D209/D210: the salt bridge, and it had never been monitored anywhere.
+        # ¶209/¶210: the salt bridge, and it had never been monitored anywhere.
         # Lys254 NZ - Asp120 OD2 is 2.99 A in 6DN4 and 2.83 A in 6DQ2 (our Lys226 -
         # Asp92; both deposits are BBL numbering). OD2 is the BRIDGING oxygen: 2.76 A
         # from the zinc on one side by superposition, 2.99 A from the lysine on the
         # other, with OD1 pointing away from both (3.90 and 5.06 A). Both oxygens are
-        # here because D120 is what happens when only one of them is watched.
+        # here because ¶120 is what happens when only one of them is watched.
         Lys226 NZ-Asp92 OD2: [A:226:NZ, A:92:OD2]
         Lys226 NZ-Asp92 OD1: [A:226:NZ, A:92:OD1]
         Gln93 NE2-Asp92 OD1: [A:93:NE2, A:92:OD1]
         O01-mer O2x: [C:2:O01, C:1:O2x]
-        # ---- D202's question, and the only pairs that answer it ----
+        # ---- ¶202's question, and the only pairs that answer it ----
         #
         # A transfer shows up as a swap: the N-H bond stretches past 1.2 A
         # while one H-O01 distance falls under it. Which hydrogen goes is not
@@ -3330,7 +3330,7 @@ sections:
         # `O01-H03` is the control - the hydroxide's own proton, which should
         # stay on it at ~0.97 A throughout. If it leaves as well the species
         # is an oxide, not a water, and the run has gone somewhere else
-        # entirely. `Asp92 OD1-H03` is the opposite direction, which D201's
+        # entirely. `Asp92 OD1-H03` is the opposite direction, which ¶201's
         # three failures make the less likely one but not the untested one.
         Lys226 NZ-HZ1: {atoms: [A:226:NZ, A:226:HZ1], cutoff: 1.2}
         Lys226 NZ-HZ2: {atoms: [A:226:NZ, A:226:HZ2], cutoff: 1.2}
@@ -3342,7 +3342,7 @@ sections:
         Asp92 OD1-H03: {atoms: [A:92:OD1, C:2:H03], cutoff: 1.2}
         # Arg90 is quantum here too, so its own donors are monitored for the
         # first time rather than assumed inert: it is a cation 3.6 A from the
-        # substrate carboxylate (D150) and nothing has yet watched it reach
+        # substrate carboxylate (¶150) and nothing has yet watched it reach
         # anywhere else.
         Arg90 NH1-O01: [A:90:NH1, C:2:O01]
         Arg90 NH2-O01: [A:90:NH2, C:2:O01]

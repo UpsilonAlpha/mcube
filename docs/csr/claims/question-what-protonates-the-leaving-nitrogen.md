@@ -1,7 +1,7 @@
 ---
 type: question
 status: open
-entries: [D107, D191, D204, D207]
+entries: [¶107, ¶191, ¶204, ¶207]
 ---
 
 # What protonates the leaving nitrogen, with no Zn2 to stabilise it?
@@ -14,13 +14,13 @@ load-bearing for the rate, not a detail.
 
 **What is already excluded.** Lys226 cannot be the donor to N1x in any model
 measured: NZ-N1x 4.71-6.92 A, mean 5.76, over all 50 frames of the `nacqm`
-QM/MM trajectory, and it never comes near the leaving nitrogen (D107). The one
+QM/MM trajectory, and it never comes near the leaving nitrogen (¶107). The one
 MBL Lys proton-transfer study (Das & Nair 2017) is cephalexin only, runs through
 a two-water chain that **meropenem's R2 group blocks**, and found no direct
 Lys-to-N route even under a 30 kcal/mol bias.
 
 **And nothing being positioned to protonate N1x in the Michaelis complex is the
-expected result, not a defect** (D107): three papers converge on a water that
+expected result, not a defect** (¶107): three papers converge on a water that
 arrives *after* ring opening, and on the anionic intermediate lasting long
 enough for it to.
 

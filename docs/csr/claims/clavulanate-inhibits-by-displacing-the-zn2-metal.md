@@ -2,8 +2,8 @@
 type: observation
 evidence: literature
 status: supported
-entries: [D216]
-checked: [D216]
+entries: [¶216]
+checked: [¶216]
 ---
 
 # Clavulanate inhibits CSR-1 by displacing the metal from the Zn2 site, and Pedroso et al. attribute that to the lysine

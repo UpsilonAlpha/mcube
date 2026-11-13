@@ -5,7 +5,7 @@
 refuses to run without the base: `KeyError: No qmmm.inputs section in
 config.yaml`. A directory built by `build-mich.py` has only `preprocess:` and
 `md:`, because that is all the two stages it ran needed - so the first QM/MM
-section submitted against it dies in 5 seconds (job 31738709, D198).
+section submitted against it dies in 5 seconds (job 31738709, ¶198).
 
 This writes that base. It is a script rather than a `site.yaml` section because
 `sections.py` writes `<stage>_<name>` and **refuses a name equal to its own
@@ -23,7 +23,7 @@ before anything is written.
 The QM/MM-only values follow `CSR_wt`'s base, which every QM/MM run in the
 project has used: 1 fs timestep, 300 K, an 8 A active region centred on the
 metal, `opt_maxiter` 300. `charge` is deliberately left at the value a caller
-must override - each section states its own (D152), and a base charge that
+must override - each section states its own (¶152), and a base charge that
 happens to suit one arm is how an SCF converges on the wrong species while
 looking entirely normal.
 
@@ -147,7 +147,7 @@ def main(argv):
     for key in ("forcefields", "timestep", "time", "actradius", "actregion_origin"):
         print(f"[INFO]   {key}: {inputs[key]}")
     print("[INFO] `charge` is NOT set here on purpose: every section states its "
-          "own (D152).")
+          "own (¶152).")
     return 0
 
 

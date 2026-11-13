@@ -2,8 +2,8 @@
 type: observation
 evidence: experimental
 status: supported
-entries: [D219]
-checked: [D219]
+entries: [¶219]
+checked: [¶219]
 ---
 
 # Asp92 sits the same distance from Zn1 whether a Zn2 holds it or Lys226 does - 4.1-4.6 A at OD1 in four crystals of three constructs
@@ -25,7 +25,7 @@ carboxylate ends up where the canonical mechanism puts it.
 **What this does and does not help.** It makes the two-arm comparison valid, since
 both arms restrain Asp92 at effectively the same Zn1 distance by different means,
 and it supersedes the "moves in one shell when Zn2 is absent" reading that stood
-until D216. It says nothing about activity: the construct in which a real Zn2
+until ¶216. It says nothing about activity: the construct in which a real Zn2
 holds the carboxylate is **much more active**
 ([[restoring-the-zn2-site-drastically-improves-catalysis]]), so an identical
 carboxylate position with and without the second metal is a point against the

@@ -341,7 +341,7 @@ def mode_transfer(args):
 
     # `--ligand` by residue NAME, or by `CHAIN:RESSEQ[:RESNAME]` when the name
     # alone is ambiguous. 6NC5 holds six zincs, all called ZN, and only ZN302
-    # is the site we model - so a name is not enough to name a metal (D184).
+    # is the site we model - so a name is not enough to name a metal (¶184).
     want = opts["ligand"]
     if ":" in want:
         bits = want.split(":")
@@ -370,7 +370,7 @@ def mode_transfer(args):
         with open(opts["out"], "w") as fh:
             # The residue's own name, not `--ligand`: that may now be a
             # selector, and writing `A:302:ZN` into the four-character resname
-            # column produces a file every other tool misparses (D184).
+            # column produces a file every other tool misparses (¶184).
             fh.writelines(pdb_lines(moved, moved[0][1]))
             fh.write("END\n")
         print("  written to %s" % opts["out"])
@@ -803,7 +803,7 @@ def mode_match(args):
     # `AddHs(MolFromSmiles(...))`, so the file needs its hydrogens: without
     # them the template carries 26 atoms the structure does not and the
     # substructure match cannot succeed, whatever the protonation. Five
-    # preprocess jobs died on that (D162).
+    # preprocess jobs died on that (¶162).
     parents = hydrogen_parents(ours, our_bonds)
     placed.update(transfer_hydrogens(ours, parents, heavy_order, best,
                                      b_heavy, a_adj))
@@ -828,7 +828,7 @@ def mode_match(args):
             # without them RDKit sees 27 unbonded atoms and refuses the file -
             # which is what job 31299591 died of, and the right behaviour: a
             # ligand whose bonds are guessed from distance is how this project
-            # got a spurious O-O bond once already (D21).
+            # got a spurious O-O bond once already (¶21).
             for i, j in sorted(our_bonds or set()):
                 fh.write("CONECT%5d%5d\n" % (i + 1, j + 1))
             if our_bonds is None:

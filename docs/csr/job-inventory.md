@@ -40,7 +40,7 @@ a sibling is still a sibling.
 
 A COMPLETED state means Slurm's accounting was happy, **not** that the job
 produced anything: job 31186038 is in this table as COMPLETED and computed
-nothing at all (D153). That is why `mcube.cli.confirm_produced` now exits
+nothing at all (¶153). That is why `mcube.cli.confirm_produced` now exits
 non-zero when a stage's result carries no product key.
 
 ## Runs with something to show
@@ -108,22 +108,22 @@ non-zero when a stage's result carries no product key.
 | 30048252_7 | `csr_react` | CSR_crystal_v2 | CANCELLED | 01:22:58 |  | reactant-state array, four completed |
 | 30048252_8 | `csr_react` | CSR_crystal_v2 | COMPLETED | 00:56:06 |  | reactant-state array, four completed |
 | 30048856 | `scan2d_H1_f00497` | CSR_crystal_v2 | CANCELLED | 00:13:51 |  |  |
-| 30053828 | `csr_cleanR` | CSR_crystal_v2 | COMPLETED | 09:51:17 | D47, D48, D60, D70, D112 | `cleanR` - the clean reactant QM/MM optimisation |
-| 30054626 | `csr_gpubench` | CSR_crystal_v2 | COMPLETED | 00:01:14 | D47 | GPU benchmark set (four runs) |
-| 30055503 | `csr_gpubench` | CSR_crystal_v2 | COMPLETED | 00:01:16 | D47 |  |
-| 30056056 | `csr_gpubench` | CSR_crystal_v2 | COMPLETED | 00:01:16 | D47 |  |
-| 30056429 | `csr_gpubench` | CSR_crystal_v2 | COMPLETED | 00:01:15 | D47 |  |
-| 30085418 | `csr_md2` | CSR_crystal_v2 | COMPLETED | 09:11:36 | D50, D51, D60 | `md2` - production MD behind D50/D51 |
-| 30119957 | `csr_zncheck` | CSR_crystal_v2 | COMPLETED | 1-01:10:50 | D53, D54, D56, D57, D58, D61 | Zn-Asp92 walk plus DFT single points, 25 h; D53-D61 |
+| 30053828 | `csr_cleanR` | CSR_crystal_v2 | COMPLETED | 09:51:17 | ¶47, ¶48, ¶60, ¶70, ¶112 | `cleanR` - the clean reactant QM/MM optimisation |
+| 30054626 | `csr_gpubench` | CSR_crystal_v2 | COMPLETED | 00:01:14 | ¶47 | GPU benchmark set (four runs) |
+| 30055503 | `csr_gpubench` | CSR_crystal_v2 | COMPLETED | 00:01:16 | ¶47 |  |
+| 30056056 | `csr_gpubench` | CSR_crystal_v2 | COMPLETED | 00:01:16 | ¶47 |  |
+| 30056429 | `csr_gpubench` | CSR_crystal_v2 | COMPLETED | 00:01:15 | ¶47 |  |
+| 30085418 | `csr_md2` | CSR_crystal_v2 | COMPLETED | 09:11:36 | ¶50, ¶51, ¶60 | `md2` - production MD behind ¶50/¶51 |
+| 30119957 | `csr_zncheck` | CSR_crystal_v2 | COMPLETED | 1-01:10:50 | ¶53, ¶54, ¶56, ¶57, ¶58, ¶61 | Zn-Asp92 walk plus DFT single points, 25 h; ¶53-¶61 |
 | 30122134 | `csr_dftprobe` | CSR_crystal_v2 | FAILED | 00:01:08 |  |  |
-| 30123101 | `csr_dftprobe` | CSR_crystal_v2 | CANCELLED | 01:59:11 | D57 |  |
-| 30200387 | `csr_coscan` | CSR_crystal_v2 | COMPLETED | 00:49:49 | D58, D59, D61 | carbonyl scan (`coscan`) |
-| 30205872 | `v3_md` | CSR_crystal_v3 | CANCELLED | 00:06:27 | D62, D63 |  |
-| 30207244 | `spco0` | CSR_crystal_v2 | COMPLETED | 00:26:17 | D63, D70 | wB97X-D3/def2-SVP single points on coscan points 0, 4, 8 |
-| 30207245 | `spco4` | CSR_crystal_v2 | COMPLETED | 00:25:33 | D63, D70 |  |
-| 30207246 | `spco8` | CSR_crystal_v2 | COMPLETED | 00:25:54 | D63, D70 |  |
-| 30226271 | `umd` | CSR_unrestrained | COMPLETED | 20:44:49 | D69, D71, D72, D73 | 100 ns unrestrained MD - the run that showed the shell drifts |
-| 30226272 | `uqmmm` | CSR_unrestrained | CANCELLED | 01:52:05 | D69, D71, D72 |  |
+| 30123101 | `csr_dftprobe` | CSR_crystal_v2 | CANCELLED | 01:59:11 | ¶57 |  |
+| 30200387 | `csr_coscan` | CSR_crystal_v2 | COMPLETED | 00:49:49 | ¶58, ¶59, ¶61 | carbonyl scan (`coscan`) |
+| 30205872 | `v3_md` | CSR_crystal_v3 | CANCELLED | 00:06:27 | ¶62, ¶63 |  |
+| 30207244 | `spco0` | CSR_crystal_v2 | COMPLETED | 00:26:17 | ¶63, ¶70 | wB97X-D3/def2-SVP single points on coscan points 0, 4, 8 |
+| 30207245 | `spco4` | CSR_crystal_v2 | COMPLETED | 00:25:33 | ¶63, ¶70 |  |
+| 30207246 | `spco8` | CSR_crystal_v2 | COMPLETED | 00:25:54 | ¶63, ¶70 |  |
+| 30226271 | `umd` | CSR_unrestrained | COMPLETED | 20:44:49 | ¶69, ¶71, ¶72, ¶73 | 100 ns unrestrained MD - the run that showed the shell drifts |
+| 30226272 | `uqmmm` | CSR_unrestrained | CANCELLED | 01:52:05 | ¶69, ¶71, ¶72 |  |
 | 30302149 | `g93md` | CSR_unrestrained2 | CANCELLED | 01:47:37 |  |  |
 | 30312014 | `r6prep` | CSR_unrestrained2 | COMPLETED | 00:01:23 |  |  |
 | 30312015 | `r6md` | CSR_unrestrained2 | FAILED | 00:00:10 |  |  |
@@ -137,47 +137,47 @@ non-zero when a stage's result carries no product key.
 | 30349571 | `h6md` | CSR_unrestrained2 | FAILED | 01:07:40 |  |  |
 | 30354772 | `p6md` | CSR_unrestrained2 | COMPLETED | 02:35:00 |  | pose-6 MD and QM/MM |
 | 30354773 | `p6qm` | CSR_unrestrained2 | COMPLETED | 01:44:14 |  |  |
-| 30394832 | `gln93` | CSR_gln93 | COMPLETED | 00:08:58 | D93 | Gln93 system build |
-| 30409808 | `zngln` | CSR_gln93 | OUT_OF_MEMORY | 00:59:21 | D93, D97, D105 | `zngln` scan, killed for memory - why scan memory is now 64G |
-| 30416229 | `nacprep` | CSR_nac | COMPLETED | 00:01:44 | D98 | `nac` build |
-| 30416230 | `nacmd` | CSR_nac | CANCELLED | 01:10:38 | D98, D99 |  |
-| 30418017 | `nacgpu` | CSR_nac | COMPLETED | 00:04:20 | D100 | GPU MD rate check (0.52 ns/min) |
-| 30421166 | `naclong` | CSR_nac | COMPLETED | 06:19:45 | D101, D102, D105, D128, D134 | `naclong` - 500 ps NAC MD; its last frame fed everything after |
-| 30466101 | `nacqm` | CSR_nac | CANCELLED | 00:02:25 | D103 |  |
-| 30467248 | `nacqm` | CSR_nac | CANCELLED | 1-09:44:28 | D103, D104, D105, D151 | `nacqm` - 33 h of QM/MM MD, cancelled; source of D151's soft 1.7 ps/h figure |
+| 30394832 | `gln93` | CSR_gln93 | COMPLETED | 00:08:58 | ¶93 | Gln93 system build |
+| 30409808 | `zngln` | CSR_gln93 | OUT_OF_MEMORY | 00:59:21 | ¶93, ¶97, ¶105 | `zngln` scan, killed for memory - why scan memory is now 64G |
+| 30416229 | `nacprep` | CSR_nac | COMPLETED | 00:01:44 | ¶98 | `nac` build |
+| 30416230 | `nacmd` | CSR_nac | CANCELLED | 01:10:38 | ¶98, ¶99 |  |
+| 30418017 | `nacgpu` | CSR_nac | COMPLETED | 00:04:20 | ¶100 | GPU MD rate check (0.52 ns/min) |
+| 30421166 | `naclong` | CSR_nac | COMPLETED | 06:19:45 | ¶101, ¶102, ¶105, ¶128, ¶134 | `naclong` - 500 ps NAC MD; its last frame fed everything after |
+| 30466101 | `nacqm` | CSR_nac | CANCELLED | 00:02:25 | ¶103 |  |
+| 30467248 | `nacqm` | CSR_nac | CANCELLED | 1-09:44:28 | ¶103, ¶104, ¶105, ¶151 | `nacqm` - 33 h of QM/MM MD, cancelled; source of ¶151's soft 1.7 ps/h figure |
 | 30580181 | `nacopt` | CSR_nac | CANCELLED | 00:00:24 |  |  |
-| 30580259 | `nacopt` | CSR_nac | FAILED | 00:59:52 | D106 | `nacopt`, failed |
-| 30598032 | `nacarg` | CSR_nac | COMPLETED | 23:56:12 | D109, D110, D112 | `nacarg` - 24 h QM/MM MD with Arg229 added to the QM region |
-| 30698605 | `ohHmin` | CSR_nac | CANCELLED | 00:00:00 | D114, D115 |  |
-| 30699162 | `ohHmin` | CSR_nac | COMPLETED | 00:03:16 | D115 | hydroxide-protonated minimisation (`ohHmin`) |
-| 30703062 | `ohHmin2` | CSR_nac | FAILED | 00:00:09 | D116 |  |
-| 30705703 | `ohHmin3` | CSR_nac | COMPLETED | 00:03:53 | D116, D118 | `ohHmin3` - the build that `ohH` ran from |
-| 30721365 | `ohH` | CSR_nac | COMPLETED | 19:46:57 | D118, D119 | `ohH` - 20 h QM/MM MD of the Lys226-protonated species |
-| 30923516 | `subst` | CSR_nac | CANCELLED | 02:11:54 | D128, D129, D130, D131, D135, D145 | `subst` - cancelled; its start structure carried the shell D120 condemned |
-| 30966977 | `wt100` | CSR_wt | COMPLETED | 03:15:14 | D132, D134 | `wt100` - 100 ns, substrate left the site |
-| 31016877 | `wt100b` | CSR_wt | COMPLETED | 03:12:51 | D136, D137, D138 | `wt100b` - 100 ns with the substrate tethered; six-coordinate zinc in 4,998 of 5,000 frames |
-| 31016878 | `aspout` | CSR_wt | CANCELLED | 04:38:57 | D136, D137, D139, D140, D141, D142 | `aspout` cancelled at point 0 of 8: rigid-water constraints written as `$set` can never satisfy `convergence_cmax` |
-| 31051634 | `aspout` | CSR_wt | COMPLETED | 01:16:44 | D139, D140, D141 | `aspout` again with `rigid_water: false` - 9/9 converged in 1 h 17 m against 0/9 in 4 h 39 m |
-| 31143211 | `aspin` | CSR_wt | COMPLETED | 00:53:22 | D140, D142, D143 | `aspin` - the inward arm; `scan_00` (3.60 A) and `scan_08` (1.90 A) are the structures everything since has used |
-| 31146622 | `rwoff` | CSR_wt | COMPLETED | 00:03:58 | D142 | `rwoff`/`rwon` - the one-variable test of holding the waters (+0.0027 kcal/mol) |
-| 31146643 | `rwon` | CSR_wt | COMPLETED | 00:04:04 | D142 |  |
-| 31154229 | `mich2d` | CSR_wt | CANCELLED | 00:11:17 | D144 | first `mich2d`, cancelled for starting from the over-coordinated structure |
-| 31155441 | `mich2d` | CSR_wt | FAILED | 03:26:23 | D145, D146, D147, D148, D149 | the 45-point 2D grid: all 45 points converged, then the job FAILED writing its own summary (`target1_A`) |
-| 31160947 | `substopt` | CSR_nac | FAILED | 00:26:44 | D146, D147, D152 | `substopt` - died in `xtbpcgradientgrab` on a point charge 0.58 A from a QM atom |
-| 31167021 | `subst` | CSR_nac | CANCELLED | 00:00:00 | D147, D148, D149 |  |
-| 31176144 | `spref` | CSR_wt | FAILED | 00:00:08 | D152 | the charge-deletion pair, dead in 8 s on a doubled section prefix (`sp_sp_qmmm_ref`) |
-| 31176145 | `spr229` | CSR_wt | FAILED | 00:00:08 | D152 |  |
-| 31185324 | `spref` | CSR_wt | COMPLETED | 03:01:51 | D152, D153 | the pair re-run: -5076.869006116424 and -5076.939666070885 Eh, Arg229 at +44.34 kcal/mol |
-| 31185325 | `spr229` | CSR_wt | COMPLETED | 03:06:14 | D152, D153 |  |
-| 31186037 | `asph` | CSR_wt | COMPLETED | 00:12:03 | D152, D153 | `asph` - protonated Asp92, free optimisation: Zn-OD1 1.90 -> 2.99 A, five ligands -> four |
-| 31186038 | `qmrate` | CSR_wt | COMPLETED | 00:00:14 | D152, D153 | asked for 3 ps of MD, computed nothing, recorded COMPLETED |
-| 31277149 | `q93` | CSR_wt | RUNNING | 00:11:09 | D153 | `q93` - Gln93 charge deletion |
-| 31277150 | `qmrate` | CSR_wt | RUNNING | 00:11:09 | D153 | `qmrate` - 3 ps timing run, resubmitted |
-| 31721628 | `mich_pre` | CSR_mich | COMPLETED | 00:00:51 | D196 | the rebuild's preprocess: `removed D:1:HOH (3 atoms)`, sphere = carbonyl 1.94, His164 2.09, OH 2.14, His88 2.22, Asp92 OD2 2.79 |
-| 31721717 | `mich_eq5` | CSR_mich | submitted | - | D196 | 10 ns NVT at 2 fs, the three Michaelis restraints at 500 kcal/mol/A^2 |
+| 30580259 | `nacopt` | CSR_nac | FAILED | 00:59:52 | ¶106 | `nacopt`, failed |
+| 30598032 | `nacarg` | CSR_nac | COMPLETED | 23:56:12 | ¶109, ¶110, ¶112 | `nacarg` - 24 h QM/MM MD with Arg229 added to the QM region |
+| 30698605 | `ohHmin` | CSR_nac | CANCELLED | 00:00:00 | ¶114, ¶115 |  |
+| 30699162 | `ohHmin` | CSR_nac | COMPLETED | 00:03:16 | ¶115 | hydroxide-protonated minimisation (`ohHmin`) |
+| 30703062 | `ohHmin2` | CSR_nac | FAILED | 00:00:09 | ¶116 |  |
+| 30705703 | `ohHmin3` | CSR_nac | COMPLETED | 00:03:53 | ¶116, ¶118 | `ohHmin3` - the build that `ohH` ran from |
+| 30721365 | `ohH` | CSR_nac | COMPLETED | 19:46:57 | ¶118, ¶119 | `ohH` - 20 h QM/MM MD of the Lys226-protonated species |
+| 30923516 | `subst` | CSR_nac | CANCELLED | 02:11:54 | ¶128, ¶129, ¶130, ¶131, ¶135, ¶145 | `subst` - cancelled; its start structure carried the shell ¶120 condemned |
+| 30966977 | `wt100` | CSR_wt | COMPLETED | 03:15:14 | ¶132, ¶134 | `wt100` - 100 ns, substrate left the site |
+| 31016877 | `wt100b` | CSR_wt | COMPLETED | 03:12:51 | ¶136, ¶137, ¶138 | `wt100b` - 100 ns with the substrate tethered; six-coordinate zinc in 4,998 of 5,000 frames |
+| 31016878 | `aspout` | CSR_wt | CANCELLED | 04:38:57 | ¶136, ¶137, ¶139, ¶140, ¶141, ¶142 | `aspout` cancelled at point 0 of 8: rigid-water constraints written as `$set` can never satisfy `convergence_cmax` |
+| 31051634 | `aspout` | CSR_wt | COMPLETED | 01:16:44 | ¶139, ¶140, ¶141 | `aspout` again with `rigid_water: false` - 9/9 converged in 1 h 17 m against 0/9 in 4 h 39 m |
+| 31143211 | `aspin` | CSR_wt | COMPLETED | 00:53:22 | ¶140, ¶142, ¶143 | `aspin` - the inward arm; `scan_00` (3.60 A) and `scan_08` (1.90 A) are the structures everything since has used |
+| 31146622 | `rwoff` | CSR_wt | COMPLETED | 00:03:58 | ¶142 | `rwoff`/`rwon` - the one-variable test of holding the waters (+0.0027 kcal/mol) |
+| 31146643 | `rwon` | CSR_wt | COMPLETED | 00:04:04 | ¶142 |  |
+| 31154229 | `mich2d` | CSR_wt | CANCELLED | 00:11:17 | ¶144 | first `mich2d`, cancelled for starting from the over-coordinated structure |
+| 31155441 | `mich2d` | CSR_wt | FAILED | 03:26:23 | ¶145, ¶146, ¶147, ¶148, ¶149 | the 45-point 2D grid: all 45 points converged, then the job FAILED writing its own summary (`target1_A`) |
+| 31160947 | `substopt` | CSR_nac | FAILED | 00:26:44 | ¶146, ¶147, ¶152 | `substopt` - died in `xtbpcgradientgrab` on a point charge 0.58 A from a QM atom |
+| 31167021 | `subst` | CSR_nac | CANCELLED | 00:00:00 | ¶147, ¶148, ¶149 |  |
+| 31176144 | `spref` | CSR_wt | FAILED | 00:00:08 | ¶152 | the charge-deletion pair, dead in 8 s on a doubled section prefix (`sp_sp_qmmm_ref`) |
+| 31176145 | `spr229` | CSR_wt | FAILED | 00:00:08 | ¶152 |  |
+| 31185324 | `spref` | CSR_wt | COMPLETED | 03:01:51 | ¶152, ¶153 | the pair re-run: -5076.869006116424 and -5076.939666070885 Eh, Arg229 at +44.34 kcal/mol |
+| 31185325 | `spr229` | CSR_wt | COMPLETED | 03:06:14 | ¶152, ¶153 |  |
+| 31186037 | `asph` | CSR_wt | COMPLETED | 00:12:03 | ¶152, ¶153 | `asph` - protonated Asp92, free optimisation: Zn-OD1 1.90 -> 2.99 A, five ligands -> four |
+| 31186038 | `qmrate` | CSR_wt | COMPLETED | 00:00:14 | ¶152, ¶153 | asked for 3 ps of MD, computed nothing, recorded COMPLETED |
+| 31277149 | `q93` | CSR_wt | RUNNING | 00:11:09 | ¶153 | `q93` - Gln93 charge deletion |
+| 31277150 | `qmrate` | CSR_wt | RUNNING | 00:11:09 | ¶153 | `qmrate` - 3 ps timing run, resubmitted |
+| 31721628 | `mich_pre` | CSR_mich | COMPLETED | 00:00:51 | ¶196 | the rebuild's preprocess: `removed D:1:HOH (3 atoms)`, sphere = carbonyl 1.94, His164 2.09, OH 2.14, His88 2.22, Asp92 OD2 2.79 |
+| 31721717 | `mich_eq5` | CSR_mich | submitted | - | ¶196 | 10 ns NVT at 2 fs, the three Michaelis restraints at 500 kcal/mol/A^2 |
 
 **This table is stale between 31277150 and 31721628** - the 100 ns gate runs
-(31483853 reactant, 31423830 product) and everything else from D186-D195 are
+(31483853 reactant, 31423830 product) and everything else from ¶186-¶195 are
 missing. Regenerate it with the `sacct` command at the top before citing it as
 complete.
 
@@ -215,7 +215,7 @@ directories are the record of what was actually computed.
 **Arg90 and Lys226 are in the QM region by choice, not by detection.**
 `preprocess.inputs.extra_qm_residues: {A: [90, 226], C: [1]}` puts them
 there; neither is a zinc ligand, so the 2.5 A detection would never have
-picked them up. That matters for the charge-deletion decomposition (D153):
+picked them up. That matters for the charge-deletion decomposition (¶153):
 the two residues cannot be measured by deleting MM charges they do not
 have, and **no equilibrated system we own leaves them both in MM.**
 `CSR_hydrolysed` is the only one with Lys226 outside the QM region, and it
@@ -229,13 +229,13 @@ already in the log.
 
 | structure | what it is | made by |
 | --- | --- | --- |
-| `CSR_wt/protdft/scan_aspin/scan_00.pdb` | four-coordinate site, Asp92 out at 3.60 A, substrate present but not coordinated; the geometry both charge-deletion single points scored | 31143211 (D140/D143) |
+| `CSR_wt/protdft/scan_aspin/scan_00.pdb` | four-coordinate site, Asp92 out at 3.60 A, substrate present but not coordinated; the geometry both charge-deletion single points scored | 31143211 (¶140/¶143) |
 | `CSR_wt/protdft/scan_aspin/scan_08.pdb` | the same system with Asp92 on the metal at 1.90 A, five ligands | 31143211 |
-| `CSR_wt/protdft/scan_aspin/scan_08_A92_ASH.pdb` | scan_08 with Asp92 protonated (HD2 on OD2, anti, in plane) | `site.py protonate` (D152) |
-| `CSR_wt/protdft/qmmm_asph/QM_MM_optimized.pdb` | the four-coordinate sphere the neutral-Asp92 optimisation produced | 31186037 (D153) |
-| `CSR_wt/protdft/scan_michaelis2d/` | the 45-point 2D surface, all points converged | 31155441 (D147/D149) |
-| `CSR_nac/md_naclong_results/` | the 500 ps NAC MD whose last frame fed `nacqm`, `nacarg` and `ohH` | 30421166 (D101/D102) |
-| `CSR_wt/md_wt100b_results/` | 100 ns with the substrate tethered, first and last frames kept | 31016877 (D138) |
+| `CSR_wt/protdft/scan_aspin/scan_08_A92_ASH.pdb` | scan_08 with Asp92 protonated (HD2 on OD2, anti, in plane) | `site.py protonate` (¶152) |
+| `CSR_wt/protdft/qmmm_asph/QM_MM_optimized.pdb` | the four-coordinate sphere the neutral-Asp92 optimisation produced | 31186037 (¶153) |
+| `CSR_wt/protdft/scan_michaelis2d/` | the 45-point 2D surface, all points converged | 31155441 (¶147/¶149) |
+| `CSR_nac/md_naclong_results/` | the 500 ps NAC MD whose last frame fed `nacqm`, `nacarg` and `ohH` | 30421166 (¶101/¶102) |
+| `CSR_wt/md_wt100b_results/` | 100 ns with the substrate tethered, first and last frames kept | 31016877 (¶138) |
 
 ## Trajectories deleted on 2026-11-03, and what is left in their place
 
@@ -266,14 +266,14 @@ Three were kept deliberately:
 - `CSR_crystal_v2/md_results/NVTtrajectory_imaged.dcd` - the parent of
   `CSR_mich`, cheap at 0.29 GB.
 
-So the ten D195 verdicts can be re-read but not re-measured frame by frame. If
+So the ten ¶195 verdicts can be re-read but not re-measured frame by frame. If
 a revision needs the distributions rather than the endpoints, those runs have
 to be repeated, and that is a deliberate trade for the headroom.
 
 ### The second prune, later the same evening
 
 `md_eq5` alone wrote **13 GB**, because `md` keeps every trajectory twice, raw
-and imaged. Once D197's analysis had been collected, three more files went:
+and imaged. Once ¶197's analysis had been collected, three more files went:
 
 | deleted | size | why redundant |
 | --- | --- | --- |
@@ -283,13 +283,13 @@ and imaged. Once D197's analysis had been collected, three more files went:
 
 `md_eq5_results` went from 13 G to **5.7 G** and scratch from 286 to
 **280/300 GB**. Kept: the imaged NVT trajectory, `NVTtrajectory_lastframe.pdb`
-and `..._lastframe_imaged.pdb` - the frame every D197 number was measured on -
+and `..._lastframe_imaged.pdb` - the frame every ¶197 number was measured on -
 and `relaxbox_NPT_lastframe.pdb`. The three `warmup_MD_cycle*` pairs were left
 alone, about 180 MB between them.
 
 **The cost, stated because unlike the first prune this run backs a live open
 question.** The 97.9% occupancy, the coordination distribution and the sphere
-angles can all be recomputed from the imaged copy, so nothing in D197 is
+angles can all be recomputed from the imaged copy, so nothing in ¶197 is
 unreproducible. What is gone is the unwrapped coordinates: any property that
 imaging destroys - diffusion, or a distance measured across a periodic
 boundary - would mean re-running the 10 ns.

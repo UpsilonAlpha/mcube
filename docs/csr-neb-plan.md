@@ -10,10 +10,10 @@ metal-ligand positions: **Arg90 (BBL R118) occupies a Zn1 ligand position** and
 zinc, so the canonical second metal cannot bind and the site carries one zinc at
 Zn1.
 
-**Central hypothesis (D107).** Arg90 and Lys226 together supply, as two
+**Central hypothesis (¶107).** Arg90 and Lys226 together supply, as two
 monovalent cations, the **+2 that the absent Zn2 would have carried**. They do
 Zn2's substrate-anchoring job electrostatically - Lys226 salt-bridges the C3
-carboxylate (2.61 A at closest over `nacqm`'s 50 ps - but **this opens to 4.26 A over the following 50 ps and no cation holds the substrate at all; see D111**), Arg90 holds the
+carboxylate (2.61 A at closest over `nacqm`'s 50 ps - but **this opens to 4.26 A over the following 50 ps and no cation holds the substrate at all; see ¶111**), Arg90 holds the
 6-alpha-hydroxyethyl in 99% of frames - while being unable to do its catalytic
 jobs: lowering the nucleophile's pKa and stabilising the anionic nitrogen. That
 would account for CSR-1 binding broadly and turning over poorly.
@@ -43,7 +43,7 @@ The paths must answer:
 2. **Arg90 (R118) and Arg229:** the same question for the arginines. Arg90 sits
    at a Zn1 ligand position, beside the metal; **Arg229 is cationic and contacts
    the substrate in 89% of frames but is not in the QM region.**
-3. **Asp92 (D120):** is it the general base? Its proton-accepting geometry says
+3. **Asp92 (¶120):** is it the general base? Its proton-accepting geometry says
    yes (OD1 2.50 A from the nucleophile's proton). Note it is **monodentate to
    the single zinc** (OD1 2.19, OD2 3.47), so it bridges nothing - the di-zinc
    "bridging aspartate" label does not transfer to a mono-zinc site.
@@ -52,15 +52,15 @@ How each question is answered:
 - **Who moves which proton:** along every NEB path, monitor Lys226 NZ, Asp92 OD1/OD2, the Zn water and O01 protons.
 - **Per-residue contributions** (as Imhof did for Lys92 in EcoRV): recompute each path's energies with the charges of Lys226, Arg90, Arg229 and Asp92 zeroed in turn, then optimise the path again with the residue removed or neutralised for the important cases.
 - **Where they sit at the start.** The two models disagree about Lys226, which is
-  why D107 measured it over a trajectory rather than in one frame:
-  - Arg90 and Arg229 hold the 6α-hydroxyethyl and C2 side chain (D29, 99%/89%)
+  why ¶107 measured it over a trajectory rather than in one frame:
+  - Arg90 and Arg229 hold the 6α-hydroxyethyl and C2 side chain (¶29, 99%/89%)
     — **in classical MD. Under QM/MM neither keeps a 3.5 Å contact with the
-    substrate in any frame** (D111), so this bullet describes the force field;
-  - Asp92 binds the Zn and H-bonds both water oxygens (D29, 99.5%/100%);
-  - Lys226 is **2.7 Å from O01 in `CSR_crystal_v2`** (D29) but **5.6-7.3 Å from it
+    substrate in any frame** (¶111), so this bullet describes the force field;
+  - Asp92 binds the Zn and H-bonds both water oxygens (¶29, 99.5%/100%);
+  - Lys226 is **2.7 Å from O01 in `CSR_crystal_v2`** (¶29) but **5.6-7.3 Å from it
     in `CSR_nac`**, where it salt-bridges the C3 carboxylate at 2.61 Å over the
-    first 50 ps, loses that contact over the next 50 ps (D111), and
-    never comes within 4.7 Å of the leaving nitrogen (D107). Any claim about its
+    first 50 ps, loses that contact over the next 50 ps (¶111), and
+    never comes within 4.7 Å of the leaving nitrogen (¶107). Any claim about its
     role has to say which model it refers to.
 
 ## Methods we replicate (checked against the abstracts, 2026-10-18)
@@ -87,7 +87,7 @@ How each question is answered:
 - NDM-1 (B1, PMID 24025144) and SMB-1 (B3, PMID 32146530): the *Zn-bridging hydroxide* is the nucleophile, with Asp120/124 assisting. That is the di-Zn case.
 
 **Relevance to CSR-1:**
-- Our **Asp92 is D120** (crystal 120 = model 92). As in CphA, it binds the Zn, and in our QM/MM MD it H-bonds both water oxygens.
+- Our **Asp92 is ¶120** (crystal 120 = model 92). As in CphA, it binds the Zn, and in our QM/MM MD it H-bonds both water oxygens.
 - CSR-1 has one Zn, like CphA. So the precedent favours **water + Asp general base** over a pre-formed hydroxide.
 
 
@@ -125,7 +125,7 @@ so it wants either a longer walltime request on `general` or splitting across
 jobs. **Splitting is now the easier of the two:** `resume: true` on the qmmm
 stage continues from ASH's state file and runs only the remainder of `time`, so
 a 300 ps target can be a chain of jobs that resubmit the same section unchanged
-(D109).
+(¶109).
 
 **There is no convention for GFN2-xTB/MM, and no guidance on sufficiency.** No
 methodological paper, benchmark or review gives a target length or a convergence
@@ -151,15 +151,15 @@ coordination geometry.
 
 **But equilibration length is not what we judge the zinc against: the reference is
 the crystal structure** (user, 2026-10-25). CSR-1 is deposited - 6DN4 (mature wild
-type, 1.99 A), 6DQH/6NC5 (2.07 A) - and D39/D40 identify ZN302 as the Zn1 H-R-H
+type, 1.99 A), 6DQH/6NC5 (2.07 A) - and ¶39/¶40 identify ZN302 as the Zn1 H-R-H
 site we keep and ZN301 as the canonical Zn2 site that only the R118H/Q121H/K254H
 mutant restores. So the question "is our zinc sphere right?" is answered by
 comparison with that density, not by how long anyone's MD ran. This also means the
 inaccessible Methods of Yang *et al.* 2021 (10.1021/acs.jcim.1c01109) do not
 undermine the zinc argument: that paper was only ever a secondary prop.
 
-**One thing to read off the PDB rather than this log.** D40 lists ZN302's ligands
-as "His87/His163 + two waters", but the mapping recorded in D22 is model =
+**One thing to read off the PDB rather than this log.** ¶40 lists ZN302's ligands
+as "His87/His163 + two waters", but the mapping recorded in ¶22 is model =
 deposited - 28 (model His88 = PDB His116, model His164 = PDB His192), under which
 87 and 163 would be model 59 and 135 - not zinc ligands. One of the two numbering
 statements is wrong, and since the crystal sphere is now the reference standard,
@@ -168,7 +168,7 @@ file before being quoted.** Our optimised model currently has a five-coordinate
 zinc (O01 1.88, His88 2.13, His164 2.14, HOH 2.17, Asp92 OD1 2.19), and whether
 that matches the crystallographic sphere is exactly the comparison to make.
 
-**That comparison was made in D120 and the answer is no.** Measured from 6NC5
+**That comparison was made in ¶120 and the answer is no.** Measured from 6NC5
 (ZN302), the crystal sphere is four — HOH485 1.90, His163 NE2 2.09, HOH493 2.14,
 His87 NE2 2.22 — with **no carboxylate**. Asp92 OD1 at 2.19 Å above is the fifth
 ligand the crystal does not have, and a restraint this pipeline generated put it
@@ -181,24 +181,24 @@ binding paper and is snippet-level, so it must not be quoted as a length), VIM-1
 (10.1021/acscatal.1c04786, ACS 403), Yang 2021 Methods, Wu-Xu-Guo 2010 SI.
 **Feng *et al.* 2017 (10.1038/s41467-017-02339-w) has no computational component
 at all** - crystallography and NMR only - so it can be cited for structure, as
-D107 does, but never for a protocol.
+¶107 does, but never for a protocol.
 
 ## Replication protocol for CSR-1 with modern methods
 
 | | Imhof 2009 / Xu–Guo 2006 | CSR-1 (mcube) |
 | --- | --- | --- |
 | QM level for sampling and paths | AM1/d (Imhof); SCC-DFTB (Guo) | GFN2-xTB/MM (electrostatic embedding) |
-| Energies | B3LYP model systems; DFT corrections | ωB97X-D3(BJ)/def2-SVP/MM single points along paths; def2-TZVPD on stationary points (D31) |
-| Reactant sampling | minimised structures (Imhof - **Methods not accessible, unverified**); QM/MM MD (Guo - **length unconfirmed**) | 50 ps QM/MM MD (D28/D29), several snapshots |
+| Energies | B3LYP model systems; DFT corrections | ωB97X-D3(BJ)/def2-SVP/MM single points along paths; def2-TZVPD on stationary points (¶31) |
+| Reactant sampling | minimised structures (Imhof - **Methods not accessible, unverified**); QM/MM MD (Guo - **length unconfirmed**) | 50 ps QM/MM MD (¶28/¶29), several snapshots |
 | Paths | exhaustive path network (Imhof) | relaxed scans → NEB-CI → TS optimisation + IRC for every candidate step, assembled into a network |
 | Free energies | PMF by umbrella sampling (Guo) | xTB/MM umbrella sampling along the best path's coordinate(s), with WHAM/MBAR. Needs a new mcube stage. |
-| Validation | AM1/d vs B3LYP on model systems | xTB vs ωB97X on the QM/MM structures (D30), plus a cluster-model check |
+| Validation | AM1/d vs B3LYP on model systems | xTB vs ωB97X on the QM/MM structures (¶30), plus a cluster-model check |
 | Residue roles | Lys92 positioning and stabilisation | charge deletion / mutation for Lys226, Arg90, Arg229, Asp92 along the best paths |
 
 **Step 1 – enumerate mechanisms (Imhof-style network).** Candidate first steps, each a scan → NEB → TS/IRC on 2–3 snapshots:
 - **H1 (CphA-like):** a **non-metal-bound water** attacks C4x and **Asp92** accepts its proton. This needs the second-shell waters near C4x, which we haven't analysed yet: the QM/MM MD analysis covered only O01 and HOH485.
 - **H2:** the Zn-bound water (O01, after the Lys226 → O01 transfer) attacks, and Asp92 or Lys226 NZ accepts the proton.
-- **H3 (classic B3):** Zn-bound OH⁻ attacks, with Lys226 protonated. This depends on D30 confirming that this protonation state is reasonable.
+- **H3 (classic B3):** Zn-bound OH⁻ attacks, with Lys226 protonated. This depends on ¶30 confirming that this protonation state is reasonable.
 - **H4:** Lys226 acts as the base.
 
 Then, from the tetrahedral intermediate or directly (concerted, as in CphA): C4x–N1x cleavage, and N1x protonation by Asp92-H, Lys226 or water. The network is the set of intermediates joined by the computed steps. The answer is the path with the lowest highest barrier, plus any competitive alternatives (cf. the "minor pathway" result of Wu *et al.*).
@@ -222,10 +222,10 @@ Criteria: attack = d(O···C4x) ≤ 3.5 Å and O–C4x=O2x angle 95–120°; lo
 
 | | Nucleophile → proton acceptor | Precedent | QM region change | Start frames |
 | --- | --- | --- | --- | --- |
-| **H1** | second-shell **E3094 → (E3166) → Asp92 OD1** | CphA (Xu–Guo 2006): non-metal water, Zn-bound D120 base | **add E3094 and E3166** (the scans need them in QM) | E3094 loose-attack frames spread in time, e.g. 105, 280, 472 |
+| **H1** | second-shell **E3094 → (E3166) → Asp92 OD1** | CphA (Xu–Guo 2006): non-metal water, Zn-bound ¶120 base | **add E3094 and E3166** (the scans need them in QM) | E3094 loose-attack frames spread in time, e.g. 105, 280, 472 |
 | **H2** | Zn-bound **HOH485 → Asp92 OD1** (direct, 97% H-bond) | EcoRV (water → Asp90, metal-activated) | none | frames with the best HOH485 angle |
 | **H3** | Zn-bound **O01 (water) → meropenem C3-carboxylate O4x** (88% H-bond), or → Lys226 NZ | substrate-assisted / Lys as base (Q1) | none | frames 575, 244, 192 (closest O01 approach) |
-| **H4** | classic **Zn-OH⁻** (proton held on Lys226) attacks; Lys226-NH3⁺ stabilises | di-Zn B1/B3 bridging hydroxide | none (Lys226 NZ–H constrained during the scan) | same as H3; **only if D30 says Lys-NH3⁺/OH⁻ is reasonable at DFT** |
+| **H4** | classic **Zn-OH⁻** (proton held on Lys226) attacks; Lys226-NH3⁺ stabilises | di-Zn B1/B3 bridging hydroxide | none (Lys226 NZ–H constrained during the scan) | same as H3; **only if ¶30 says Lys-NH3⁺/OH⁻ is reasonable at DFT** |
 
 Then:
 - If a scan's end point is a tetrahedral intermediate, optimise it unconstrained. Run NEB R→TI and TS/IRC, then the C4x–N1x cleavage and N1x-protonation steps (from Asp92-H, Lys226, water or the carboxylate).
@@ -253,14 +253,14 @@ Then:
 ## Status (2026-10-29)
 
 > **Superseding note, 2026-10-29.** Everything in the 2026-10-26 status below
-> was written before D120, and one of its bullets is now known false: the zinc
+> was written before ¶120, and one of its bullets is now known false: the zinc
 > sphere was listed as **five-coordinate and crystal-referenced, "established
 > and not in doubt"**. The crystal sphere is **four** — HOH485 1.90, His163 NE2
 > 2.09, HOH493 2.14, His87 NE2 2.22 (6NC5 ZN302) — **and Asp92 is not on it.**
 > The fifth ligand was put there by a coordination restraint this pipeline
 > generated from a 3.0 Å detection cutoff, which held Asp92 OD2 at its 2.80 Å
-> second-shell distance until the carboxylate rotated OD1 onto the metal (D120,
-> D121).
+> second-shell distance until the carboxylate rotated OD1 onto the metal (¶120,
+> ¶121).
 >
 > **What that costs the rest of the bullet list.** Every trajectory measurement
 > below was made on that five-coordinate zinc, so the ones that involve Asp92 or
@@ -272,11 +272,11 @@ Then:
 >
 > **Two further blockers found since.** The pose everything ran on from October
 > was the wrong one, and 2.55 Å was its restraint's own output rather than a
-> measurement (D123, D126); and the start structures built in D126/D128 graft
+> measurement (¶123, ¶126); and the start structures built in ¶126/¶128 graft
 > onto `md_naclong`'s frame, which carries the condemned shell forward, so
-> `md_subst` (job 30923516) was cancelled an hour in (D130).
+> `md_subst` (job 30923516) was cancelled an hour in (¶130).
 >
-> **The current blocker is therefore the shell, not the pose**, and D120 already
+> **The current blocker is therefore the shell, not the pose**, and ¶120 already
 > costed the route through it: preprocess from the crystal with `cutoff: 2.5`,
 > no Asp92 restraint, then re-run everything from `md_nac` onward. Read
 > `## Standing constraints` at the top of the decision log before setting any of
@@ -289,45 +289,45 @@ Then:
 > His164 2.09, hydroxide 2.14, His88 2.22), Asp92 excluded. **Nothing below
 > this note should be rebuilt until its shell is read** - `site.py shell` for
 > occupancy, `site.py check --at=reactant` on the last frame. It does not fix
-> the pose: the substrate is unrestrained and expected to drift (D93, D132).
+> the pose: the substrate is unrestrained and expected to drift (¶93, ¶132).
 
 **The blocker is the substrate pose, and it sits upstream of everything else in
 the M-series.** Two poses are now excluded. The pinned one - every structure
-before D102 descended from a meropenem whose carbonyl was held on the zinc at
-1.94 A through all of equilibration - is an artefact of its own restraint (D56,
-D59, D60). The free one has now been sampled, across 100 ps of continuous
-GFN2-xTB QM/MM MD in two consecutive segments (D104, D110), and it does not
+before ¶102 descended from a meropenem whose carbonyl was held on the zinc at
+1.94 A through all of equilibration - is an artefact of its own restraint (¶56,
+¶59, ¶60). The free one has now been sampled, across 100 ps of continuous
+GFN2-xTB QM/MM MD in two consecutive segments (¶104, ¶110), and it does not
 form: no cation holds the substrate in a single frame, the Lys226-carboxylate
 contact opens from 2.61 to 4.26 A, and the O01-C4x attack distance wanders over
-3.63-7.23 A (D111). **There is no Michaelis complex to compute a path from**,
+3.63-7.23 A (¶111). **There is no Michaelis complex to compute a path from**,
 which is what M0 below is for.
 
 **What is established and not in doubt:**
 
 - **The nucleophile and its base.** Over the same 100 ps the hydroxide stays on
   the zinc (1.73-1.97 A, 100% of frames) and Asp92 OD1 holds it (2.63-3.20 A,
-  mean 2.94, 100%) - D111. Asp92's proton-accepting geometry is the one part of
+  mean 2.94, 100%) - ¶111. Asp92's proton-accepting geometry is the one part of
   the mechanism every calculation here agrees on.
 - ~~**The zinc sphere**, five-coordinate under GFN2 and referenced to the
-  crystal rather than to any simulation length (D108; user, 2026-10-25): O01
+  crystal rather than to any simulation length (¶108; user, 2026-10-25): O01
   1.90, His164 NE2 2.10, Asp92 OD1 2.11, HOH 2.16, His88 NE2 2.18. Asp92 is
   **monodentate** (OD2 4.22), so it bridges nothing.~~
-  **[FALSE — D120.]** The crystal sphere is **four** and carries no carboxylate;
+  **[FALSE — ¶120.]** The crystal sphere is **four** and carries no carboxylate;
   "referenced to the crystal" was never checked against the deposited file.
   Asp92 OD1 at 2.11 Å is a restraint artefact, not a ligand. Nothing that
   depends on this bullet survives it.
 - **Both cations are where the hypothesis needs them**, and cationic throughout:
-  Arg90 at a Zn1 ligand position, Lys226 at the Zn2 position (D107, D110). The
+  Arg90 at a Zn1 ligand position, Lys226 at the Zn2 position (¶107, ¶110). The
   +2-substitution hypothesis stands as a hypothesis; what it does not have is
-  evidence from any trajectory (D111).
+  evidence from any trajectory (¶111).
 - **100 ns of classical MD** reached a near-attack conformation (3.33 A, 101
-  degrees; D102) that 50 ps of QM/MM destroyed. The D29 contact fractions are a
-  force-field result QM/MM does not reproduce (D111), so they cannot be cited as
+  degrees; ¶102) that 50 ps of QM/MM destroyed. The ¶29 contact fractions are a
+  force-field result QM/MM does not reproduce (¶111), so they cannot be cited as
   structure.
 
 **Infrastructure, so it is not re-derived:** QM/MM MD costs 1.08 s/step at 1 fs
 on 4 threads, 1.72 s/step with Arg229 in the QM region; xTB stays on CPU; and
-`resume: true` lets a long run be a chain of jobs (D109, `running-on-bunya.md`).
+`resume: true` lets a long run be a chain of jobs (¶109, `running-on-bunya.md`).
 
 ## Principle
 
@@ -342,7 +342,7 @@ There is no unrestrained MM MD at any point.
 ## System
 
 **The live system is `/scratch/user/uquadhik/CSR_nac`** (2026-10-26). The table
-below describes `CSR_crystal`, which every structure up to D102 came from and
+below describes `CSR_crystal`, which every structure up to ¶102 came from and
 whose atom indices the older entries in the log quote; **its substrate pose is
 the pinned one M0 rejects**, so it is kept for reading the history, not for
 building anything new. Model numbering = crystal numbering − 28. Atom indices are
@@ -357,14 +357,14 @@ between the two systems.
 | QM method | GFN2-xTB with electrostatic embedding (exploration). DFT/MM for final energies. |
 | Active region | 8 Å around the Zn (atom 4203). One `active_atoms` list per snapshot, reused by every later step for that snapshot. |
 
-**`CSR_nac`, as actually run** (D102–D111): 49,424 atoms; zinc five-coordinate on
+**`CSR_nac`, as actually run** (¶102–¶111): 49,424 atoms; zinc five-coordinate on
 His88 NE2, His164 NE2, Asp92 OD1, OH⁻ (O01) and one water — **the wrong sphere,
 and the reason this run has to be redone: the crystal has four and no
-carboxylate (D120)** — with the substrate carbonyl **not** coordinated (Zn–O2x
+carboxylate (¶120)** — with the substrate carbonyl **not** coordinated (Zn–O2x
 never closer than 4.77 Å, which a saturated metal cannot avoid); QM region 119
 atoms at charge +2, or **137 atoms at charge +3** with Arg229's side chain added
-(`qmmm_nacarg`, D110); active region 5 Å around the Zn, unioned with the QM atoms.
-Since D105 `resolve_actatoms` unions the QM atoms in unconditionally and reports
+(`qmmm_nacarg`, ¶110); active region 5 Å around the Zn, unioned with the QM atoms.
+Since ¶105 `resolve_actatoms` unions the QM atoms in unconditionally and reports
 which it had to add, so a small `actradius` can no longer freeze a QM residue.
 
 ## Steps
@@ -410,12 +410,12 @@ All structures are built inside the same box from R, so every endpoint has ident
 | 4b | C4x–N1x, 1.4 → ~2.6 Å | Ring-opened anionic intermediate (EI⁻), with the negative charge on N. |
 | 4c | Proton donor–H…N1x | Δ2 product (P). One scan per candidate donor. |
 
-Candidate proton donors for 4c (decision log D18):
+Candidate proton donors for 4c (decision log ¶18):
 - H03 from the original OH⁻, directly or relayed through Asp92;
 - Lys226 NZ–H;
 - a water molecule, if one reaches N1x.
 
-The Δ1 tautomer (protonation at C2) comes later (D19).
+The Δ1 tautomer (protonation at C2) comes later (¶19).
 
 The scans give a first energy profile, show which steps are separate, and supply the endpoints for NEB.
 
@@ -443,7 +443,7 @@ See "TS refinement and IRC" below. Run on each climbing image:
 
 - DFT/MM single points on the optimised minima, the transition states and the NEB images:
   - ωB97M-V/def2-SVP/MM, then ωB97M-V/def2-TZVP(D)/MM;
-  - PySCF, with gpu4pyscf on Bunya's NVIDIA H100/A100 nodes (D9).
+  - PySCF, with gpu4pyscf on Bunya's NVIDIA H100/A100 nodes (¶9).
 - If GFN2 and DFT disagree badly, re-optimise the key stationary points at DFT/MM.
 - Check GFN2-xTB on a cluster model of the Zn site: Zn, its ligands' side chains, OH⁻ and a β-lactam fragment.
 
@@ -455,12 +455,12 @@ See "TS refinement and IRC" below. Run on each climbing image:
 ### 9. Analysis
 
 - **Per-residue contributions:** zero the charges of Lys226, Arg90 and Asp92 along each path (as Imhof et al. did for Lys92 in EcoRV).
-- **Asp92:** does it H-bond the OH⁻ or coordinate the Zn (D24)?
+- **Asp92:** does it H-bond the OH⁻ or coordinate the Zn (¶24)?
 - **Later:** one Zn vs two Zn (P3), and the Δ1 product (P4).
 
 ## mcube support for steps 3–6
 
-Implemented (decision log D26; see the README for every key):
+Implemented (decision log ¶26; see the README for every key):
 
 1. **Constrained QM/MM optimisation:** `qmmm.inputs.opt_constraints`, `[[i, j]]` (hold) or `[[i, j, d]]` (set).
 2. **Relaxed scan:** `mcube scan config.yaml --section scan_attack`, with `pdb_file`, `atoms`, `start`, `end` and `points` in the section. Writes `scan_XX.pdb` and `scan_energies.csv`.
@@ -502,10 +502,10 @@ ts_attack_s1:
 
 ## Minimal protocol (M-series) — supersedes the P-series below
 
-Decided 2026-10-18 (D47): CPU only, and as little simulation as will test the three
+Decided 2026-10-18 (¶47): CPU only, and as little simulation as will test the three
 questions, staying with what the source papers actually did.
 
-**This reverses the tier B decision (D44).** Re-reading the methods settles it: both
+**This reverses the tier B decision (¶44).** Re-reading the methods settles it: both
 source papers used *semi-empirical* QM/MM as the primary method, with DFT only for
 validation on small models.
 
@@ -524,14 +524,14 @@ a final check on one structure, but is not the route.
 ### M0. Establish a Michaelis complex - the blocker
 
 Added 2026-10-26. The M-series had no such step because when it was written the
-pose was assumed; D111 removed that assumption and both candidate poses with it
-(see Status). Nothing downstream is computable without a bound complex. D111's
+pose was assumed; ¶111 removed that assumption and both candidate poses with it
+(see Status). Nothing downstream is computable without a bound complex. ¶111's
 three readings are the candidates, and they want different experiments:
 
 | Reading | Test | Cost |
 | --- | --- | --- |
-| The reactant protonation state is wrong, so what we are holding together is not what binds - **and the live model is in the state D48 rejected, see M1** | the `protH_lys`/`protH_oh` comparison: xTB/MM geometries, DFT/MM single points | cheap; the sections are already written |
-| GFN2-xTB cannot hold this complex | DFT/MM optimisation of the complex - the retest this log has specified since D52 | moderate, one structure |
+| The reactant protonation state is wrong, so what we are holding together is not what binds - **and the live model is in the state ¶48 rejected, see M1** | the `protH_lys`/`protH_oh` comparison: xTB/MM geometries, DFT/MM single points | cheap; the sections are already written |
+| GFN2-xTB cannot hold this complex | DFT/MM optimisation of the complex - the retest this log has specified since ¶52 | moderate, one structure |
 | The complex is real but needs a restraint to stay in the well through equilibration | restrained QM/MM equilibration with the carboxylate on the cations | cheap, but makes the pose an assumption again |
 
 **The third is not a fix and should not be reached for first.** Restraining the
@@ -544,7 +544,7 @@ complex shown to hold - and that is the test which has never passed.
 it: CSR-1 may bind meropenem weakly.** That would fit broad-spectrum binding
 with poor turnover, and it is the +2 hypothesis's own prediction - a site that
 anchors electrostatically but cannot do Zn2's catalytic work. But a drifting
-simulation cannot establish it (D111), and **nothing in the protocol as written
+simulation cannot establish it (¶111), and **nothing in the protocol as written
 could tell a weak complex from a bad model**, because every step from M2 onward
 presumes a well to compute in. Separating them needs an affinity-like quantity
 rather than a path, which is the one circumstance that would force umbrella
@@ -552,14 +552,14 @@ sampling back in from "Deliberately not doing".
 
 ### M1. Settle the reactant - open, with three incompatible answers
 
-The proton on Lys226 versus on O01. Job 30053828 (D42) ran; its answer has not
+The proton on Lys226 versus on O01. Job 30053828 (¶42) ran; its answer has not
 survived:
 
 | Source | Lys226 -> O01 transfer | Status |
 | --- | --- | --- |
-| D29/D30 | -13 to -16 kcal/mol | computed in the six-coordinate site, so it does not settle the question for the correct one (D38) |
-| D48, clean geometry (job 30053828) | **-5.23 kcal/mol: resting state is Zn-OH2 with neutral Lys226** | about a third of D29/D30; the rest was geometric artefact. D48 calls it "not comfortably excluded, only disfavoured" |
-| D107, pKa bookkeeping | **+6 to +7, i.e. uphill** | opposite in sign |
+| ¶29/¶30 | -13 to -16 kcal/mol | computed in the six-coordinate site, so it does not settle the question for the correct one (¶38) |
+| ¶48, clean geometry (job 30053828) | **-5.23 kcal/mol: resting state is Zn-OH2 with neutral Lys226** | about a third of ¶29/¶30; the rest was geometric artefact. ¶48 calls it "not comfortably excluded, only disfavoured" |
+| ¶107, pKa bookkeeping | **+6 to +7, i.e. uphill** | opposite in sign |
 
 GFN2-xTB's worst benchmarked functional group is exactly the protonated amine,
 MUE 5.3-7.7 kcal/mol (Arantes & Rezac 2025, doi:10.1021/acs.jctc.5c00690),
@@ -570,17 +570,17 @@ run in. Being also the cheapest of M0's three tests, this is the obvious first
 move: it settles M0's first reading and M1 together.
 
 **The state M1 settled on was never applied to the system we are simulating.**
-D48's verdict was that the resting state is Zn-OH2 with neutral Lys226 - "the
-model genuinely has no hydroxide". But `CSR_nac`, the system behind D102-D111,
+¶48's verdict was that the resting state is Zn-OH2 with neutral Lys226 - "the
+model genuinely has no hydroxide". But `CSR_nac`, the system behind ¶102-¶111,
 carries **O01 as a hydroxide (one hydrogen, H03) and Lys226 cationic (HZ1, HZ2,
-HZ3)** - the `lysH` state, the one D48 disfavoured by 5.2 kcal/mol. D98 built it
+HZ3)** - the `lysH` state, the one ¶48 disfavoured by 5.2 kcal/mol. ¶98 built it
 from `CSR_unrestrained2` with "the same `preprocess.inputs`", and nothing in the
-log revisits the protonation at that point. So **every QM/MM result from D102
+log revisits the protonation at that point. So **every QM/MM result from ¶102
 onward was computed in the state M1 rejected**, which promotes M0's first
-reading from one possibility of three to the leading one (D112).
+reading from one possibility of three to the leading one (¶112).
 
-Two things stop this being a simple error to correct. D48 itself called
--5.2 kcal/mol "not comfortably excluded, only disfavoured". And D107's pKa
+Two things stop this being a simple error to correct. ¶48 itself called
+-5.2 kcal/mol "not comfortably excluded, only disfavoured". And ¶107's pKa
 bookkeeping points the other way by +6 to +7, which would *favour* `lysH`. **The
 two best arguments disagree in sign**, which is exactly what a DFT/MM comparison
 in a clean geometry is for.
@@ -593,17 +593,17 @@ first, on the single best reactant:
 scan (2D: O-C4x x H...Asp92 OD1) -> NEB-CI -> TS optimisation -> IRC -> DFT/MM single
 points along the path. Everything xTB/MM except the last step. **The scan has to
 drive the attack coordinate:** two independent 50 ps QM/MM runs agree the MD will
-not hand us a near-attack frame (D104, D110).
+not hand us a near-attack frame (¶104, ¶110).
 
 **No published mechanism transfers whole, and this step should stop implying one
 does.** It used to read "exactly the CphA case". It is not: CphA is a B2 enzyme
 with a four-coordinate Cys-containing site and no Zn-carbonyl contact at all, so
 what carries over is the principle - water nucleophile, carboxylate base - and
-not a geometry or a number (D60). The closest structural analogue is the only
+not a geometry or a number (¶60). The closest structural analogue is the only
 published mono-zinc B3 mechanism, GOB-18 (Lisa 2017), and **its metal sits at Zn2
-while ours sits at Zn1** (D107), so the species that stabilises the anionic
+while ours sits at Zn1** (¶107), so the species that stabilises the anionic
 nitrogen there is absent here. Asp92 as the base rests on our own geometry, held
-in 100% of frames across 100 ps (D111), not on a borrowed scheme.
+in 100% of frames across 100 ps (¶111), not on a borrowed scheme.
 
 Only if it fails do the alternatives get the same treatment, in this order: Zn-bound
 water with Asp92 as base, then concerted N1x protonation.
@@ -619,11 +619,11 @@ recompute the energies with selected residues' charges zeroed:
 | 2. Do the arginines? | Arg90, Arg229 | **both QM** |
 | 3. Is Asp92 the general base? | Asp92 | QM (and M2 tests it as the base directly) |
 
-Two entries changed on 2026-10-26. Arg229 was MM here until D110 put its 18
+Two entries changed on 2026-10-26. Arg229 was MM here until ¶110 put its 18
 side-chain atoms in the QM region: leaving the nearest cation to the substrate
 outside the quantum region while keeping a further one inside it could not be
 defended. And question 3 no longer calls Asp92 "bridging" - it is monodentate to
-the single zinc (D108).
+the single zinc (¶108).
 
 **The hypothesis predicts an asymmetry, and that is the falsifiable part.** If
 Arg90 and Lys226 supply the +2 the absent Zn2 would have carried, their charges
@@ -631,10 +631,10 @@ should matter more for **ring opening**, where the anionic nitrogen appears, tha
 for the attack step. Imhof's EcoRV conclusion - Mg(II) activates the water, Asp90
 takes the proton, Lys92 positions the substrate and stabilises the intermediate -
 is the **methodological** comparison; the structural analogy to Lys92 is retired
-(D107).
+(¶107).
 
 **Why this waits on M0.** Charge deletion on a substrate sitting 5 A from every
-cation would measure the drift, not the catalysis (D111).
+cation would measure the drift, not the catalysis (¶111).
 
 ### M4. Validation, as the papers did it
 
@@ -654,18 +654,18 @@ later if a referee asks.
 **M0 may force one of them back (2026-10-26).** If the complex turns out to be
 genuinely weakly bound rather than badly modelled, no path calculation can show
 it, and separating the two needs a binding free energy - which puts umbrella
-sampling back on the table for a reason the D47 reasoning did not anticipate:
+sampling back on the table for a reason the ¶47 reasoning did not anticipate:
 not to compare a barrier with k_cat, but to establish that there is a well.
 
 ## Proposed protocol (P-series) — publication grade
 
-Proposed 2026-10-18 (D43), awaiting a decision on the level of theory. The point is
+Proposed 2026-10-18 (¶43), awaiting a decision on the level of theory. The point is
 that the three questions (Lys226, the arginines, Asp92) are answered by *differences*
 between computed paths, so every path must be computed to the same, defensible standard.
 
 ### P-A. Establish the Michaelis complex before any path
 
-The degraded reactant (D41) cost us every scan so far, so this is settled first and
+The degraded reactant (¶41) cost us every scan so far, so this is settled first and
 stated explicitly in the paper. Candidate states, all from the same NVT frame, all
 constrained identically, compared on energy at DFT/MM:
 
@@ -676,8 +676,8 @@ constrained identically, compared on energy at DFT/MM:
 | 3 | 2 His + OH- (no HOH485) | Lys226-NH3+ |
 | 4 | 2 His + OH- + H2O + Asp92 OD2 | Lys226-NH3+ |
 
-States 1 and 2 are job 30053828 (D42). States 3 and 4 test whether HOH485 belongs in
-the sphere and whether Asp92 is a ligand or a base — the question D41 identified as
+States 1 and 2 are job 30053828 (¶42). States 3 and 4 test whether HOH485 belongs in
+the sphere and whether Asp92 is a ligand or a base — the question ¶41 identified as
 defining the mechanism. The chosen state is the one lowest in energy, not the one the
 setup happened to produce. Report the carbonyl distance as an *outcome*, not a restraint:
 re-run the winner with no Zn-O2x constraint to see where it settles.
@@ -692,10 +692,10 @@ re-run the winner with no Zn-O2x constraint to see where it settles.
 
 Under tier B, xTB/MM is used only to find approximate paths; every number that appears
 in the paper comes from DFT/MM. Final energies on stationary points at
-wB97X-D3(BJ)/def2-TZVPD (D31).
+wB97X-D3(BJ)/def2-TZVPD (¶31).
 
-Tier B was chosen (D44). mcube gained `qm_engine: dft` for this; the cost figures and
-the three ways to make it affordable are in D44, and the level split below follows from them:
+Tier B was chosen (¶44). mcube gained `qm_engine: dft` for this; the cost figures and
+the three ways to make it affordable are in ¶44, and the level split below follows from them:
 
 | Purpose | Level |
 | --- | --- |
@@ -749,7 +749,7 @@ the mechanism?", which is a stronger result and uses an existing structure.
 
 - No wild-type CSR-1 structure retains zinc (6DN4 is apo), so the mono-zinc Michaelis
   complex is constructed; its justification is P-A, and the zinc position comes from the
-  Q121H/K254H mutant 6NC5, at a site whose own ligands are wild type (D41).
+  Q121H/K254H mutant 6NC5, at a site whose own ligands are wild type (¶41).
 - The non-truncated form is modelled, as the more faithful model of the natural enzyme;
   residues 1-14 have no experimental coordinates and sit 9-13 A from the zinc.
 - Semi-empirical sampling underlies the paths even under tier B; P-C quantifies that.

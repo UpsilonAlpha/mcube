@@ -2,13 +2,13 @@
 type: observation
 status: supported
 evidence: experimental
-entries: [D151, D208]
-checked: [D151]
+entries: [¶151, ¶208]
+checked: [¶151]
 ---
 
 # The conserved aspartate is a Zn2 ligand, at 1.95-2.27 A, in every B3 structure measured
 
-Measured in 1SML, 5K0W, 7UHI, 5AXO and 6NC5. Representative values from D208:
+Measured in 1SML, 5K0W, 7UHI, 5AXO and 6NC5. Representative values from ¶208:
 
 | structure | Asp -> Zn2 |
 | --- | --- |
@@ -20,7 +20,7 @@ Measured in 1SML, 5K0W, 7UHI, 5AXO and 6NC5. Representative values from D208:
 
 Monodentate in all of them, with the second carboxylate oxygen 3.18-3.46 A
 out. In 6NC5 the same water (HOH493) bridges both zincs at 2.08/2.14 - the
-canonical bridging-nucleophile position, which independently confirms D39.
+canonical bridging-nucleophile position, which independently confirms ¶39.
 
 **This is the mechanistically important half.** The aspartate's position in a
 B3 site is a position *in the Zn2 sphere*. CSR-1 has no Zn2

@@ -2,8 +2,8 @@
 type: observation
 status: supported
 evidence: ours
-entries: [D187, D188, D198]
-checked: [D187, D188, D198]
+entries: [¶187, ¶188, ¶198]
+checked: [¶187, ¶188, ¶198]
 ---
 
 # GFN2-xTB overstates the metal-coordination preference by 5.9 kcal/mol against DFT on this site
@@ -27,16 +27,16 @@ at GFN2 should be expected to be too steep by a similar factor - relevant to
 `scan_znasp`'s +8.46 kcal/mol. It is one pair of structures on one coordinate, so
 5.9 kcal/mol is a single calibration point, not an error bar.
 
-**D198's conclusion from these same clusters is listed as stronger than its
-evidence, and this node deliberately draws the opposite one.** D198 read them as
+**¶198's conclusion from these same clusters is listed as stronger than its
+evidence, and this node deliberately draws the opposite one.** ¶198 read them as
 "GFN2 does not over-coordinate the zinc"; the index notes its own caveat limits
 that to one contact, one geometry pair and single points. The energies above are
 the same numbers, and what they show is a 1.68-fold exaggeration of the same
 sign - a calibration, not a clearance.
 
-**D187/D188's own numbers were corrected and the corrected ones are used here.**
+**¶187/¶188's own numbers were corrected and the corrected ones are used here.**
 The retractions index lists both for describing the cluster as net -1 with a
-~15-atom substrate fragment; D198 measured both clusters at **51 atoms,
+~15-atom substrate fragment; ¶198 measured both clusters at **51 atoms,
 C15H25N5O5Zn, charge 0**, which is what the config records and what is quoted
 above.
 

@@ -1,7 +1,7 @@
 ---
 type: claim
 status: open
-entries: [D22, D40, D107, D124, D178, D207]
+entries: [¶22, ¶40, ¶107, ¶124, ¶178, ¶207]
 ---
 
 # CSR-1's wild-type mechanism is different from the canonical B3 metallo-beta-lactamase mechanism
@@ -32,7 +32,7 @@ at Zn1 ([[csr1-zinc-sits-at-zn1]]), the Zn2 site is vacant with a lysine in it
 arginine ([[csr1-zn1-site-is-h-r-h]]). Each of those is measured in a deposited
 structure. What replaces the missing half is not settled.
 
-**The blind-prediction protocol (D178) applies to this node.** The kinetics
+**The blind-prediction protocol (¶178) applies to this node.** The kinetics
 exist, are withheld, and the computed mechanism goes in the log before they are
 released. [[mutant-and-double-mutant-kinetics]] is named here as a support node
 and is deliberately unread.

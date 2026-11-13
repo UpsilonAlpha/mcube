@@ -1,4 +1,4 @@
-"""Build CSR_mich, the Michaelis rebuild's run directory (D196).
+"""Build CSR_mich, the Michaelis rebuild's run directory (¶196).
 
     python build-mich.py [--force]
 
@@ -33,17 +33,17 @@ What differs from CSR_crystal_v2, and why:
                                has exactly B:1:ZN, C:1:mer (51 atoms),
                                C:2:OH (2) and D:1:HOH (3), and the QM/MM
                                frame measured that water at 1.98 A on the
-                               metal - so removing it leaves the five of D196
+                               metal - so removing it leaves the five of ¶196
                                rather than six.
-  coordination_force: 500      D191 measured a 2.80 A restraint sitting at a
+  coordination_force: 500      ¶191 measured a 2.80 A restraint sitting at a
                                mean of 2.44; offset goes as F/k.
   ligand: null                 the ligand is NOT re-parameterised. The XML
   ligand_xmlfile: openff_MER   CSR_crystal_v2 already produced is copied in
                                and used as given, which avoids both the cost
-                               and OpenFF's atom renaming (D169) - the input
+                               and OpenFF's atom renaming (¶169) - the input
                                structure's ligand atom names are the ones that
                                XML was generated for.
-  extra_qm_residues            Arg90 and Lys226 dropped: D190 put the whole
+  extra_qm_residues            Arg90 and Lys226 dropped: ¶190 put the whole
                                RQK set in MM, and leaving them here would make
                                `preprocess.results.qm_atoms` disagree with
                                every section that runs.

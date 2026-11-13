@@ -1,8 +1,8 @@
 ---
 type: claim
 status: supported
-entries: [D40, D216, D230]
-checked: [D40, D216, D230, D232]
+entries: [¶40, ¶216, ¶230]
+checked: [¶40, ¶216, ¶230, ¶232]
 ---
 
 # The truncated construct is the one being modelled, and truncation bears on expression rather than on catalysis
@@ -41,7 +41,7 @@ submission.
 ## Supersedes
 - [[the-modelled-non-truncated-form-is-catalytically-relevant]]
 
-## Resolved 2026-11-06 (D230)
+## Resolved 2026-11-06 (¶230)
 
 Asked the user which construct the withheld kinetics are on - a construct name,
 not a number, so it does not breach the blind-prediction protocol. **The
@@ -52,10 +52,10 @@ confirmed by the person holding the data. Status moves `withheld` ->
 `supported`. The kinetic *values* remain withheld and the protocol above is
 unchanged.
 
-## D216's retraction does not touch this node (checked 2026-11-07, D232)
+## ¶216's retraction does not touch this node (checked 2026-11-07, ¶232)
 
-D216 is cited here only for the construct discussion. What D232 overturned in
+¶216 is cited here only for the construct discussion. What ¶232 overturned in
 it is the *mechanism* statement - that Asp92 moving onto Zn1 is downstream of
 the Lys226 proton transfer - which nothing above depends on. The truncation
-evidence, and D230's confirmation that the measured and modelled constructs are
+evidence, and ¶230's confirmation that the measured and modelled constructs are
 the same, stand unchanged.

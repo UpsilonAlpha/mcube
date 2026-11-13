@@ -2,8 +2,8 @@
 type: observation
 evidence: literature
 status: supported
-entries: [D216]
-checked: [D216]
+entries: [¶216]
+checked: [¶216]
 ---
 
 # Giving Asp92 a Zn2 to bridge makes CSR-1 a much better lactamase, not a worse one
@@ -44,7 +44,7 @@ mono-zinc B3 retain *some* activity, not the reason it has activity.
 I nor the review quotes, so the fold changes are unread - "drastically" is the
 review's word. And the double mutant changes two things at once: it adds a
 second metal *and* removes the lysine. Nothing here isolates the carboxylate's
-own contribution, and **no D120 mutant of this enzyme or of SPR-1 exists in
+own contribution, and **no ¶120 mutant of this enzyme or of SPR-1 exists in
 either paper** - the claim that removing the bridging aspartate raises activity
 in this subclass is not in the deposited literature.
 

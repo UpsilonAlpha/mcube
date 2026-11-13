@@ -51,7 +51,7 @@ import yaml
 
 from mcube.preprocess import _locked
 
-# `restraints` belongs in this list and was missing until D128: an `md` section
+# `restraints` belongs in this list and was missing until ¶128: an `md` section
 # whose only selectors are in its restraint list printed `0 selectors checked`
 # and wrote the section anyway. That is the one place a bad selector is most
 # expensive - `md.md_restraints` passes the list through `resolve_atoms`, so a
@@ -94,7 +94,7 @@ def selectors_in(inputs):
 # against a different index. They are checked here for the same reason the atom
 # ones are: `remove_residues` DELETES what it names, so a selector written
 # against an earlier build is the one mistake that cannot be noticed by reading
-# the output (D196).
+# the output (¶196).
 RESIDUE_KEYS = ("remove_residues",)
 
 
@@ -269,7 +269,7 @@ def main(site_file, names, submit=False, dry_run=False):
         # the doubled key is not what anyone then types: `sp_qmmm_ref` under
         # `stage: sp` is written as `sp_sp_qmmm_ref`, while `run.slurm sp
         # sp_qmmm_ref` looks up `sp_qmmm_ref` and finds nothing. That cost jobs
-        # 31176144/31176145 (D152), which died in 8 s with no `pdb_file`.
+        # 31176144/31176145 (¶152), which died in 8 s with no `pdb_file`.
         if name == stage or name.startswith(stage + "_"):
             problems.append("%s: drop the `%s_` - sections.py writes this as "
                             "`%s`, while a job submitted as `%s` reads a "

@@ -1,8 +1,8 @@
 ---
 type: claim
 status: supported
-entries: [D216]
-checked: [D216]
+entries: [¶216]
+checked: [¶216]
 ---
 
 # A neutral lysine amine would not be found 2.8-3.0 A from a carboxylate oxygen in three independent crystals

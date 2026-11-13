@@ -39,7 +39,7 @@ from pathlib import Path
 # The md stage writes its topology as .cif for some runs and .pdb for others,
 # and mcube's own MD_TRAJECTORIES constant lists only the .pdb spellings - which
 # is why `salvage_results` cannot find a trajectory pair for the wt100/prod100
-# runs at all. Try every combination rather than assume one (D225).
+# runs at all. Try every combination rather than assume one (¶225).
 TRAJ_PAIRS = tuple(
     (traj, top)
     for traj in ("NVTtrajectory_imaged.dcd", "NVTtrajectory.dcd")

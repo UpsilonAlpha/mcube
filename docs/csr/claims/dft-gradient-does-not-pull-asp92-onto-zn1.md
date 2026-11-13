@@ -2,8 +2,8 @@
 type: observation
 evidence: ours
 status: supported
-entries: [D235, D236, D240, D242, D244, D245, D253]
-checked: [D236, D240, D242, D244, D245, D253]
+entries: [¶235, ¶236, ¶240, ¶242, ¶244, ¶245, ¶253]
+checked: [¶236, ¶240, ¶242, ¶244, ¶245, ¶253]
 ---
 
 # Through twenty-eight wb97x-v/def2-SVP QM/MM optimisation steps from the crystal-consistent frame, the gradient holds Asp92 at the crystal distance from Zn1 rather than pulling it on, and moves Lys226 onto the metal instead
@@ -28,7 +28,7 @@ an outward drift; by step 13 the carboxylate sits 0.006 Å from where 6DQH puts
 it, flat to ±0.005 Å over the last four steps, with Zn–CG and Zn–OD1 flat on
 the same span. The gradient neither pushes Asp92 out nor pulls it in.
 
-**Lys226 moved onto the metal and then STOPPED (D244), so the distance is a
+**Lys226 moved onto the metal and then STOPPED (¶244), so the distance is a
 number and not a direction.** Zn–NZ fell 5.276 → 5.120 by step 16, came back,
 and reads **5.140 at steps 23, 24 and 25** — flat to the third decimal. The
 ammonium takes up position in the vacant Zn2 subsite, unrestrained, holding
@@ -44,7 +44,7 @@ into a measurement** — at step 13 it read 5.131 and was still falling.
 | Zn–NZ | 5.131 | 5.120 | 5.138 | 5.140 | **5.140** | 5.27 |
 | NZ–OD2 | 2.713 | 2.726 | 2.735 | 2.729 | **2.732** | 2.79 |
 
-**The run ended TIMEOUT at step 28 (D253)**, 30 minutes into Slurm's grace
+**The run ended TIMEOUT at step 28 (¶253)**, 30 minutes into Slurm's grace
 period past its 48 h limit, writing no `QM_MM_optimized.pdb`. The final frame
 was recovered with `traj_frame.py` — `frame -1 of 28, energy
 -5201.390805536154`, matching step 27's energy exactly — and is committed,
@@ -91,7 +91,7 @@ reversed at the sixth. And it is **not a matched comparison with GFN2**: that wa
 to cross a barrier it might find. The matched test — a GFN2 optimisation from
 this same frame — has not been run.
 
-**The inference first drawn from this is RETRACTED (D240).** D236 read it as the
+**The inference first drawn from this is RETRACTED (¶240).** ¶236 read it as the
 first direct evidence that GFN2's chelate is the Hamiltonian's rather than the
 enzyme's. **GFN2 does the same thing and more of it**: its own converged minimum
 from this identical start moves Asp92 0.23 Å further out where DFT moved it 0.07,
@@ -105,7 +105,7 @@ is about where the chelate is *not*, and is the half of
 [[gfn2-over-coordinates-zn1-from-a-crystal-consistent-start]] that locates the
 bias in the barrier rather than in the minimum.
 
-**THE CROSS-METHOD SPREAD IS UNEVEN, AND ONLY HALF OF IT IS SAFE (D245).**
+**THE CROSS-METHOD SPREAD IS UNEVEN, AND ONLY HALF OF IT IS SAFE (¶245).**
 This run has `actradius: 0` — 124 active atoms, MM environment frozen — so the
 **matched** comparison is with `aspxtb` (also 124), not with `aspxtb8` (479).
 There is no DFT run with an 8 Å active region.

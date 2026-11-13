@@ -1,8 +1,8 @@
 ---
 type: claim
 status: open
-entries: [D197, D199, D200, D211, D216]
-checked: [D197, D199]
+entries: [¶197, ¶199, ¶200, ¶211, ¶216]
+checked: [¶197, ¶199]
 ---
 
 # Asp92 coordinating Zn1 interferes with hydrolysis
@@ -17,7 +17,7 @@ angle ran 39/56/68 deg against a 95-120 deg requirement, and the one frame where
 the offending ligand left was rescued by a different fifth donor within the same
 frame. Asp92 on the metal is such a fifth donor. In the QM/MM lineage where it is
 on the metal, **Zn-Asp92 OD2 averages 1.93 A over 50 frames, 100% inside 2.5 A,
-and the nucleophile is never poised** (O01-C4x mean 3.81 A, D211).
+and the nucleophile is never poised** (O01-C4x mean 3.81 A, ¶211).
 
 **The user ruled this true, 2026-11-06**, on a sharper mechanism than the node
 had: the carboxylate makes the zinc **six-coordinate**, and a six-coordinate Zn1
@@ -32,12 +32,12 @@ flipped, for the reason in part 5, which arrived after the ruling.
    measured with the substrate's O1x and with Asn225. The inference that a
    carboxylate oxygen behaves the same way is reasonable and untested.
 2. **The one frame that made the crowding look unavoidable has been
-   overturned.** D198 argued the site keeps a fifth donor whatever is done,
-   because Asn225 OD1 took the vacated site at 2.19 A; **D200 measured Asn225
+   overturned.** ¶198 argued the site keeps a fifth donor whatever is done,
+   because Asn225 OD1 took the vacated site at 2.19 A; **¶200 measured Asn225
    leaving**, to 4.18 A closest and 5.86 A mean. So a four-coordinate sphere is
    not ruled out by anything measured, and the crowding may be an MM property
    rather than a property of the site.
-3. **All of it is `ours`, and most of it is MM.** D211's own finding was that
+3. **All of it is `ours`, and most of it is MM.** ¶211's own finding was that
    O1x-on-metal is an MM artefact that QM/MM does not reproduce. The same
    suspicion applies in reverse here: the Asp92 collapse is seen in QM/MM but in
    a lineage that started from an already-collapsed frame and had Lys226

@@ -2,8 +2,8 @@
 type: observation
 evidence: ours
 status: supported
-entries: [D228, D231]
-checked: [D231]
+entries: [¶228, ¶231]
+checked: [¶231]
 ---
 
 # A 10 ns MM trajectory holds the 6DQH Asp92/Lys226 geometry, and the carboxylate's rotamer matches the crystal without being restrained to
@@ -28,16 +28,16 @@ five-coordinate at 2.50 Å — HOH3095 2.02, hydroxide 2.04, HOH3171 2.05,
 His164 2.13, His88 2.18 — with Asp92 far outside it.
 
 **What this is worth, stated carefully, because it is `ours` evidence and
-D206 ranks that last.** The honest claim is about the **rotamer**, not the
+¶206 ranks that last.** The honest claim is about the **rotamer**, not the
 distance. Zn–OD2, Zn–NZ and NZ–OD2 are all restrained, which pins OD2 relative
 to both the metal and the ammonium; OD1 and CG are then free only to rotate
 about the Cβ–Cγ axis, and that rotation can swing Zn–OD1 by more than a
 ångström in either direction. So 4.33 Å is **not** an independent measurement
 of a crystal distance — it is a measurement that, given where OD2 is held, the
 carboxylate chooses the crystal's orientation rather than turning its other
-oxygen toward the metal. That is the thing D120/D130 got wrong twice by
+oxygen toward the metal. That is the thing ¶120/¶130 got wrong twice by
 asserting an orientation with a hand-written restraint, and it is what
-`asppull3` first showed over 2 ns (D224) and this run sustains over ten.
+`asppull3` first showed over 2 ns (¶224) and this run sustains over ten.
 
 **It does not support [[the-lysine-holds-asp92-where-a-zn2-would]].** That node
 is `experimental`, resting on four crystals of three constructs, and hanging a
@@ -56,7 +56,7 @@ one water — and two bulk waters are present instead. MM cannot decide
 coordination, so whether HOH3095 leaves is the QM/MM question recorded in
 [[question-does-gfn2-over-coordinate-the-zinc]].
 
-**WHAT THIS FRAME IS NOT, MEASURED 2026-11-09 (D247).** Its ligand's
+**WHAT THIS FRAME IS NOT, MEASURED 2026-11-09 (¶247).** Its ligand's
 heavy-atom centroid is **6.20 Å** from 7UHI's transferred moxalactam — further
 than all nine docked poses (0.98–3.66 Å) and further than `scan_00` (5.15 Å).
 `eq6` restrained `Zn–O2x` in to ~2.6 Å and this run held it, so the carbonyl

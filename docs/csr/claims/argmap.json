@@ -1,7 +1,9 @@
 {
   "journal": "../../csr-decision-log.md",
   "retracted_sources": "../retractions.md",
-  "retracted_sources_ignore_headings": ["already marked"],
-  "source_id_pattern": "D\\d+",
+  "retracted_sources_ignore_headings": [
+    "already marked"
+  ],
+  "source_id_pattern": "¶\\d+",
   "source_field": "entries"
 }

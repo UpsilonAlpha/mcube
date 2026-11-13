@@ -1,7 +1,7 @@
 ---
 type: question
 status: open
-entries: [D216, D232]
+entries: [¶216, ¶232]
 ---
 
 # Is Asp92 in equilibrium between Lys226 and Zn1, rather than committed to one of them?
@@ -39,7 +39,7 @@ starts with the carboxylate pinned at 2.79 A from the metal, 1.5 A inside the
 crystal distance, so the sampling would begin inside the basin the question is
 about. The scan should span at least 2.0-5.5 A to cover both candidate minima.
 
-**The instrument is now the problem, measured 2026-11-07 (D232).** The PMF as
+**The instrument is now the problem, measured 2026-11-07 (¶232).** The PMF as
 planned is GFN2, and GFN2 has just been shown to put this carboxylate on this
 metal from a start where the crystal puts it 4.3 A away, with the lysine contact
 intact ([[gfn2-over-coordinates-zn1-from-a-crystal-consistent-start]]). A GFN2

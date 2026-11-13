@@ -2,7 +2,7 @@
 type: observation
 status: withheld
 evidence: experimental
-entries: [D22, D40, D178, D230]
+entries: [¶22, ¶40, ¶178, ¶230]
 ---
 
 # The user's mutant and double-mutant kinetics
@@ -11,7 +11,7 @@ entries: [D22, D40, D178, D230]
 including mutants and double mutants, and states that they support the thesis.
 They are **withheld on purpose** so that the computation stands alone.
 
-**The protocol (D178), which governs this node.** The computed barrier, its
+**The protocol (¶178), which governs this node.** The computed barrier, its
 level of theory, its spread over snapshots, and the mechanism's qualitative
 claims go into the log **before** the numbers are released, and are **not
 revised afterwards**. A barrier that moves once the experiment arrives is a
@@ -23,12 +23,12 @@ the evidence nobody has looked at is the same failure as a log whose
 corrections live inside later entries. Status `withheld` keeps it visible
 without letting it be cited as if read.
 
-**Which constructs, answered 2026-11-06 (D230).** Asked deliberately, because
+**Which constructs, answered 2026-11-06 (¶230).** Asked deliberately, because
 a construct name is not a measurement and the answer decides what gets built:
 the wild-type kinetics are on the **truncated** form - the form being modelled,
 so [[the-truncated-form-is-the-one-modelled]] moves to `supported` - and
 **both** the plain double mutant and dmCSR-1 S214D were measured. The latter
-unties D219: the mutant arm can be built from 6NC5 as the plain double mutant
+unties ¶219: the mutant arm can be built from 6NC5 as the plain double mutant
 and still have a measured partner, and our own S214D structure
 ([[our-dmcsr1-structure-puts-the-single-zinc-at-zn2]]) is not stranded either.
 **No values were asked for or given, and the status stays `withheld`.**

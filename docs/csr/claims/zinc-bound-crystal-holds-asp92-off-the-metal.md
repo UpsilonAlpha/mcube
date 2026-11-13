@@ -2,8 +2,8 @@
 type: observation
 evidence: experimental
 status: supported
-entries: [D216]
-checked: [D216]
+entries: [¶216]
+checked: [¶216]
 ---
 
 # In 6DQH - the only deposit holding both a Zn1 and the wild-type lysine - Asp92 is 4.28 A from the metal and 2.79 A from Lys226, at 1.10 A resolution
@@ -40,7 +40,7 @@ Three things follow, and the third was not expected.
 2. **Every model this project has built puts Asp92 too close to the metal.**
    `eq6` holds Zn-OD2 at 2.79 and Zn-OD1 at 3.90; earlier work placed the
    carboxylate at 1.95-2.05. The crystal says 4.28/5.14. By the standing rule -
-   restrain what the metal affects at its crystal distance (D174, D186) - these
+   restrain what the metal affects at its crystal distance (¶174, ¶186) - these
    are the distances to restrain, and they are 1.5-2.4 A further out than
    anything run so far.
 3. **Asp92 hydrogen-bonds the nucleophile.** OD1 is 2.64 A from the Zn1 terminal

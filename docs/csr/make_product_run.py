@@ -3,7 +3,7 @@
     python make_product_run.py <reactant_dir> <product_dir> <ligand.pdb>
 
 The product complex is the reactant system with meropenem replaced by
-hydrolysed meropenem at the pose transferred from SMB-1's 5AXO (D156, D159).
+hydrolysed meropenem at the pose transferred from SMB-1's 5AXO (¶156, ¶159).
 Everything else - the protein, the zinc and its placement, the force fields,
 the histidine variants, the detection cutoff - is the reactant's, because
 the two states are only comparable if nothing else differs.
@@ -20,7 +20,7 @@ What this changes, and why each one:
   ligand          the grafted product, our atom names on 5AXO's coordinates.
   ligand_smiles   the product as the zwitterion: protonated pyrrolidine, both
                   carboxylates ionised, and the proton the hydrolysis delivers
-                  on the leaving nitrogen. Net -1, which is D13's figure and
+                  on the leaving nitrogen. Net -1, which is ¶13's figure and
                   what `hyd_zw.pdb` actually carries.
   charge          0 -> -1, the ligand's.
 
@@ -37,7 +37,7 @@ import yaml
 
 # The hydrolysed product, zwitterionic: C[C@@H](O)... with [NH2+] and both
 # carboxylates as [O-]. Derived from CSR_hydrolysed's neutral-amine SMILES by
-# the two changes D13 specifies, and checked against hyd_zw.pdb's own
+# the two changes ¶13 specifies, and checked against hyd_zw.pdb's own
 # hydrogens - N1x-H03, N2x-H01/H10x, all four carboxylate oxygens bare.
 PRODUCT_SMILES = ("C[C@@H](O)[C@@H](C(=O)[O-])[C@@H]1NC(C(=O)[O-])="
                   "C(S[C@@H]2C[NH2+][C@H](C(=O)N(C)C)C2)[C@@H]1C")
@@ -79,7 +79,7 @@ def product_protein(src: Path, dst: Path, ligand_resname: str = "mer",
                 continue
             # " O01" is the hydroxide's name, and `amber14/tip3p.xml` types a
             # water by its atom names: a HOH whose oxygen is called O01 has no
-            # template and the system cannot be built (D163).
+            # template and the system cannot be built (¶163).
             moved = line[:12] + " O  " + line[16:17] + "HOH" + line[20:]
             if water_chain:
                 moved = (moved[:21] + water_chain + "%4d" % next_water
@@ -90,7 +90,7 @@ def product_protein(src: Path, dst: Path, ligand_resname: str = "mer",
         kept.append(line)
     # After the other waters, not where the hydroxide sat: the numbering check
     # walks the file in order, so a chain whose residues appear 2 then 1 reads
-    # as "starts at 2" and is refused (D162).
+    # as "starts at 2" and is refused (¶162).
     if carried is not None:
         last = max((i for i, l in enumerate(kept)
                     if l.startswith(("ATOM", "HETATM"))), default=len(kept) - 1)
@@ -111,7 +111,7 @@ def product_config(reactant_cfg: dict, protein: str, ligand: str,
     # supplies parameters. Here the substrate has been removed on purpose and
     # the product exists only in its own file, so inheriting `false` builds a
     # system with no ligand at all: preprocess reported [DONE], the zinc shell
-    # was correct, and nothing in it was the product (D165).
+    # was correct, and nothing in it was the product (¶165).
     inputs.update({"protein_pdb": protein, "ligand": ligand,
                    "ligand_resname": resname, "ligand_smiles": PRODUCT_SMILES,
                    "charge": -1, "ligand_xmlfile": None,
@@ -134,7 +134,7 @@ FF_KEYS = ("forcefields", "default_forcefields")
 # inherited unchanged they name a **water** - and nothing complains, because a
 # water at C:1 exists. That cost two preprocess runs: the ligand stayed out of
 # the QM region and the 1.90 A water lost its restraint, since the exclusion
-# meant for the ligand landed on it (D165).
+# meant for the ligand landed on it (¶165).
 LIGAND_CHAIN = "D"
 
 # Asp92 is in the reactant's QM region, but only because that run was built
@@ -202,7 +202,7 @@ def main(reactant_dir, product_dir, ligand_pdb):
     # and `ligand` relative to **that** directory, not to the config's. It is
     # why the reactant's own `csr_crystal_start.pdb` lives there too, and
     # writing them one level up cost job 31299717 an opaque RDKit "Bad input
-    # file" (D161).
+    # file" (¶161).
     here = dst / "preprocess_results"
     here.mkdir(parents=True, exist_ok=True)
     protein = here / "product_protein.pdb"

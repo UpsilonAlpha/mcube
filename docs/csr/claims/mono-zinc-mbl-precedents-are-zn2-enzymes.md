@@ -1,8 +1,8 @@
 ---
 type: claim
 status: open
-entries: [D107, D124]
-checked: [D107, D124]
+entries: [¶107, ¶124]
+checked: [¶107, ¶124]
 ---
 
 # Every mono-zinc MBL in the literature carries its metal at Zn2, so no published mono-zinc mechanism transfers to CSR-1
@@ -10,14 +10,14 @@ checked: [D107, D124]
 GOB-18's single metal is described at the DHH (Zn2) site; Sfh-I's is DCH-like;
 B2 CphA's is Asp-Cys-His, and in B2 the His116Asn substitution removes a Zn1
 ligand outright, so there nucleophile activation involves no metal at all
-(D124). GOB-18's published mechanism is a **non-metal-bound** water activated by
+(¶124). GOB-18's published mechanism is a **non-metal-bound** water activated by
 a hydrogen-bond network, with the metal binding the C-3 carboxylate and the
 sphere expanding four- to five-coordinate on substrate binding (Lisa 2017).
 
 **That is a description of the site CSR-1 leaves empty.** CSR-1's metal is at
 Zn1 ([[csr1-zinc-sits-at-zn1]]), so GOB-18 says what CSR-1's *vacant* site
-would have done, not what its occupied one does (D107), and the CphA route "is
-not a mechanism for a Zn1-site enzyme" (D124).
+would have done, not what its occupied one does (¶107), and the CphA route "is
+not a mechanism for a Zn1-site enzyme" (¶124).
 
 This is the strongest single argument in the map that CSR-1's mechanism must
 differ from anything published: there is no mono-zinc MBL template at the right

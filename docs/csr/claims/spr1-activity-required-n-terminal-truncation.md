@@ -2,7 +2,7 @@
 type: observation
 status: supported
 evidence: literature
-entries: [D215]
+entries: [¶215]
 ---
 
 # In the B3-RQK sibling SPR-1, activity was only observed for the N-terminally truncated construct, and CSR-1's two constructs are indistinguishable at the site

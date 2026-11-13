@@ -2,8 +2,8 @@
 type: observation
 status: supported
 evidence: ours
-entries: [D107, D111, D153, D197]
-checked: [D107, D111, D153, D197]
+entries: [¶107, ¶111, ¶153, ¶197]
+checked: [¶107, ¶111, ¶153, ¶197]
 ---
 
 # Arg90 and Lys226 act at opposite ends of the site, so they do not jointly replace one charge
@@ -30,7 +30,7 @@ standing in for one ion at one position.
 "two measured caveats" in the document's most-read section, and they are **one
 optimised frame of our own model, from a condemned lineage**. Lys226's position
 is also pose-dependent - NZ to the nucleophile is inside 3.5 A in 10.3% of
-frames in `eq5`, mean 4.93 A (D197), against D191's retracted "100% of 5000
+frames in `eq5`, mean 4.93 A (¶197), against ¶191's retracted "100% of 5000
 frames".
 
 ## Refutes

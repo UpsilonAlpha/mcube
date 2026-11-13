@@ -4,16 +4,16 @@ A solvated CSR frame is ~3.7 MB and 91% of its atoms are bulk water: 43,668 of
 47,979 in `relax10`'s last frame. Everything this project measures - the metal,
 its donors, Asp92, Lys226, the ligand - is in the other 9%, which is 341 kB. So
 stripping the solvent is the difference between a file that can be moved off
-Bunya through a read-only channel and one that cannot (D251).
+Bunya through a read-only channel and one that cannot (¶251).
 
     python strip_water.py <in.pdb> <out.pdb> [--metal=B:1:ZN] [--shell=5.0]
 
 Waters with any atom within `--shell` of the named metal are KEPT, because
 whether a water holds the open coordination site is a result in this project
-(D191's resident waters, D214's four-coordinate sphere), not noise. Everything
+(¶191's resident waters, ¶214's four-coordinate sphere), not noise. Everything
 else named HOH/WAT/SOL/TIP3 goes. CRYST1 is preserved so the box survives; so
 are CONECT records for atoms that survive, since a grafted ligand without them
-is unbonded to whatever reads it next (D160).
+is unbonded to whatever reads it next (¶160).
 
 Writes nothing if the output exists, and reports what it dropped.
 """

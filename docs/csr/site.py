@@ -54,10 +54,10 @@ The modes answer different questions, in rough order of cost:
                 structure is accepted by a command rather than by eye.
                 `--hypothesis=` is required when more than one set is defined,
                 because a criterion is only a criterion within a mechanism
-                (D127). Its coordination criterion returns a COUNT, and four
+                (¶127). Its coordination criterion returns a COUNT, and four
                 donors inside a cutoff can be the wrong four - where the
                 identity of the sphere is the claim, read it off `shell`'s
-                occupancies instead (D129, D130).
+                occupancies instead (¶129, ¶130).
   protonate     not a measurement: the one mode that writes a structure. It
                 renames a residue to its protonated Amber variant and builds
                 the proton, so the alternative protonation state can be run at
@@ -281,7 +281,7 @@ def _traj_setup(site, traj_file, top_file):
         water's oxygen AND residue 1's backbone O, and whichever came first in
         the topology was returned. An ambiguous selector now raises instead of
         guessing, and reports the candidates, because a wrong atom here is a
-        measurement that looks right (D148).
+        measurement that looks right (¶148).
         """
         chain, resid, name = selector.split(":")
         hits = [a for a in top.atoms
@@ -430,7 +430,7 @@ def mode_shell(site, traj_file, top_file):
     `sphere` answers this for one structure, which is the wrong unit: a single
     frame cannot tell a ligand that is bound from one that happens to be close
     at that instant, and the coordination *number* is the quantity semiempirical
-    methods are known to get wrong (D114: AM1/d was out by 7.55 kcal/mol on a
+    methods are known to get wrong (¶114: AM1/d was out by 7.55 kcal/mol on a
     4 -> 5 coordinate change). So every donor is reported with the fraction of
     frames it spends inside the cutoff, and the per-frame coordination number is
     reported as a distribution rather than an average alone - a site flipping
@@ -1023,7 +1023,7 @@ def write_grafted(system, sys_atoms, lig_rows, ref_atoms, pos_of, clashing, n):
 # a strong O-H...O hydrogen bond is 1.6-2.0 A, and the shortest H...H in a
 # protein structure is about 1.7 A, so anything under 1.2 A is an overlap and
 # not a close contact. Reported either way - `subst_start.pdb` carried a 0.58 A
-# overlap for weeks because nothing measured it (D152).
+# overlap for weeks because nothing measured it (¶152).
 CLASH_A = 1.2
 
 
@@ -1382,7 +1382,7 @@ def _criterion(site, at, c, stage):
 def mode_check(site, args):
     """Accept or reject a candidate structure against one named hypothesis.
 
-    This mode exists because of D123: the pose everything ran on from October
+    This mode exists because of ¶123: the pose everything ran on from October
     had the substrate bound the other way round, with a substituent oxygen on
     the metal and the carbonyl 5.43 A away, and the number sat in the decision
     log for two weeks without being read as a defect. Nothing here is new
@@ -1391,10 +1391,10 @@ def mode_check(site, args):
     accepted by eye. Exits non-zero if anything required at this stage fails.
 
     `--hypothesis=<name>` picks one set from `michaelis_hypotheses`, because a
-    criterion is only ever a criterion WITHIN a mechanism. D125 wrote "the
+    criterion is only ever a criterion WITHIN a mechanism. ¶125 wrote "the
     closest substrate oxygen must be the beta-lactam carbonyl" as though it
     were a fact about Michaelis complexes; it is a fact about the
-    carbonyl-on-metal mechanism, which is the thing under test, and D126 found
+    carbonyl-on-metal mechanism, which is the thing under test, and ¶126 found
     a candidate complex that violates it while satisfying the attack geometry.
     A gate that rejects a competing hypothesis by assuming the first one is not
     a gate, it is a way of never testing anything. So each hypothesis carries

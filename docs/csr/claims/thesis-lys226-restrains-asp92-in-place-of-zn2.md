@@ -1,8 +1,8 @@
 ---
 type: thesis
 status: open
-entries: [D216, D22, D40, D107, D178, D209, D214]
-checked: [D40, D107, D178]
+entries: [¶216, ¶22, ¶40, ¶107, ¶178, ¶209, ¶214]
+checked: [¶40, ¶107, ¶178]
 ---
 
 # Lys226 replaces Zn2 in the CSR-1 wild-type mechanism by restraining the bridging aspartate, allowing MBL activity
@@ -46,10 +46,10 @@ and without the restraint to compare.
    does something past positioning a metal. If that something is what CSR-1's
    lysine cannot supply, the thesis is incomplete rather than wrong.
 
-**The blind-prediction protocol (D178) applies.** The kinetics exist, are
+**The blind-prediction protocol (¶178) applies.** The kinetics exist, are
 withheld, and the computed mechanism goes in the log before they are released.
 
-**Standing refutation of the causal clause, 2026-11-06 (D216).** The structural
+**Standing refutation of the causal clause, 2026-11-06 (¶216).** The structural
 half - the lysine occupies the Zn2 site and holds the carboxylate out of the
 metal's reach - is now measured at 1.10 A resolution in a metal-bound crystal
 ([[zinc-bound-crystal-holds-asp92-off-the-metal]]) and is in good shape. The

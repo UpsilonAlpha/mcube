@@ -2,8 +2,8 @@
 type: observation
 evidence: experimental
 status: supported
-entries: [D216]
-checked: [D216]
+entries: [¶216]
+checked: [¶216]
 ---
 
 # No crystal of wild-type CSR-1 contains a metal, and the published zinc affinity is micromolar-to-weak

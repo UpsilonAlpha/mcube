@@ -2,7 +2,7 @@
 type: observation
 status: supported
 evidence: experimental
-entries: [D108, D209]
+entries: [¶108, ¶209]
 ---
 
 # In the Q93H/K226H double mutant a zinc holds Asp92 at 1.95 A, and the two zincs are a bridged pair

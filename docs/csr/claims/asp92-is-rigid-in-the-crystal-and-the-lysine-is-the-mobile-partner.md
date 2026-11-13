@@ -2,8 +2,8 @@
 type: observation
 evidence: experimental
 status: supported
-entries: [D217]
-checked: [D217]
+entries: [¶217]
+checked: [¶217]
 ---
 
 # Asp92's B-factors are below average with no alternate conformer, while Lys226's ammonium is the mobile end
