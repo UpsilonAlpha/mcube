@@ -11536,6 +11536,93 @@ protonation is the QM/MM comparison between the Lys226-protonated species
 
 Nothing submitted. 6DN4 and 6DQH are in the session scratchpad, not the repo.
 
+**¶261 - THE BUILD SOURCE, COMPARED THREE WAYS, AND IT IS 6DQH RATHER THAN
+EITHER STRUCTURE I PROPOSED. It is the only deposit with a Zn1 metal, the
+wild-type lysine AND Asp92 in its wild-type position, and it needs ONE revert
+where the dmCSR crystal needs three. Two traps found on the way: the apo
+wild-type route reproduces exactly the artefact ¶216 voided, and **6DN4 and
+6DQH number the catalytic lysine differently** - 254 against 260.**
+(2026-11-13, user: "Yes, metal + His geometry")
+
+## The dmCSR crystal's mutations, by sequence rather than by filename
+
+250 residues aligned against 6DN4, **247 identical, 3 different**:
+
+    theirs  BBL   ours    WT -> dmCSR
+      79    121    93     Q -> H      (Zn2 site)
+     172    214   186     S -> D      (S214D of the name)
+     212    254   226     K -> H      (Zn2 site)
+
+The third is **our Ser186**, and it is not cosmetic: the record has
+`Ser186 OG - C3-carboxylate O4x 100%`, so it is a substrate-contacting residue
+at the carboxylate end - the CSR-1 analogue of SMB-1's Ser221/Thr223.
+
+**Coverage:** theirs spans ours **24-273, with no internal gaps**; our model and
+6DN4 both span 1-275. So building from it drops 23 N-terminal and 2 C-terminal
+residues. **That is not an objection** - `the-truncated-form-is-the-one-modelled`
+records the user's decision of 2026-11-06 that truncation bears on expression
+rather than catalysis and that the truncated sequence is the one to use.
+
+## The three-way comparison
+
+    source              Zn1        N-Zn-N   Asp92-Zn      Arg90 CZ-Zn  Lys salt bridge   reverts
+    6DN4 apo WT         none       120.8*   **2.95**      4.64         2.99 (Lys254)     0
+    dmCSR-1 (ours)      0.53 occ   102.2    on Zn2 2.06   4.60         absent (His212)   3
+    6DQH                full       95.9     **4.28/5.14** His118       2.79 (Lys260)     1
+
+    * 6DN4 has no metal; 120.8 is the angle its histidines make around the
+      dmCSR Zn1 transferred into its frame (fit RMSD 0.705 A on 4 atoms).
+
+**The apo-wild-type route is disqualified, and by ¶216's own argument.** With
+the dmCSR Zn1 placed in 6DN4's frame, **Asp92 OD2 sits 2.954 A from the metal**
+- essentially the 2.80 A that ¶216 VOIDED, for exactly the reason it gave:
+"the superposition transplanted a metal into an apo structure, so it measured
+where a metal would sit in a site shaped without one." Build from there and the
+carboxylate starts inside the 3 A radius, gets restrained there, and the whole
+Asp92 problem returns. Verified rather than argued.
+
+**The dmCSR crystal gives the best Zn1 geometry** - N-Zn-N 102.2, the closest
+to tetrahedral of any structure here - but its Asp92 is bound to a **Zn2 at
+2.06 A** that the wild type does not have, so the carboxylate starts in a
+position shaped by a metal we would then delete.
+
+**6DQH is the only deposit with all three**: a full-occupancy Zn1, the wild-type
+lysine salt-bridging the carboxylate at 2.79 A, and **Asp92 at OD1 4.28 / OD2
+5.14 / CG 5.15** - verified from the file, matching ¶216 exactly. Its single
+defect is **R118H** at the Arg90 position, and that is the most repairable of
+the three defect sets, because **both other crystals agree on where Arg90's CZ
+sits relative to the metal - 4.64 (6DN4) and 4.60 (dmCSR)** - so the rotamer is
+determined by two independent structures rather than guessed.
+
+## The numbering trap
+
+    deposit   catalytic Lys            res 254   res 260   res 263
+    6DN4      Lys254, NZ-OD2 2.99      LYS       LEU       LYS
+    6DQH      Lys260, NZ-OD2 2.79      ASP       LYS       ARG
+
+**The two wild-type deposits number the catalytic lysine differently** while
+agreeing at Asp120, so the offset is not constant across the sequence. The
+record's BBL table entry **"K254/263 -> Lys226" is ambiguous and partly wrong**:
+254 is the lysine in 6DN4 and an **aspartate** in 6DQH, and 263 is a lysine in
+6DN4 but an **arginine** in 6DQH. Any 6DQH-based build must name **Lys260**.
+This is the ¶115 class of error - a selector that looks valid and names a
+different atom - and it would have been silent.
+
+## What mcube cannot do
+
+**There is no mutation capability**: no `applyMutations`, no `mutate`, nothing in
+`src/mcube/*.py` or `docs/csr/site.py`. `pdbfixer` appears only in comments,
+where ASH uses it for renumbering and hydrogen placement. So reverting R118H
+needs either a tested `mutations` input added to preprocess - PDBFixer's
+`applyMutations` is the standard route and is already in the stack - or a
+side-chain graft from 6DN4/dmCSR, whose agreement on Arg90's position is what
+makes that defensible. **Per the user's rule, neither is to be improvised: it
+gets built with tests or not at all.** Nothing was hand-edited.
+
+6DN4 and 6DQH are in the session scratchpad, downloaded from the PDB, because
+**the CSR-1 crystals are not on scratch** - `refs/` holds only 5AXO, 5B15 and
+7UHI (¶260).
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
