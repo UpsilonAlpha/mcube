@@ -11623,6 +11623,81 @@ gets built with tests or not at all.** Nothing was hand-edited.
 **the CSR-1 crystals are not on scratch** - `refs/` holds only 5AXO, 5B15 and
 7UHI (¶260).
 
+**¶262 - STANDING INSTRUCTION: nothing outside mcube defaults without express
+permission, and the defaults may not suit this system. The builder is
+abandoned; starting structures come from QM/MM equilibration, not from
+rigid-body shifts. My four product-arm sections are deleted. And the audit that
+removal prompted found the same rule-breaking restraints running through
+`nac`, `eq5`, `eq6`, `asppull1-3` and `relax10` - the lineage every current
+QM/MM result descends from.** (2026-11-13, user: "get rid of any other logic
+you've injected that shouldn't exist", "we should start from a QM/MM
+equilibrated structure not an arbitrarily shifted one", "Don't do anything
+outside of mcube defaults without my express permission and keeping in mind
+those defaults may not be appropriate for our system")
+
+## What was removed
+
+`prodpull`, `prodpull2`, `prodpull3`, `prodrelax10` - 158 lines of `site.yaml`,
+written earlier this session and already condemned by ¶259. Each carried three
+hand-written restraints and **all three broke the rule in every one**:
+`A:226:NZ-A:92:OD2 2.79` is not a metal pair at all, and `B:1:ZN-A:226:NZ 5.27`
+and `B:1:ZN-A:92:OD2 5.14` are metal pairs 2.1-2.3 A outside the 3 A radius.
+They were copied from the `asppull` lineage rather than derived from the rule,
+which is how they got there.
+
+Also abandoned: the plan to rebuild from a crystal with
+`examples/csr/build_csr_crystal_start.py`. **What that builder is**, since it
+was never described: written for ¶23 on 2026-10-15, it strips hydrogens and
+keeps altloc A from a crystal protein, removes its waters and metals,
+superposes a donor structure by CA to take a zinc and its waters, rigid-body
+nudges that unit so Zn-NE2 matches the donor's distances, promotes one water to
+hydroxide, and places meropenem by a rigid shift toward it. **Three of those
+five steps are exactly what the user has now ruled out** - the rigid nudge, the
+hydroxide promotion and the ligand shift - so extending it for dmCSR is moot.
+
+## The audit, which is larger than what I added
+
+Every section in `site.yaml` with a hand-written `restraints` list, checked
+against the rule (a METAL-atom pair, for an atom within ~3 A, held where it is):
+
+    restraint                     appears in                                      why it fails
+    O01-C4x 3.47                  nac, nacgpu, naclong, ohHmin, wt100b, eq5,      not a metal pair
+                                  eq6, asppull1-3, relax10                        (the attack restraint, ¶98)
+    A:226:NZ-A:92:OD2 2.79        eq6, asppull1-3, relax10                        not a metal pair
+                                                                                  (the salt bridge, ¶210)
+    B:1:ZN-A:92:OD1/OD2/CG        wt100c, pose2, eq5, eq6, asppull1-3,            metal pair, 0.8-2.1 A
+      3.81 / 3.90 / 4.20-5.15     relax10, prod100c, subst                        outside 3 A
+    B:1:ZN-C:1:O1x 3.82           eq6, asppull1-3, relax10                        metal pair, outside 3 A
+
+**`relax10` carries five of these and `eq6` four** - and `eq6` is the run that
+PASSED the equilibration gate, while `relax10` is the parent of `aspqm2`,
+`aspdft`, `aspxtb` and `aspxtb8`. So the rule, applied strictly, does not
+condemn only this session's work.
+
+**Stated without deciding it**, because it is not mine to decide: each of these
+has a recorded reason. The attack restraint is ¶98's deliberate single
+substrate term, and ¶194 showed the substrate leaves without it. The salt
+bridge was added at ¶210 because "no run has ever held it". The long Zn-Asp92
+terms are `asppull`'s build correction, not equilibration restraints - they use
+the restraint machinery as an actuator, which is the thing now ruled out. Which
+of those reasons survive the rule is a question for the user; what is no longer
+in doubt is that they are outside it.
+
+## What this changes about the next step
+
+The WT starting structure is a **QM/MM equilibrated** one, not a rebuilt one.
+That is `aspxtb8`'s converged minimum (¶258), with the qualification ¶259/¶260
+measured and which does not go away: its Arg90 sits ~2 A further from the metal
+than three agreeing crystals put it, and its N-Zn-N is 86.6 deg against 95.9
+(6DQH) and 102.2 (our own dmCSR). Recorded as
+`our-his-zn-his-angle-is-13-19-degrees-too-closed`; not acted on.
+
+Nothing submitted, nothing built. `strip_water.py` stays - it moves frames
+through the git remote (¶251) and touches no model - and the `require:`/
+`submit:` blocks stay, being gates and resource requests the user asked for at
+¶238/¶239. Both are named here so they are not silently assumed to have been
+cleared by this entry.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
