@@ -29,6 +29,24 @@ substrate. It is the double mutant, so **it contains no Lys226 and is not a
 wild-type reference** — but it confirms in-house that an available Zn2 ligand set
 takes the carboxylate at ~2.1 Å. Accession still pending.
 
+**¶277 EXTENDS THIS: that directory holds the WHOLE PANEL, and the two files named here are the LEAST useful of it.** Identified by pairwise sequence alignment of chain A rather than by filename:
+
+    CSR_truncated_2metal.pdb            WT CSR-1          46-303   P 32 2 1
+    dmCSR_2metal.pdb                    dmCSR-1 (plain)   15-273   P 21 21 21
+    dmCSR_mutant_2metal_refine_16.pdb   dmCSR-1 S214D     10-259   P 21 21 21
+
+WT -> plain dm is **TWO** substitutions (Q121H, K254H), ratio 0.9865; plain dm -> S214D is **ONE** (S214D), ratio 0.9784. So we hold the wild type, the double mutant AND its aspartate variant, each one or two residues from the next - a controlled ladder, in-house.
+
+**THE ZINCS IN THESE FILES ARE ONE PASTED PAIR.** The `ZN` records in the WT and plain-dm files are **byte-identical** - same serials, coordinates, occupancies (1.00 / 0.53) and B-factors (14.90 / 11.89) - in two crystals of different space groups. The pair is native to the **double mutant**: in the WT frame the full-occupancy one has no D/H/H triad to sit on and lands 1.98 Å from Lys254 NZ. **So ¶216/¶217 STAND - no wild-type CSR-1 structure we hold has an experimental metal.** Do not read the WT file as a metal-bound wild type.
+
+**But its PROTEIN frame supersedes 6DQH, and the WT arm now starts there (¶277).** 1996 ANISOU records, wild type at every site position (HIS116 ARG118 ASP120 GLN121 HIS192 SER214 LYS254 LYS263), **zero reverts** against 6DQH's R118H, and no crystallisation phosphate against 6DQH's (¶276). With the metal at the two-histidine site it gives **Asp120 OD1 4.67 / OD2 5.14 / CG 5.36** and the salt bridge at **2.83** - matching 6DQH's experimental 4.28 / 5.14 / 5.15 / 2.79 to within 0.4 Å, OD2 identical. That agreement is what distinguishes this graft from the one ¶216 voided: it manufactures no contact and leaves the carboxylate OUTSIDE the 3 Å restraint radius, so the Asp92 problem does not re-enter through the starting frame. **The one quantity the graft cannot certify is N-Zn-N: 117.2 deg here against 105.4 (plain dm) and 102.2 (S214D) at byte-identical metal coordinates**, so the 12 deg is the protein's and the wild-type site is apo-open.**
+
+**MUTANT ARM = `dmCSR_2metal.pdb`, the PLAIN double mutant, not S214D (¶277).** Two substitutions from our WT file, Ser214 intact so the intersite serine is held constant and the M2 site is the only variable, and its metals are the real ones. S214D is confounded by construction (removes the serine AND installs a carboxylate) and its phenotype is not one thing; it keeps a cheaper structural arm for later.
+
+**NUMBERING, settled from our own crystals (¶277, answering ¶261).** The WT file has LYS at **both 254 and 263**, and the one the double mutant replaces with histidine is **254**, by alignment; the serine S214D replaces is **214**, by alignment. So ours are **S214 / K254**, and the manuscript's `K263H` does not name this file's lysine. ¶261 asked which of `S214D` and `K263H` is not BBL; the answer is **`K263H`**. To be put to the lab with the alignment attached.
+
+**THREE TRAPS IN THAT DIRECTORY (¶277).** (1) The atom named `ZN1` is this project's **Zn2** and `ZN2` is its **Zn1** - every file here labels them the opposite way round. (2) The `*_1metal` files keep a DIFFERENT metal (occ 0.70, B 9.03) which in the WT frame sits on **Lys254, not in the catalytic site**. (3) **`CSR_nontruncated_1metal_fixed.pdb`, the ancestor of this project's entire live lineage, is corrupt at the metal** - occupancy forced to 1.00, B zeroed, all 2114 ANISOU records gone, and **Zn-Asp120 OD2 1.38 Å** with Zn-Lys254 NZ 1.95. That is presumably why its zinc was replaced with 6NC5's ZN302; the replacement is sound, but anything else inherited from this file needs checking against `_original`.
+
 
 **THE METHOD'S OWN LIMIT, settled 2026-11-07 (¶232).** **GFN2-xTB
 over-coordinates this zinc.** Given `relax10`'s last frame - Asp92 4.3 A from

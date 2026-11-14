@@ -66,6 +66,74 @@ CSR-1 manuscript and is **not** verified against a BBL alignment.
 **6NC5 is ours − 1 and dmCSR‑1 is ours − 14**, both constant. 6DN4 is ours + 28,
 constant — which is exactly what made it look like BBL (¶267, retracted).
 
+## Our own crystals, and what each one actually is (¶277)
+
+`University/Undergrad/Honours/SCIE4481/bioinformatic_data/MM/Structure/CSR/`.
+Identified by pairwise alignment of chain A CA residues, **not by filename** -
+the filenames do not say which enzyme is which.
+
+    file                                enzyme           numbering  space group
+    CSR_truncated_2metal.pdb            WT CSR-1         46-303     P 32 2 1
+    dmCSR_2metal.pdb                    dmCSR-1 plain    15-273     P 21 21 21
+    dmCSR_mutant_2metal_refine_16.pdb   dmCSR-1 S214D    10-259     P 21 21 21
+
+    WT  -> plain dm   ratio 0.9865   TWO subs:  Q121->H  K254->H
+    dm  -> S214D      ratio 0.9784   ONE sub:   S214->D
+
+All are waters-stripped and prepared (`HETATM` = ZN only; `PDBCleanup.py` sits
+in the same directory), so none is a raw deposit.
+
+**The zincs are ONE pasted pair.** The `ZN` records in the WT and plain-dm files
+are byte-identical across two different space groups:
+
+    HETATM 1955 ZN    ZN B   1     -12.832  18.175  -5.009  1.00 14.90
+    HETATM 1956 ZN    ZN B   2     -14.099  16.870  -7.683  0.53 11.89
+
+They are native to the **double mutant**, by chemistry: in the WT frame the
+full-occupancy one has no D/H/H triad and sits 1.98 Å from Lys254 NZ, 3.02 from
+Asp120 OD2, 3.10 from Gln121 OE1 - where the *mutations* would have put ligands.
+**So no wild-type CSR-1 structure, ours or deposited, has an experimental metal
+in the catalytic site.**
+
+**Label trap: `ZN1` in these files is this project's Zn2, and `ZN2` is its Zn1.**
+
+**The `*_1metal` files keep a different metal** (occ 0.70, B 9.03) which in the WT
+frame sits on **Lys254**, not in the site. And
+**`CSR_nontruncated_1metal_fixed.pdb` is corrupt at the metal**: occupancy forced
+to 1.00, B zeroed, 2114 ANISOU records gone, **Zn-Asp120 OD2 1.38 Å**. It is the
+ancestor of this project's live lineage; its zinc was replaced with 6NC5 ZN302.
+
+### The WT frame, measured (`refstruct.py`, metal at the two-histidine site)
+
+    ZN2 - His116 NE2   2.25        ZN2 - His192 NE2   2.15
+    ZN2 - Asp120 OD1   4.67        OD2  5.14        CG  5.36
+    ZN2 - Arg118 CZ    4.36        ZN2 - Ser214 OG    4.99
+    Lys254 NZ - Asp120 OD2   2.83
+    His116 NE2 - ZN2 - His192 NE2   117.2 deg
+
+    criterion                    6DQH            CSR_truncated_2metal
+    metal at the site            full occ        grafted, occ 0.53
+    wild-type catalytic lysine   yes, 2.79       yes, 2.83
+    Asp92 outside 3 Å            4.28/5.14/5.15  4.67/5.14/5.36
+    sequence reverts needed      ONE (R118H)     ZERO
+    crystallisation phosphate    YES (¶276)     none
+
+**This supersedes ¶217's choice of 6DQH as the wild-type frame.** The graft
+manufactures no contact - it leaves Asp92 where 6DQH measures it, OD2 identical at
+5.14 - so it passes ¶216's own test rather than evading it. The exception is the
+N-Zn-N angle: **117.2 deg here, 105.4 in the plain dm, 102.2 in S214D, at
+byte-identical metal coordinates**, so the 12 deg is the protein's and the
+wild-type site is apo-open. See
+[[our-his-zn-his-angle-is-13-19-degrees-too-closed]].
+
+### Numbering, settled here (¶277, answering ¶261)
+
+The WT file has **LYS at both 254 and 263**; the residue the double mutant
+replaces with histidine is **254**, and the serine S214D replaces is **214**, both
+by alignment. So ours are **S214 / K254**, and the manuscript's `K263H` does not
+name this file's lysine. ¶261 asked which of the two is not BBL; the answer is
+**`K263H`**. Separately, the second M1 histidine is **His192** here and in 6DQ2,
+while the papers give **His196** and residue 196 in this file is ALA - unsettled.
 ## Confounds to quote alongside these numbers (¶276)
 
 **6DQH and 6DQ2 both carry a crystallisation phosphate in the active site, and

@@ -1,12 +1,32 @@
 ---
 type: observation
-status: supported
+status: open
 evidence: literature
-entries: [¶22, ¶40, ¶107, ¶108, ¶179]
+entries: [¶22, ¶40, ¶107, ¶108, ¶179, ¶277]
 checked: [¶40, ¶107, ¶179]
 ---
 
 # The BBL mapping puts Lys226 at K263, a Zn2 metal-ligand position
+
+**DEMOTED to `open`, ¶277, and the demotion is narrow.** What this node calls
+"numbering hygiene" is wrong: our own wild-type crystal contains **LYS at 254 AND
+LYS at 263 simultaneously**, so they are two different residues in one numbering,
+not "one residue under two schemes". By alignment, the lysine the double mutant
+converts to histidine - the catalytic one, our Lys226 - is **254**
+([[our-crystals-number-the-catalytic-lysine-254-not-263]]).
+
+**What survives untouched:** the site assignment. Zn1 is H-R-H and Zn2 is D-Q-K,
+Lys226 is the Zn2 ligand position rather than a carboxylate-binding lysine, and
+the 6DR8 mutant's K254H restores exactly that histidine - all of which this node
+argues from independent evidence and none of which depends on the 254/263
+identification.
+
+**What is open:** whether BBL numbers that lysine 263. ¶269 already established
+that no CSR deposit is in BBL numbering, so the question cannot be settled from
+any file we hold - it needs the Garau 2004 alignment or Pedroso 2020. Until then
+the title's "K263" is a literature quotation, not a measurement, and the
+manuscript`s `K263H` does not name our crystals` lysine.
+
 
 The mapping the whole argument depends on, from Pedroso 2020 and Krco 2023
 (¶22, ¶40, re-settled in ¶108/¶179):

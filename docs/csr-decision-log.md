@@ -13236,6 +13236,195 @@ evidence as it stands the reactant is **Zn-OH(-) with a cationic Lys226**, since
 ¶204/¶211's neutral-lysine result started from a frame with Zn-Asp92 OD2 already
 at 2.00 A, which is the condition most likely to make a lysine shed a proton.
 
+**¶277 - THE MUTANT ARM IS dmCSR-1, THE PLAIN DOUBLE MUTANT, AND BOTH ARMS COME
+FROM OUR OWN CRYSTALS. `CSR_truncated_2metal.pdb` is a genuine wild-type CSR-1
+refinement - real Arg118, Gln121, Ser214, Lys254, ZERO reverts needed - which
+SUPERSEDES ¶217's choice of 6DQH. Its zincs are a graft, but the graft
+manufactures nothing: Asp92 lands at OD1 4.67 / OD2 5.14 / CG 5.36, matching
+6DQH's experimental 4.28 / 5.14 / 5.15. Also: the numbering is settled from our
+own files as **S214 / K254**, and three traps found in the honours directory.**
+(2026-11-14, user: "well this needs to fit in with the manuscript - the goal is
+a WT and mutant CSR comparison - you choose which mutant is most appropriate for
+this", "record dmCSR-1 then finish the gate conversion, and ideally you use our
+structures")
+
+## 1. What the manuscript's design is
+
+Three templates, quoted: AIM-1 (HHH/DHH, canonical), CSR-1 (HRH/DQK, ours), and
+"dmCSR-1, a mutant of CSR-1 (CSR-1Q121H,K263H) created by Pedroso et al. (2020)
+to have an HRH/DHH metal-binding motif, as a third template for mutagenesis.
+The modification of the M2 site represents a halfway-point between the active
+sites of AIM-1 and CSR-1". Then the aspartate reversions on all three:
+AIM-1S207D, CSR-1S214D, dmCSR-1S214D.
+
+So the WT-versus-mutant axis the paper is built on is **CSR-1 versus dmCSR-1**,
+and the M2 site is the variable. That is the same question this project has been
+asking - whether mono-Zn CSR-1 runs a different mechanism from canonical di-Zn
+B3 - so the computational comparison answers the paper's question rather than a
+neighbouring one.
+
+## 2. The in-house set, identified by SEQUENCE rather than by filename
+
+`University/Undergrad/Honours/SCIE4481/bioinformatic_data/MM/Structure/CSR/`.
+Aligned pairwise on chain A CA residues (difflib, no numbering assumed):
+
+    CSR_truncated_2metal.pdb    vs  dmCSR_2metal.pdb
+        ratio 0.9865, TWO substitutions:  Q121->H    K254->H
+    dmCSR_2metal.pdb            vs  dmCSR_mutant_2metal_refine_16.pdb
+        ratio 0.9784, ONE substitution:   S185->D    (= 214 in WT numbering)
+
+So the three files are **WT CSR-1, the plain double mutant, and dmCSR-1 S214D**,
+and each is two / one substitutions from the next. Every file is waters-stripped
+(`HETATM` = ZN only) and prepared; `PDBCleanup.py` sits in the same directory.
+
+    file                                enzyme            numbering   space group
+    CSR_truncated_2metal.pdb            WT CSR-1          46-303      P 32 2 1
+    dmCSR_2metal.pdb                    dmCSR-1 (plain)   15-273      P 21 21 21
+    dmCSR_mutant_2metal_refine_16.pdb   dmCSR-1 S214D     10-259      P 21 21 21
+
+`dmCSR_2metal` is ours - 1; `dmCSR_mutant_*` is ours - 14; the WT file is in the
+publication-like numbering (H116 R118 D120 Q121 ... S214 ... K254).
+
+## 3. THE ZINCS ARE ONE PASTED PAIR, SO NO WT METAL IS EXPERIMENTAL
+
+    CSR_truncated_2metal.pdb
+      HETATM 1955 ZN    ZN B   1     -12.832  18.175  -5.009  1.00 14.90
+      HETATM 1956 ZN    ZN B   2     -14.099  16.870  -7.683  0.53 11.89
+    dmCSR_2metal.pdb
+      HETATM 1955 ZN    ZN B   1     -12.832  18.175  -5.009  1.00 14.90
+      HETATM 1956 ZN    ZN B   2     -14.099  16.870  -7.683  0.53 11.89
+
+**Byte-identical - same serials, coordinates, occupancies and B-factors - in two
+crystals of different space groups.** Independent refinements cannot do that.
+The two proteins were superposed into one frame and the SAME two zinc atoms
+pasted into both.
+
+Which crystal owns them is settled by chemistry: in the WT file ZN1 has **no
+D/H/H triad to sit on** and lands 1.98 Å from Lys254 NZ, 3.02 from Asp120 OD2,
+3.10 from Gln121 OE1 - a metal occupying the space where the *mutations* would
+have put ligands. In the double mutant the same atom is a proper site
+(Asp91 OD2 1.92, His92 NE2 2.23, His225 NE2 2.34). **The pair is native to the
+double mutant.**
+
+So **¶216 and ¶217 stand: no CSR-1 structure we hold, in-house or deposited,
+has an experimental metal in a wild-type sequence.** I briefly thought this
+directory dissolved the WT build blocker. It does not. The B-factors caught it.
+
+## 4. But the WT PROTEIN frame is real, and it beats 6DQH
+
+`CSR_truncated_2metal.pdb` carries **1996 ANISOU records**, P 3(2) 2 1, residues
+46-303, and reads wild type at every position that matters: **HIS116, ARG118,
+ASP120, GLN121, HIS192, SER214, LYS254, LYS263.** The protein is a real
+refinement; only the metals are grafted.
+
+Measured in that frame, metal at the two-histidine site (its ZN2), via
+`refstruct.py`:
+
+    ZN2 - His116 NE2   2.25        ZN2 - His192 NE2   2.15
+    ZN2 - Asp120 OD1   4.67        OD2  5.14        CG  5.36
+    ZN2 - Arg118 CZ    4.36        ZN2 - Ser214 OG  4.99
+    Lys254 NZ - Asp120 OD2   2.83
+    His116 NE2 - ZN2 - His192 NE2   117.2 deg
+
+**Against ¶217's three criteria, which chose 6DQH:**
+
+    criterion                       6DQH              CSR_truncated_2metal
+    metal at the modelled site      full occupancy    grafted, occ 0.53
+    wild-type catalytic lysine      yes, 2.79         yes, 2.83
+    Asp92 OUT of the 3 A radius     4.28/5.14/5.15    4.67/5.14/5.36
+    sequence reverts needed         ONE  (R118H)      **ZERO**
+    crystallisation phosphate       YES (¶276)        none in the file
+
+It wins on reverts and on the phosphate, ties on the salt bridge, and **agrees
+with 6DQH on Asp92 to within 0.4 Å, OD2 identical at 5.14.** That agreement is
+the point: ¶216 voided a graft because the graft MANUFACTURED a 2.80 Å
+Asp92 contact in an apo site. This graft manufactures nothing - it leaves the
+carboxylate where an independent full-occupancy experimental structure measures
+it. The frame passes ¶216's own test instead of evading it.
+
+**Where the graft does show, stated rather than buried:** N-Zn-N is **117.2 deg**
+here against **105.4** in the plain double mutant and **102.2** in dmCSR-1 S214D
+- with the metal at byte-identical coordinates in all three, so the 12 deg is
+the PROTEIN's, not the metal's. The wild-type site is more open, which is what
+an apo-shaped site with a metal dropped in should look like, and it is also
+close to 6DN4's apo 120.8. So the histidine positions in this frame are
+wild-type but relaxed, and the angle is the one quantity the graft cannot
+certify. Bears on
+[[our-his-zn-his-angle-is-13-19-degrees-too-closed]], which says our MODELS are
+too closed; the WT crystal is open.
+
+## 5. The decisions
+
+**Mutant arm: dmCSR-1, the PLAIN double mutant, from `dmCSR_2metal.pdb`.**
+
+1. It is the manuscript's own axis and its own halfway template (§1).
+2. It is **two substitutions from our WT file and nothing else** - Ser214 intact,
+   so the intersite serine is held constant and the only variable is the M2
+   site. Verified by alignment, not by filename.
+3. Its metals are the real ones in this directory (§3), so the mutant arm needs
+   no placement at all.
+4. The substitution is remote from the substrate, so the WT Michaelis pose
+   transfers; the phenotype is a GAIN of canonical-type activity rather than a
+   confounded loss.
+
+**NOT S214D**, although the paper's other mutant and although we hold its
+crystal: it removes the serine AND installs a carboxylate next to the
+nucleophile, so it cannot isolate Ser186 - and Hou et al. 2017's S->A in AIM-1
+stayed active (kcat 251, KM 434), "thus suggesting the serine residue is not
+strictly required". Its phenotype is also not one thing: penicillins abolished,
+carbapenems down 3-5 orders of magnitude but alive, cefaclor and cephalothin
+essentially unchanged. The only observable left would be a barrier - the most
+expensive quantity we compute and the one most exposed to the starting-frame
+problem. **It keeps a cheaper structural arm for later:** does the aspartate
+carboxylate take the hydroxide's place or chelate the metal. A geometry
+optimisation answers that and needs no barrier.
+
+**WT arm: `CSR_truncated_2metal.pdb`, both grafted zincs deleted, one metal
+placed at the two-histidine site.** Zero reverts, genuine Arg118, no phosphate,
+and Asp92 starts OUT at 4.67-5.36 - outside the 3 Å restraint radius, so the
+rule has nothing to pin and the Asp92 controversy does not re-enter through the
+start. The metal is still a placement and is labelled one.
+
+**This supersedes ¶217's choice of 6DQH as the wild-type frame.**
+
+## 6. Numbering, settled from our own crystals
+
+The WT file has **LYS at both 254 and 263**, and the residue the double mutant
+replaces with histidine is **254**, by alignment. The serine the S214D mutation
+replaces is **214**, by alignment. So in our own structures the pair is
+**S214 / K254**, and the manuscript's `K263H` does not name this file's lysine.
+¶261 flagged that "at least one of `S214D` and `K263H` is not BBL" and left it
+open; it is now answered in a checkable direction - **`S214D` matches our
+crystals and `K263H` does not.** Worth putting to the lab before submission,
+with the alignment attached.
+
+Separately: the second M1 histidine is **His192** in our WT crystal and in 6DQ2
+(`reference-structures.md` already measures 6DQ2 as `A:116:NE2-A:192:NE2`),
+while our reference table lists the published residue as **H196** and residue
+196 in this file is ALA. One of those is wrong and it is not settled here.
+
+## 7. Three traps in that directory
+
+1. **The atom named `ZN1` is the project's Zn2 and vice versa.** In every file
+   here `ZN 1` is the D/H/H (M2) site and `ZN 2` is the two-histidine (M1) site
+   - the opposite of this project's convention, where Zn1 is the M1/3H site.
+   The log has already inverted Zn1/Zn2 once.
+2. **The `*_1metal` files keep the WRONG metal.** They carry a different record
+   (occ 0.70, B 9.03, at -13.098/18.227/-5.196), and in the WT frame it sits on
+   **Lys254**, not in the catalytic site.
+3. **`CSR_nontruncated_1metal_fixed.pdb` is corrupt at the metal and is the
+   ancestor of this project's entire live lineage.** It is the 1metal file with
+   occupancy forced to 1.00 and B zeroed, and it gives **Zn-Asp120 OD2 1.38 Å**
+   and Zn-Lys254 NZ 1.95 - physically impossible. The ANISOU records are gone
+   too (`_original` has 2114, `_fixed` has none). This is presumably why the
+   project replaced its zinc with 6NC5's ZN302; the replacement is sound, but
+   anything else inherited from this file needs checking against `_original`.
+
+## Status
+
+Record only. No structure written, no section added, no job queued. The WT arm
+still needs the metal placed and the substrate posed, neither done here.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
