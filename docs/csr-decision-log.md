@@ -12551,6 +12551,117 @@ and equilibration is what relaxes it.
 installed.** The fork is the user's: approve route A's capability (a `mutations`
 input with tests, plus pdbfixer), or direct route B or C.
 
+**¶272 - WHAT IS ACTUALLY WRONG WITH `aspxtb8`, MEASURED ATOM BY ATOM: the metal
+chemistry is right and better than the record implies - the beta-lactam carbonyl
+is coordinated at **2.211 A**, inside 7UHI's 2.53 - but the substrate's far end
+is **unanchored and has drifted**, losing the Ser186 contact the record calls
+100%: OG-O4x is **6.46 A**. Arg90 is 2 A out, as ¶260 had it. And the attack
+angle is 38.5 deg, which I nearly reported as fatal before the record stopped
+me.** (2026-11-14, user: "what's wrong with aspxtb8's geometry?")
+
+## The ligand topology, derived rather than assumed
+
+Heavy-atom connectivity from `structures/aspxtb8_nowat.pdb`: the beta-lactam
+ring is **C3x-C4x-N1x-C17x**, with **C4x=O2x at 1.21 A** and C4x-N1x at 1.37 A.
+So **O2x is the beta-lactam carbonyl oxygen and C4x its carbon, and the amide is
+intact.** C6x=O3x/O4x (1.25/1.24) is the C3 carboxylate; C11x=O5x the
+side-chain amide; O1x the 1-hydroxyethyl hydroxyl on C2x. Worth stating because
+¶263's table lists O1x first and it is easy to read O1x as the carbonyl.
+
+## What is right, and one item is better than the record suggests
+
+    Zn-His88  NE2            2.063
+    Zn-His164 NE2            1.997
+    Zn-OH     O01            1.776
+    Zn-O2x    (carbonyl)     2.211      7UHI: 2.53
+    coordination number           4     OH + 2 His + carbonyl
+    Lys226 NZ - Asp92 OD2    2.749      6DN4 2.99, 6DQ2 2.83
+    Asp92 OD2 - Zn           5.092      6DQH 5.14; OD1 5.830 vs 4.28
+
+**The carbonyl is coordinated, and more tightly than in the only experimental B3
+Michaelis complex.** The four-coordinate sphere is OH + two histidines + the
+carbonyl, which is the canonical-equivalent count for a **two**-ligand Zn1
+([[csr1-zn1-site-is-h-r-h]]). The Lys226-Asp92 salt bridge is held within
+0.25 A of both wild-type crystals, and Asp92 is **off** the metal - further out
+than 6DQH puts it. That is the thesis-consistent state and it is not an artefact
+of a restraint, this being the converged GFN2 QM/MM minimum.
+
+## What is wrong
+
+**1. The substrate's carboxylate end is unanchored and has drifted - new here.**
+
+    Ser186 OG - O4x       6.464      record: contact in 100% of frames
+    Zn - O3x / O4x        6.697 / 5.422
+    Zn - N1x (lactam N)   4.544      7UHI: 2.67, on Zn2
+
+The record's `Ser186 OG - C3-carboxylate O4x 100%` does **not hold in this
+frame**; the contact is gone by more than 3 A. And the reason is structural
+rather than accidental: 7UHI anchors both the lactam nitrogen **and** the
+carboxylate on **Zn2**, which CSR-1 does not have
+([[l1-michaelis-complex-uses-both-zincs]]), so in our site that end of the
+molecule has nothing to hold it and it has swung away. Only the carbonyl is
+held. **This is the pose problem expressed as a measurement on the current
+structure**, and it is the most concrete defect found here.
+
+**2. Arg90 is ~2 A out**, confirming ¶260 from the file directly:
+
+    Arg90 CZ - Zn   6.638      6DQH 4.14, dmCSR-1 4.60
+    Arg90 NH1 - Zn  5.756
+    Arg90 NE  - Zn  6.592
+
+**3. Zn-OH at 1.776 A is short** for a zinc hydroxide (typically ~1.85-1.95),
+which is the over-binding signature of
+[[question-does-gfn2-over-coordinate-the-zinc]] rather than a separate problem.
+
+## What is NOT wrong, correcting how I have framed both
+
+**The N-Zn-N angle is not clearly a defect.** 86.6 deg here against 6DQH 95.9
+and dmCSR-1 102.2 - but **7UHI, the only substrate-bound B3, is 87.4**. Ours
+matches the substrate-bound structure and differs from the two apo-or-mutant
+ones. ¶260 listed this as "13-19 degrees too closed"; that comparison used
+crystals whose sites are water-filled. The manuscript's own finding that Zn1
+occupancy is substrate-facilitated
+([[dmcsr1-zn1-occupancy-may-depend-on-substrate]]) points the same way.
+
+**And the attack angle is NOT a verdict, which I was about to report it as.**
+Measured:
+
+    O01-Zn-O2x            87.7 deg      O01...O2x 2.781
+    O01...C4x             3.626
+    O01-C4x-O2x           38.5 deg      Burgi-Dunitz ~105
+    O01 above ring plane  2.04 A (34 deg)
+
+38.5 deg is worse than batch 1's 48.1, and my first reading was that the
+nucleophile cannot attack from there. **[[burgi-dunitz-gate-at-reactant-was-wrong]]
+says otherwise and it is right:** thermolysin and CPA reach Nu-C=O of **119.5
+and 117.2 deg** from O-Zn-O of only **57.2 and 60.1** - more cis at the metal
+than we are - and the angle opens as the nucleophile approaches, ours reaching
+the 95 deg window at a *longer* Nu-C than either reference
+([[thermolysin-and-cpa-hold-both-oxygens-cis-on-one-zinc]]). So a reactant
+angle is not a gate, and
+[[question-can-burgi-dunitz-coexist-with-carbonyl-on-one-zinc]] stays `open`.
+Recorded as a number, not as an obstruction. **Fifth time this class of argument
+has been re-derived; the record caught it again rather than I did.**
+
+## The answer to the question as asked
+
+`aspxtb8`'s **metal site is sound** - right bond lengths, right coordination
+count for a two-histidine Zn1, carbonyl bound, salt bridge held, Asp92 off the
+metal. What is wrong is **everything the missing Zn2 would have held**: the
+lactam nitrogen at 4.54 A, the carboxylate at 5.4-6.7 A, and the Ser186 contact
+lost entirely - plus Arg90 2 A out. So it is not a bad equilibration; it is a
+good equilibration of a pose whose far end has no anchor in this enzyme.
+
+**Which means route C would not fix it**, and for a sharper reason than
+¶271 gave: re-running 10 ns + 50 ps from this lineage re-equilibrates a
+substrate that nothing holds at the carboxylate end, so it will drift again.
+
+## Status
+
+Nothing submitted. All numbers from the tracked frame
+`docs/csr/structures/aspxtb8_nowat.pdb`, internal distances only, no
+superposition.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**

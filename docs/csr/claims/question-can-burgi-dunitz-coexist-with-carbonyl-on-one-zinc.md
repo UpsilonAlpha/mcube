@@ -40,5 +40,14 @@ decision**).
 **That third branch bears directly on the thesis**, since it is the one outcome
 that would return CSR-1 to the canonical mechanism.
 
+
+**`aspxtb8`, the converged GFN2 QM/MM minimum (¶272):** O01-Zn-O2x **87.7 deg**,
+O01...O2x 2.781, O01...C4x 3.626, **O01-C4x-O2x 38.5 deg**, the hydroxide 2.04 A
+(34 deg) above the beta-lactam ring plane. Worse than batch 1-s 48.1, and
+**still not a gate** - thermolysin and CPA reach 119.5 and 117.2 deg from
+O-Zn-O of 57.2 and 60.1, i.e. more cis at the metal than we are. Logged as a
+number. This argument has now been re-derived five times; the record caught it
+each time.
+
 ## Supports
 - [[no-usable-michaelis-complex-exists-yet]]
