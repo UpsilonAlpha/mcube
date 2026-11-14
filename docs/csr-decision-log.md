@@ -12036,6 +12036,100 @@ called. A node that bears on nothing does not belong in the map, so the
 point lives in this entry, where it is a wording decision for the user
 rather than an argument.
 
+**¶266 - THE USER IS RIGHT ABOUT THE POSITION AND I WAS RIGHT ABOUT THE
+RESIDUE, AND THOSE ARE NOT IN CONFLICT. Ser186/BBL214 is the intersite residue
+by direct measurement - equidistant from both metals, 4.06/4.13 A, and the
+closest non-ligand side chain to the Zn-Zn midpoint. Asp92/BBL120 is a
+**terminal** Zn2 ligand, 2.06 against 4.42 A - asymmetric, so not bridging
+anything. "Intersite Ser/Asp" adopted for the first; "bridging" dropped from
+the second. Also: the record's "SMB-1 Ser221/Thr223" equivalence is wrong.**
+(2026-11-14, user: "I thought the bridging aspartate is the correct term? ...
+I am happy to use 'intersite asp' and 'intersite ser' instead")
+
+## The measurement that decides it, and the right statistic
+
+**Symmetry, not proximity.** Distance to the Zn-Zn midpoint is the wrong
+statistic - a tight ligand of one metal sits near the midpoint too. What
+distinguishes an intersite residue is that it is **equidistant**. In our dmCSR-1
+S214D two-metal file (Zn-Zn 3.23 A):
+
+    residue                      Zn2     Zn1    symmetric?
+    Asp78  OD2  (our Asp92)     2.06    4.42    no - 2.4 A apart
+    Asp78  OD1                  3.26    4.12    no
+    Asp172 OD2  (our Ser186)    4.06    4.13    YES - 0.07 A apart
+    Asp172 OD1                  6.10    6.05    YES
+
+And in 7UHI (L1, canonical B3, di-zinc): Asp109 OD2 **2.27** to Zn2 against
+**4.78** to Zn1; OD1 3.10 against 3.94. Same asymmetry in a second structure
+from a different subgroup.
+
+**Ranked by closest side-chain atom to the Zn-Zn midpoint**, dmCSR-1 S214D
+gives: His74 2.87, His79 2.90, Asp78 3.05, His150 3.32, His212 3.56,
+**Asp172 3.76**, then nothing until Arg76 at 4.82. So the S214D aspartate is
+**the closest non-ligand side chain to the midpoint**, immediately behind the
+five metal ligands and 1.1 A clear of the next residue. **The user's reading of
+the position is correct and is now measured rather than assumed.**
+
+## What that means for the two terms
+
+**"Intersite Ser" / "intersite Asp" for Ser186/BBL214: adopted, and it is
+better than the manuscript's own word.** "Bridging" asserts contact with both
+metals; the measurement is **4.06 and 4.13 A**, which is between the sites and
+coordinating neither. "Intersite" says exactly that and overclaims nothing. The
+manuscript's "bridging aspartate" is the superfamily-wide description, where the
+residue genuinely does bridge; in CSR-1 it does not, so the weaker word is the
+accurate one for our structures.
+
+**"Bridging aspartate" for Asp92: not correct, and this is the one point where
+the user's premise does not hold.** Asp92 = BBL Asp120 is a **terminal Zn2
+ligand**. The literature is explicit: in B1, Zn2 is bound by Asp120, Cys221 and
+His263, and mutant studies give Asp120 a **positional** role - it orients Zn2
+and the bridging water. The ligand described as bridging the two metal sites
+across the superfamily is at position **221**, which in MBLs is Cys (B1) or Ser,
+not Asp120. So Asp120 is not the superfamily's bridging aspartate under anyone's
+usage, and our own two crystals measure it as asymmetric.
+
+**On "Zn2 site implies RQK" - a fair objection, and the fix is to drop the
+adjective.** Asp92 is the **D of DQK**, and the canonical DHH motif shares that
+same D, so "Zn2-site aspartate" is literally accurate and implies nothing
+RQK-specific. But if it reads as lumping the conserved aspartate in with the
+subgroup's oddities, the adjective is doing no work: **"Asp92" alone is
+unambiguous** in a document about CSR-1. That is the recommendation for the
+thesis line, rather than either contested phrase.
+
+## A numbering error in the record, found on the way
+
+¶261 called our Ser186 "the CSR-1 analogue of **SMB-1's Ser221/Thr223**". That
+is wrong. Needleman-Wunsch over CA sequences, dmCSR-1 chain A (250 residues,
+10-259) against three structures:
+
+    target                    identity    our Asp92 ->   our Ser186 ->
+    CSR-1 WT apo 6DN4          98.8%        Asp120         Ser214
+    SMB-1 5B15                 33.3%        Asp76          Ser175
+    L1 7UHI                    35.2%        Asp109         Ser206
+
+**Our Ser186 is SMB-1 Ser175, not Ser221.** The 6DN4 row also confirms the
+record's BBL labels from an independent route: Asp92 -> **BBL 120** and
+Ser186 -> **BBL 214**, both as ¶261's table has them, so only the SMB-1
+cross-reference in its prose is at fault.
+
+**And a loose end left open rather than resolved:** the literature places the
+superfamily's bridging ligand at **BBL 221**, but **6DN4 residue 221 is a
+proline** (…Tyr220, **Pro221**, Leu222, Ile223…), and the manuscript mutates
+**Ser214**. BBL 214 and BBL 221 are different positions, so either the
+literature's "221" follows a different convention or the two are not the same
+site. **Not resolved here, and it does not affect anything above**, because the
+intersite claim for Ser186 rests on the measured 4.06/4.13 A symmetry, not on
+which number the position carries. Flagged so it is not assumed settled.
+
+## Status
+
+Nothing submitted, no model touched. One superposition attempt was **discarded,
+not reported**: pairing Zn ligands between 5B15 and dm.pdb by sorted order
+matched Zn1 ligands to Zn2 ligands because the two files index their zincs in
+opposite order, giving a 4.69 A RMSD on 4 atoms and a meaningless residue
+mapping. The sequence alignment above replaced it.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**

@@ -203,3 +203,24 @@ Not grep traps; listed for completeness. ¶12, ¶13, ¶40 (carbonyl bullet), ¶4
 (`md` resume), ¶191 (provisional), ¶192 (diagnosis withdrawn), ¶193 (causal
 claim withdrawn), ¶196 (timestep), ¶197 (two corrections), ¶207 (its own
 qualification).
+
+---
+
+## 6. Added after the 2026-11-05 audit
+
+**¶261 - the SMB-1 cross-reference is wrong.** The entry calls our Ser186
+"the CSR-1 analogue of SMB-1's Ser221/Thr223". **It is SMB-1 Ser175.**
+Needleman-Wunsch over CA sequences (¶266): dmCSR-1 chain A against 5B15,
+33.3% identity, maps our Asp92 -> SMB-1 Asp76 (the Zn2 aspartate, an
+independent check on the alignment) and our Ser186 -> SMB-1 **Ser175**.
+
+**What is NOT retracted in ¶261:** its BBL labels are right. The same
+alignment against 6DN4 (98.8% identity) returns Asp92 -> **BBL 120** and
+Ser186 -> **BBL 214**, exactly as ¶261's table has them. Only the SMB-1
+equivalence in its prose is at fault.
+
+**Open, not retracted:** the literature places the MBL superfamily's
+metal-bridging ligand at **BBL 221**, but 6DN4 residue 221 is a **proline** and
+the manuscript mutates **Ser214**. Those are different BBL positions. ¶266
+leaves this unresolved on purpose: its intersite claim for Ser186 rests on a
+measured 4.06/4.13 A symmetry to the two metals, not on the position number.
