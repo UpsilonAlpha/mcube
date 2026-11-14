@@ -12771,6 +12771,137 @@ Nothing submitted. ¶272's "what is wrong" framing is superseded by this entry;
 its measurements stand, its interpretation does not. The argmap node is
 rewritten to make no claim about the pose.
 
+**¶274 - THE MICHAELIS COMPLEX IS `eq6`'s LAST FRAME, AND THE PROTOCOL THE USER
+ASKED FOR EXISTS ONLY AS ITS FIRST HALF: 10 ns MM yes, **50 ps QM/MM from it
+never run**. Everything in the `asp*` branch is a geometry optimisation, and the
+only QM/MM *dynamics* in `site.yaml` descend from the condemned `nac` lineage.
+Also: GFN2 over-binding is **mild, not severe** - 0.13 A against our own DFT.
+And a correction to ¶273: aspxtb8's Asp92 was **placed at 5.14 A by three
+successive actuator runs**, not found freely.**
+(2026-11-14, user: "is GFN2 overbinding really that severe?", "settle which
+frame is a good michaelis complex and summarise exactly how it was generated
+from the crystal start")
+
+## 1. GFN2 over-binding, measured against our own DFT on the same system
+
+Three tracked frames, same system, same pose, different level of theory. O01
+carries **one** hydrogen in all three, so it is hydroxide throughout:
+
+    frame                  method    Zn-O01   Zn-His88  Zn-His164  Zn-O2x
+    relax10_nowat          MM 10 ns   2.035     2.178      2.126     2.610
+    aspxtb8_nowat          GFN2       1.776     2.063      1.997     2.211
+    aspdft_final_nowat     DFT        1.910     2.136      2.094     2.501
+
+    GFN2 - DFT                       -0.134    -0.073     -0.097    -0.290
+
+**No, it is not severe.** GFN2 contracts everything by a systematic 0.07-0.13 A
+on the protein ligands and the hydroxide, 0.29 A on the carbonyl. **DFT's
+Zn-OH(-) is 1.910 A, which is an ordinary terminal zinc hydroxide** (carbonic
+anhydrase is ~1.9), so the reference I should have compared against all along is
+1.91, not the ~1.85-1.95 range I quoted from memory, and 1.776 is 0.13 A short
+of it. A bond-length bias, not an over-binding pathology. **¶272's flagging of
+it as a defect is withdrawn**; it is the known GFN2 contraction and nothing more.
+
+**The interesting difference is coordination number, and it runs the OPPOSITE way
+to the project's standing worry.** The DFT frame's Zn sphere within 2.6 A:
+
+    His88 NE2 2.136   His164 NE2 2.094   O01 1.910
+    mer O2x 2.501     HOH3095 2.238      HOH3171 2.091      -> SIX-coordinate
+
+The same two waters in the GFN2 frame sit at **2.747 and 2.795** - second shell -
+giving **four**. So here **DFT pulls two waters in that GFN2 leaves out**, which
+is the reverse of [[question-does-gfn2-over-coordinate-the-zinc]].
+**Qualification that matters:** `aspdft` ended **TIMEOUT at 28 steps** with grms
+*rising* (2.201e-04 -> 2.467e-04), so that frame is a partially optimised
+structure, not a converged minimum, and the waters may be mid-migration.
+Recorded as a flag on the question, not as an answer to it.
+
+## 2. The lineage, exactly, from the crystal start
+
+    CSR_nontruncated_1metal.pdb        crystal-derived; zinc is 6NC5's ZN302
+      |                                (6NC5 numbering is ours - 1)
+      +- preprocess  ->  preprocess_results/finalsystem.pdb
+           |
+           +- eq6         md, 10 ns NVT, 2 fs, traj_frequency 500, CUDA
+           |              coordination_redetect: TRUE
+           |              job 32177894, 43.7 min on one H100
+           |              **PASSED the ¶231 equilibration gate (¶214)**
+           |              restraints (5):
+           |                [C:2:O01, C:1:C4x, 3.47]          attack restraint (¶98)
+           |                [B:1:ZN, C:1:O2x, 2.60, 500]      IN RULE (metal pair <3 A)
+           |                [B:1:ZN, A:92:OD1, 3.90, 500]     out of rule
+           |                [B:1:ZN, C:1:O1x, 3.82, 500]      out of rule
+           |                [A:226:NZ, A:92:OD2, 2.79, 500]   salt bridge (¶210)
+           |
+           +- asppull     md, 1 ns, from eq6's last frame
+                |         coordination_redetect: false
+                |         ADDS [B:1:ZN, A:92:CG, 4.45, 50.0]
+                |              comment in the file: "stage 1: halfway out"
+                +- asppull2
+                     +- asppull3   md, 2 ns
+                          |        holds [B:1:ZN, A:92:OD2, 5.14, 500]
+                          |        and   [B:1:ZN, A:226:NZ, 5.27, 500]
+                          +- relax10   md, 10 ns NVT, 2 fs
+                               |       coordination_redetect: false, 5 restraints
+                               +- aspqm2   qmmm geomopt, GFN2
+                               +- aspdft   qmmm geomopt, DFT - TIMEOUT, unconverged
+                               +- aspxtb   qmmm geomopt, GFN2
+                                    +- aspxtb8  qmmm geomopt, actradius 8,
+                                                restraints/constraints UNSET
+
+## 3. A CORRECTION TO ¶273, and it is mine
+
+¶273 closed by saying `aspxtb8` has "Asp92 off the metal at a converged minimum
+with nothing holding it there." **The second half is wrong as provenance.**
+`aspxtb8` unsets restraints in *its own* stage, so it relaxed freely - but it
+started from a frame in which **three successive runs moved Asp92 out and held
+it there**: `asppull` at CG 4.45 ("halfway out", k=50), `asppull3` at OD2 5.14
+(k=500), then `relax10` for 10 ns. aspxtb8's 5.09 A is therefore
+**"stayed where it was placed"**, not "found independently". That is a
+materially weaker claim and the stronger one should not be repeated.
+
+This is the ¶262 actuator finding applied to the frame I have been quoting all
+session: the `asppull` chain uses the restraint machinery to *move* a coordinate,
+which is the thing the user ruled out, and `aspxtb8` is downstream of it.
+
+## 4. So which frame is the Michaelis complex
+
+**`eq6`'s last frame, `md_eq6_results/NVTtrajectory_lastframe.pdb`.** It is the
+only run that goes **crystal -> preprocess -> one 10 ns MM** with nothing else in
+between, it measured its own coordination set (`coordination_redetect: true`)
+rather than inheriting one, it passed the equilibration gate, and **no actuator
+appears anywhere in its history**. Its honest defect is that three of its five
+restraints are outside the rule, which is ¶262's open item and the user's call.
+
+**Everything downstream of it is disqualified for this purpose** - `asppull`
+onward, including `relax10`, `aspqm2`, `aspdft`, `aspxtb` and `aspxtb8` - because
+Asp92's position in those frames was set by restraint rather than found.
+
+## 5. The gap, which is exactly what was asked for
+
+**Nothing QM/MM has ever descended from `eq6`.** Checked across every
+`stage: qmmm` section in `site.yaml`: the only two that run *dynamics* rather
+than a geometry optimisation are `naclong` and `rwon`, and both descend from the
+`nac` lineage that ¶120/¶122 condemned. Every section in the `asp*` and `mich*`
+branches is a minimisation.
+
+So **"10 ns MM then 50 ps QM/MM from a crystal start" exists only as its first
+half.** The missing step is a 50 ps QM/MM NVT from `eq6`'s last frame. It needs
+**no new tooling** - one `qmmm` section with `nvt_time` - and at the measured
+rate costs **~15 h of QM/MM work, ~18 h wall** (`running-on-bunya.md`), against
+`eq6`'s 43.7 min for the MM half.
+
+**The one decision it needs first**, and it is not mine: which of `eq6`'s five
+restraints the QM/MM carries. By the rule only `[B:1:ZN, C:1:O2x, 2.60]`
+qualifies. The attack restraint has ¶98's stated reason and the user's
+polarisation argument behind it, and the salt bridge has ¶210's; the two long
+Zn-Asp92/Zn-O1x terms have neither.
+
+## Status
+
+Nothing submitted, no section written. All structural numbers from tracked
+frames in `docs/csr/structures/`, internal distances only.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
