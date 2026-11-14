@@ -13425,6 +13425,147 @@ while our reference table lists the published residue as **H196** and residue
 Record only. No structure written, no section added, no job queued. The WT arm
 still needs the metal placed and the substrate posed, neither done here.
 
+**¶278 - THE INVENTED GATES ARE NOW ARGMAP NODES. Ten gates audited, seven new
+nodes plus three grounding observations written, `docs/csr/gates.md` indexes
+every criterion to its node, and TWO GATES COME OUT UNSUPPORTED - the ¶201
+replacement windows, whose 1TMN/7CPA provenance ¶276 showed to be a chelate.
+Two of my own gate-list items were WRONG and are corrected from the files.**
+(2026-11-14, user: "List all gates you have - I never requested these, and you
+may be unecessarily constraining things. each simulation is a hypothesis, and
+should fit on the argmap", "Yes, convert them", "record dmCSR-1 then finish the
+gate conversion")
+
+## 1. Why this needed doing, in the project's own words
+
+`site.py`'s docstring already had the principle and the project had already paid
+for it once. ¶125 wrote "the closest substrate oxygen must be the beta-lactam
+carbonyl" as a fact about Michaelis complexes; it is a fact about the
+**carbonyl-on-metal mechanism**, which is the thing under test. ¶126 then
+measured a candidate complex that **violates it while satisfying the attack
+geometry** at 3.17 Å and 106 deg, unrestrained. The docstring's conclusion: *"A
+gate that rejects a competing hypothesis by assuming the first one is not a
+gate, it is a way of never testing anything."*
+
+So `site.py check` grew `--hypothesis=<name>` and names the set in its output.
+**What was missing was the other half** - a node on the map per gate, with a
+status, so a gate can be refuted rather than only passed or failed. That is what
+this entry supplies.
+
+## 2. New nodes
+
+    every-acceptance-gate-encodes-a-mechanism                   claim        supported
+    the-michaelis-complex-is-four-coordinate-at-the-zinc        claim        OPEN
+    mm-cannot-be-gated-on-absolute-zn-donor-bond-lengths        claim        supported
+    the-nucleophile-and-carbonyl-must-sit-cis-at-45-to-95-deg   claim        UNSUPPORTED
+    asp92-od1-hydrogen-bonds-the-nucleophile-in-the-reactant    claim        OPEN
+    question-does-the-substituent-on-metal-route-survive        question     open
+    convergence-gates-must-not-encode-science-criteria          claim        unsupported*
+
+    the-zn-nucleophile-bond-lengthens-from-186-to-205-under-qmmm   observation, ours
+    npt-box-volume-steps-once-and-plateaus                         observation, ours
+    a-candidate-complex-passed-the-attack-geometry-while-
+      failing-the-closest-oxygen-gate                              observation, ours
+
+`* unsupported DELIBERATELY`: a methodological norm is not an empirical claim, so
+no observation can hold it up. Said in the body rather than hidden by a status.
+
+`claims/check.py`: **no findings**, 32 notes.
+
+## 3. THE TWO GATES THAT DO NOT SURVIVE
+
+    O01 - Zn - O2x      range [45, 95]      required_at: [reactant]
+    O01 ... O2x         range [2.0, 3.3]    required_at: [reactant]
+
+¶201 wrote these as the replacement for the Burgi-Dunitz gate it removed - "what
+the angle was meant to ask, asked at the reactant instead" - sourced "measured
+1TMN 57.2, 7CPA 60.1" and "measured 1TMN 2.15, 7CPA 2.68". **¶276 re-measured
+the deposits and both pairs are the two oxygens of ONE chelating functional
+group:** 1TMN OG1/OG2 both bonded to CB2, 7CPA OPV/OPW both bonded to P3 - a
+carboxylate and a phosphinate, transition-state analogues chelating the metal.
+
+So "57.2 / 60.1 deg" is a **chelate bite angle** and "2.15 / 2.68 Å" an
+**intramolecular O...O distance**. The windows describe an already-formed
+gem-diolate, and **any cis pair of oxygens on the zinc passes them.**
+
+**The honest state this leaves:** the reactant has **no justified geometric gate
+on the nucleophile-carbonyl relationship**. That is not a licence to accept any
+pose. What survives threshold-free is a statement about position relative to the
+pi system rather than a window: the hydroxide sits **31-35 deg out of the lactam
+carbonyl plane** in all three tracked frames (relax10 30.7, aspdft 32.2,
+aspxtb8 35.1), near the nodal plane of C=O pi* and on the oxygen's side rather
+than over the carbon.
+
+## 4. The four-coordinate gate, which the user asked about directly
+
+`Zn coordination number, range [4, 5], required_at: [reactant]`. **Open, and it
+was never requested - it is a hypothesis.** Its argument: the resting site is
+four-coordinate, 2 His + 2 waters (¶120); the substrate displaces one water and
+the other becomes the hydroxide, so 2 His + hydroxide + carbonyl = four. Five is
+tolerated (¶196) because GOB-18 expands on binding and because a second-shell
+Asp92 drifting inside a 2.5 Å measurement radius counts as five without being
+five-coordinate chemically.
+
+**Two reasons it cannot stand as a gate.** The count follows from the carbonyl
+being on the metal, which is the hypothesis under test. And **both experimental
+Michaelis complexes we hold fail it**: 7UHI has no water within 4.0 Å of either
+zinc, and L1's has no metal-bound water at all - the substrate displaces the
+nucleophile. A gate that rejects the only certain Michaelis complexes of this
+enzyme class is measuring our assumption.
+
+It is also not a gate MM can be asked to pass: the force field keeps three waters
+resident at 100% (¶191) and put the product's own O4x on the metal in 200 of 200
+frames (¶256).
+
+## 5. The hypothesis that had no node at all
+
+**`substituent_on_metal` has been a full criteria set in `site.yaml` since ¶126
+and has never appeared on the argument map.** A mechanism the pipeline can accept
+a structure under, with nothing to argue about it - which is exactly the failure
+mode this conversion was for. Now
+`question-does-the-substituent-on-metal-route-survive`, open.
+
+It is not a weak hypothesis. Its 106 deg attack angle was measured with
+**nothing restraining that coordinate**, where the preferred arm has never
+reached the window without one. Its weakness is circularity: its own `Zn - O1x
+2.0-2.8` window is calibrated on ¶126's 2.66 Å, which `site.yaml` honestly marks
+"NOT a reference value".
+
+## 6. TWO OF MY OWN GATE-LIST ITEMS WERE WRONG
+
+Both from memory rather than from the files, and both corrected by reading them:
+
+1. **"The named criteria sets `site.py check` applies - `reactant`, `product`,
+   `michaelis_criteria`".** There is no third set: the top-level
+   `michaelis_criteria` key is **gone** from `site.yaml` and `site.py` falls back
+   to it only when no hypothesis is defined. `reactant:` and `product:` are
+   **QM-region anchors** (`&qmreg_wt`, `&qmreg_prod`), not criteria. I had
+   classified them by name.
+2. **The ¶231 convergence gate.** `convergence.py` carries **no science criteria
+   at all** - CA RMSD by decile, RMSF correlations across windows and halves,
+   T/P/E mean/SD/drift, and it writes nothing. The science criterion wearing a
+   convergence badge is in **`state.md`'s prose**, not in the code. The split I
+   described is right; I put it in the wrong file.
+
+## 7. Where the restraint targets sit
+
+Not `site.py check` criteria, so not gates in that sense, but they reject nothing
+and impose everything: `Zn - Asp92 OD2 2.80` and `Zn - Asp92 OD1 3.81` are both
+**VOID** (¶216) - one a superposition into an apo site, one imposed by ¶68's
+hand-pull. The `Lys226 NZ - OD2 2.79` target is a crystal number but
+phosphate-confounded (¶276). All three now point at
+`question-how-far-is-asp92-from-zn1-in-wild-type-csr1`, to which ¶277 adds our
+own wild-type frame: OD1 4.67 / OD2 5.14 / CG 5.36.
+
+## Status
+
+Nodes written and validated; `docs/csr/gates.md` is the config-to-node index.
+**No criterion in `site.yaml` was changed.** The two unsupported windows are
+still `required_at: [reactant]` and can still reject a structure. ¶201's
+precedent for a gate in this position was to move it to a stage `site.py check`
+is never called with, so it prints but cannot fail - **not done, because
+changing what may reject a structure is a scientific decision and needs the
+user's say.**
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
