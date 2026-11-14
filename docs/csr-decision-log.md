@@ -13566,6 +13566,202 @@ is never called with, so it prints but cannot fail - **not done, because
 changing what may reject a structure is a scientific decision and needs the
 user's say.**
 
+**¶279 - ¶277's WILD-TYPE FRAME IS WITHDRAWN: only TWO files in the honours
+directory are originals and both are dmCSR-1 S214D. The novelty claim as phrased
+is ALSO WRONG - GOB-18 is a mono-Zn B3 with a published mechanism (Lisa 2017) -
+but the version that survives is sharper and contradicts that mechanism. And
+there is NO one-zinc mutant at the M1 site: whenever a canonical M2 exists, the
+metal goes to M2. The manuscript DOES support the bridging-aspartate reading,
+verbatim.**
+(2026-11-14, user: "please only use original crystal structures (i.e. from a
+structure builder). dmCSR_mutant_2metal_refine_16.pdb for example is an original
+- whereas the others may be modified", "We want to focus on the novelty of the
+RQK enzymes as they are a heretofore unreported B3 monometallic mechanism (double
+check this)", "we need to compare the WT with ONE zinc (aspxtb8 is probably a
+good candidate) against a mutant that also has ONE zinc ion")
+
+## 1. Which files are originals, by refinement record and unit cell
+
+**Only two files carry PHENIX refinement records**, both dated 2025-12-16 and
+both from `/Users/uqtbayar/Desktop/dmCSR S185D (S221D) Mutant/`:
+
+    dmCSR_mutant_1metal_refine_12.pdb   1-metal   r_work 0.1609  r_free 0.1793   292 waters
+    dmCSR_mutant_2metal_refine_16.pdb   2-metal   r_work 0.1633  r_free 0.1864   312 waters
+                                                  REMARK: Zn occupancy sum 1.53
+
+**Everything else is modified, and the unit cells prove it.** There are FOUR
+distinct crystal forms among the WT and dm files:
+
+    CSR_nontruncated_*        I 4            84.580  84.580  74.982
+    CSR_truncated_*           P 32 2 1       74.406  74.406 107.471
+    dmCSR_*                   P 21 21 21     53.468  74.946  76.095
+    dmCSR_mutant_1metal*      P 21 21 21     69.392  77.543  43.698
+    dmCSR_mutant_2metal*      P 21 21 21     43.760  69.361  77.388   (same form, axes permuted)
+
+**Four different cells, and the zinc coordinates are SHARED across them.** Only
+two zinc models exist in the whole directory and they are pasted into every
+protein file:
+
+    one-metal model    -13.098  18.227  -5.196   occ 0.70  B  9.03
+    two-metal model    -12.832  18.175  -5.009   occ 1.00  B 14.90
+                       -14.099  16.870  -7.683   occ 0.53  B 11.89
+
+`AIM1_*.pdb` - a different protein, P 61 2 2 - sits in the same coordinate frame
+with its zincs 0.3-0.5 Å away. So the whole directory was superposed into one
+frame for a comparative analysis, waters stripped, and the metals harmonised,
+while `CRYST1` kept each original cell. **`CRYST1` is therefore reliable as
+provenance and the coordinates are not.**
+
+The one-metal zinc record (occ 0.70, B 9.03) is `refine_12`'s own. It appears
+in `CSR_nontruncated_1metal_original`, `CSR_truncated_1metal`, `dmCSR_1metal`
+and `dmCSR_mutant_1metal` as well - so **the wild-type files' single zinc is the
+S214D mutant's zinc.**
+
+## 2. ¶277's WILD-TYPE FRAME IS WITHDRAWN
+
+¶277 recommended `CSR_truncated_2metal.pdb` as the wild-type starting frame,
+superseding ¶217's choice of 6DQH, on the grounds that its protein is a genuine
+refinement needing zero sequence reverts. **The protein coordinates are still
+from a real crystal** - its own cell, 1996 ANISOU records, wild type at every
+site position - but the file is a superposed, metal-pasted derivative and I
+cannot verify what else was changed without the original. Under the user's rule,
+it is not usable.
+
+**So ¶216/¶217 stand in full and nothing has superseded 6DQH.** What survives
+from ¶277 is everything that did not depend on that file: the double mutant is
+the mutant of interest, the zincs are one pasted pair, and the numbering
+(§4 below).
+
+**There is no original for wild-type CSR-1 and none for the plain double mutant
+in this directory.** For those the deposits are the only originals: 6DN4 and
+6DQ2 (wild type, metal-free), 6DQH (R118H, one Zn), 6NC5 (the plain double
+mutant).
+
+## 3. THE NOVELTY CLAIM IS WRONG AS PHRASED, AND THE REPAIR IS BETTER
+
+"A heretofore unreported B3 monometallic mechanism" **does not hold**. GOB-18 is
+a mono-Zn(II) B3 MBL, fully active with one metal, and Lisa et al.
+(Nat Commun 2017, PMC5599593) publish a mechanism covering it. Verbatim from
+that paper:
+
+> This enzyme can be active either as a bi-Zn(II) or as a mononuclear enzyme
+> with the metal ion located in the Zn2 (DHH) site
+
+> Subclass B3 GOB enzymes have a Gln residue at position 116, replacing the
+> usual His ligand
+
+**But three clauses survive, and the third is stronger than a gap in the
+literature:**
+
+1. **Site.** GOB-18's single metal is at **Zn2 (DHH)**. CSR-1's is at **M1**.
+   No monometallic B3 mechanism at M1 is reported.
+2. **Ligand set.** CSR-1's M1 is **two histidines plus Arg90** (H-R-H). No
+   reported monometallic MBL mechanism operates at such a site: GOB's Zn1 has
+   Gln116, B1 mono-Zn BcII's is three histidines (¶265), and B2 Sfh-I's resting
+   site is one His plus one sulfur (Lisa Table 1).
+3. **The nucleophile, and this is a CONTRADICTION rather than a gap.** Lisa
+   2017, verbatim:
+
+   > We attribute this difference to the involvement of a metal-activated
+   > nucleophile in binuclear enzymes ... thereby suggesting that nucleophile
+   > activation in mono-Zn(II) enzymes does not involve the metal site
+
+   and the nucleophile "has been proposed to be the Zn1-bound hydroxide in
+   bi-Zn(II) enzymes ... but **has not been identified in mononuclear
+   variants**". This project's hypothesis is a **metal-bound hydroxide at M1 in
+   a monometallic enzyme** - exactly what the only published mono-zinc MBL
+   mechanism says does not happen. That is a testable disagreement with a named
+   paper, which is a better claim than novelty by absence.
+
+**One check not completed:** the 2010 JBC GOB paper and the 2016 ASM GOB
+structure paper both returned HTTP 403 and were not read. An earlier secondary
+source placed GOB's single zinc at Zn1 rather than Zn2, so the site assignment
+rests on Lisa 2017 alone and should be confirmed against the primary GOB papers
+before the claim is written up.
+
+## 4. A THIRD NUMBER FOR THE SERINE, from the refinement folder name
+
+The originals live in a folder called **`dmCSR S185D (S221D) Mutant`**. So the
+same residue is **our Ser186**, **185** in the dm numbering, **S214D** in the
+manuscript, and **S221** in a fourth convention. **BBL 221 is the canonical B3
+position** - GOB has "Ser221 replaced by Met", and SMB-1's Ser221/Thr223 is the
+pair `the-substrate-carboxylate-end-is-unanchored-in-our-models` already cites.
+So `S221` is very likely the BBL number and the manuscript's `S214D` is a
+deposit number, which strengthens ¶277's finding that the manuscript mixes
+conventions. ¶277 concluded `K263H` is the non-BBL one; this suggests **`S214D`
+is non-BBL too, and BBL would be `S221D`.** To be settled with the lab.
+
+## 5. THERE IS NO ONE-ZINC MUTANT AT M1. The metal moves site.
+
+Measured, not assumed:
+
+    6NC5, plain double mutant (deposit)
+      ZN301  occ 1.00  B 26.54   Asp91 OD2 1.95  His92 NE2 2.01  His225 NE2 2.04  HOH493 2.08
+      ZN302  occ 1.00  B 30.11   His87 NE2 2.22  His163 NE2 2.09  HOH493 2.14  HOH485 1.90
+      Zn-Zn 3.43, bridged by HOH 493.  Four further zincs on surface acetate,
+      phosphate and carboxylates - crystallisation artefacts.
+    -> DI-ZINC at the active site, both sites FULL. Not a mono-zinc mutant.
+
+    dmCSR_mutant_1metal_refine_12 (our original, S214D)
+      ZN1  occ 0.70   Asp78 OD2 2.13  His79 NE2 2.22  His212 NE2 2.12
+                      + three waters 2.07 / 2.16 / 2.38
+    -> ONE zinc, SIX-coordinate, and it sits at **M2**, not M1.
+
+    6DQH (deposit)
+      one Zn, full occupancy, at M1 - but the mutation is **R118H**, which
+      removes the arginine that clause 2 of the novelty depends on.
+
+    aspxtb8 (ours, the WT one-zinc candidate)
+      ZN1   His88 NE2 2.06  His164 NE2 2.00  hydroxide O01 1.78  carbonyl O2x 2.21
+            waters at 2.75 / 2.79, outside the 2.6 cutoff
+    -> ONE zinc at M1, four-coordinate at 2.6 Å, Arg90 present, Asp92 out.
+
+**So no structure pairs a one-zinc mutant with a one-zinc wild type at the same
+site, and the reason is itself the result: whenever a canonical M2 exists, the
+metal takes M2.** The wild type has only M1 to offer; the one-metal S214D
+crystal put its single zinc at M2; the plain double mutant fills both. That is
+the structural statement behind "the RQK enzymes are monometallic *at M1*
+because M2 is destroyed", and it is what makes the M1 mechanism the novel
+object rather than the metal count.
+
+## 6. THE BRIDGING-ASPARTATE READING IS SUPPORTED BY THE MANUSCRIPT, verbatim
+
+The user asked whether the manuscript supports reading dmCSR-1 S214D as a test
+of inhibition via the bridging aspartate. **It does, in three places.**
+
+The term itself - the anti-Pycsar nucleases "natively possess a
+**metal-bridging aspartate residue in this position**". So the manuscript's own
+word for the position is bridging, which also settles the ¶268 terminology
+question in the user's favour.
+
+The alternative is stated explicitly:
+
+> these results suggest either that the serine is critical to the catalysis of
+> penicillins, **or that the aspartate residue directly prevents binding or
+> inhibits hydrolysis** of these antibiotics
+
+and the paper then undercuts the first branch with Hou et al. 2017's S-to-A
+retaining activity, which leaves the aspartate-inhibits branch. For
+cephalosporins it proposes "the aspartate mutation has similarly resulted in
+cefuroxime binding in an **inhibitory conformation**".
+
+And the structural half matches: the abstract says the mutant structures
+"highlight changes in the **metal ion coordination environment** that may play
+an important role in the switch in functionality", and `refine_12` shows what
+that means - the single zinc at M2 with **three** waters, six-coordinate.
+
+**So S214D is a coherent experiment, just a different one from the mechanism
+comparison:** it asks what an aspartate at the bridging position does to metal
+coordination and to turnover, not what a monometallic M1 site does.
+
+## Status
+
+Record and corrections only. `¶277`'s WT frame recommendation withdrawn in
+`state.md`, `reference-structures.md` and
+`our-wt-crystal-frame-needs-no-sequence-reverts`. No structure built, no section
+added, no job queued. The choice of mutant arm is the user's and is not made
+here.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**

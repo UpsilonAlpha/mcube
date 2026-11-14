@@ -1,12 +1,26 @@
 ---
 type: observation
-status: supported
+status: void
 evidence: ours
-entries: [¶277]
-checked: [¶277]
+entries: [¶277, ¶279]
+checked: [¶277, ¶279]
 ---
 
 # Our own wild-type crystal is a better starting frame than 6DQH, and needs no reverts
+
+**VOID (¶279). Superseded by [[only-two-of-our-in-house-files-are-originals]].**
+`CSR_truncated_2metal.pdb` is not an original: the honours directory holds **four
+different `CRYST1` cells sharing one set of zinc coordinates**, so every file in it
+except the two PHENIX `refine_*` outputs is a superposed, metal-pasted derivative.
+The wild-type protein coordinates are still a real refinement, but the file cannot
+be verified and the user's rule is originals only.
+
+**¶217's choice of 6DQH is therefore NOT superseded.** Kept rather than deleted
+because the measured agreement it records is still the right test to apply to
+whatever frame replaces it - a graft that leaves Asp92 where an independent
+experimental structure measures it is benign, and one that manufactures a contact
+is not.
+
 
 `CSR_truncated_2metal.pdb` carries **1996 ANISOU records**, residues 46-303, and
 reads wild type at every position the mechanism turns on: **HIS116, ARG118,
@@ -42,8 +56,8 @@ controversy does not re-enter through the starting frame. The frame passes
 **What the graft still cannot certify** is the histidine geometry:
 [[the-wild-type-site-is-12-degrees-more-open-than-the-double-mutant]].
 
-## Supports
-- [[the-plain-double-mutant-is-the-mutant-arm]]
+## Superseded by
+- [[only-two-of-our-in-house-files-are-originals]]
 
 ## Requires
 - [[our-wt-crystal-zincs-are-grafted-from-the-double-mutant]]

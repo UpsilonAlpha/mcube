@@ -46,6 +46,24 @@ control on the wild-type protocol rather than merely the cheaper half.
 ## Supports
 - [[thesis-mechanism-differs-from-canonical-b3]]
 
+**¶279 REVISES REASON 2 AND THE SOURCE FILE.** `dmCSR_2metal.pdb` is **not an
+original** ([[only-two-of-our-in-house-files-are-originals]]), so the mutant arm
+must come from the deposit **6NC5** instead. And 6NC5 is **di-zinc**, both sites
+at full occupancy, bridged by a water at Zn-Zn 3.43 - so "its metals are the real
+ones" survives only by changing source, and the comparison is **one zinc against
+two**, not one against one.
+
+Reasons 1, 3 and 4 are untouched: the sequence ladder is established by alignment,
+which a superposition cannot alter
+([[our-crystals-number-the-catalytic-lysine-254-not-263]]).
+
+**A one-zinc mutant at M1 does not exist**
+([[whenever-a-canonical-m2-exists-the-metal-takes-m2]]): 6NC5 fills both sites,
+the one original one-metal crystal is S214D with its zinc at **M2**, and 6DQH's
+single full-occupancy M1 zinc comes with R118H, which deletes the arginine the
+novelty depends on
+([[the-novelty-is-a-monometallic-m1-site-with-two-histidines-and-an-arginine]]).
+
 ## Requires
-- [[our-wt-crystal-frame-needs-no-sequence-reverts]]
 - [[zn2-ligand-set-restored-by-q93h-k226h]]
+- [[only-two-of-our-in-house-files-are-originals]]

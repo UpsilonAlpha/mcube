@@ -1,12 +1,21 @@
 ---
 type: observation
-status: supported
+status: open
 evidence: ours
-entries: [¶277]
-checked: [¶277]
+entries: [¶277, ¶279]
+checked: [¶277, ¶279]
 ---
 
 # At identical metal coordinates, the wild-type His-Zn-His angle is 117° against the double mutant's 105°
+
+**DEMOTED to `open`, ¶279.** Two of the three files measured are superposed,
+metal-pasted derivatives rather than originals
+([[only-two-of-our-in-house-files-are-originals]]). The byte-identical metal
+coordinates that make this a controlled comparison are exactly the evidence that
+the files were edited, so the control and the defect have the same cause. The
+protein coordinates are still real refinements and the angles are probably right,
+but nothing else about those two files can be verified, so this needs re-measuring
+on `refine_16` and on the deposits before it carries weight.
 
 The same pasted zinc pair sits at byte-identical coordinates in all three of our
 crystals ([[our-wt-crystal-zincs-are-grafted-from-the-double-mutant]]), so the

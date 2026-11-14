@@ -68,6 +68,28 @@ constant — which is exactly what made it look like BBL (¶267, retracted).
 
 ## Our own crystals, and what each one actually is (¶277)
 
+**¶279: ONLY TWO OF THESE ARE ORIGINALS, and the frame recommendation below is
+WITHDRAWN.** `dmCSR_mutant_1metal_refine_12.pdb` and
+`dmCSR_mutant_2metal_refine_16.pdb` carry PHENIX refinement records; **everything
+else is a superposed, metal-pasted derivative.** The proof is `CRYST1`: four
+distinct cells share one set of zinc coordinates.
+
+    CSR_nontruncated_*     I 4          84.580  84.580  74.982
+    CSR_truncated_*        P 32 2 1     74.406  74.406 107.471
+    dmCSR_*                P 21 21 21   53.468  74.946  76.095
+    dmCSR_mutant_1metal*   P 21 21 21   69.392  77.543  43.698
+    dmCSR_mutant_2metal*   P 21 21 21   43.760  69.361  77.388
+
+Only two zinc models exist in the directory, pasted into every protein file:
+occ 0.70 / B 9.03 at -13.098 (which is `refine_12`'s own, so the WILD-TYPE files
+carry the S214D mutant's zinc), and the occ 1.00 / 0.53 pair at -12.832 /
+-14.099. `AIM1_*.pdb`, a different protein in P 61 2 2, sits in the same frame.
+**`CRYST1` is reliable as provenance; the coordinates are not.**
+
+So **¶217's 6DQH is NOT superseded** and the table below must not be used to
+choose a starting frame. Both originals are dmCSR-1 S214D.
+
+
 `University/Undergrad/Honours/SCIE4481/bioinformatic_data/MM/Structure/CSR/`.
 Identified by pairwise alignment of chain A CA residues, **not by filename** -
 the filenames do not say which enzyme is which.
