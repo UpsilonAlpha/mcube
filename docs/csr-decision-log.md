@@ -12432,6 +12432,125 @@ The ¶268 rename is unaffected - it removed a word and named no numbers.
 Nothing submitted, no model touched. Saved to memory as a standing rule so it
 survives this session.
 
+**¶271 - THE WT BUILD IS BLOCKED, AND THE REASON IS CHEMICAL RATHER THAN
+PROCEDURAL: **every metal-bound CSR-1 crystal owes its metal to a mutation.**
+6DQH holds a full-occupancy Zn1 only because R118H gives it a THIRD HISTIDINE
+LIGAND - His118 ND1 at **2.07 A**, measured. So ¶261's "6DQH needs one revert"
+understates it: the revert removes a metal ligand. And mcube cannot mutate,
+place an ion or superpose, so both crystal routes need capability that does not
+exist. Nothing submitted.**
+(2026-11-14, user: "Yes, build it")
+
+## The measurement that blocks ¶261's chosen route
+
+6DQH, 1.10 A, single Zn at full occupancy. Its Zn1 sphere, internal distances:
+
+    His116 NE2   2.08
+    His118 ND1   2.07      <-- our Arg90 position
+    His192 NE2   2.05
+    Asp120 OD1   4.28   OD2 5.14   CG 5.15
+    Ser214 OG    5.21
+    Lys260 NZ    5.27
+
+**That is a canonical three-histidine Zn1 site**, and the third histidine is the
+R118H mutation itself. Residue identities confirmed: 116 HIS, 118 **HIS**, 120
+ASP, 192 HIS, 214 SER, 260 LYS.
+
+**So the reason 6DQH binds a Zn1 while the wild-type deposits are apo is the
+mutation.** Reverting His118 to arginine does not restore a wild-type site from
+a nearly-correct one - it **deletes a metal-ligand bond**, leaving the metal
+two-coordinate in a site whose geometry was shaped by three ligands. ¶261 called
+this "the most repairable of the three defect sets" on the strength of Arg90's
+rotamer being fixed by two other crystals. That is still true of the *rotamer*,
+and beside the point: the issue is the coordination number, not the rotamer.
+
+**Generalised, and it explains the whole crystal situation:**
+
+    deposit        metal       why it binds one
+    6DN4, 6DQ2     NONE        true wild type - APO
+    6DQH           Zn1 1.00    R118H supplies a 3rd His ligand (2.07 A)
+    6NC5, dmCSR-1  Zn2         Q->H and K->H create a DHH Zn2 site
+
+**No crystal anywhere shows a metal-bound wild-type CSR-1 Zn1 site**, and the
+reason is the thesis: wild-type Zn1 has **two** protein ligands
+([[csr1-zn1-site-is-h-r-h]]), so it binds metal weakly. The manuscript reaches
+the same conclusion independently for the other site - Zn1 occupancy "facilitated
+by the presence of substrate" ([[dmcsr1-zn1-occupancy-may-depend-on-substrate]]).
+This is not a gap in the crystallography to be worked around; it is the
+phenomenon.
+
+## What mcube cannot do, verified rather than assumed
+
+`preprocess` accepts: `acknowledge_restrained amino_acids backbone_atoms charge
+constraint_exclude_residues coordination_force coordination_warn_above cutoff
+default_forcefields donor_atoms donor_elements exclude_residues
+extra_qm_residues forcefields implicit ionic_strength ligand ligand_resname
+ligand_smiles ligand_xmlfile membrane* merge_ligand metals model protein_pdb
+remove_residues require_his_variants residue_variants skip_solvate
+solvent_padding`.
+
+- **No mutation input.** No `applyMutations`, no `mutate` anywhere in
+  `src/mcube/`.
+- **No ion placement, superposition or graft.** The only `superpose` in the tree
+  is `membrane_analysis.py`, for membrane cores.
+- **`metals` only classifies atoms already present** - it is a set of element
+  names used to find coordination restraints and the QM region. It does not add
+  anything.
+- **`pdbfixer` appears in `preprocess.py` only in comments**, describing what ASH
+  does internally, and it is **not installed** in the local `mcube-test` env. So
+  routing a mutation through PDBFixer means a **new dependency**, not just a new
+  input.
+
+Per the standing rule - "if you need to do something mcube can't, then it should
+be tested and verified before being added to the repo", and nothing outside
+mcube defaults without express permission - that is a change to ask for, not to
+make.
+
+## The one route that needs no new tooling, and why it is not obviously right
+
+**Our existing model is already wild-type at all seven site positions.**
+Verified in `structures/aspxtb8_nowat.pdb`: 88 HIS, 90 ARG, 92 ASP, 93 GLN,
+164 HIS, 186 SER, 226 LYS, with ZN, OH and `mer` present. So "make a correct WT
+structure" is **not a sequence problem** - it never was.
+
+What is wrong with it is geometry, and ¶259/¶260 already measured that
+re-equilibration does not fix it: the His-Zn-His angle is 13-19 deg too closed
+and **QM/MM recovers only 3.7 deg** of that, because the angle is set by the
+backbone, which is MM in every QM/MM run. Arg90 sits 6.64 A from the metal
+against 4.14 and 4.60 in two crystals. **So a 10 ns + 50 ps rerun from this
+lineage would reproduce its own defects**, and it would not touch the pose
+question, which is the actual open item ([[no-usable-michaelis-complex-exists-yet]]).
+
+## The three routes, with measured costs
+
+    route                       new tooling needed        Asp92 at start    cost
+    A  6DQH + revert H118->R    mutations input +         4.28 A, OUTSIDE   44 min MM
+                                 pdbfixer dependency       the 3.0 radius   + ~18 h QM/MM
+    B  6DN4 (true WT) + place   ion placement /           2.95 A, INSIDE    same
+       a metal                   superposition             - artefact
+    C  re-equilibrate our        none - config only        2.21 A (held)    same
+       existing WT model
+
+Costs are measured, not estimated: 10 ns NVT is **43.7 min on one H100** (`eq6`,
+job 32177894) and 50 ps of GFN2 QM/MM at 2 fs is **~15 h of QM/MM work, ~18 h
+wall** (`running-on-bunya.md`).
+
+**Route A is the recommendation**, for one reason that is not about
+convenience: it is the only route whose starting Asp92 is **crystallographic and
+outside the 3.0 A restraint radius**, so no distance gets locked in by a
+restraint. Route B lands the carboxylate at 2.95 A, inside the radius, where the
+restraint rule would hold it - reproducing exactly the artefact ¶216 voided,
+unless Asp92 is put in `constraint_exclude_residues`, which pre-judges the
+question the project exists to answer. Route A's own cost is honest and should be
+stated in the paper: the metal starts two-coordinate in a site shaped for three,
+and equilibration is what relaxes it.
+
+## Status
+
+**Nothing submitted, no config written, no structure built, no dependency
+installed.** The fork is the user's: approve route A's capability (a `mutations`
+input with tests, plus pdbfixer), or direct route B or C.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
