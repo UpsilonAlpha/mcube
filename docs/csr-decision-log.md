@@ -13762,6 +13762,131 @@ Record and corrections only. `¶277`'s WT frame recommendation withdrawn in
 added, no job queued. The choice of mutant arm is the user's and is not made
 here.
 
+**¶280 - THE COORDINATION NUMBER MEASURED IN ELEVEN CRYSTALLOGRAPHIC SITES: it
+runs 3 to 6, and four-coordinate is a property of the M1/His site AT REST, not of
+MBL zinc sites generally and not of substrate-bound ones. So the [4,5] gate is
+half right and is applied at the wrong stage. Also: WT CSR-1 carries a CATION IN
+BOTH SITES - Arg118 in M1, Lys263 in M2 - M2 has only ONE coordinator and is not
+a metal site at all, and the enzyme is a metalloenzyme by activity and by ITC but
+has NEVER been crystallised with a metal.**
+(2026-11-14, user: "again, not sure why 4-coordinate is a requirement unless it's
+also 4-coordinate in the crystals. Clearly M2 is not where the metal goes, it has
+a positive lysine and only one coordinator.", "Just to clarify - WT CSR-1 has a
+positive residue in BOTH metal binding sites, and is confirmed to be a
+metalloenzyme?")
+
+## 1. The survey the gate should have been built on
+
+Every crystallographic zinc with at least one histidine ligand, counted at the
+project's own 2.6 Å cutoff and again at 3.0 Å. Internal distances only, no
+superposition.
+
+    structure                  site   occ    CN(2.6)  CN(3.0)   donors
+    6NC5 ZN301 (plain dm)      M2     1.00      4        4      D,H,H + 1 water
+    6NC5 ZN302 (plain dm)      M1     1.00      4        4      H,H + 2 waters
+    1SML ZN271 (L1, di-Zn)     M1     1.00      4        4      H,H,H + bridge
+    5AXO ZN301 (di-Zn)         M1     1.00      4        4      H,H,H + 1 water
+    ---------------------------------------------------------------------------
+    1SML ZN270 (L1, di-Zn)     M2     1.00      5        5      D,H,H + 2 waters
+    refine_16 ZN2 (S214D)      M1     0.53      5        6      H,H + 4 waters
+    ---------------------------------------------------------------------------
+    6DQH ZN401 (R118H)         M1     1.00      6        6      H,H,H + 2 waters + PO4
+    refine_12 ZN1 (S214D, 1Zn) M2     0.70      6        6      D,H,H + 3 waters
+    refine_16 ZN1 (S214D)      M2     1.00      6        6      D,H,H + 3 waters
+    5AXO ZN302 (+ligand)       M2     1.00      6        6      D,H,H + bridge + ligand O,N
+    ---------------------------------------------------------------------------
+    7UHI ZN301 (L1 Michaelis)  M1     0.49      3        4      H,H + ligand O1 2.53, H 2.66
+    7UHI ZN302 (L1 Michaelis)  M2     0.77      3        5      D,H,H + ligand O8, N1
+
+**The user's objection is right, and the measurement splits it in two.**
+
+**Four-coordinate IS the crystal value for the M1/histidine site at rest**, in
+three independent structures that agree exactly: 6NC5's M1 is two histidines
+plus two waters - the same sphere ¶120 describes for ours - and L1's and 5AXO's
+are three histidines plus one water. So the gate's premise is not invented; it
+is the resting M1 sphere, and our `aspxtb8` (2 His + hydroxide + carbonyl = 4)
+sits on it.
+
+**It is NOT a general property, and in particular not of a substrate-bound
+site.** M2 is 5 or 6 almost everywhere, and the two genuinely substrate-bound
+sites go the other way: **5AXO's ligand-bound M2 is SIX**, and **7UHI's M1 - the
+one real Michaelis complex of this enzyme class - is THREE at 2.6 Å, with the
+substrate oxygen at 2.53 and no water at all.** So requiring [4,5] at `reactant`
+would reject 7UHI's own arrangement, which is the thing we are trying to model.
+
+**Conclusion for the gate:** the window describes a RESTING M1 site and belongs
+at `start`, if anywhere, not at `reactant`. Not changed in `site.yaml` here -
+same reason as ¶278, changing what may reject a structure is the user's call -
+but the node now carries these numbers instead of an argument.
+
+## 2. M2 in the WILD TYPE is not a metal site, and ¶279's wording invited the
+## confusion
+
+¶279 said "whenever a canonical M2 exists the metal takes M2". **That is about
+the MUTANTS only** - structures where Q121H and K263H have put the histidines
+back. In the wild type M2 is:
+
+    D120   Asp    one carboxylate - the only coordinator
+    Q121   Gln    neutral amide, not a ligand
+    K263   Lys    CATIONIC
+
+One donor, one non-ligand and a positive charge. **The metal cannot go there**,
+exactly as the user says, and nothing in the record claims it does -
+`lys226-occupies-the-zn2-site` says the lysine is sitting in it. The node is
+retitled to say "restored" rather than "canonical".
+
+## 3. WT CSR-1 HAS A CATION IN BOTH SITES - this is what RQK names
+
+Against canonical B3 (M1 = H116/H118/H196, M2 = D120/H121/H263):
+
+    site   canonical          CSR-1 wild type                     cation?
+    M1     H116 H118 H196     H116  **R118**  H192/196            YES, Arg
+    M2     D120 H121 H263     D120   Q121    **K263**             YES, Lys
+
+So **R** sits in M1 and **Q** and **K** in M2 - the subclass name, read off the
+two sites. M1 keeps two histidines and swaps the third for an arginine; M2 loses
+both histidines and keeps only the aspartate.
+
+**And this is the published explanation for the weak metal binding.** ITC
+(Pedroso 2020) gives alpha (M1) Kd ~ **2 uM** and beta (M2) Kd ~ **150 uM**,
+with the reason being that Arg118 and Lys254 are protonated at optimal pH, so
+neither site binds strongly. A cation in each site, weak affinity in each site,
+and the mechanism hypothesis that the cations do electrostatically what the
+metals would do (`rqk-cations-replace-zn2-electrostatically`).
+
+## 4. Is it confirmed to be a metalloenzyme? YES functionally, NO structurally
+
+**Yes:**
+- It hydrolyses beta-lactams, including meropenem and biapenem (manuscript
+  kinetics), and restoring the M2 histidines "drastically improves the catalytic
+  efficiency" - a metal-site effect on rate.
+- **ITC measures zinc binding directly**: two sites, Kd ~2 uM and ~150 uM. So
+  the wild-type protein does bind zinc in solution, at M1 first.
+- The manuscript purifies it in **150 uM ZnCl2** throughout the ion-exchange
+  steps - zinc supplemented at about the beta-site Kd - though the final
+  size-exclusion buffer is "20 mM HEPES, pH 7.5" with no zinc.
+
+**No:**
+- **No crystal of wild-type CSR-1 contains any metal.** 6DN4 and 6DQ2 hold zero
+  metal atoms. Pedroso, verbatim: *"no metal ions were observed in the crystal
+  structures of CSR-1 and CSR-1trunc"*. Zinc appears only where a ligand has
+  been engineered back - 6DQH (R118H) and 6NC5 (Q121H/K254H).
+- 2 uM is weak for an MBL; canonical enzymes are far tighter.
+
+**So the precise statement is: a catalytically active zinc-binding enzyme whose
+holo form has never been crystallised.** That is not a hedge, it is the reason
+the wild-type arm of this project has no experimental starting frame (¶216,
+¶217, ¶279) - and it is also, stated positively, part of what makes the enzyme
+worth a mechanism study.
+
+## Status
+
+Measurement and record only. Two nodes corrected
+(`the-michaelis-complex-is-four-coordinate-at-the-zinc`,
+`whenever-a-canonical-m2-exists-the-metal-takes-m2`), one new
+(`the-m1-site-is-four-coordinate-at-rest-and-not-when-substrate-bound`).
+**No criterion in `site.yaml` changed.**
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**

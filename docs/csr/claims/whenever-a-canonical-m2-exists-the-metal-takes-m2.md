@@ -6,7 +6,19 @@ entries: [¶279]
 checked: [¶279]
 ---
 
-# In every CSR structure with a restored M2 site, the metal occupies M2
+# In every CSR structure with a RESTORED M2 site, the metal occupies M2 - and in the wild type M2 is not a site at all
+
+**CLARIFIED ¶280, the wording having invited a misreading.** This is about the
+**mutants** - structures where Q121H and K263H have put the histidines back.
+**In the wild type the metal cannot go to M2 and nothing here claims it does:**
+
+    D120   Asp   one carboxylate - the only coordinator
+    Q121   Gln   neutral amide, not a ligand
+    K263   Lys   CATIONIC
+
+One donor, one non-ligand and a positive charge. The lysine is sitting in the
+site ([[lys226-occupies-the-zn2-site]]), which is the thesis, and ITC measures
+that site at Kd ~150 uM ([[csr1-zn2-metal-affinity-is-weak]]).
 
 Measured across the deposits and the one original one-metal crystal:
 

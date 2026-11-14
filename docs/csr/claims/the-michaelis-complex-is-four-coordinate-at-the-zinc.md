@@ -7,8 +7,22 @@ entries: [¶120, ¶196, ¶256, ¶278]
 # The Michaelis complex has a four-coordinate zinc: two histidines, hydroxide and carbonyl
 
 **This is the gate `site.yaml` applies as `Zn coordination number, range [4, 5],
-required_at: [reactant]`, and the user asked where it came from. It was never
-requested; it is a hypothesis.**
+required_at: [reactant]`, and the user asked where it came from, twice - the
+second time asking whether it is four-coordinate in the crystals at all.**
+
+**¶280 MEASURED IT, and the answer splits the gate in two
+([[the-m1-site-is-four-coordinate-at-rest-and-not-when-substrate-bound]]).**
+Across eleven crystallographic sites the coordination number runs **3 to 6**.
+Four IS the resting M1 value - 6NC5 M1 (2 His + 2 waters), 1SML M1 and 5AXO M1
+(3 His + water) all read exactly 4 - so the premise is a crystal value and not
+invented. But **the substrate-bound sites are not four**: 5AXO`s ligand-bound M2
+is **six**, and 7UHI`s M1, the one real Michaelis complex, is **three** at 2.6 Å
+with the substrate oxygen at 2.53 and no water.
+
+**So the window belongs at `start`, not at `reactant`.** Applied to a reactant it
+would reject the experimental Michaelis geometry we are trying to reproduce. That
+is a sharper objection than the one below and supersedes it as the reason this
+node is open.
 
 The argument for it: the resting site is four-coordinate - two histidines and two
 waters (¶120). On binding, the substrate displaces one water and the other
