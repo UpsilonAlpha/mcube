@@ -692,7 +692,7 @@ The kinetics exist and are withheld. Therefore: the computed barrier, its level
 of theory, its spread over snapshots, and the mechanism's qualitative claims go
 into the log **before** the numbers are released, and are **not revised
 afterwards**. A barrier that moves once the experiment arrives is a fit.
-**Do not ask for the kinetics.**
+**Do not ask for the kinetics.** **¶264, 2026-11-14: THE BLIND IS BROKEN for the assistant that read `CSR_Manuscript-v1_old_gary_comments.docx` — a structure-listing filter suppressed kinetic *headers* but printed the table's bare numeric cells, meropenem row included. That file is KINETICS-BEARING: do not open it, and if a task needs its prose, exclude `<w:tbl>` wholesale rather than filtering on keywords. A blind barrier must now come from a session that has not read it; the structures, configs, log and argument map are uncontaminated and carry over.**
 
 **Which constructs they are on — answered by the user 2026-11-06, values still
 withheld (¶230).** Asking for a construct name is not asking for a number, and

@@ -11784,6 +11784,77 @@ project's answer to it remains IOD radii plus per-atom coordination restraints
 within 3.0 A, with QM/MM as the designed remedy for residual creep - which is
 Gervasoni's own workflow.
 
+**¶264 - THE BLIND IS BROKEN. Reading `CSR_Manuscript-v1_old_gary_comments.docx`
+at the user's instruction, I printed a document-structure listing that included
+the kinetics table, meropenem row and all. ¶178's blind protocol is void for
+this assistant: no barrier I compute from here can be presented as a prediction
+made without the numbers.** (2026-11-14, user: "check csr-1 papers, including
+what I provided you")
+
+## What happened, exactly
+
+Asked to read the CSR-1 papers, I anticipated the risk - ¶178 says "Do not ask
+for the kinetics" - and wrote a filter to map the document's structure while
+suppressing kinetic values: a regex over `kcat|Km|s-1|uM|turnover|catalytic
+efficiency|MIC`, applied per paragraph, printing only paragraph indices for
+matches.
+
+**The filter failed because the table's values are bare numbers in their own
+paragraphs.** Cells like `3.0x10-2 (3 x10-3)` and `252 (60)` match none of those
+keywords, so they were classified as short structural lines and printed in full.
+Paragraphs **139-151** are the carbapenem block: meropenem and biapenem across
+AIM-1, AIM-1 S207D, CSR-1, CSR-1 S214D, dmCSR-1 and dmCSR-1 S214D, two values
+per enzyme. I saw them. The other substrate blocks (monobactams, penicillins,
+cephalosporins, indices 71-204) printed too.
+
+**The design error, stated so it is not repeated:** a keyword filter on a table
+suppresses the *headers*, not the *data*. Suppressing tabular values needs the
+table structure (`<w:tbl>`) excluded wholesale, or the paragraph range after the
+"Kinetic analyses" heading skipped entirely, not a content match. The right move
+was to extract only the Abstract/Introduction/Discussion prose and never touch
+the Results tables.
+
+## Consequence, which is not reversible
+
+¶178: the computed barrier "goes into this log **and is not revised
+afterwards**. A barrier that moves after the experiment arrives is a fit, not a
+prediction." The protocol's value was that the prediction and the measurement
+were separated by this assistant not knowing the measurement. **That separation
+no longer exists.** Avoiding the numbers from here is not equivalent to never
+having read them, and saying otherwise would be the fit ¶178 warns about.
+
+**What is NOT contaminated:** the configuration work, the structures, the
+decision log, the argument map, and every structural measurement in this
+project - none of it depends on the kinetics, and all of it is reusable by a
+session that has not read the table. The contamination is in this assistant's
+context, not in the project's artefacts.
+
+**Options for the user, none of them mine to choose:**
+
+1. **A fresh session computes the barrier.** The pipeline, structures and
+   decision log carry over; only this context is tainted. The blind claim
+   survives intact. This costs nothing but a handover.
+2. **Accept a non-blind comparison and say so in the methods.** Weaker, and
+   honest.
+3. Neither, and the barrier is simply reported without a blind claim.
+
+## Two things the manuscript gave that are NOT kinetics, recorded because they
+## are useful and carry no contamination
+
+**The enzyme set for the comparative analysis is six, not two:** AIM-1,
+AIM-1 S207D, CSR-1, CSR-1 S214D, dmCSR-1, dmCSR-1 S214D. The project has been
+planning a two-arm WT-versus-double-mutant comparison; the paper's design is
+wider, and S214D (our Ser186Asp, ¶261) appears as a variant of **both** AIM-1
+and CSR-1.
+
+**The crystallography table confirms ¶217 from the paper's own numbers:**
+dmCSR-1 S214D, one Zn at **1.27 A** (Rwork/Rfree 0.1633/0.1786) and two Zn at
+**1.47 A** (0.1876/0.2137), both P2(1)2(1)2(1), 83.60% and 99.92% complete.
+Matches what ¶217 recorded from the coordinates.
+
+**Action taken:** nothing read further from the file. The manuscript must be
+treated as kinetics-bearing by any future session, and `state.md` now says so.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
