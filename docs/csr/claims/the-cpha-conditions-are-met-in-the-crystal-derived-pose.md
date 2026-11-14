@@ -50,6 +50,17 @@ carbapenems: 3-5 orders of magnitude down in k_cat, "only ... mild changes to
 binding affinity"
 ([[the-manuscript-reads-s214d-as-inhibition-by-the-bridging-aspartate]]).
 
+**¶283 NARROWS THIS.** The CphA-like conditions are met, but the route itself is
+no longer the best reading: the same pose has a **free zinc coordination position
+putting a hydroxide 2.63 Å over the scissile carbon at 83.6° out of plane**
+([[a-free-zinc-site-puts-a-hydroxide-263-angstroms-over-the-scissile-carbon]]), so
+the nucleophile does not have to be a non-metal-bound water activated by Asp92.
+What survives is the **metal's** role - binding through the carboxylate and
+stabilising the leaving nitrogen at 3.254 Å - which is CphA-like and is now part
+of a composite
+([[the-metal-can-both-carry-the-nucleophile-and-stabilise-the-leaving-nitrogen]]).
+Asp92 as general base is not needed by that composite and remains unsupported.
+
 ## Supports
 - [[thesis-mechanism-differs-from-canonical-b3]]
 

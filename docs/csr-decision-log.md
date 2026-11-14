@@ -14270,6 +14270,152 @@ Corrections and measurement only. ¶281 §4 withdrawn, four nodes revised or
 written. **No section added, nothing submitted**, including the Ser186-in-QM test
 of §1 and the crystal-pose build of §2.
 
+**¶283 - YES TO THE FIRST, NO TO THE SECOND, AND THE COMBINATION IS A COMPLETE
+MECHANISM. A zinc coordination-sphere search on the crystal-derived pose finds a
+free position where a hydroxide sits 2.63 Å from the scissile carbon at 83.6 deg
+out of the amide plane - a proper attack trajectory, against aspxtb8's 3.63 Å at
+35.7 deg - available precisely BECAUSE the carbonyl is off the metal, with Arg90
+polarising it at 2.98 Å instead. Arg90 CANNOT stabilise the leaving nitrogen: it
+is 5.28 Å away and anti to it. But the METAL is 3.254 Å from N1, which is the
+anion-stabilising job Zn2 does in di-zinc enzymes. One zinc does both jobs.**
+(2026-11-14, user: "is it possible that the arginine or lysine polarises the
+carbonyl in a B1-like mechanism, and is it possible that the arginine stabilises
+the leaving nitrogen?")
+
+## 1. The geometry that makes this answerable
+
+In the crystal-derived pose the whole beta-lactam ring sits ~3.2-3.3 Å from the
+metal:
+
+    Zn - C1 (scissile carbon)   3.300
+    Zn - O1 (carbonyl O)        3.153
+    Zn - N1 (leaving N)         3.254
+
+**My first attempt at this was a degenerate construction and gave the wrong
+answer.** Placing a hydroxide 1.95 Å from the zinc *along* the Zn->C1 vector
+puts it 1.350 Å from C1 - a bond, not an approach - from which I would have
+concluded there is no room. That is only the collinear case. The right question
+is whether any position on the coordination sphere works, and the triangle
+inequality says it can: Zn-Nu 1.95 with Nu-C1 2.8 and Zn-C1 3.30 is a valid
+triangle at a Zn-Nu-C1 angle of ~86 deg, i.e. the nucleophile off to the side.
+
+## 2. THE SPHERE SEARCH: a viable position exists
+
+20,000 probe points on a 1.95 Å sphere around the zinc, keeping only those that
+
+  - sit **>= 2.60 Å** from His88 NE2, His164 NE2 and the bound carboxylate O8,
+  - make **>= 80 deg** L-Zn-L angles to all three, and
+  - land **2.50-3.40 Å** from C1.
+
+**722 of 20,000 survive - 3.6% of the sphere.** The best-oriented one:
+
+    OH ... C1                 **2.63**
+    out of the amide plane    **83.6 deg**      (90 = straight over the carbon)
+    OH-C1-O1                    87.3 deg
+    OH-C1-N1                    87.6 deg
+    OH - His88 NE2              3.02    (L-Zn-L  94 deg)
+    OH - His164 NE2             3.47    (L-Zn-L 117 deg)
+    OH - carboxylate O8         3.25    (L-Zn-L 118 deg)
+
+No clash, sane coordination angles, and the available out-of-plane range across
+all 722 positions is **60.2 to 83.6 deg**.
+
+**Against the reactant we actually have:**
+
+    aspxtb8                   3.626 Å at 35.7 deg out of plane
+    crystal-derived pose      2.63  Å at 83.6 deg out of plane
+
+83.6 deg is essentially straight over the carbonyl carbon - the trajectory
+nucleophilic addition wants - where `aspxtb8`'s hydroxide is beside the carbonyl
+oxygen pointing away from the carbon.
+
+**And the reason is the thing the user proposed.** The position is free *because
+the carbonyl is not on the metal*. In `aspxtb8` the carbonyl occupies the
+coordination site at 2.211 Å and pins the hydroxide into the carbonyl's plane;
+here the metal holds the **carboxylate** at 1.847 Å, the carbonyl stands off at
+3.153 Å polarised by **Arg90 NH1 at 2.98 Å**, and the site that opens up points
+over C1.
+
+**So yes: a B1-like mechanism with cationic polarisation instead of carbonyl
+coordination is geometrically viable, and it is a far better reactant than the
+one we built.** `the-michaelis-complex-is-four-coordinate-at-the-zinc` also
+resolves here - this arrangement is 2 His + carboxylate + hydroxide = four.
+
+## 3. ARG90 CANNOT STABILISE THE LEAVING NITROGEN
+
+    Arg90 NH1 - N1  **5.282**    - O1  **2.984**
+    Arg90 NE  - N1    6.518      - O1    4.272
+    Arg90 NH2 - N1    7.508      - O1    5.189
+    (O1...N1 inside the amide = 2.363)
+
+**It is on the oxygen, approaching anti to the nitrogen.** A guanidinium 2.98 Å
+from O1 and 5.28 Å from N1 is not bridging the amide - it is 2.3 Å past the
+oxygen on the far side. Nothing in a rotation of that side chain reaches N1
+without giving up the carbonyl contact, because the two are on opposite ends of
+the amide.
+
+Lys226 is on the nitrogen's side but far: **NZ - N1 5.830**, NZ - O1 7.427. Its
+rotamer is untested (¶282), so this is the number that could still move, but
+5.83 Å is a long way to come.
+
+## 4. BUT THE METAL IS 3.254 Å FROM N1, AND THAT IS THE MISSING ROLE
+
+This is what the question turns up. In canonical di-zinc B3 the leaving
+nitrogen's developing negative charge is stabilised by **Zn2**. Here the single
+zinc sits **3.254 Å** from N1 - too long for a bond in the reactant, but
+positioned to close as the ring opens, which is exactly the role CphA's and
+GOB-18's single metal plays in stabilising the anionic intermediate.
+
+**So in this pose one zinc does both jobs:** it carries the nucleophile at a
+position 2.63 Å from C1, and it sits 3.25 Å from the leaving nitrogen. Neither
+job needs Lys226, and neither needs Asp92 as a general base.
+
+## 5. The mechanism this assembles, stated so it can be refuted
+
+1. **Binding.** The substrate C3 carboxylate coordinates the zinc at **1.847 Å**,
+   with Ser186 OG anchoring the same carboxylate at **2.72 / 3.00 Å** - the
+   Ser221 role in SMB-1 and L1.
+2. **Polarisation.** **Arg90 NH1 hydrogen-bonds the lactam carbonyl at 2.98 Å**,
+   doing electrostatically what a second zinc does in di-zinc B3. Arg90 is a QM
+   residue in every relevant section, so this contact is not a boundary artefact.
+3. **Nucleophile.** A hydroxide on the free coordination position, **2.63 Å from
+   C1 at 83.6 deg out of the amide plane** (§2).
+4. **Attack and the oxyanion.** The tetrahedral oxyanion is stabilised by the
+   metal and by Arg90, which is already hydrogen-bonded to that oxygen.
+5. **Ring opening.** The developing negative charge on N1 is stabilised by the
+   **metal at 3.254 Å**, closing as C-N breaks (§4).
+6. **Protonation.** A water on N1; in this frame one sits at 2.565 Å, though
+   that water belongs to the docked pose's solvation and its position here is
+   coincidental.
+
+**This is B1-like in the nucleophile, CphA/GOB-18-like in the metal's role and
+in binding through the carboxylate, and novel in using an arginine for the
+carbonyl polarisation.** It needs no second metal and no Lys226 contact, so it
+also explains why the RQK substitutions are tolerated at all.
+
+## 6. What this is NOT
+
+- **It is a geometric feasibility test, not a structure.** No hydroxide has been
+  placed, nothing has been solvated or relaxed, and the pose has never been
+  equilibrated (¶282 §2). The 722 viable positions are empty space, not a
+  minimum.
+- **The probe is idealised**: Zn-O fixed at 1.95 Å, a 2.60 Å clash cutoff and an
+  80 deg angle floor. 3.6% of the sphere is a real but modest window, and the
+  best candidate is at the edge of the available out-of-plane range.
+- **The protein is `relax10`'s**, so Asp92 and Lys226 carry the actuator
+  lineage - which does not matter for §2 or §3, where neither residue is
+  involved, but does for any statement about them.
+- **The two ligand poses cannot coexist.** The docked meropenem (chain C)
+  overlaps the transferred ligand's position, which is expected - they are
+  alternatives - but it contaminates any "what is near N1" listing taken from
+  this combined frame.
+
+## Status
+
+Geometry only. Nothing built, nothing submitted. The experiment this points at
+is unchanged from ¶282: solvate and equilibrate the crystal-derived pose, with a
+hydroxide placed at the §2 position, and let it relax.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
