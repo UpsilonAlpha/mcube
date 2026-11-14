@@ -224,3 +224,12 @@ metal-bridging ligand at **BBL 221**, but 6DN4 residue 221 is a **proline** and
 the manuscript mutates **Ser214**. Those are different BBL positions. ¶266
 leaves this unresolved on purpose: its intersite claim for Ser186 rests on a
 measured 4.06/4.13 A symmetry to the two metals, not on the position number.
+
+**¶267 - RETRACTED IN FULL by ¶269.** It claims "BBL = ours + 28, constant 
+at all seven site residues" and clears ¶261's ambiguity flag. **Both wrong.**
+The alignment it rests on is against **6DN4, which is sequential construct
+numbering, not BBL** - 275 CA, range 29-303, strictly consecutive, zero
+insertion codes. A constant offset over 275 residues is itself the proof, since
+BBL is alignment-based. Deposits give our His164 -> 192 and Lys226 -> 254
+(6DN4) or 260 (6DQH); the published BBL gives **196** and **263**. Do not quote
+¶267's table, and do not treat the mapping row in state.md as settled.

@@ -12269,6 +12269,101 @@ stands and the sweep remains open.
 
 Nothing submitted, no model touched, no claim changed - labels only.
 
+**¶269 - THE SWEEP IS NOT SAFE AND I HAVE NOT DONE IT. ¶267 IS WRONG: I aligned
+our model to 6DN4 and called 6DN4's numbering BBL. It is not - no CSR deposit
+is in BBL. All four are strictly sequential construct numbering with no
+insertion codes, each with its own offset. The "+28 constant" is the 6DN4
+offset, and it disagrees with the published BBL at exactly the two residues the
+thesis names most often: His164 and Lys226. Sweeping would have written ~550
+numbers, some of them wrong.**
+(2026-11-14, user: "Yes, sweep prose to BBL")
+
+## What I checked, and what it showed
+
+**No deposit carries BBL numbering.** Insertion-coded atoms, all four files:
+**zero**. CA ranges: 6DN4 **29-303** (275 residues, strictly consecutive, no
+gaps), 6DQH 53-308, 6NC5 15-273, dmCSR-1 10-259. BBL (Garau 2004) is an
+*alignment-based* scheme; over a 275-residue span it produces gaps or insertion
+codes. Strictly consecutive numbering is a construct, not BBL.
+
+**The alignment across all four deposits:**
+
+    ours  aa   6DN4   6DQH   6NC5   dmCSR-1
+     88   H    116    116     87      74
+     90   R    118    118     89      76
+     92   D    120    120     91      78
+     93   Q    121    121     92      79
+    164   H    192    192    163     150
+    186   S    214    214    185     172
+    226   K    254    260    225     212
+
+    offset from ours:  6DN4 +28 (constant)
+                       6DQH +28 and +34 (VARIES - a 6-residue insertion
+                                         between our 186 and our 226)
+                       6NC5 -1 (constant)
+
+**So ¶267's "BBL = ours + 28, constant at all seven" is a mis-identification.**
+It is true of 6DN4, and 6DN4 is sequential. ¶261 was right to flag the mapping
+row as ambiguous and I should not have cleared it.
+
+## Where the published numbers disagree with the deposits
+
+The canonical B3 motif in the literature is **H116/H118/H196** (M1) and
+**D120/H121/H263** (M2), and the manuscript names its mutants **Q121H, K263H**
+(from Pedroso et al. 2020) and **S214D**.
+
+    residue    deposits give   literature/BBL gives
+    His164         192              **196**
+    Lys226      254 / 260           **263**
+
+**Those are the two the thesis statement and half the argmap depend on.** Had I
+swept, every "Lys226" would have become "Lys254" - a number that appears in no
+publication - and every "His164" would have become "His192", against a
+canonical motif position that is one of the best-known numbers in the field.
+
+## An inconsistency inside the manuscript itself, worth raising with the lab
+
+The mutant names cannot all be in one convention. **Q121H and K263H** are BBL
+(they are the textbook DHH motif positions). **S214D** matches what **both**
+6DN4 and 6DQH number that serine, i.e. the deposit numbering. And the offsets
+cannot be reconciled: our 164 -> 196 is +32 while our 186 -> 214 is +28, so the
+offset would have to *decrease* along the sequence, which an insertion-only
+alignment scheme cannot do.
+
+**Therefore at least one of `S214D` and `K263H` is not BBL**, and on the
+evidence here S214D is the deposit number. This is not a criticism of the
+manuscript - mixed conventions in mutant names are extremely common - but the
+project cannot adopt "BBL throughout" by copying them.
+
+## What is needed before this sweep can run
+
+**The BBL mapping for our seven residues, from the BBL alignment itself** - the
+Garau 2004 scheme, or Pedroso et al. 2020's own numbering table if it states
+one. It is not derivable from any file we hold, because none of them is in BBL.
+Until then, the honest options are:
+
+1. **Keep our model numbering in prose** (what the docs already do), and cite a
+   BBL number only when quoting the literature, labelled as such. Zero risk,
+   and the mapping table does the translating.
+2. Get the BBL table, then sweep - safe, and the sweep itself is mechanical.
+3. Sweep to the **6DN4** numbering and say so explicitly, calling it 6DN4 and
+   not BBL. Internally consistent and verifiable, but it is not what anyone
+   publishes.
+
+Not a decision for me to make, and the sweep stays undone rather than done with
+a convention I cannot verify.
+
+## What I did do
+
+**¶267 retracted** in `retractions.md`, and state.md's mapping row corrected by
+appending - the `[AMBIGUOUS, ¶261]` flag is **restored**, since it was right.
+The rename from ¶268 is unaffected: it removed a word and named no numbers.
+
+One procedural note, because it nearly went the other way: the signal that
+caught this was the manuscript writing **K263H** while my own entry said BBL
+254. A constant offset over 275 residues should have been the tell on its own -
+an alignment-based scheme does not produce one.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
