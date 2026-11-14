@@ -5,7 +5,7 @@ evidence: literature
 entries: [¶215]
 ---
 
-# Mutating the bridging aspartate costs 10 to 10,000-fold in kcat across MBL subclasses, including B3
+# Mutating Asp120 costs 10 to 10,000-fold in kcat across MBL subclasses, including B3
 
 Read 2026-11-06, not re-derived.
 

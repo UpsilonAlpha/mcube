@@ -12198,6 +12198,77 @@ Nothing submitted, no model touched. state.md's mapping row updated by
 **appending** this resolution to the existing cell, per the standing rule not
 to overwrite status cells.
 
+**¶268 - RENAME APPLIED, and a motif correction that matters for which enzyme
+is which: **DQK is the WILD TYPE.** Wild-type CSR-1 is HRH/**DQK** and belongs
+to subgroup B3-RQK - those are the same enzyme described two ways, not two
+enzymes. The synthetic mutant dmCSR-1 is HRH/**DHH**. So the DQK site is not a
+mutant site, and "RQK" is not an alternative to it.**
+(2026-11-14, user: "do the rename, but also I thought we were studying the WT
+CSR-1 which is RQK, the DQK enzyme is a synthetic mutant no?")
+
+## The correction, from the manuscript rather than from me
+
+Para 20, on the three templates: wild-type AIM-1 is "a highly-specialised and
+clinically-relevant MBL with a canonical **HHH/DHH** motif", wild-type CSR-1 is
+"a highly-divergent potentially neofunctionalised MBL with a **HRH/DQK**
+motif", and dmCSR-1 is "a mutant of CSR-1 (CSR-1 Q121H,K263H) created by
+Pedroso et al. (2020) to have an **HRH/DHH** metal-binding motif".
+
+Para 31 names the subgroup for the same enzyme: "CSR-1 is a **B3-RQK** MBL with
+a very unusual active site, characterized by the **HRH/DQK** motif."
+
+    enzyme        M1 (Zn1)   M2 (Zn2)   status
+    AIM-1            HHH       DHH      wild type, canonical
+    CSR-1            HRH       DQK      WILD TYPE, subgroup B3-RQK
+    dmCSR-1          HRH       DHH      SYNTHETIC (Q121H, K263H)
+
+**So the inversion to avoid:** DQK is wild-type CSR-1's own M2 site, and the
+engineered site is **DHH**. Our two-arm plan is WT (**DQK**) against the double
+mutant (**DHH**), not RQK against DQK.
+
+**And RQK is not a site.** It is the subgroup label, built from the three
+residues that *vary* from canonical HHH/DHH, and they straddle both metals:
+**R** at BBL 118 (Zn1), **Q** at BBL 121 and **K** at BBL 254 (Zn2) - the
+manuscript says so in terms, "residues in bold indicate the variations from the
+canonical motif". There is no single "RQK site" to study; there is an HRH site
+(where our metal is) and a DQK site (vacant in the wild type), and B3-RQK is
+the name for an enzyme that has both.
+
+**Why this is worth an entry rather than a remark.** The project's root thesis
+is about **Asp120 and Lys254 - both DQK residues**. If DQK were read as the
+synthetic site, the thesis would appear to be about the mutant, which is the
+opposite of what it claims. What *is* true, and is probably what prompted the
+question: we are not studying DQK as an **occupied** site. Zn2 is vacant in the
+wild type, and the claim is that Lys254 does electrostatically what the missing
+Zn2 would have done.
+
+## The rename, applied
+
+Three places, two of them nodes:
+
+- `thesis-lys226-restrains-asp92-in-place-of-zn2.md` title: "by restraining
+  **the bridging aspartate**" -> "by restraining **Asp92**", with the reasoning
+  from ¶266 added to the body;
+- `asp120-mutants-lose-activity-in-b1-and-b3.md` title: "Mutating **the
+  bridging aspartate**" -> "Mutating **Asp120**";
+- `claims/README.md`, the index, which restates the thesis.
+
+**Three deliberately left alone**, because they use the word correctly as a
+simile or a quotation, not as a name for Asp92:
+`asp92-on-zn1-interferes-with-hydrolysis.md` ("a bridging aspartate is given a
+metal to bridge"), `state.md`'s plan row 11 (the user's equilibrium hypothesis,
+stated as an analogy to canonical MBLs), and
+`restoring-the-zn2-site-drastically-improves-catalysis.md` (quoting a
+literature claim). `csr-neb-plan.md` already flagged the issue independently.
+
+Checker: no findings. **The BBL prose sweep was NOT done** - the user asked for
+the rename only, so prose still mixes our numbering with BBL. ¶267's rule
+stands and the sweep remains open.
+
+## Status
+
+Nothing submitted, no model touched, no claim changed - labels only.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**

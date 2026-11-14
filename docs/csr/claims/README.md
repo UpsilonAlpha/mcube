@@ -1,7 +1,7 @@
 # CSR-1: the argument map
 
 The claims that bear on **one thesis**: *Lys226 replaces Zn2 in the CSR-1
-wild-type mechanism by restraining the bridging aspartate, allowing MBL
+wild-type mechanism by restraining Asp92, allowing MBL
 activity* ([[thesis-lys226-restrains-asp92-in-place-of-zn2]]).
 
 **The thesis was sharpened on 2026-11-06** from "CSR-1's wild-type mechanism is

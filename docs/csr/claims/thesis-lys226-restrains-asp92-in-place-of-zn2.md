@@ -5,7 +5,17 @@ entries: [¶216, ¶22, ¶40, ¶107, ¶178, ¶209, ¶214]
 checked: [¶40, ¶107, ¶178]
 ---
 
-# Lys226 replaces Zn2 in the CSR-1 wild-type mechanism by restraining the bridging aspartate, allowing MBL activity
+# Lys226 replaces Zn2 in the CSR-1 wild-type mechanism by restraining Asp92, allowing MBL activity
+
+**Wording, ¶266.** This said "the bridging aspartate" until 2026-11-14.
+Asp92 (BBL **120**) is a **terminal Zn2 ligand** - 2.06 A to Zn2 against 4.42 A
+to Zn1 in our dmCSR-1 file, 2.27 against 4.78 in 7UHI - so it bridges nothing,
+and the literature gives it a positional role rather than a bridging one. The
+residue that *is* between the two sites is **Ser186 (BBL 214)**, equidistant at
+4.06/4.13 A and the closest non-ligand side chain to the Zn-Zn midpoint; the
+project calls that one the **intersite Ser**, and the aspartate installed there
+by the lab's S214D mutant the **intersite Asp**. The claim below is unchanged -
+only the label is.
 
 The root of this map, replacing the broader
 [[thesis-mechanism-differs-from-canonical-b3]], which this entails and which is
