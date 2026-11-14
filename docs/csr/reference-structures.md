@@ -17,6 +17,55 @@ python refstruct.py centre 1tmn.pdb 0ZN 317
 donors within 3.2 Å of every zinc — wider than our own 2.6 Å cutoff on purpose,
 so a borderline contact is visible instead of hidden by the cutoff.
 
+## Residue numbering, in every convention we meet (¶269, ¶270)
+
+**The standing rule, set by the user 2026-11-14: write OUR numbering, and give
+the other number alongside it whenever one exists.** Prose that says "Lys226"
+alone is ambiguous to anyone holding a deposit or a paper; "Lys226 (K263 in the
+papers, 254 in 6DN4)" is not. Selectors in `site.yaml` and every config stay in
+**our** numbering always, because mcube resolves them against our PDB file — a
+selector is addressed to a file, not to a convention (¶267).
+
+**There is no BBL-numbered file anywhere in this project.** All four CSR-1
+deposits are strictly sequential construct numbering with **zero insertion
+codes** (6DN4 is 275 CA over 29–303, consecutive). BBL (Garau 2004) is
+alignment-based and would show gaps, so the deposits cannot supply it and
+**neither can we** — it has to come from the BBL alignment or from Pedroso et
+al. 2020 if that paper states a table. Do not infer it from an offset.
+
+| ours | aa | role | 6DN4 | 6DQH | 6NC5 | dmCSR‑1 | papers | status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| **His88** | H | Zn1 | 116 | 116 | 87 | 74 | **H116** | agreed |
+| **Arg90** | R | Zn1 (B3 has His) | 118 | 118 | 89 | 76 | **R118** | agreed |
+| **Asp92** | D | Zn2 | 120 | 120 | 91 | 78 | **D120** | agreed |
+| **Gln93** | Q | Zn2 | 121 | 121 | 92 | 79 | **Q121** | agreed (`Q121H`) |
+| **His164** | H | Zn1 | 192 | 192 | 163 | 150 | **H196** | **CONFLICT** |
+| **Ser186** | S | intersite (¶266) | 214 | 214 | 185 | 172 | **S214** | **ambiguous** |
+| **Lys226** | K | Zn2 | **254** | **260** | 225 | 212 | **K263** | **CONFLICT** |
+
+Deposit columns are from Needleman–Wunsch over CA sequences against our model
+(6DN4 98.8% identity); the `papers` column is quoted from the literature and the
+CSR-1 manuscript and is **not** verified against a BBL alignment.
+
+**The three rows that need care, and why:**
+
+- **His164.** Deposits say 192; the canonical B3 M1 motif in the literature is
+  H116/H118/**H196**. The record once "corrected" 196 → 192 from distances —
+  both are right in their own frame, and neither is wrong.
+- **Lys226.** 6DN4 says 254, 6DQH says **260** (its offset jumps +28 → +34, a
+  6-residue insertion between our 186 and our 226), and the papers say
+  **K263**. Any 6DQH-based build must name **Lys260** (¶261). `Lys254` appears
+  in no publication.
+- **Ser186.** The manuscript's `S214D` equals what *both* 6DN4 and 6DQH number
+  that serine, which is why it is probably the deposit number rather than BBL.
+  The offsets cannot be reconciled otherwise: our 164 → 196 is +32 while our
+  186 → 214 is +28, and an insertion-only scheme cannot let the offset
+  *decrease* along the sequence. So **at least one of `S214D` and `K263H` is
+  not BBL** — worth settling with the lab before the manuscript is submitted.
+
+**6NC5 is ours − 1 and dmCSR‑1 is ours − 14**, both constant. 6DN4 is ours + 28,
+constant — which is exactly what made it look like BBL (¶267, retracted).
+
 ## CSR-1 itself — the sphere every other number is referenced against
 
 This belongs first and was missing from this file until 2026-10-29, which is

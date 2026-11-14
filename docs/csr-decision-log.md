@@ -12364,6 +12364,74 @@ caught this was the manuscript writing **K263H** while my own entry said BBL
 254. A constant offset over 275 residues should have been the tell on its own -
 an alignment-based scheme does not produce one.
 
+**¶270 - STANDING CONVENTION: write OUR numbering, and carry the other number
+alongside it whenever one exists. Selectors stay in our numbering, always. One
+authoritative table now lives in `reference-structures.md` with a `status`
+column that marks the two conflicts and the one ambiguity, so the next session
+does not have to rediscover them.** (2026-11-14, user: "keep ours, but consider
+both from now on so there's fewer ambiguities")
+
+## The rule, stated once
+
+**Prose, docs, the argmap and anything a human reads:** our model numbering is
+primary, with the other number in parentheses where one exists -
+"Lys226 (K263 in the papers, 254 in 6DN4)". A bare "Lys226" is ambiguous to
+anybody holding a deposit or a paper, and a bare "Lys254" is a number that
+appears in no publication.
+
+**`site.yaml`, configs, every selector:** our numbering, always and only.
+mcube resolves `A:92:OD2` against the residue numbers in the PDB file it is
+handed, so a selector is addressed to a **file**, not to a convention (¶267).
+Writing a published number there would not error - it would silently select a
+different residue, which is the ¶115 class of failure.
+
+**Do not infer a convention from an offset.** That is the specific mistake
+¶267 made and ¶269 retracted: 6DN4 is ours + 28 at all seven site residues, and
+a constant offset over 275 residues is evidence *against* an alignment-based
+scheme like BBL, not for it.
+
+## Where it is written down
+
+`reference-structures.md` gains **"Residue numbering, in every convention we
+meet"** as its first section, ahead of the CSR-1 sphere, because every other
+number in that file is referenced against it. It carries all seven site
+residues across our model, 6DN4, 6DQH, 6NC5, dmCSR-1 and the papers, with the
+deposit columns derived by alignment and the `papers` column flagged as
+**quoted, not verified against a BBL alignment**.
+
+Four rows are agreed by every source: **His88/H116, Arg90/R118, Asp92/D120,
+Gln93/Q121**. The three that are not are marked in the table itself:
+
+- **His164** - deposits 192, literature **H196**. Both correct in their own
+  frame; the record's old "correction" of 196 to 192 was a frame change, not a
+  fix.
+- **Lys226** - 6DN4 254, 6DQH **260**, papers **K263**. A 6DQH-based build must
+  name Lys260 (¶261).
+- **Ser186** - deposits and the manuscript both say **214**, which is why
+  `S214D` is probably the deposit number rather than BBL. Unresolved, and the
+  reason it cannot be resolved here is in ¶269: our 164 -> 196 is +32 while our
+  186 -> 214 is +28, so the offset would have to decrease along the sequence,
+  which an insertion-only scheme cannot do.
+
+**One thing to put to the lab**, since it affects the manuscript rather than us:
+at least one of `S214D` and `K263H` is not in BBL numbering, so the mutant names
+as written mix two conventions.
+
+## What was deliberately not done
+
+**The prose sweep stays undone** (user: "keep ours"), so no existing document
+was rewritten and the ~550 occurrences of our numbering are untouched. This
+entry changes what *new* prose does, and adds a table; it does not retro-fit the
+old prose. state.md's mapping row keeps its `[AMBIGUOUS, ¶261]` flag and now
+points at the table.
+
+The ¶268 rename is unaffected - it removed a word and named no numbers.
+
+## Status
+
+Nothing submitted, no model touched. Saved to memory as a standing rule so it
+survives this session.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
