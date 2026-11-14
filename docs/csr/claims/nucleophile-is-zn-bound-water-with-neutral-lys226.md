@@ -1,7 +1,7 @@
 ---
 type: claim
 status: open
-entries: [¶35, ¶41, ¶48, ¶201, ¶204, ¶206]
+entries: [¶35, ¶41, ¶48, ¶201, ¶204, ¶206, ¶265]
 ---
 
 # The reactant is a Zn-bound water with a neutral Lys226 as the proton acceptor
@@ -39,4 +39,5 @@ poised in any structure we have - O01-C4x 3.72-4.16 A (¶204).
 - [[question-what-protonates-the-leaving-nitrogen]]
 
 ## Supported by
+- [[b1-monozinc-bcii-carries-its-metal-at-zn1]]
 - [[lys226-protonates-the-nucleophile-under-qmmm]]

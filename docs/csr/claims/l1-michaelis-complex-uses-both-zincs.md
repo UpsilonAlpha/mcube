@@ -2,7 +2,7 @@
 type: observation
 status: supported
 evidence: experimental
-entries: [¶121, ¶123, ¶156, ¶158]
+entries: [¶121, ¶123, ¶156, ¶158, ¶265]
 checked: [¶121, ¶123, ¶158]
 ---
 
@@ -33,6 +33,7 @@ transferred ligand puts it at 2.27, and the C3 carboxylate at 8.14 A where L1's
 is 2.82.
 
 ## Supports
+- [[the-l1-michaelis-complex-has-no-metal-bound-water]]
 - [[canonical-b3-mechanism-is-dizinc-hydroxide]]
 - [[carbonyl-coordinates-zn1-in-the-michaelis-complex]]
 - [[thesis-mechanism-differs-from-canonical-b3]]

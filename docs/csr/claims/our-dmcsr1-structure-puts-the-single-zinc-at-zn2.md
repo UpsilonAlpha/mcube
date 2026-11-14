@@ -2,7 +2,7 @@
 type: observation
 evidence: experimental
 status: supported
-entries: [¶217]
+entries: [¶217, ¶265]
 checked: [¶217]
 ---
 
@@ -46,3 +46,6 @@ Arg90 intact, Lys226 intact. Ours puts the metal at the other site entirely.
 ## Supports
 - [[csr1-is-mono-zinc-with-zn2-vacant]]
 - [[wild-type-csr1-binds-no-zinc-in-any-crystal]]
+
+## Supported by
+- [[dmcsr1-zn1-occupancy-may-depend-on-substrate]]

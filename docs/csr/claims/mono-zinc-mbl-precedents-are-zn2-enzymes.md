@@ -1,7 +1,7 @@
 ---
 type: claim
-status: open
-entries: [¶107, ¶124]
+status: unsupported
+entries: [¶107, ¶124, ¶265]
 checked: [¶107, ¶124]
 ---
 
@@ -37,9 +37,25 @@ sits at Zn2 is not what the deposit shows
 ([[gob18-deposit-has-four-zincs]]). The literature description may still be
 right about the solution species; the structure does not evidence it.
 
+**REFUTED 2026-11-14 (¶265), by the counterexample the user named.**
+Mono-zinc **BcII** (B1) carries its single metal at **Zn1 / 3H**, and Bounaga
+et al. 1998 published a Zn1-Lewis-acid hydroxide mechanism for that species
+([[b1-monozinc-bcii-carries-its-metal-at-zn1]]). So a published mono-zinc
+mechanism at CSR-1 metal position does exist, and the node title is false as
+written. The B1 subgroup was never checked - the node reasoned from B2 CphA,
+GOB-18 and Sfh-I only.
+
+**The narrow form that survives, and is still worth having:** no published
+mono-zinc mechanism operates at a **two-histidine** Zn1 site. BcII Zn1 is
+three histidines; CSR-1 is two plus an arginine. So the precedent transfers
+the metal position and the nucleophile, not the ligand set - which is a
+weaker claim than this node made and does not carry
+[[thesis-mechanism-differs-from-canonical-b3]] on its own.
+
 ## Supports
 - [[thesis-mechanism-differs-from-canonical-b3]]
 - [[cpha-route-is-closed]]
 
 ## Refuted by
+- [[b1-monozinc-bcii-carries-its-metal-at-zn1]]
 - [[gob18-deposit-has-four-zincs]]

@@ -11855,6 +11855,187 @@ Matches what ¶217 recorded from the coordinates.
 **Action taken:** nothing read further from the file. The manuscript must be
 treated as kinetics-bearing by any future session, and `state.md` now says so.
 
+**¶265 - THE MONO-ZINC PRECEDENT EXISTS AND IT IS AT Zn1. B1's BcII carries its
+single metal at the 3H site with a published Zn1-hydroxide mechanism, which
+refutes the map's self-described strongest argument. Also measured, and new:
+the L1 Michaelis complex has **no water on either zinc** - substrate displaces
+the nucleophile. And the manuscript's own structural result says Zn1 binding in
+dmCSR-1 S214D is substrate-facilitated.** (2026-11-14, user: "does 7UHI have an
+HRH site?? ... Does the canonical B3 mechanism require carbonyl coordination or
+just polarisation? What other mechanisms are likely? CphA or B1 monometallic?")
+
+## 1. 7UHI's site is H-H-H, so no structural template for the canonical
+## mechanism carries CSR-1's substitution
+
+Measured from the deposit, internal distances only, no superposition:
+
+    Zn1 (A301)   His105 NE2 2.66   His107 ND1 2.18   His181 NE2 2.35
+    Zn2 (A302)   Asp109 OD2 2.27   His110 NE2 2.27   His246 NE2 2.48
+
+**Three histidines on Zn1.** CSR-1's Arg90 sits at the BBL 118 position, which
+is **His107 in L1 and a genuine metal ligand at 2.18 A** - the shortest of the
+three. So the user's concern is well founded and sharper than "the mutation
+could change the mechanism": the residue CSR-1 replaces is not a peripheral
+histidine, it is the tightest Zn1 ligand in the only measured B3 Michaelis
+complex. Confirms [[csr1-zn1-site-is-h-r-h]] from the Michaelis template rather
+than from apo structures, and the consequence that node already states - two
+protein ligands, not three - means **CSR-1's Zn1 has one more open coordination
+position than any canonical B3 Zn1.**
+
+## 2. Canonical B3 requires coordination, not polarisation - and of two atoms,
+## not one
+
+7UHI is **non-hydrolysed** moxalactam at 40 ms (title: "TIME-RESOLVED STRUCTURE
+... IN A COMPLEX WITH NON-HYDROLYZED MOXALACTAM"), and the topology confirms it
+rather than taking the title's word: **C1-N1 1.37 A** (intact amide) and
+**C1=O1 1.21 A** (intact carbonyl). On that intact substrate:
+
+    O1  beta-lactam carbonyl       Zn1 2.53
+    N1  beta-lactam nitrogen       Zn2 2.67
+    O8  C-carboxylate              Zn2 2.65
+
+So the answer is **coordination, and inner-sphere**: 2.53 A is a bond, not a
+polarising contact, and it is present *before* chemistry. Reproduces
+[[l1-michaelis-complex-uses-both-zincs]] exactly and independently.
+
+**But it does not settle the question for CSR-1**, and
+[[carbonyl-coordinates-zn1-in-the-michaelis-complex]] stays `open` for the
+reason it already gives: canonical B3 puts the nitrogen and the carboxylate on
+a **Zn2 that CSR-1 does not have.** Of the three anchors L1 uses, CSR-1 can
+offer only the first. A mechanism that needs all three is not available to it,
+so "does the carbonyl coordinate" cannot be inherited from L1 - it has to be
+computed for a one-metal site.
+
+## 3. NEW, and not previously in the record: there is no nucleophile on either
+## zinc in the Michaelis complex
+
+**No water within 4.0 A of either zinc.** Nothing within 3.6 A of the
+electrophilic carbon C1 except substrate atoms and the two metals (Zn1 2.88,
+Zn2 3.40). **Zn1-Zn2 is 3.17 A with nothing bridging them.**
+
+The substrate has taken the bridging hydroxide's place. For the canonical
+di-zinc-hydroxide mechanism
+([[canonical-b3-mechanism-is-dizinc-hydroxide]]) that is a real wrinkle: at
+40 ms the nucleophile is not pre-positioned on the metal.
+
+**Weighted as moderate, not decisive, and the reason matters.** 2.20 A,
+Rfree 0.266, 53 waters - a metal-bound water would normally be modelled at that
+resolution, but a time-resolved partial-occupancy series is exactly the case
+where one is missed, and the manuscript's own comment 483 ("There is density
+there but Stefan couldn't fit ampicillin in there") is this project's reminder
+that unmodelled is not absent. **An absence of modelled density is not an
+absence.** Recorded as an observation with that qualification attached, not as
+a refutation.
+
+## 4. THE CORRECTION: B1 mono-zinc is a Zn1 precedent, so
+## [[mono-zinc-mbl-precedents-are-zn2-enzymes]] is refuted
+
+That node claims "Every mono-zinc MBL in the literature carries its metal at
+Zn2, so no published mono-zinc mechanism transfers to CSR-1", and calls itself
+"the strongest single argument in the map". **It is wrong, and the user named
+the counterexample in the question.**
+
+**BcII** (B1, Bacillus cereus 569/H/9) in its mono-zinc form carries its single
+metal at the **Zn1 / 3H site** (His116, His118, His196 + water), and **Bounaga
+et al. 1998** published a mechanism for exactly that species: Zn1 acts as a
+Lewis acid, lowers the bound water's pKa so it is hydroxide at neutral pH, and
+that hydroxide attacks the beta-lactam carbonyl. Mono-zinc BcII **is active**
+(full activity needs two). A BcII mutant structure preserves the short
+Zn1-water bond in both mono- and dinuclear forms, i.e. **Zn2 is not required to
+supply the nucleophile.**
+
+**Why this matters more than the node being wrong.** It is a published
+mono-zinc mechanism, at CSR-1's metal position, with CSR-1's proposed
+nucleophile - which is what
+[[nucleophile-is-zn-bound-water-with-neutral-lys226]] has been asserting
+without a precedent. That node gains literature support it did not have.
+
+**What survives of the refuted node, and it is not nothing:** BcII's Zn1 is
+**three histidines**, CSR-1's is two plus an arginine (part 1). So BcII is a
+precedent for *the metal position and the nucleophile*, not for the ligand set.
+The honest form of the original claim is narrower and still useful: *no
+published mono-zinc mechanism operates at a **two-histidine** Zn1 site.* Two
+caveats to carry: whether mono-Zn1 MBLs are biologically relevant was still
+debated as of a 2015 review, and a 2017 study of carbapenem hydrolysis argues
+nucleophile activation in mono-zinc enzymes does **not** involve the metal
+site - which contradicts the Lewis-acid model and would, if right, point back
+at a CphA-like route.
+
+**[[cpha-route-is-closed]] is untouched by this.** Its closure premise was
+refuted on other grounds and it stays `open`; B2 CphA remains a Zn2/DCH enzyme
+and no part of the BcII result revives Asp92-as-general-base.
+
+## 5. The manuscript, read in full (38 prose paragraphs, 29 comments)
+
+Its thesis is **not** ours: a single Ser->Asp reversion to the superfamily's
+ancestral metal-bridging aspartate (AIM-1 S207D, CSR-1 S214D, dmCSR-1 S214D)
+abolishes beta-lactamase activity and upregulates nuclease activity. Three
+things in it bear directly on this project:
+
+**(a) Its structural result is about our metal site, and it is new to us
+(para 37):** multiple dmCSR-1 S214D datasets from different conditions all show
+**only a single zinc, at the Zn2 (DHH) site**. The second site was occupied in
+**one** dataset, from crystals grown with ampicillin. The authors' inference: "a
+weaker binding at the Zn1 site, and a possible mechanism where **binding of
+metal at this site is facilitated by the presence of substrate**."
+
+This confirms [[our-dmcsr1-structure-puts-the-single-zinc-at-zn2]] from the
+authors' own text (our file: Zn2 full occupancy, Zn1 **0.53**), and it supplies
+an independent literature parallel for the one over-read I corrected earlier
+this session - that the closed N-Zn-N angle may track substrate binding rather
+than being a pure artefact. Note the tension with comment 483, by the first
+author: "There is density there but Stefan couldn't fit ampicillin in there."
+The paper reports absence of substrate density; the comment reports
+**unmodellable** density. Those are different claims and the second is the one
+that would support the substrate-facilitated reading.
+
+**(b) The S214D aspartate does not reach either metal.** Measured in our own
+copy of the two-metal structure, their residue 172 = our Ser186:
+
+    Asp172 OD2    Zn2 4.06    Zn1 4.13
+    Asp172 CG     Zn2 4.97    Zn1 4.90
+    (6DQH wild type, Ser214 OG -> its single Zn: 5.21)
+
+So the mutation moves that side chain about 1 A closer to the metals and
+**still leaves it ~4 A out** - it is not bridging in this crystal. The paper's
+own explanation for the activity loss is steric hindrance plus "further
+interactions", with the nature of those left open (para 33), so this is
+consistent with the text rather than contradicting it, but anyone reading the
+title as "the bridging aspartate was installed" should see this number.
+
+**(c) A terminology collision in our own thesis, which should be fixed before
+anyone outside the project reads it.** The manuscript uses **"bridging
+aspartate"** for the residue at the **Ser214/our Ser186** position - the
+superfamily's metal-bridging ligand, absent in MBLs. Our root thesis
+[[thesis-lys226-restrains-asp92-in-place-of-zn2]] uses the same phrase for
+**Asp92**, which in B3 is a **Zn2 ligand** and bridges nothing
+([[asp92-is-a-zn2-ligand-in-b3-structures]],
+[[asp92-is-never-a-zn1-ligand-in-b3-structures]]). Two different residues, one
+phrase, in the same lab's two documents on the same enzyme. The science is
+unaffected; the wording will be read as a claim we are not making. Flagged, not
+rewritten - the thesis statement is the user's.
+
+**(d) Scope, carried from ¶264:** the comparison set is six enzymes, and S214D
+is a variant of both AIM-1 and CSR-1. Gary's comments are editorial (figures,
+references, a consistent ACS style) and one asks for "B1 and B2 data" at the
+motif discussion - which is the same gap part 4 just filled.
+
+## Status
+
+Nothing submitted, nothing built, no model touched. Argmap updated: [[mono-zinc-mbl-precedents-are-zn2-enzymes]] set `unsupported` with the
+refutation stated in its body, plus two new observations
+([[b1-monozinc-bcii-carries-its-metal-at-zn1]],
+[[the-l1-michaelis-complex-has-no-metal-bound-water]],
+[[dmcsr1-zn1-occupancy-may-depend-on-substrate]]). Checker: no findings.
+
+**Part 5(c), the terminology collision, is recorded here and deliberately NOT
+in the argmap.** I wrote it as a question node and the checker was right to
+reject it: it had no honest `supports`/`refutes`/`requires` edge to the
+thesis, because the thesis mechanism does not depend on what Asp92 is
+called. A node that bears on nothing does not belong in the map, so the
+point lives in this entry, where it is a wording decision for the user
+rather than an argument.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**

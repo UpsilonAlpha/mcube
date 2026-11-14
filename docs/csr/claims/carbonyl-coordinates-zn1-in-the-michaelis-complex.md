@@ -1,7 +1,7 @@
 ---
 type: claim
 status: open
-entries: [¶40, ¶53, ¶121, ¶123, ¶124, ¶200]
+entries: [¶40, ¶53, ¶121, ¶123, ¶124, ¶200, ¶265]
 ---
 
 # The beta-lactam carbonyl coordinates Zn1 in the Michaelis complex
