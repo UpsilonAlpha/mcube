@@ -233,3 +233,16 @@ insertion codes. A constant offset over 275 residues is itself the proof, since
 BBL is alignment-based. Deposits give our His164 -> 192 and Lys226 -> 254
 (6DN4) or 260 (6DQH); the published BBL gives **196** and **263**. Do not quote
 ¶267's table, and do not treat the mapping row in state.md as settled.
+
+**¶272 - ITS INTERPRETATION IS SUPERSEDED by ¶273; its measurements stand.**
+It is headlined "what is actually wrong with `aspxtb8`" and most of what it
+lists is not wrong. Differences from 7UHI at the lactam N and the C3
+carboxylate are **expected** for a mono-zinc site, the 38.5 deg attack angle
+**presupposes the canonical B3 mechanism** the project is testing, and its
+headline defect - "the Ser186 OG-O4x contact the record calls 100% is gone" -
+is **wrong**: the record holds both **100%** (a 791-frame run whose site was
+over-coordinated, Asp92 on the metal at 2.11 A, CN 5.9) and **0.0%**
+(`md_wt100b`, 100 ns, 4.78 / 6.91 / 8.50), and aspxtb8-s 6.464 matches the
+latter. Do not quote ¶272-s "what is wrong" list. After ¶273 only Zn-OH being
+short and Arg90 being 2 A out remain, and Arg90 carries a substrate-coupling
+caveat. ¶272-s argument against route C is **withdrawn**.

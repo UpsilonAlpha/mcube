@@ -12662,6 +12662,115 @@ Nothing submitted. All numbers from the tracked frame
 `docs/csr/structures/aspxtb8_nowat.pdb`, internal distances only, no
 superposition.
 
+**¶273 - ¶272 GRADED A MONO-ZINC ENZYME AGAINST THE CANONICAL B3 TEMPLATE, WHICH
+IS THE THING THIS PROJECT DISPUTES. All three of the user's corrections hold,
+and a fourth is mine: the "lost" Ser186 contact was never lost - the record
+holds **both 100% and 0.0%** for that pair, and the 100% came from the
+over-coordinated GFN2 state. `aspxtb8` is typical of this system, not degraded.
+What survives as a real difference is Arg90, and even that carries a
+caveat.** (2026-11-14, user: "Asp92 should be restrained in MM if it's within
+range of Zn, as the rule applies, nothing wrong with that", "it's also natural
+aspxtb8 is different from 7UHI, as the WT has no zinc", "The attack angle also
+assumes the canonical B3 mechanism, whereas we want to infer the monometallic
+mechanism from the equilibrated michaelis complex")
+
+## 1. Restraining Asp92 in MM is the rule working, and I had it inverted
+
+¶271 objected to route B on the grounds that a start with Asp92 at 2.95 A puts
+it **inside** the 3.0 A radius, "where the restraint rule would hold it", and
+said avoiding that needs `constraint_exclude_residues`, "which pre-judges the
+question".
+
+**That is backwards.** The rule is mechanical: atoms within the radius in the
+starting structure are restrained at whatever distance they start at. The 3.0 A
+radius is "what is affected by the metal", **not a coordination test** - the
+user has said so twice before - and its justification is precisely that MM
+cannot model the metal environment. So restraining Asp92 during MM is the
+default and correct behaviour. **Excluding it would have been the intervention**,
+and I proposed the deviation while calling the default the artefact. Route B
+loses that objection.
+
+What the MM restraint does *not* do is decide where Asp92 belongs; **QM/MM
+does**, which is the stage the project reserves for exactly this.
+
+## 2. Differing from 7UHI at the far end is expected
+
+7UHI anchors the lactam nitrogen and the C3 carboxylate on **Zn2**. CSR-1 has no
+Zn2. So Zn-N1x 4.54 and the carboxylate at 5.4-6.7 A are what a mono-zinc site
+*should* give, and listing them under "what is wrong" imported the di-zinc
+template as a standard. ¶272's table did that.
+
+## 3. The attack angle presupposes the mechanism under test
+
+Bürgi-Dunitz as a criterion assumes a hydroxide attacking a metal-bound
+carbonyl - **the canonical B3 mechanism**. The aim is to *infer* the
+monometallic mechanism from the equilibrated Michaelis complex, so the attack
+angle is an output to read off the path, not a property to grade the reactant
+on. This is ¶207's own exit, generalised: "the path settles it."
+[[burgi-dunitz-gate-at-reactant-was-wrong]] said the narrow version; the user's
+version is broader and supersedes how ¶272 logged it. **38.5 deg is a
+measurement to carry forward and nothing more.**
+
+## 4. MY OWN ERROR, and it was the item I called the sharpest defect
+
+¶272: "the Ser186 OG-O4x contact the record calls 100% is gone by more than
+3 A." **The record does not say 100% simply. It says both:**
+
+    source                                     occ%    distances
+    791-frame QM/MM run (log line 515)         100     -
+    md_wt100b, 100 ns, 5,000 frames            0.0     4.78 / 6.91 / 8.50
+    aspxtb8 (this frame)                        -      6.464
+
+**6.464 is the 100 ns run's mean to within 0.45 A.** So nothing was lost; the
+value is normal for this pair. Worse, **the 100% run is the less trustworthy
+one**: its own site was Asp92-on-the-metal at 2.11 A with coordination number
+5.9 - the GFN2 over-coordination the project has spent weeks on. I quoted the
+artefact state as the baseline.
+
+Two further numbers from that same run show `aspxtb8` is unremarkable rather
+than degraded: it put **O01...O2x at 2.77 A** (aspxtb8 2.781) and found attack
+angles of **20-53 deg over 791 frames** (aspxtb8 38.5). So both of the
+quantities ¶272 flagged sit inside the range this system has always shown.
+
+**This is the one-half-of-a-contradictory-record failure that `retractions.md`
+exists to prevent, committed while citing the record.** The lesson that
+generalises: an occupancy quoted without its run is not a fact about the enzyme.
+
+## What actually differs, after all four corrections
+
+    Zn-OH O01   1.776    short for a zinc hydroxide (~1.85-1.95)
+                         -> GFN2 over-binding, a known standing question
+    Arg90 CZ-Zn 6.638    6DQH 4.14, dmCSR-1 4.60
+
+**Only Arg90 is a comparison against CSR-1's own crystals** rather than against
+a template, which is what makes it the one that survives. **Its caveat, stated
+rather than buried:** both crystals are substrate-free, and Arg90's job in our
+runs is to hold the ligand's 6-alpha-hydroxyethyl - 99% occupancy in the
+791-frame run, **0.0% in `md_wt100b`** (4.65 / 6.08 / 7.51). So Arg90's position
+is itself run-dependent and substrate-coupled, and 2 A from an apo crystal is
+not by itself an artefact.
+
+**Net: `aspxtb8` is in better shape than ¶272 presented, and the metal site is
+sound** - right Zn-His lengths, four-coordinate for a two-ligand Zn1, carbonyl
+bound at 2.211 A, Lys226-Asp92 salt bridge within 0.25 A of both wild-type
+crystals, Asp92 off the metal at a converged minimum with nothing holding it
+there.
+
+## Consequence for the route decision
+
+¶271 and ¶272 both argued against route C - ¶272 on the grounds that the
+substrate "will drift again". **That argument is withdrawn**: the drift is the
+normal behaviour of an unanchored fragment and not a failure, and the frame it
+produced is typical. Route B also recovers its standing (correction 1). So the
+fork is open on the merits again, and the pose remains a scientific question
+rather than a measured defect.
+
+## Status
+
+Nothing submitted. ¶272's "what is wrong" framing is superseded by this entry;
+its measurements stand, its interpretation does not. The argmap node is
+rewritten to make no claim about the pose.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
