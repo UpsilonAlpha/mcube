@@ -12130,6 +12130,74 @@ matched Zn1 ligands to Zn2 ligands because the two files index their zincs in
 opposite order, giving a 4.69 A RMSD on 4 atoms and a meaningless residue
 mapping. The sequence alignment above replaced it.
 
+**¶267 - THE BBL OFFSET IS A SINGLE CONSTANT: BBL = ours + 28, at all seven
+site residues, identities confirming. That resolves the `[AMBIGUOUS, ¶261]`
+flag on state.md's mapping row - our Lys226 is BBL **254**, not 263 - and it
+makes BBL numbering safe to use throughout the prose. It is NOT safe in
+configs, and that is the one reason we cannot "just use BBL the whole time".**
+(2026-11-14, user: "Why can't we just stick to BBL numbering the whole time?")
+
+## The mapping, measured rather than assumed
+
+Needleman-Wunsch over CA sequences, dmCSR-1 chain A against 6DN4 (CSR-1
+wild-type apo, which is deposited in BBL numbering), 98.8% identity. Our
+numbering is dmCSR-1 theirs + 14:
+
+    ours   dmCSR   BBL    residue   role
+     88     74     116       H      Zn1
+     90     76     118       R      Zn1  (canonical B3 has His here)
+     92     78     120       D      Zn2
+     93     79     121       Q      Zn2
+    164    150     192       H      Zn1
+    186    172     214       S      intersite (¶266)
+    226    212     254       K      Zn2
+
+**Offset +28 at every one of the seven. Constant.** And the identity column
+reads H, R, D, Q, H, S, K - the HRH/DQK motif plus the intersite serine - so
+the alignment is checked by chemistry, not just by score.
+
+**Two standing corrections confirmed by this route**, both of which the record
+had already made from distances and which now have a second, independent
+witness:
+
+- our His164 is BBL **192**, not 196;
+- our Lys226 is BBL **254**, not 263.
+
+**So the `[AMBIGUOUS, ¶261]` note on state.md's mapping row is resolved for our
+own model and for 6DN4.** What ¶261 found remains true and is a different
+statement: **6DQH** numbers the same lysine **260**, so the offset is not
+constant *across deposits*. Our model -> BBL is +28 everywhere; 6DQH -> BBL is
+not, and any 6DQH-based build still has to name Lys260 (¶261).
+
+## Why BBL cannot simply be used everywhere
+
+**In prose, docs, the argmap and the manuscript: yes, and it should be** - it is
+the published convention, it is what the user asked for at ¶23 ("use standard
+numbering from publications"), and with a constant +28 the translation is
+mechanical and auditable.
+
+**In `site.yaml`, configs and any selector: no.** mcube resolves `A:92:OD2`
+against the residue numbers **in the PDB file it is given**, and our model is
+numbered 1-275. Writing `A:120:OD2` there would not fail - it would silently
+select **a different residue**, which is precisely the ¶115 class of error the
+project has been bitten by, and the same hazard as ¶261's Lys254/260 trap. A
+selector is addressed to a file, not to a convention.
+
+**So the rule, stated once:** BBL in everything a human reads, file numbering in
+everything a parser reads, the +28 offset recorded in one place, and **never a
+bare residue number in prose without its BBL label.** The mixed usage that
+caused this question is the thing to remove, not the file numbering.
+
+One consequence worth noting: our own model and 6DN4 differ by a constant, so a
+BBL-labelled prose claim can be checked against our configs by arithmetic. That
+was not previously true of 6DQH-based claims and still is not.
+
+## Status
+
+Nothing submitted, no model touched. state.md's mapping row updated by
+**appending** this resolution to the existing cell, per the standing rule not
+to overwrite status cells.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
