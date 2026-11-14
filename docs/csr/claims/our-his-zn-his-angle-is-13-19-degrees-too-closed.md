@@ -34,11 +34,19 @@ present, and false of the geometry the protein imposes on them.
 third Zn1 ligand position ([[arg90-stands-at-the-third-zn1-ligand-position]]),
 and measured CZ-to-metal:
 
+**CORRECTED ¶276. The 6DQH row measured the wrong atom: 6DQH IS the R118H
+mutant, so it has no arginine at that position and no CZ. Its 4.14 / 5.01 /
+7.58 reproduce exactly as **His118 NE2** to Zn / His116 NE2 / Asp120 CG.
+**6NC5 has a real unmutated Arg89 with a metal in the modelled site** and was
+omitted. Against the two real arginines WITH a metal present, ours is
+**1.7-2.0 A out, not 2.5 A against "two crystals".**
+
 | structure | Arg CZ–Zn | Arg CZ–His88 NE2 | Arg CZ–Asp92 CG |
 | --- | --- | --- | --- |
 | 6DN4, apo WT (no metal) | — | 5.98 | 7.23 |
-| 6DQH, R118H | 4.14 | 5.01 | 7.58 |
-| dmCSR-1 2-metal | 4.60 | 5.32 | 8.05 |
+| ~~6DQH, R118H~~ **His118 NE2, NOT an Arg** | (4.14) | (5.01) | (7.58) |
+| **6NC5, real Arg89, metal at ZN302** | **4.95** | **5.72** | **8.11** |
+| dmCSR-1 2-metal, real Arg | 4.60 | 5.32 | 8.05 |
 | `aspxtb8` QM/MM | **6.64** | **6.82** | **8.95** |
 
 Ours is the outlier on every coordinate, and worst against the metal: **6.64 Å

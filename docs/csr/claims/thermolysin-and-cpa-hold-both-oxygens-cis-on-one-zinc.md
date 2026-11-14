@@ -15,6 +15,21 @@ reviews (¶124, re-measured with the angles in ¶201):
 | --- | --- | --- | --- | --- | --- |
 | thermolysin 1TMN | 2.01 | 2.41 | 2.15 | **57.2** | 119.5 |
 | carboxypeptidase A 7CPA | 2.19 | 2.98 | 2.68 | **60.1** | 117.2 |
+
+**¶276: THESE ARE NOT A NUCLEOPHILE AND A CARBONYL. Both pairs are the two
+oxygens of ONE functional group**, re-measured from the deposits:
+
+    1TMN  OG1 2.009, OG2 2.413  both bonded to CB2 (1.249, 1.234)
+          OG1-CB2-OG2 119.5 deg      O-Zn-O bite 57.2 deg   O...O 2.145
+    7CPA  OPV 2.194, OPW 2.976  both bonded to P3  (1.603, 1.531)
+          OPV-P3-OPW  117.2 deg      O-Zn-O bite 60.1 deg   O...O 2.676
+
+The ligands are a **carboxylate** (an N-carboxymethyl transition-state analogue)
+and a **phosphinate** - tetrahedral-intermediate mimics CHELATING the metal.
+So "2.01/2.41" is a **chelate bite**, "57.2/60.1" a **bite angle**, and
+"119.5/117.2" the **internal angle of that same group**. There is no scissile
+carbonyl carbon in either picture and no separate nucleophile, so this node
+cannot license a nucleophile-approach window.
 | CSR-1 batch 1, last frame | 1.86 | 3.07 | 3.05 | **71.8** | 48.1 |
 
 Both enzymes run the chemistry being proposed here - a zinc-bound water

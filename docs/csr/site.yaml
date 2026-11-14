@@ -2161,9 +2161,21 @@ sections:
 
   # ---- The missing half of the protocol: 50 ps QM/MM from `eq6` (¶275). ----
   #
-  # `eq6` is the MM-equilibrated Michaelis complex (¶274): crystal ->
-  # preprocess -> one 10 ns MM, its own coordination set redetected, the ¶231
-  # gate passed, and no actuator anywhere in its history. Every QM/MM run in
+  # **¶276, AFTER AN INDEPENDENT AUDIT: `eq6` IS NOT A CLEAN START and the
+  # claim this comment used to make is withdrawn.** It pins Asp92 at BOTH ends
+  # for 10 ns (OD1 3.90 restrained, plus Zn-OD2 2.79 added by
+  # `coordination_redetect: true`) at values state.md calls wrong by 1.4 A, and
+  # its substrate pose descends from ¶68-s hand-pull, the family state.md §2
+  # voids for restraint laundering. There is no clean branch anywhere in the
+  # project. **DO NOT SUBMIT THIS SECTION** until a starting frame exists whose
+  # Asp92 position was found rather than imposed. Kept because the section
+  # itself is mechanically sound - the objection is entirely to its input.
+  #
+  # If it is ever run it also needs `timestep: 0.001` stated EXPLICITLY:
+  # `require:` is handed the section-s own inputs only, so it structurally
+  # cannot see a value inherited from the base - which is how ¶249 lost
+  # `prod100c` to an inherited 4 fs. `make_mm` passes `autoconstraints=None,
+  # rigidwater=False`, so every O-H including bulk water is flexible here. Every QM/MM run in
   # this file starts somewhere downstream of `asppull`, where Asp92 was MOVED
   # out by restraint, so none of them starts from a frame whose site geometry
   # is only the crystal plus equilibration.
@@ -2179,9 +2191,11 @@ sections:
   # Deliberately identical to `aspqm2` except `pdb_file`, so the two are a
   # controlled comparison of the STARTING FRAME and nothing else: same QM region
   # (`michaelis_rk`), same charge, same 50 ps, same engine default, same
-  # `rigid_water: false`. If Asp92 chelates here as it did in ¶232, the
-  # actuator lineage is exonerated; if it stays out, ¶232 was measuring its
-  # start.
+  # `rigid_water: false`. **The pre-registered reading is REMOVED (¶276):** it
+  # said a chelate forming here would exonerate the actuator lineage, but `eq6`
+  # starts Asp92 ~1.5 A CLOSER to the metal than `aspqm2`-s start
+  # (`relax10`: Zn-OD1 4.33), so it begins in the state being tested for. The
+  # `same_as` gate cannot catch this, the variable under test being `pdb_file`.
   #
   # `skip_optimize: true`: this is the equilibration, not a minimisation. The
   # minimum is what `aspxtb`/`aspdft` are for, and they are a separate

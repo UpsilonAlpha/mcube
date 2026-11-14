@@ -66,6 +66,28 @@ CSR-1 manuscript and is **not** verified against a BBL alignment.
 **6NC5 is ours − 1 and dmCSR‑1 is ours − 14**, both constant. 6DN4 is ours + 28,
 constant — which is exactly what made it look like BBL (¶267, retracted).
 
+## Confounds to quote alongside these numbers (¶276)
+
+**6DQH and 6DQ2 both carry a crystallisation phosphate in the active site, and
+nothing in this project recorded it.** Re-measured:
+
+    6DQH  PO4 405 O2 - Zn         2.32      PO4 405 O3 - Lys260 NZ   2.69
+    6DQ2  PO4 401 O2 - Lys254 NZ  2.77
+
+So in the one crystal carrying the structural half of the thesis, the lysine-s
+position is co-determined by a buffer anion. Of the three salt-bridge deposits
+only **6DN4 is phosphate-free, and it gives the LONGEST contact (2.99)** - so
+the 2.99 -> 2.83 -> 2.79 tightening read as "the contact survives metal
+binding" tracks phosphate presence just as well as it tracks the metal.
+
+**7UHI is partly occupied and this is never stated:** Zn1 **0.49**, Zn2 0.77,
+ligand MX0 0.80, at 2.20 Å, with Zn1-His at 2.18 / 2.35 / 2.66. Its 2.53 Å
+carbonyl is real, but it is the sole experimental anchor for the
+`Zn-O2x 2.60 k500` restraint that defines the live lineage, and arguments from
+agreeing with it "to within 0.03-0.07 Å" assert a precision these data do not
+carry. **7UHI also has no metal-bound water at all**, so it cannot anchor any
+statement about attack geometry - only about where the carbonyl sits.
+
 ## CSR-1 itself — the sphere every other number is referenced against
 
 This belongs first and was missing from this file until 2026-10-29, which is
@@ -86,8 +108,14 @@ python refstruct.py shell 6nc5.pdb
 | ZN303 | HOH485 1.88, HOH516 1.96, HOH504 2.13, acetate 2.79 | adventitious (3.39 Å from ZN302) |
 | ZN304–306 | Glu115/Glu141/His111/Asp129/Glu123, phosphate | adventitious surface sites |
 
-**ZN302 has four donors: two histidines and two waters. No carboxylate.** Asp92
-(BBL ¶120) sits at **2.80 Å** on OD2 — a second-shell contact, not a ligand.
+**ZN302 has four donors: two histidines and two waters. No carboxylate.**
+**CORRECTED ¶276:** Asp92 (BBL **D120**) sits at **OD2 4.202 / OD1 4.223 /
+CG 4.663** from ZN302, re-measured. The **2.80 Å** this line carried is the
+project-s own MODEL value and `retractions.md` §1(a) already says it "appears
+nowhere in the file" - it had survived here, in the file written to prevent
+exactly this. **Both of ZN302-s waters bridge to other zincs** (2.08 and 1.88 Å
+to ZN301/ZN303, Zn-Zn 3.43 and 3.39), so this four-coordinate sphere is a
+property of a water-bridged zinc cluster, not of a mononuclear site.
 
 **Why ZN301 does not contradict "CSR-1 is mononuclear", and in fact proves it.**
 6NC5 is an engineered construct, titled the *HARLDQ motif*, and its `SEQADV`
@@ -118,8 +146,9 @@ Three consequences, all of them load-bearing:
 1. **Any model whose zinc carries five ligands, or a carboxylate, is wrong.** A
    saturated metal has no site for the substrate carbonyl, which is a sufficient
    explanation of substrate loss without blaming the QM method (¶120).
-2. **2.80 Å is where Asp92 belongs, and it is not a bond.** Restraining it there
-   is what rotated OD1 onto the metal. See `## Standing constraints` in the
+2. ~~**2.80 Å is where Asp92 belongs, and it is not a bond.**~~ **WITHDRAWN,
+   ¶276:** 6NC5 measures 4.20, not 2.80. The observation that restraining a
+   carboxylate rotates OD1 onto the metal stands; the distance does not. See `## Standing constraints` in the
    decision log and `LIGAND_MAX` in `preprocess.py`.
 3. **CSR-1 is a Zn1-site enzyme, and every mononuclear MBL in the literature is
    Zn2-site** (GOB-18, Sfh-I, CphA), so none of those analogies transfers
@@ -266,7 +295,7 @@ python refstruct.py pair 6NC5.pdb A:87:NE2-A:163:NE2  A:87:NE2-A:91:OD1   A:87:N
 | --- | --- | --- | --- | --- | --- | --- |
 | **6DN4** | **wild type**, metal-free | **1.99 Å** | **15–16** | **3.00** | **3.07** | 3.63 |
 | 6DQ2 | HARLDQ **mutant S60**, metal-free | 2.16 Å | 53–66 | 4.28 | 5.49 | 3.75 |
-| 6NC5 | **Q121H/K254H mutant**, Zn-bound | 1.60 Å | — | 4.13 | 4.82 | 3.42 |
+| 6NC5 | **Q121H/K254H mutant**, Zn-bound | **2.07 Å** | — | 4.13 | 4.82 | 3.42 |
 
 6DN4 and 6DQ2 are in BBL numbering (His116, Arg118, Asp120, Gln121, Lys254),
 so their Asp120 is our Asp92 and their His116/His192 pair is our

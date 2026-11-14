@@ -13008,6 +13008,234 @@ measured rate: ~15 h of QM/MM work, ~18 h wall.
 **Section written and validated, NOT submitted.** `site.yaml` only; no run
 directory touched, no `sections.py` invoked, no job queued.
 
+**¶276 - INDEPENDENT AUDIT, THREE REVIEWERS. `eqqm` NOT SUBMITTED; ¶274's
+nomination of `eq6` WITHDRAWN; and ¶273's dismissal of the attack angle
+REOPENED, because the reference it rests on measures **both oxygens of one
+functional group**. Everything decisive below I re-measured myself and it
+confirmed exactly. Also found: a **buffer phosphate on 6DQH's metal** that
+nothing in the record mentions, and an **experiment-derived mono-zinc binding
+mode sitting unmeasured in our own tracked files.**
+(2026-11-14, user: "give an independent agent access to all the relevant files
+necessary to thoroughly evaluate our approach")
+
+Each reviewer got the files and the questions and **not my conclusions**, and
+was told that entries ¶265 and above were written that day by the assistant
+under review.
+
+## 1. THE WORST FINDING: the 1TMN/7CPA reference is the wrong pair of atoms
+
+[[thermolysin-and-cpa-hold-both-oxygens-cis-on-one-zinc]] tabulates thermolysin
+as "Zn-O(nucleophile) 2.01 / Zn-O(carbonyl) 2.41" and carboxypeptidase A as
+2.19 / 2.98. **Both pairs are the two oxygens of a single functional group.**
+Downloaded and measured by me:
+
+    1TMN   OG1 2.009, OG2 2.413   both bonded to CB2 (1.249, 1.234)
+           OG1-CB2-OG2 119.5 deg       O-Zn-O bite 57.2 deg   O...O 2.145
+    7CPA   OPV 2.194, OPW 2.976   both bonded to P3  (1.603, 1.531)
+           OPV-P3-OPW  117.2 deg       O-Zn-O bite 60.1 deg   O...O 2.676
+
+So the ligands are a **carboxylate** (an N-carboxymethyl transition-state
+analogue) and a **phosphinate** - tetrahedral-intermediate mimics chelating the
+metal. The "2.01/2.41" is a **chelate bite**, the "57.2/60.1 deg" a bite angle,
+and the "119.5/117.2 deg" the internal angle of that same group. **There is no
+scissile carbonyl carbon in either picture, and no separate nucleophile.**
+
+**Consequence, and it is not small.** ¶201 used this node to retire
+[[question-can-burgi-dunitz-coexist-with-carbonyl-on-one-zinc]]'s gate and
+replace it at `reactant` with windows taken "from those two structures" - which
+are the geometry of an **already-formed gem-diolate**. Any structure with a
+cis pair of oxygens on the zinc passes them. And the inversion argument
+("95 deg arrives at Nu-C 1.64 in thermolysin") extrapolates along a coordinate
+in which the two oxygens are bonded to the same atom.
+
+**¶273 is therefore wrong where it matters most.** It cited
+[[burgi-dunitz-gate-at-reactant-was-wrong]] to decline reporting `aspxtb8`'s
+38.5 deg attack angle, and credited the record with catching me. The record was
+wrong, so the deferral was wrong. **The angle is back on the table.** What
+survives independently of the misread reference, measured on our three frames:
+
+    frame        Nu-C4x   Nu-C4x-O2x   Nu-C4x-N1x   elevation above the C=O plane
+    relax10       3.481     54.2          154.5           30.7 deg
+    aspdft        3.577     41.7          142.7           32.2 deg
+    aspxtb8       3.626     38.5          133.2           35.1 deg
+
+The hydroxide sits **31-35 deg out of the lactam carbonyl plane**, near the
+nodal plane of C=O pi*, on the oxygen's side rather than over the carbon; pi*
+addition wants ~75-85 deg and Nu-C-O ~100-107. That is a statement about
+position relative to the pi system, so it does not depend on any angle
+threshold. It does not prove the pose wrong - the Zn-O(carbonyl) bond can
+lengthen along the path - but a barrier from this reactant will be dominated by
+reorganisation, which is ¶207's own concern.
+
+## 2. ¶274's nomination of `eq6` is withdrawn
+
+`eq6` restrains `[B:1:ZN, A:92:OD1, 3.90, 500]` **and** `coordination_redetect:
+true` adds its own `Zn-OD2 2.79`, so the carboxylate is pinned at **both ends**
+for 10 ns at values `state.md` item 3 itself calls wrong by 1.4 A against
+6DQH - and that item already says "this gate needs re-passing from the 6DQH
+numbers before anything downstream counts as a valid starting structure". I
+quoted "passed the ¶231 gate" from the same table and did not read on.
+
+**My error was a definition, not a missed restraint** - I listed it in ¶274
+myself. I reasoned that because the *pulling* happened in `asppull`, `eq6` was
+actuator-free. **Holding a coordinate at a wrong value for 10 ns imposes
+geometry exactly as much as moving it there.** `eqqm` would have started Asp92
+~1.5 A *closer* to the metal than `aspqm2`'s start (`relax10`: Zn-OD1 4.33), so
+a chelate forming there would have exonerated nothing - and `require.same_as`
+cannot see it, because the variable under test *is* `pdb_file`.
+
+**One generation further back than ¶274 traced:** `eq5`/`eq6` start from
+**`CSR_crystal_v2`'s input pose**, whose carbonyl was placed by ¶68's two hand
+restraints (Zn-O2x 1.94, Zn-O1x 3.82) - the family `state.md` §2 **voids for
+restraint laundering**. `eq6`'s own `[B:1:ZN, C:1:O1x, 3.82, 500]` is one of
+those two imposed values, re-justified in the config as "what `finalsystem.pdb`
+ACTUALLY HAS ... there is no crystal value for it". **The laundering survived
+three generations by being re-read as preservation.**
+
+**So there is no clean branch.** `eq6` has no Asp92 actuator but holds Asp92 at
+voided values on a voided pose; `relax10` has Asp92 at 6DQH's values but reached
+them through three actuator stages. **No frame in this project has Asp92's
+position found rather than imposed.** The matched DFT-vs-GFN2 comparison
+survives as common-mode, as the map already argues; nothing else does.
+
+## 3. CORRECTION to ¶274's coordination-number claim, also mine
+
+¶274 reported that DFT gives a six-coordinate zinc "where GFN2 leaves two waters
+out", flagged as the reverse of the standing worry. **It is an artefact of the
+active region.** Diffing the tracked frames: **124 of 4320 atoms moved in
+`aspdft`** (`actradius: 0`), and
+
+    HOH 3171 O   displacement 0.0000 A,  2.091 A from the DFT zinc
+    HOH 3095 O   displacement 0.0000 A,  2.238 A from the DFT zinc
+    Ser186 OG    displacement 0.0000 A
+
+**The waters never moved; they were frozen at their MM positions.** `aspxtb8`
+used `actradius: 8` (479 active) and its waters withdrew to 2.747/2.795. So the
+difference is **active-region size, not level of theory**, and `aspdft` cannot
+be "the instrument of record for Asp92's position" while the competing
+coordination sites are nailed shut - Asp92 had nowhere to go. The missing test
+is cheap: **a def2-SVP optimisation with an 8 A active region**, an `aspxtb8`
+twin.
+
+Related caption to drop: "Lys226's ammonium moves into the vacant Zn2 subsite,
+Zn-NZ 5.276 -> 5.140". The **zinc moved 0.241 A while NZ moved 0.171 A**, so the
+shortening is at least as much metal relaxation as lysine motion.
+
+## 4. THE MOST VALUABLE THING THE AUDIT FOUND, and we already owned the file
+
+`docs/csr/structures/l1_in_relax10.pdb` is 7UHI's substrate fitted into
+`relax10`'s frame (¶247, fit RMSD 0.310 A). ¶247 reported only the 6.20 A
+centroid offset and the O8/Zn clash. Measured against `relax10`'s protein:
+
+    transferred atom              ->Zn   ->Ser186 OG  ->Arg90 NH1  ->Lys226 NZ
+    O8  C4 carboxylate            1.85       3.00        6.29        5.15
+    O7  same carboxylate          3.98       2.72        7.31        6.24
+    O1  lactam carbonyl           3.15       5.41        2.98        7.43
+    N1  ring nitrogen             3.25       5.33        5.28        5.83
+
+**Put the experimental B3 substrate mode into CSR-1's frame and the two residues
+that make CSR-1 distinctive take over Zn2's substrate-binding job:** Ser186 OG
+hydrogen-bonds the substrate carboxylate at **2.72-3.00 A** and Arg90's
+guanidinium reaches the lactam carbonyl at **2.98 A**. The 1.85 A O8/Zn contact
+is the expected clash, since in L1 that oxygen binds a metal CSR-1 does not
+have, and it will relax outward.
+
+That is a concrete, experiment-derived mono-zinc binding hypothesis, it is
+testable, and **it explains why the lab's own mutant sits at that serine**
+(S214D = our Ser186, ¶261). It is a far better basis for a Michaelis complex
+than docked pose 2, whose carboxylate end contacts nothing.
+
+## 5. Four record errors, all re-measured and confirmed
+
+**(a) 6DQH carries a buffer phosphate in the active site.**
+
+    PO4 405 O2 - Zn            2.32
+    PO4 405 O3 - Lys260 NZ     2.69
+    HOH 526 - Zn 2.03     HOH 525 - Zn 2.50
+
+So in the one crystal carrying the structural half of the thesis, the lysine's
+position is co-determined by a crystallisation anion. **6DQ2 has one too**, O2
+at **2.77 A** from Lys254 NZ. Of the three salt-bridge deposits only **6DN4 is
+phosphate-free, and it gives the longest contact (2.99)** - so the
+2.99 -> 2.83 -> 2.79 tightening the project reads as the contact surviving metal
+binding **tracks phosphate presence just as well**. Mentioned nowhere.
+
+**(b) My Arg90 table measures the wrong atom.** 6DQH **is** R118H; there is no
+arginine at that position. Reproduced from His118 NE2 to 2 dp: Zn **4.14**,
+His116 NE2 **5.01**, Asp120 CG **7.58** - exactly the three figures
+[[our-his-zn-his-angle-is-13-19-degrees-too-closed]] attributes to "Arg CZ". I
+confirmed 118 is HIS earlier the same day, built ¶271 on it, **and kept quoting
+4.14 as an arginine distance in ¶272 and ¶273.** And **6NC5 has a real
+unmutated Arg89 with a metal in the modelled site**, omitted:
+
+    structure                        Arg CZ-Zn   CZ-His NE2   CZ-Asp CG
+    6DN4  apo WT, real Arg, no metal      -         5.98         7.23
+    6NC5  real Arg89, ZN302             4.95        5.72         8.11
+    dmCSR-1  real Arg, two metals       4.60        5.32         8.05
+    aspxtb8  QM/MM                      6.64        6.82         8.95
+
+Against the two real arginines **with** a metal, ours is **1.7-2.0 A out, not
+2.5 A against "two crystals"**.
+
+**(c) 7UHI's occupancies, stated nowhere:** Zn1 **0.49**, Zn2 0.77, ligand 0.80,
+at 2.20 A, with Zn1-His at 2.18/2.35/2.66. The 2.53 A carbonyl is real (I
+measure 2.53) but it is the sole anchor for the `Zn-O2x 2.60 k500` restraint
+defining the live lineage, and `state.md` repeatedly argues from agreeing with
+it to within 0.03-0.07 A. **A half-occupied metal at 2.20 A does not support
+0.03 A arguments.**
+
+**(d) `reference-structures.md` is wrong twice.** 6NC5 is **2.07 A**, not the
+1.60 stated - and the file still carries **"Asp92 sits at 2.80 A on OD2"** in
+its 6NC5 section as a crystallographic measurement, with two load-bearing
+consequences drawn from it, when 6NC5 measures **OD2 4.202 / OD1 4.223** and
+`retractions.md` §1(a) already says 2.80 "appears nowhere in the file". That is
+the grep trap living in the file written to prevent it.
+
+## 6. What the audit did NOT undermine
+
+Both reviewers independently judged the record-keeping sound and the raw
+measuring reproducible - eleven of sixteen load-bearing numbers verified exactly
+to 2-3 dp, the validator clean (72 nodes, 151 edges, no findings), the thesis
+node correctly `open` with its own standing refutation attached, and
+`no-reaction-coordinate-has-ever-been-computed` correctly `supported`. The
+crystallographic core - 6DN4/6DQ2 metal-free, the salt bridge real, 6NC5's
+`SEQADV` mutations, the Zn2-vacancy argument, ¶273's 87.4 deg correction to the
+N-Zn-N framing - all verified. **The failures are concentrated in the two files
+a reader reaches for first**, `state.md` §1 and `reference-structures.md`, and
+in text older than the conventions now in force.
+
+## 7. Applied
+
+Fixed: the Arg90 table (His118 NE2 relabelled, 6NC5's Arg89 added, conclusion
+restated as 1.7-2.0 A); 6NC5's resolution to 2.07 A; the retracted 2.80 A Asp92
+figure removed from `reference-structures.md`'s 6NC5 section with 4.20 in its
+place; the 6DQH/6DQ2 phosphate recorded beside the numbers it confounds; 7UHI's
+occupancies recorded beside its 2.53 A;
+[[thermolysin-and-cpa-hold-both-oxygens-cis-on-one-zinc]] corrected to say what
+those distances are; [[burgi-dunitz-gate-at-reactant-was-wrong]] and
+[[question-can-burgi-dunitz-coexist-with-carbonyl-on-one-zinc]] reopened.
+Withdrawn in `state.md` and `retractions.md`: ¶274's nomination, ¶274's
+coordination-number claim, ¶273's attack-angle dismissal.
+
+**`eqqm` stays in `site.yaml`, unsubmitted**, with its pre-registered reading
+removed - the section is mechanically sound and the objection is to its starting
+frame. If it is ever run it also needs `timestep: 0.001` stated explicitly,
+since `require:` cannot see an inherited value and that is the `prod100c`
+failure mode (¶249).
+
+## 8. Not mine to settle
+
+`state.md` item 0 and §4a gate 2 give the Asp92 target as 2.76 A while item 3
+gives 5.14 A, all marked current. The `prodpull*` sections `state.md` reports as
+run were deleted in ¶262, so that arm has no config behind it. The Gln93
+"7.10 A in 6DN4" row is a superposition value in a metal-free deposit, the class
+¶216 voided. No CSR-1 structure supports the four-coordinate Zn1 gate: dmCSR-1's
+Zn1-site metal is five-coordinate and 6DQH's six, while 6NC5's ZN302 - the only
+one reading four - has both its waters bridging to other zincs. And on the
+evidence as it stands the reactant is **Zn-OH(-) with a cationic Lys226**, since
+¶204/¶211's neutral-lysine result started from a frame with Zn-Asp92 OD2 already
+at 2.00 A, which is the condition most likely to make a lysine shed a proton.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**

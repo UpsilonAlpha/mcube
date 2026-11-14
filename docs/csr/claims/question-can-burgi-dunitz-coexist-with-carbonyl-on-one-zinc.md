@@ -6,6 +6,17 @@ entries: [¶124, ¶200, ¶201, ¶204]
 
 # Can a nucleophilic attack trajectory coexist with the carbonyl on the same single zinc?
 
+**REOPENED ¶276**, the reference that closed it being a misread
+([[burgi-dunitz-gate-at-reactant-was-wrong]]). What survives independently of
+any angle threshold, measured on the three tracked frames: the hydroxide sits
+**31-35 deg out of the lactam carbonyl plane** (relax10 30.7, aspdft 32.2,
+aspxtb8 35.1), near the nodal plane of C=O pi* and on the oxygen-s side rather
+than over the carbon, where pi* addition wants ~75-85 deg. That is a statement
+about position relative to the pi system, so it does not depend on a threshold.
+It does not prove the pose wrong - the Zn-O(carbonyl) bond can lengthen along
+the path - but a barrier from this reactant will be dominated by
+reorganisation.
+
 The central geometric question of the mechanism, and the one that decides
 whether CSR-1 can run a Zn1-bound-nucleophile route at all.
 

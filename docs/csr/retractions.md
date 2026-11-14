@@ -261,3 +261,26 @@ the established pattern, not a missing capability.
 only crystal -> preprocess -> 10 ns MM run with no actuator, the
 actuator-provenance correction to ¶273, and the conclusion that **no 50 ps
 QM/MM has run from `eq6`** - the gap is the starting frame, not the method.
+
+**¶273 - ITS ATTACK-ANGLE DISMISSAL IS WITHDRAWN by ¶276.** It cites
+`burgi-dunitz-gate-at-reactant-was-wrong` to decline reporting `aspxtb8`-s 38.5 deg
+Nu-C=O angle as a defect, and credits the record with catching the author. **The
+record was wrong there:** that node-s 1TMN/7CPA reference tabulates **both oxygens
+of one chelating functional group** (a carboxylate and a phosphinate in
+transition-state analogues) as if they were a nucleophile and a substrate carbonyl.
+Re-measured: 1TMN OG1/OG2 both on CB2 at 1.249/1.234; 7CPA OPV/OPW both on P3 at
+1.603/1.531. So the replacement windows describe an already-formed gem-diolate.
+¶273-s OTHER corrections stand (the Ser186 contact was never lost; the mono-zinc
+site is not to be graded against 7UHI; restraining Asp92 in MM inside 3 A is the
+rule working).
+
+**¶274 - TWO MORE CLAIMS WITHDRAWN by ¶276** (beyond the two already listed above).
+**(a) Its nomination of `eq6` as the Michaelis complex**, on the grounds that "no
+actuator appears anywhere in its history": `eq6` pins Asp92 at both ends for 10 ns
+at voided values, and its substrate pose descends from ¶68-s hand-pull. **(b) Its
+coordination-number observation** that DFT pulls in two waters GFN2 leaves out:
+only **124 of 4320 atoms moved** in `aspdft` (`actradius: 0`) and both waters have
+displacement **0.0000 A** while sitting 2.091 and 2.238 A from the metal. They were
+frozen at their MM positions. The difference is active-region size, not level of
+theory, and `aspdft` cannot be an instrument of record for Asp92 while the
+competing coordination sites are nailed shut.

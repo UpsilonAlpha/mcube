@@ -1,11 +1,21 @@
 ---
 type: claim
-status: supported
-entries: [¶33, ¶34, ¶200, ¶201]
+status: open
+entries: [¶33, ¶34, ¶200, ¶201, ¶276]
 checked: [¶200, ¶201]
 ---
 
 # The 95-120 degree Burgi-Dunitz gate, applied at the reactant, rejected the zinc-bound-nucleophile mechanism by construction
+
+**DEMOTED to `open`, ¶276.** The narrow point stands: a reactant should not
+be gated on a transition-state angle. But the REPLACEMENT windows this node
+licensed were taken from 1TMN/7CPA, and those two "Zn-O(nucleophile) /
+Zn-O(carbonyl)" pairs are **both oxygens of one chelating functional group**
+([[thermolysin-and-cpa-hold-both-oxygens-cis-on-one-zinc]]). So the windows
+describe an already-formed gem-diolate, any cis pair of oxygens on the zinc
+passes them, and the inversion argument extrapolates along a coordinate in
+which the two oxygens are bonded to the same atom. ¶273 used this node to
+dismiss a 38.5 deg attack angle; that dismissal is withdrawn.
 
 From ¶33 onwards, candidate structures were required to show an O01-C4x-O2x
 angle of 95-120 degrees **at the reactant state**. Nothing ever met it: 24-54
