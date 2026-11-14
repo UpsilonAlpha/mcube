@@ -246,3 +246,18 @@ over-coordinated, Asp92 on the metal at 2.11 A, CN 5.9) and **0.0%**
 latter. Do not quote ¶272-s "what is wrong" list. After ¶273 only Zn-OH being
 short and Arg90 being 2 A out remain, and Arg90 carries a substrate-coupling
 caveat. ¶272-s argument against route C is **withdrawn**.
+
+**¶274 - TWO CLAIMS CORRECTED by ¶275; its lineage trace stands.**
+It says "nothing QM/MM has ever descended from `eq6` ... the only two that run
+dynamics are `naclong` and `rwon`, both from the condemned `nac` lineage".
+**`naclong` is `stage: md`** - a 100 ns MM run - and `rwon` is a geometry
+optimisation; the stage assignments came from a regex that got both wrong.
+And **the `qmmm` stage dynamics key is `time`, not `nvt_time`**: eleven
+sections already configure QM/MM MD, eight at `time: 50` (`ohH`, `pose2qm`,
+`prodqm`, `aspqm`, `aspqm2`, `wtqm`, `michqm`, `michrk`). So QM/MM dynamics is
+the established pattern, not a missing capability.
+
+**What stands in ¶274:** the full crystal-to-aspxtb8 lineage, `eq6` being the
+only crystal -> preprocess -> 10 ns MM run with no actuator, the
+actuator-provenance correction to ¶273, and the conclusion that **no 50 ps
+QM/MM has run from `eq6`** - the gap is the starting frame, not the method.

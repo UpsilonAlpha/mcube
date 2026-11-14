@@ -12902,6 +12902,112 @@ Zn-Asp92/Zn-O1x terms have neither.
 Nothing submitted, no section written. All structural numbers from tracked
 frames in `docs/csr/structures/`, internal distances only.
 
+**¶275 - THE DIVISION OF LABOUR, STATED BY THE USER AND WORTH KEEPING VERBATIM:
+**MM equilibrates everything around the metal site, the restraints preserve the
+crystal geometry while it does, and QM/MM captures the system accurately** - so
+QM/MM carries no restraints. Section `eqqm` written: 50 ps QM/MM from `eq6`,
+identical to `aspqm2` except the starting frame. Also TWO corrections to ¶274,
+both mine.**
+(2026-11-14, user: "QM/MM doesn't require any restraints if it's set up
+correctly", "you've made this mistake several times now, MM is for equilibrating
+everything around the metal site, the restraints are for preserving the crystal
+geometry, and QM/MM should capture the system accurately", "why did we only do
+geomopt on aspxtb8?")
+
+## 1. The framing I kept getting wrong
+
+I have repeatedly justified the restraints as **compensating for MM physics** -
+"MM cannot model the metal environment", "it compensates for a polarisation the
+force field omits". That is not their job. Their job is **preservation**: hold
+the crystal geometry of the site while MM relaxes everything *around* it. Then
+QM/MM, which models the site properly, runs **unrestrained**.
+
+Why the difference matters rather than being a nicety:
+
+- It explains why restraints are set **at the starting distance with nothing
+  pulled anywhere** - preservation, not correction. And it is why `asppull` was
+  wrong in kind: it used them to *move* a coordinate, the opposite of preserving.
+- It means a restraint is not argued per-term on physics grounds, which is what
+  I was doing. It is argued from the crystal.
+- **And it exposes something in `eq6`:** if the job is preserving *crystal*
+  geometry, some of its targets are our model's numbers, not the crystal's -
+
+      [B:1:ZN, A:92:OD1, 3.90]        6DQH gives OD1 4.28
+      [A:226:NZ, A:92:OD2, 2.79]      6DN4 2.99, 6DQ2 2.83
+
+  The three ligand terms (`O2x 2.60`, `O1x 3.82`, the `O01-C4x 3.47` attack
+  restraint) have no crystal source at all, meropenem being docked. **Not
+  changed here** - `eq6` has already run and is the frame of record - but a
+  future MM leg built on this rule should take the protein-side numbers from the
+  crystal. Flagged, not acted on.
+
+## 2. CORRECTION to ¶274: mcube runs QM/MM dynamics natively, and has many times
+
+¶274 says "nothing QM/MM has ever descended from `eq6`... the only two that run
+dynamics are `naclong` and `rwon`". **Wrong twice.**
+
+- **`naclong` is `stage: md`** - a 100 ns *MM* run, not QM/MM. `rwon` is a
+  geometry optimisation. My classifier assigned stages by regex and got both
+  wrong; parsed with PyYAML they are unambiguous.
+- **The `qmmm` stage's dynamics key is `time`, not `nvt_time`.** I grepped for
+  `nvt_time`, which belongs to the `md` stage, and concluded from its absence
+  that the capability did not exist. `qmmm.py` calls `OpenMM_MD` with a
+  `LangevinMiddleIntegrator` whenever `skip_equilibrate` is falsy, taking
+  `time`, `timestep`, `temp` and `traj_frequency`.
+
+**Eleven sections already configure QM/MM MD**, eight of them at exactly
+`time: 50`: `ohH`, `pose2qm`, `prodqm`, `aspqm`, `aspqm2`, `wtqm`, `michqm`,
+`michrk`, plus `md_pose` (25 ps, timestep 0.001) and `qmrate` (3 ps). So **50 ps
+QM/MM is this project's established pattern**, not a missing capability.
+
+**What survives of ¶274, and it is the part that matters:** no 50 ps QM/MM has
+run from **`eq6`**. `aspqm` starts from `asppull3`, `aspqm2` from `relax10` -
+both downstream of the actuator. The gap is the starting frame, not the method.
+
+## 3. Why `aspxtb8` is only a geometry optimisation
+
+Not an oversight - it is the **GFN2 arm of a controlled GFN2-vs-DFT
+comparison**, and its `require.same_as` refuses to write the section if anything
+but the QM level and the step budget differs from `aspdft`.
+
+The question it answers, from the file's own comment: `aspqm2`'s 300 K dynamics
+chelated Asp92 onto Zn1 within 8 ps (¶232), and a minimisation asks whether that
+is **a minimum in the wrong place or a barrier GFN2 makes too easy to cross**.
+Both arms keeping it out means the chelation needed 300 K - a weaker claim that
+would narrow
+[[gfn2-over-coordinates-zn1-from-a-crystal-consistent-start]]. Both bringing it
+in means it is not a method artefact at all.
+
+**And DFT cannot do dynamics here:** 48 h of the def2-SVP leg buys ~25
+optimisation steps (¶236), so a minimisation is the only footing on which the
+two QM levels can be compared. `aspxtb8`'s sibling `aspqm2` has the dynamics;
+they are complementary by design. So "dynamics" and "geomopt" answer different
+questions - population versus minimum - and the project runs both.
+
+## 4. The section
+
+    eqqm:  stage qmmm, 8 cores, 16G, 24 h
+           pdb_file: md_eq6_results/NVTtrajectory_lastframe.pdb
+           qm_residues: *qmreg_michrk   charge: 2   time: 50
+           skip_equilibrate: false      skip_optimize: true
+           resume: true                 rigid_water: false
+           require: unset [restraints, opt_constraints, constraints]
+                    same_as {section: aspqm2, except: [pdb_file]}
+
+Validated with PyYAML: it parses, the QM-region anchor resolves to 9 residues,
+and **the only input differing from `aspqm2` is `pdb_file`** - so the two are a
+controlled comparison of the starting frame and nothing else. If Asp92 chelates
+here as it did in ¶232, the actuator lineage is exonerated; if it stays out,
+¶232 was measuring its start.
+
+No new inputs, no new dependency, nothing outside mcube defaults. Cost at the
+measured rate: ~15 h of QM/MM work, ~18 h wall.
+
+## Status
+
+**Section written and validated, NOT submitted.** `site.yaml` only; no run
+directory touched, no `sections.py` invoked, no job queued.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**

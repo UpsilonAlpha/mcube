@@ -2159,6 +2159,50 @@ sections:
       resume: true
       rigid_water: false
 
+  # ---- The missing half of the protocol: 50 ps QM/MM from `eq6` (¶275). ----
+  #
+  # `eq6` is the MM-equilibrated Michaelis complex (¶274): crystal ->
+  # preprocess -> one 10 ns MM, its own coordination set redetected, the ¶231
+  # gate passed, and no actuator anywhere in its history. Every QM/MM run in
+  # this file starts somewhere downstream of `asppull`, where Asp92 was MOVED
+  # out by restraint, so none of them starts from a frame whose site geometry
+  # is only the crystal plus equilibration.
+  #
+  # **No restraints, and that is the point, not an omission.** The division of
+  # labour, in the user-s words (2026-11-14): MM equilibrates everything around
+  # the metal site, the restraints preserve the crystal geometry while it does,
+  # and QM/MM captures the system accurately. So the restraints belong to the MM
+  # stage and have no job here - "QM/MM does not require any restraints if it is
+  # set up correctly". `require.unset` enforces it rather than trusting the
+  # section to stay clean, the same gate `aspqm2` and `aspdft` carry.
+  #
+  # Deliberately identical to `aspqm2` except `pdb_file`, so the two are a
+  # controlled comparison of the STARTING FRAME and nothing else: same QM region
+  # (`michaelis_rk`), same charge, same 50 ps, same engine default, same
+  # `rigid_water: false`. If Asp92 chelates here as it did in ¶232, the
+  # actuator lineage is exonerated; if it stays out, ¶232 was measuring its
+  # start.
+  #
+  # `skip_optimize: true`: this is the equilibration, not a minimisation. The
+  # minimum is what `aspxtb`/`aspdft` are for, and they are a separate
+  # GFN2-vs-DFT comparison (¶236) rather than a step in this chain.
+  eqqm:
+    stage: qmmm
+    submit: {partition: general, cores: 8, mem: 16G, time: "24:00:00"}
+    require:
+      unset: [restraints, opt_constraints, constraints]
+      same_as: {section: aspqm2, except: [pdb_file]}
+      equals: {pdb_file: md_eq6_results/NVTtrajectory_lastframe.pdb}
+    inputs:
+      pdb_file: md_eq6_results/NVTtrajectory_lastframe.pdb
+      qm_residues: *qmreg_michrk
+      charge: 2
+      skip_equilibrate: false
+      skip_optimize: true
+      time: 50
+      resume: true
+      rigid_water: false
+
   # ---- The def2-SVP QM/MM geometry optimisation (¶233/¶234). ----
   #
   # The instrument of record for Asp92's position. ¶232 showed GFN2 chelates the
