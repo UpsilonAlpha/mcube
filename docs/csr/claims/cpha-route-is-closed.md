@@ -1,10 +1,31 @@
 ---
 type: claim
 status: open
-entries: [¶49, ¶51, ¶201]
+entries: [¶49, ¶51, ¶201, ¶284]
 ---
 
 # The CphA route - Asp92 as the general base - is ruled out
+
+**¶284 CLOSES THIS ON GEOMETRY, which the two earlier closures lacked.**
+Asp92 OD1 is **4.56 Å** from the scissile carbon and OD2 is 5.22, and a search
+of four hydration shells around both oxygens finds 2,362-5,147 clash-free
+positions per shell with **none within 3.4 Å of that carbon** - closest
+approach **3.87 Å**
+([[no-water-on-asp92-can-reach-the-scissile-carbon]]). The route failed before
+on a subclass argument the user rejected (2026-11-14); it fails now because the
+base cannot reach, which is a reason that does not depend on what family the
+enzyme is in.
+
+**It stays `open`, and the validator is right to insist.** The 3.87 Å figure is a
+search over empty space in a pose that has never been solvated or equilibrated
+([[no-crystal-derived-pose-has-ever-been-equilibrated]]), so it is evidence about
+our model, not about the enzyme; and the standing refutations are experimental and
+literature - [[asp120-mutants-lose-activity-in-b1-and-b3]] and
+[[asp92-is-never-a-zn1-ligand-in-b3-structures]] both outrank it. The premise
+[[asp92-is-a-zn1-ligand-in-our-models]] is also void, and ¶284 is why
+([[neither-aspartate-coordinates-the-metal-in-our-own-crystals]]) - so this claim
+no longer rests on it, and nothing in the current argument needs the route closed:
+the metal route wins on its own numbers.
 
 ¶201 closed this route for the third time (after ¶49 and ¶51). Its stated
 reason, quoted: Asp92-as-general-base "has now failed three times - ¶49, ¶51,

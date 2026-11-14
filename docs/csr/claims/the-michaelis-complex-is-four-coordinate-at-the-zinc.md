@@ -50,6 +50,13 @@ and put the hydrolysed product's own O4x on the metal in 200 of 200 frames
 force field, not the mechanism. Related:
 [[mm-cannot-be-gated-on-absolute-zn-donor-bond-lengths]].
 
+**¶284 REPLACES THE VARIABLE.** Substrate-bound catalytic metals measure 4, 5, 5
+and 6 across 7UHI, 5B15, 1X8I and 5K0W, so a [4, 5] window rejects 5B15's Zn2,
+a real enzyme-substrate complex. The count conflates protein ligands with the
+two positions that must be free: a canonical 3-His Zn1 reads 5 and CSR-1's
+2-His M1 reads 4 for the same chemistry. What the gate should count is **open
+positions** ([[the-metal-needs-two-free-positions-not-a-coordination-number]]).
+
 ## Supports
 - [[every-acceptance-gate-encodes-a-mechanism]]
 

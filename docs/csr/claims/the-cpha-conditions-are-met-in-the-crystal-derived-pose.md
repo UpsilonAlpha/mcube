@@ -50,6 +50,15 @@ carbapenems: 3-5 orders of magnitude down in k_cat, "only ... mild changes to
 binding affinity"
 ([[the-manuscript-reads-s214d-as-inhibition-by-the-bridging-aspartate]]).
 
+**¶284 CLOSES THE ROUTE WHILE LEAVING THIS OBSERVATION TRUE.** The conditions
+are met and the route is still dead: no water hydrogen-bonded to Asp92 comes
+within 3.4 Å of the scissile carbon, closest approach 3.87
+([[no-water-on-asp92-can-reach-the-scissile-carbon]]). The conditions were
+necessary, not sufficient. ¶284 also removes the comparison's point: a single
+metal holding a substrate carboxylate and its nitrogen is **L1's Zn2**
+([[canonical-b3-puts-the-carboxylate-and-the-leaving-nitrogen-on-the-same-metal]]),
+so it was never a B2 feature.
+
 **¶283 NARROWS THIS.** The CphA-like conditions are met, but the route itself is
 no longer the best reading: the same pose has a **free zinc coordination position
 putting a hydroxide 2.63 Å over the scissile carbon at 83.6° out of plane**

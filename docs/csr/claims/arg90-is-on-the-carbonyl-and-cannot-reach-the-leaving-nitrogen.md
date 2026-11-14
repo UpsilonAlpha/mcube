@@ -29,11 +29,11 @@ Its rotamer comes from the actuator lineage and is untested
 ([[lys226-is-too-far-to-stabilise-the-oxyanion-or-the-leaving-nitrogen]]), so
 this is the one number that could still move - but 5.83 Å is a long way to come.
 
-**This CONFIRMS the central hypothesis rather than denting it, and extends it.**
+**This SUPPORTS the central hypothesis rather than denting it, and extends it.**
 [[rqk-cations-replace-zn2-electrostatically]] already predicts exactly this
 asymmetry - that the cations take over Zn2-s substrate-anchoring role "while being
 unable to take over its catalytic roles ... stabilising the anionic nitrogen". The
-measurement is that prediction met: Arg90 is 5.282 Å from N1 and cannot stabilise
+measurement is consistent with that prediction: Arg90 is 5.282 Å from N1 and cannot stabilise
 it.
 
 **What it extends:** Arg90 is not only anchoring. At **2.98 Å on the lactam

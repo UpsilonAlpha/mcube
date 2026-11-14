@@ -14416,6 +14416,278 @@ Geometry only. Nothing built, nothing submitted. The experiment this points at
 is unchanged from ¶282: solvate and equilibrate the crystal-derived pose, with a
 hydroxide placed at the §2 position, and let it relax.
 
+**¶284 - THE THREE PROPOSITIONS TESTED AGAINST OUR OWN ORIGINALS AND FOUR
+DEPOSITS: PROPOSITION 1 FAILS, PROPOSITION 2 FAILS AS STATED BUT SUCCEEDS WHEN
+REFRAMED, PROPOSITION 3 IS THE WRONG VARIABLE. Separately: canonical di-zinc B3
+DOES bind the substrate carboxylate on a metal (7UHI 2.65 Å, 5B15 2.23 Å), our
+Ser186 IS the canonical anchor (L1 Ser206 lands 1.44 Å from it), our single
+metal sits BETWEEN the two canonical metal positions and on top of the
+canonical nucleophile position, and the B2 route is dead on geometry - no water
+hydrogen-bonded to Asp92 gets closer than 3.87 Å to the scissile carbon.**
+(2026-11-15, user: three things to confirm, plus five questions on the
+canonical comparison)
+
+Method throughout: Needleman-Wunsch over chain-A CA atoms, Kabsch fit with
+outlier rejection at max(3.0, 2*RMSD), then the mobile structure's atoms carried
+into the fixed frame. Every fit's core size and RMSD is quoted, because a 1.2 Å
+fit cannot resolve a 1.8 Å difference and two of the conclusions below turn on
+exactly that.
+
+## 1. PROPOSITION 1 - "the Zn2 Asp coordinates the Zn1 metal in the absence of
+## lysine" - NOT SUPPORTED, and the record points the other way
+
+The one structure in the world with a CSR-1-family M1 metal and no lysine is
+ours: `dmCSR_mutant_2metal_refine_16.pdb` (K226H, Q93H, S186D; numbering ours
+minus 14). Its M1 metal (`ZN B2`) sphere:
+
+    His150 NE2 2.05   His74 NE2 2.23   HOH 1.98 / 2.01 / 2.29
+    Asp78 OD1 **4.12**        (= our Asp92, the Zn2 aspartate)
+    Asp172 OD2 **4.13**       (= our Ser186, mutated to Asp)
+    Arg76 NH1 3.67
+
+**With the lysine gone, the Zn2 aspartate is 4.12 Å from the M1 metal.** It is
+not a ligand, not a second-shell contact, not approaching. In the one-metal
+crystal (`refine_12`) the single metal is at **M2**, where that same aspartate
+coordinates it at 2.13 Å - the aspartate recruits its own metal rather than
+reaching for M1 ([[whenever-a-canonical-m2-exists-the-metal-takes-m2]]).
+
+And in the wild type the aspartate is CLOSER, not further. 6NC5 superposed onto
+metal-free wild-type **6DN4** (core 257/258, RMSD 0.55 - the same protein) puts
+the M1 metal at:
+
+    His192 NE2 1.87   His116 NE2 2.61   **Asp120 OD2 3.00**   Arg118 NH1 3.66
+    Asp120 OD1 4.12   Lys254 NZ 4.39    Ser214 OG 5.03
+
+**3.00 Å with the lysine present, 4.12 Å with it absent.** This also answers
+[[question-how-far-is-asp92-from-zn1-in-wild-type-csr1]], which three campaigns
+reopened: the number is **3.00 Å** (OD2) / 4.12 (OD1), in the only well-ordered
+metal-free wild-type copy, with the metal placed by a 0.55 Å superposition
+rather than by a restraint.
+
+So Proposition 1 is refuted in its own terms, and the thing it was meant to
+explain needs a different cause. Note the confound: the second metal in
+`refine_16` is itself engineered (`Q93H`/`K226H` restore the DHH set), so what
+holds Asp78 at 4.12 may be that metal rather than the absence of the lysine.
+That confound cannot be removed by any structure that exists.
+
+## 2. PROPOSITION 2 - the bridging aspartate - FAILS AS A COORDINATION CLAIM AND
+## SUCCEEDS AS A CARBOXYLATE-SITE CLAIM
+
+**It does not coordinate either metal:** Asp172 OD2 is **4.13 Å** from M1 and
+4.06 from M2 in `refine_16`, and **4.23 Å** from the single metal in
+`refine_12`. Both originals agree, so the "bridging aspartate poisons the metal"
+reading is not available.
+
+**What it does instead is take the substrate's carboxylate site, and the numbers
+are unambiguous.** Fitting our frame onto `refine_16` (core **250/250**, RMSD
+**0.82 Å**) and carrying the crystal-derived ligand pose across:
+
+    our Ser186 OG lands      **1.47 Å** from Asp172 OD2
+    substrate O7 lands       **1.66 Å** from Asp172 OD2
+    substrate O8 lands       **2.79 Å** from Asp172 OD2   (O8 is the metal-bound one)
+
+A carboxylate oxygen of the mutant sits **1.66 Å** from where a carboxylate
+oxygen of the substrate has to sit. That is not a perturbation, it is the same
+point in space, and it is anion against anion. **S214D works by occupying the
+substrate's anchor site, not by touching the metal** - which makes it a clean
+test of the anchor rather than a dirty test of the metal.
+
+**This does not reverse the manuscript - it picks one of its own two branches.**
+The paper offers "either that the serine is critical to the catalysis of
+penicillins, **or that the aspartate residue directly prevents binding**", and this
+is the second branch measured. The two were never exclusive: the serine is critical
+*as the carboxylate anchor*, and the aspartate prevents binding *by taking that
+anchor's place*. What is refuted is the **coordination-environment** mechanism the
+abstract leans on, since Asp172 never comes within 4.06 Å of either metal.
+
+**The carbapenem selectivity is NOT explained by this.** Cephalosporins carry a
+C-4 carboxylate too, so a block at the carboxylate site should cost activity on
+both. The one published mechanism that would make the difference selective is
+Lisa 2017's: carbapenem turnover goes through an anionic intermediate that
+accumulates and therefore depends on how well the leaving nitrogen is
+stabilised, while cephalosporins expel their leaving group without one. On that
+account, anything that shifts the ring - losing the carboxylate anchor shifts
+it - costs the metal's grip on N1 (3.254 Å in our pose) and hits carbapenems
+first. **That is a hypothesis with no structural support in this entry**, and
+settling it needs the kinetics, which this work does not use.
+
+## 3. PROPOSITION 3 - "4 or 5 coordinate" - IS THE WRONG VARIABLE
+
+Measured spheres, all at a 3.4 Å listing radius, counted at 2.7:
+
+    structure            site            CN   what is on it
+    7UHI  L1 + intact moxalactam
+                         Zn1              4   3 His + lactam carbonyl O1 2.53
+                         Zn2              5   Asp,His,His + carboxylate O8 2.65 + N1 2.67
+    5B15  SMB-1 + hydrolysed doripenem
+                         Zn1              4   3 His + bridging water 1.83
+                         Zn2              6   Asp,His,His + water + OAE 2.23 + NAN 2.33
+    1X8I  CphA + hydrolysed biapenem
+                         single Zn        5   Asp,Cys,His + N4 2.22 + O32 2.39
+    5K0W  GOB-18         Zn1(302)         5   Gln98 OE1 2.04, His, His, 2 waters
+                         Zn2(301)         4   Asp,His,His + water
+    refine_16 (ours)     M1               5   2 His + 3 waters
+                         M2               6   Asp,His,His + 3 waters
+    6NC5                 M1 (ZN302)       4   2 His + 2 waters
+
+**Substrate-bound catalytic metals run 4, 5, 5, 6.** A count of 4-5 would reject
+5B15's Zn2, which is a real enzyme-substrate complex. The count is not the
+quantity that matters, because it mixes protein ligands with the two that have
+to be free:
+
+    canonical Zn1:  3 His        + substrate + nucleophile  = 5
+    CSR-1 M1:       2 His (Arg90 replaces the third) + substrate + nucleophile = 4
+
+**Same chemistry, different number.** The requirement is **two non-protein
+coordination positions, one for the substrate and one for the nucleophile** -
+which our crystal-derived arrangement satisfies exactly (2 His + carboxylate +
+hydroxide) and which `aspxtb8` also satisfies (2 His + carbonyl + hydroxide).
+The gate should count open positions, not donors; see
+[[the-michaelis-complex-is-four-coordinate-at-the-zinc]] and `gates.md`.
+
+## 4. DOES CANONICAL DI-ZINC B3 BIND THE SUBSTRATE BY THE CARBOXYLATE? YES
+
+**7UHI** (L1, intact moxalactam, the only crystallographic B3 Michaelis
+complex): the C13 carboxylate's **O8 is 2.65 Å from Zn2** and 3.21 from Zn1,
+with the lactam **N1 2.67 Å from the same Zn2**. The carbonyl O1 is on Zn1 at
+2.53.
+
+**5B15** (SMB-1, hydrolysed doripenem): the CAR carboxylate's **OAE is 2.23 Å
+from Zn2**, with the opened **NAN at 2.33 Å from the same Zn2**.
+
+So the canonical complex is bidentate across the pair: **carbonyl on Zn1,
+carboxylate AND leaving nitrogen on Zn2**. Our crystal-derived pose reproduces
+the **Zn2** half on the single metal (carboxylate 1.847, N1 3.254) and hands the
+**Zn1** half to Arg90 (NH1-O1 2.98). That is a sharper statement of
+[[the-metal-can-both-carry-the-nucleophile-and-stabilise-the-leaving-nitrogen]]:
+the two jobs the single metal does are the two jobs Zn2 does, and they are
+measured together on one metal in two independent deposits.
+
+## 5. IS Ser221/Thr223 IN THE SAME PLACE AS OUR Ser186? YES FOR ONE OF THEM
+
+Superposed into our frame:
+
+    L1    Ser206 OG   **1.44 Å** from our Ser186 OG      (core 221/258, RMSD 1.22)
+    SMB-1 Ser175 OG   **1.64 Å** from our Ser186 OG      (core 219/254, RMSD 1.25)
+    L1    Ser208 OG     4.12 Å
+    SMB-1 Thr177 OG1    3.61 Å
+
+1.44 and 1.64 Å are within the fits' own RMSD: **our Ser186 is the canonical
+carboxylate anchor, structurally, not by numbering**. That also settles the
+S214 / S221 ambiguity in `reference-structures.md` from coordinates rather than
+from offsets - the residue is the S221 anchor whatever the manuscript calls it.
+
+**The second anchor has no counterpart in CSR-1.** What sits at L1's Ser208 OG
+position in our frame is backbone: **Ala188 N 2.44, Ala188 O 2.78**. So CSR-1
+has one of the two canonical anchors, which is consistent with
+[[the-substrate-carboxylate-end-is-unanchored-in-our-models]] keeping half its
+claim.
+
+## 6. IS THE CARBONYL PLACED FOR Arg90 RATHER THAN A LYSINE OR A Zn2?
+
+Canonical metal positions carried into our frame, against the crystal-derived
+ligand:
+
+    position        to our Zn   to lig O1   to N1   to O8   Arg90 NH1   Lys226 NZ
+    L1  Zn1           1.87        1.84      3.30    3.02      3.64        6.96
+    L1  Zn2           1.77        3.62      2.42    1.26      6.47        4.19
+    SMB Zn1           1.76        2.32      3.65    2.97      3.92        6.98
+    SMB Zn2           2.04        4.08      2.80    1.25      3.90*       3.95
+    (* SMB Zn1 row; SMB Zn2 to Arg90 NH1 is 6.90)
+
+**Arg90 NH1 is 3.6-3.9 Å from where the canonical Zn1 sits** - beside that
+position, not in it, and reaching the same oxygen from a different direction
+(NH1-O1 2.98 in our pose). **Lys226 NZ is 3.95-4.19 Å from where the canonical
+Zn2 sits** - near, but 4 Å is not "in the site", which is the quantitative limit
+on [[lys226-occupies-the-zn2-site]]. And Lys226 is 7.0 Å from the Zn1 position,
+so it cannot be the carbonyl's polariser: **only Arg90 can**, and it does.
+
+**The caveat that matters most in this entry.** Our single metal lands **1.77 to
+2.04 Å** from BOTH canonical metals, which are only **3.17 Å apart** in 7UHI. It
+sits between them. Two consequences:
+
+1. The user's point is quantitative, not rhetorical: at this geometry the
+   Zn1/Zn2 labels differ by less than the superposition's own spread, so
+   "CSR-1's metal is at Zn1" is a statement about its ligands, not its position.
+2. **The carboxylate-on-the-metal result in our pose is partly inherited.** The
+   pose was transferred from 7UHI, whose O8 coordinates **Zn2** at 2.65; our
+   metal is 1.77 Å from that Zn2, so O8 arriving at 1.847 Å from our metal is
+   a consequence of the transfer, not an independent discovery. The pose is
+   still the right thing to equilibrate; it is not evidence on its own.
+
+Cross-check on the transfer itself: carrying MX0 across by a global CA fit
+instead of ¶156's four-atom fit moves it by **mean 1.03 Å, max 1.44 Å**, and
+gives Zn-O8 2.75 / Zn-O1 3.82 against the stored 1.847 / 3.153. Same
+arrangement, looser metal contact.
+
+## 7. HOW DOES THE FREE Zn SITE CARRY THE NUCLEOPHILE? IT IS THE ONE WEAK LINK
+
+The counting works: two protein ligands, substrate carboxylate, one position
+left, and ¶283 found 722 orientations of it that put a hydroxide 2.63 Å over the
+scissile carbon at 83.6 deg out of plane.
+
+**But the canonical nucleophile position is occupied by our metal.** 5B15's
+bridging water, carried into our frame, lands **1.05 Å from our zinc** - it is
+essentially where our metal is. So the hydroxide in the proposed mechanism sits
+somewhere no crystal structure in this family has ever put a nucleophile. That
+is not a refutation: a mono-zinc site that has moved into the bridging position
+cannot also keep the bridging water, and the nucleophile has to go somewhere
+else by necessity. It does mean **the nucleophile position is the one part of
+this mechanism with no experimental precedent at all**, and the equilibration is
+the only thing that can test it.
+
+## 8. THE B2 / CphA ROUTE IS DEAD, ON THE USER'S OWN CRITERIA
+
+The two conditions were met (¶282): the metal binds the carboxylate, and Asp92
+is nearby. The route still fails, geometrically, and this is the measurement that
+closes it:
+
+    Asp92 OD1 - C1  4.56      OD2 - C1  5.22
+
+A search of 20,000 points on each of four shells (2.7, 2.9, 3.1, 3.3 Å) around
+each carboxylate oxygen, keeping points at least 2.55 Å from every other heavy
+atom of protein and ligand, finds **2,362 to 5,147 clash-free positions per
+shell and NOT ONE of them within 3.4 Å of the scissile carbon.** The closest any
+water hydrogen-bonded to Asp92 can come to C1 is **3.87 Å**.
+
+So there is room for the water and there is room for the base, but not for both
+plus the carbon. Against the metal route's 2.63 Å this is not close, and
+[[cpha-route-is-closed]] is now closed on geometry rather than on subclass.
+What survives from CphA is the metal's job description - one metal holding the
+substrate's carboxylate and its nitrogen - which is also L1's Zn2 (section 4),
+so it is not specifically a B2 feature.
+
+## 9. Where the argument now stands
+
+Supported by crystals, ours and deposited:
+
+- the single metal takes the carboxylate AND the leaving nitrogen, as Zn2 does
+  in two deposited B3 complexes (section 4)
+- Ser186 is the canonical anchor for that carboxylate (section 5)
+- Arg90, and nothing else in the site, can polarise the carbonyl (section 6)
+- S214D blocks the anchor site (section 2)
+
+Not supported, and not needed:
+
+- either aspartate coordinating the metal (sections 1, 2)
+- a coordination-number requirement (section 3)
+- an Asp92-activated water (section 8)
+
+Outstanding, in order of how much they threaten the argument:
+
+1. **The nucleophile position has no precedent** (section 7) and no structure.
+2. **The carbapenem selectivity of S214D is unexplained** (section 2).
+3. **The crystal-derived pose has never been solvated or equilibrated**, and its
+   carboxylate contact is partly a transfer artefact (section 6).
+4. **Lys226's rotamer is untested** - NZ is 5.830 Å from N1 and 3.95-4.19 from
+   the canonical Zn2 position; nothing has asked whether it can move.
+5. **Two `site.yaml` criteria are still `unsupported` and still
+   `required_at: [reactant]`**, and the coordination window is still at
+   `reactant` rather than counting open positions. The user's call.
+
+Nothing was built and nothing was submitted. Everything in this entry is a
+measurement on a deposited or in-house file, or a search over empty space.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**

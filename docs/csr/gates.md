@@ -16,7 +16,7 @@ it. When a criterion is added to `site.yaml`, add its row here.
 | closest substrate O | must be `O2x` | start, reactant | `carbonyl-coordinates-zn1-in-the-michaelis-complex` | the hypothesis itself |
 | Zn – carbonyl O2x | 2.4–3.0 Å | start, reactant | same | the hypothesis itself |
 | Zn – nucleophile O01 | 1.9–2.2 Å | reactant | `mm-cannot-be-gated-on-absolute-zn-donor-bond-lengths` | **supported** — crystal values, not MM ones |
-| Zn coordination number | 4–5 | reactant | `the-michaelis-complex-is-four-coordinate-at-the-zinc` | **open** |
+| Zn coordination number | 4–5 | reactant | `the-michaelis-complex-is-four-coordinate-at-the-zinc` | **open, and ¶284 says it is the wrong variable** |
 | O01 – C4x (attack) | 3.0–3.5 Å | reactant | `question-can-burgi-dunitz-coexist-with-carbonyl-on-one-zinc` | open |
 | O01 – C4x – O2x | 95–120° | *transition_state* | `burgi-dunitz-gate-at-reactant-was-wrong` | open; prints, cannot fail (¶201) |
 | O01 – Zn – O2x | 45–95° | reactant | `the-nucleophile-and-carbonyl-must-sit-cis-at-45-to-95-degrees` | **UNSUPPORTED** |
@@ -76,3 +76,21 @@ so they can still reject a structure: `O01 – Zn – O2x 45–95°` and
 move it to a stage `site.py check` is never called with, so it prints and warns
 but cannot fail. **Not done here** — changing what may reject a structure is a
 scientific decision and needs the user's say.
+
+## ¶284: the coordination gate measures the wrong thing
+
+Substrate-bound catalytic metals in the deposits measure **4, 5, 5 and 6** (7UHI
+Zn1 and Zn2, 1X8I, 5B15 Zn2), so a `[4, 5]` window rejects 5B15's Zn2 - a real
+enzyme-substrate complex. The count mixes protein ligands with the two positions
+that must be free:
+
+    canonical Zn1   3 His + substrate + nucleophile                            = 5
+    CSR-1 M1        2 His (Arg90 for the third) + substrate + nucleophile      = 4
+
+Same chemistry, different number. The criterion should count **open non-protein
+positions**, and the honest form of it names their two occupants rather than
+counting donors - which makes it a mechanism statement, not a geometric gate. See
+`claims/the-metal-needs-two-free-positions-not-a-coordination-number.md`.
+
+**Still the user's call**, with the two `unsupported` criteria still
+`required_at: [reactant]`: `O01 - Zn - O2x 45-95°` and `O01 ... O2x 2.0-3.3 Å`.

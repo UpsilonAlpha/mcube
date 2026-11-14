@@ -13,6 +13,14 @@ Measured in `aspxtb8`, **Asn41 ND2 - O3x 2.859 Å** and **Arg229 NH1 - O5x
 2.928 Å** - two good hydrogen bonds, neither of them to a metal. So "no metal
 anchor" stands and "unanchored" does not.
 
+**¶284 CONFIRMS THE CANONICAL IDENTIFICATION AND HALVES IT.** L1's Ser206 OG
+lands **1.44 Å** from our Ser186 OG and SMB-1's Ser175 OG **1.64 Å**, inside
+the fits' own RMSD, so Ser186 *is* the canonical first anchor
+([[ser186-is-the-canonical-carboxylate-anchor]]). The **second** anchor is
+genuinely missing: L1's Ser208 OG position is occupied in our frame by backbone
+(Ala188 N 2.44, Ala188 O 2.78). So CSR-1 has one of the two canonical
+carboxylate anchors.
+
 What is absent is the *canonical* B3 anchor: in SMB-1 and L1 the substrate
 carboxylate is taken by Ser221/Thr223, and here **Ser186 has gone to the
 nucleophile instead** at 1.696 Å

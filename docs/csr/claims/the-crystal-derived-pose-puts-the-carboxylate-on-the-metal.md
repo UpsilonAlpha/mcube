@@ -52,6 +52,18 @@ bridge; a side-chain scan would settle it cheaply.
 [[no-crystal-derived-pose-has-ever-been-equilibrated]] - so these are
 single-structure distances, not populations.
 
+**¶284 ADDS THE CAVEAT THAT MATTERS: this contact is partly inherited from the
+template.** Our single metal sits **1.77 Å** from where 7UHI's **Zn2** lands in
+our frame ([[our-single-metal-sits-between-the-canonical-zn1-and-zn2-positions]]),
+and in 7UHI it is Zn2 that holds the carboxylate at 2.65 Å
+([[canonical-b3-puts-the-carboxylate-and-the-leaving-nitrogen-on-the-same-metal]]).
+So O8 arriving at 1.847 Å from our metal follows from the transfer rather than
+from a discovery. Carrying MX0 across by a global CA fit instead of ¶156's
+four-atom fit moves it by mean **1.03 Å** (max 1.44) and gives **Zn-O8 2.75**,
+Zn-O1 3.82, against the stored 1.847 / 3.153 - the same arrangement, a looser
+metal contact. The pose is still the right thing to equilibrate; it is not
+independent evidence that the carboxylate binds.
+
 ## Supports
 - [[the-cpha-conditions-are-met-in-the-crystal-derived-pose]]
 - [[arg90-stands-at-the-third-zn1-ligand-position]]
