@@ -14085,6 +14085,191 @@ inhibits hydrolysis" - is the prediction.
 Measurement and assessment only. Five nodes written or revised. No structure
 built, no section added, no job queued.
 
+**¶282 - ¶281's SER186 FIND IS WITHDRAWN: Ser186 IS NOT A QM RESIDUE, so the
+1.696 Å contact is an MM hydroxyl pointing at a QM anion across the boundary -
+and 1.696 Å is too SHORT for a real O-H...O bond, which is the artefact's
+signature. NO crystal-derived pose has ever been equilibrated; the "Michaelis
+rebuild" is the DOCKED pose with the voided restraints. And measuring the
+crystal-derived pose REVERSES the mechanism ranking: the metal binds the
+substrate CARBOXYLATE at 1.847 Å, Arg90 polarises the carbonyl at 2.98 Å, and
+Asp92 sits 4.33 Å from the metal with room for a water - the user's reframed
+B2/CphA conditions are MET. Lys226 is 5.830 Å from the leaving nitrogen even in
+that pose.**
+(2026-11-14, user: "is Ser186 a QM residue? if not, I wouldn't trust it",
+"Why can't lysine stablise the anionic leaving nitrogen if the substrate is in
+the 'correct' SMB-1 like pose? have we tested this?", "B3's are a completely
+different family, the Zn2/Zn1 distinction does not matter. What matters is if the
+metal binds the substrate carboxylate and if there's an Asp nearby capable of
+activating it", "how is the substrate placed and polarised if not through
+coordination? Does WT CSR have a serine or aspartate in the bridging position?",
+"Haven't we already equilibrated a crystal pose replacing aspxtb8's ligand?")
+
+## 1. SER186 IS NOT IN THE QM REGION. ¶281 §4 IS WITHDRAWN.
+
+`aspxtb8`'s QM region, parsed from `site.yaml` (`qm_regions.michaelis_rk`):
+
+    B:1 ZN    C:2 OH    C:1 mer
+    A:88 HIS  A:164 HIS  A:92 ASP  A:225 ASN  A:90 ARG  A:226 LYS
+
+**Nine residues, and Ser186 is not one of them.** Nor is it in
+`extra_qm_residues` - only `pose2qm` has that key, for A:229.
+
+So the 1.696 Å `Ser186 HG ... O01` contact is **a fixed-charge MM hydroxyl
+hydrogen pointing at a QM hydroxide across the QM/MM boundary.** In electrostatic
+embedding the MM point charge feels the QM anion's field with no Pauli repulsion
+from the QM density, which over-polarises exactly this kind of contact.
+
+**And the number itself is the tell.** A real O-H...O hydrogen bond runs
+**1.8-2.0 Å**. 1.696 Å is SHORTER than that - not a strong hydrogen bond, an
+unphysical one. I quoted its shortness as evidence of strength; it is evidence
+of the artefact. The same applies to `Asn41 HD22 - O3x 1.85` and
+`Glu228 OE2 - H11x 2.01` in ¶281 §1, which are also MM-side contacts, though
+Asn41's is at the edge of physical.
+
+**What survives:** the QM-region contacts, which are the ones worth quoting -
+`Arg90`, `Lys226`, `Asp92` and `Asn225` are all QM, so ¶281 §6 (Lys226 at
+4.650/5.594) and the Asp92 distances stand. **Arg90 is QM**, which matters for §3
+below.
+
+**The test this suggests is cheap and legitimate:** add Ser186 to
+`extra_qm_residues` and re-run `aspxtb8`. If the contact survives at 1.8-2.0 Å
+with the residue described quantum-mechanically, it is real and ¶281's reading
+can be restored. If it relaxes away, it was the boundary. **Not submitted.**
+
+## 2. NO, WE HAVE NOT EQUILIBRATED A CRYSTAL-DERIVED POSE
+
+The user asked whether we already have one. **We do not**, and the thing that
+looks like one is not.
+
+- **`l1_in_relax10.pdb`** is referenced **nowhere** in `site.yaml`, any launcher
+  or any script as an input. It contains **only the 23-atom MX0 ligand** - no
+  protein, no metal. It is a measurement artefact from ¶247, never preprocessed,
+  never equilibrated, never run.
+- **`CSR_mich`, the "Michaelis rebuild" of ¶196**, is the probable source of the
+  memory and it is a **different thing**. `build-mich.py`'s own instructions say
+  to read the coordination report for *"Asp92 OD2 near 2.80, the carbonyl near
+  2.60"* - **both voided values** (¶216) - and its lineage is `CSR_crystal_v2`,
+  the docked pose. So the rebuild re-equilibrated the DOCKED pose with the
+  voided restraints, not a crystal pose.
+
+**So "equilibrate the crystal-derived pose" is an experiment nobody has run, and
+it is the obvious next build.** The transferred ligand already exists at fit
+RMSD 0.310 Å, which is the hard part.
+
+## 3. THE CRYSTAL-DERIVED POSE, MEASURED - AND IT REVERSES THE RANKING
+
+7UHI's moxalactam in `relax10`'s frame, against `relax10`'s protein:
+
+    what the metal holds
+      Zn - carboxylate O8        **1.847**      <- the metal binds the CARBOXYLATE
+      Zn - lactam carbonyl O1      3.153        <- NOT coordinated
+      Zn - lactam N1               3.254
+      Zn - carboxylate O7          3.978
+      Zn - our hydroxide O01       2.035
+
+    the anchors and the polariser
+      Ser186 OG  - O7 **2.72** / O8 **3.00**    <- anchors the carboxylate
+      Arg90 NH1  - carbonyl O1 **2.98**         <- POLARISES THE CARBONYL
+      Arg90 NH2  - O1            5.19
+      Asn41 ND2  - O7 7.18 / O8 7.57            <- not involved in this pose
+      Arg229 NH1 - O5 10.67                     <- not involved
+
+    the candidate base
+      Asp92 OD1 - Zn **4.33**   N1 **4.52**   O1 5.20
+      Asp92 OD2 - Zn   5.15     N1   4.61    O1 6.14
+      Asp185    - Zn   5.78     N1   8.30             <- too far, not a candidate
+
+    Lys226 NZ - lactam N1      **5.830**
+    Lys226 NZ - carbonyl O1      7.427
+    Lys226 NZ - carboxylate O8   5.153
+
+    our hydroxide O01 - MX0 C1   4.702   <- the metal-bound OH is NOT the nucleophile here
+
+**(a) The user's B2/CphA reframing is correct and the conditions are MET.** The
+Zn1-vs-Zn2 label was the wrong test; I used it as one. The chemical tests are
+whether the metal binds the substrate carboxylate and whether an Asp is placed to
+activate a water, and in the crystal-derived pose **both hold**: the metal takes
+carboxylate O8 at **1.847 Å**, and Asp92 OD1 sits **4.33 Å from the metal and
+4.52 Å from the leaving nitrogen** - a gap that fits a water activated by the
+carboxylate and positioned to attack. This is also the GOB-18 picture, where
+carbapenem binding proceeds by expansion of the metal's coordination sphere
+rather than by displacing a metal-bound hydroxide.
+
+**(b) The answer to "how is the substrate placed and polarised if not through
+coordination": by the carboxylate and by Arg90.** The carboxylate-metal bond at
+1.847 Å places it, Ser186 OG holds the same carboxylate at 2.72/3.00, and
+**Arg90 NH1 hydrogen-bonds the lactam carbonyl at 2.98 Å** - a cationic
+polariser where the canonical enzymes use a second zinc. Arg90 **is a QM
+residue**, so unlike §1 this contact is trustworthy at the QM/MM level. That is
+a direct, structural statement of what the RQK arginine is for, and it does not
+need the carbonyl on the metal at all.
+
+**(c) Lys226: TESTED NOW, and the answer is still no - in this rotamer.** The
+user asked whether the lysine could stabilise the anionic nitrogen given a
+correct pose. Measured: **5.830 Å** from N1, slightly FURTHER than aspxtb8's
+5.594. The honest qualification: Lys226's NZ position comes from the actuator
+lineage and a lysine side chain is mobile, so 5.83 Å is a rotamer-dependent
+number, not a hard limit - what has not been tested is whether a different
+rotamer reaches N1 while keeping the Asp92 salt bridge. That is a cheap scan and
+it is the right way to settle it.
+
+**(d) The metal-bound hydroxide cannot be the nucleophile in this pose.** It
+sits **4.702 Å** from the scissile carbon. So the crystal pose does not merely
+improve the B1-like route - it **excludes** it as written, and requires the
+nucleophile to be a different water, either one activated by Asp92 or one
+occupying the metal's remaining coordination position.
+
+## 4. WT CSR-1 HAS A SERINE IN THE BRIDGING POSITION
+
+Ser186 / S214 / BBL **S221**. The **aspartate is the ancestral state and the
+mutant**: the manuscript's panel reverts "the serine residue back to the
+ancestral aspartate", giving AIM-1S207D, CSR-1S214D and dmCSR-1S214D.
+
+**Which sharpens the mechanism argument.** In the crystal-derived pose the serine
+is an **anchor** for the substrate carboxylate at 2.72/3.00 Å - the Ser221 role
+in SMB-1 and L1 - not a base. Replacing it with an aspartate puts a carboxylate
+where a neutral anchor was, next to a substrate carboxylate, and the manuscript
+records that this cripples carbapenem turnover 3-5 orders of magnitude while
+barely touching binding affinity. **An anchor-to-base substitution that kills
+turnover without killing binding is consistent with the anchor reading**, and it
+is evidence against the position being a base in the wild type.
+
+## 5. THE RANKING, REVISED
+
+My ¶281 ranking was computed on `aspxtb8`, which is 6.11 Å from the experimental
+mode. On the crystal-derived pose it changes:
+
+    route                 on aspxtb8            on the crystal-derived pose
+    native B3-like        unavailable           unavailable (Lys226 5.83 from N1)
+    B1-monometallic-like  closest               EXCLUDED (metal-OH 4.70 from C1)
+    B2/CphA-like          architecture absent   CONDITIONS MET (Zn-COO 1.85,
+                                                Asp92 4.33/4.52, Arg90 2.98)
+
+**So the two candidate reactants support different mechanisms, and the one with
+experimental backing supports the CphA-like route.** That is a cleaner result
+than either pose alone: the mechanism question and the pose question are the same
+question, and ¶247's "right coordinate, wrong body" was understating it - the
+body is what selects the chemistry.
+
+**What has NOT been shown:** that a water sits in the Asp92 gap. No structure in
+this project has one there, because no crystal-derived pose has been solvated and
+equilibrated (§2). That is the single experiment that would decide this.
+
+## 6. Conceded
+
+The user's three replies to ¶281 §8 are accepted. **(1)** is answered in §2 - we
+have not, and I should have checked before listing it as a caveat. **(2)** a
+proton donor: in the crystal pose N1 has Asp92 OD1 at 4.52 Å and Arg90's
+guanidinium nearby, so a bridging water is a reasonable expectation rather than a
+missing piece. **(3)** level of theory is not the binding constraint while there
+is no starting structure; the GFN2-versus-DFT point is deferred, not dropped.
+
+## Status
+
+Corrections and measurement only. ¶281 §4 withdrawn, four nodes revised or
+written. **No section added, nothing submitted**, including the Ser186-in-QM test
+of §1 and the crystal-pose build of §2.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**

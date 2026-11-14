@@ -1,10 +1,31 @@
 ---
 type: claim
-status: open
-entries: [¶281]
+status: unsupported
+entries: [¶281, ¶282]
+checked: [¶282]
 ---
 
 # The most likely route from our reactant is a Zn1-bound hydroxide with Ser186 as its proton partner - neither canonical B3 nor CphA
+
+**DEMOTED to `unsupported` (¶282), on two counts.** Its Ser186 premise is void -
+the residue is **not in the QM region**, so the 1.696 Å contact is an MM hydroxyl
+across the QM/MM boundary at a distance shorter than a real hydrogen bond
+([[ser186-hydrogen-bonds-the-nucleophile-in-our-reactant]]). And the ranking it
+rests on was computed on `aspxtb8`, a pose **6.11 Å from the experimental mode**.
+
+**On the pose with experimental backing the ranking inverts.** There the
+metal-bound hydroxide is **4.702 Å** from the scissile carbon, so a Zn-OH
+nucleophile is not available at all, and the metal holds the substrate
+carboxylate at 1.847 Å instead
+([[the-crystal-derived-pose-puts-the-carboxylate-on-the-metal]]).
+
+**Kept because its rejection of the other two routes was right for the wrong
+reason, and one half of it survives:** canonical B3 remains unavailable, and now
+for a measured reason that holds in BOTH poses - Lys226 is 5.594 Å from the
+leaving nitrogen in `aspxtb8` and **5.830 Å** in the crystal-derived pose. The
+CphA dismissal was wrong and is replaced by
+[[the-cpha-conditions-are-met-in-the-crystal-derived-pose]].
+
 
 Ranked against the three candidates on the measured geometry of `aspxtb8`
 ([[aspxtb8-is-substrate-bound-but-not-a-near-attack-complex]]).
@@ -55,8 +76,8 @@ that partner and installs a competing base - and the manuscript's own fork,
 prediction
 ([[the-manuscript-reads-s214d-as-inhibition-by-the-bridging-aspartate]]).
 
-## Supports
-- [[thesis-mechanism-differs-from-canonical-b3]]
+## Superseded by
+- [[the-cpha-conditions-are-met-in-the-crystal-derived-pose]]
 
 ## Requires
 - [[question-is-the-reactant-pose-experiment-anchored]]

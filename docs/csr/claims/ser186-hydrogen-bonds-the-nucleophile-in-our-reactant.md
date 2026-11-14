@@ -1,12 +1,34 @@
 ---
 type: observation
-status: supported
+status: void
 evidence: ours
-entries: [¶281]
-checked: [¶281]
+entries: [¶281, ¶282]
+checked: [¶281, ¶282]
 ---
 
 # Ser186's hydroxyl donates a 1.70 angstrom hydrogen bond to the zinc-bound nucleophile
+
+**VOID (¶282). SER186 IS NOT A QM RESIDUE.** `aspxtb8`-s QM region is nine
+residues - Zn, OH, mer, His88, His164, Asp92, Asn225, Arg90, Lys226 - and Ser186
+is not among them, nor in `extra_qm_residues`. So this contact is **a
+fixed-charge MM hydroxyl hydrogen pointing at a QM hydroxide across the QM/MM
+boundary**, where electrostatic embedding lets the MM charge feel the anion-s
+field with no Pauli repulsion from the QM density.
+
+**The number is the tell.** A real O-H...O hydrogen bond runs **1.8-2.0 Å**.
+1.696 Å is shorter than that - not a strong hydrogen bond, an unphysical one. I
+quoted its shortness as evidence of strength; it is evidence of the artefact.
+
+**Kept rather than deleted, because the test it implies is cheap and worth
+running:** add Ser186 to `extra_qm_residues` and re-run `aspxtb8`. If the contact
+survives at 1.8-2.0 Å with the residue treated quantum-mechanically, this node
+can be restored. **Not submitted.**
+
+**And in the pose with experimental backing, Ser186 does something else
+entirely** - it anchors the substrate carboxylate at 2.72 / 3.00 Å
+([[the-crystal-derived-pose-puts-the-carboxylate-on-the-metal]]), which is the
+Ser221 role in SMB-1 and L1 and needs no QM region to be believed.
+
 
 Measured in `aspxtb8`, an unrestrained GFN2 optimisation with the second shell
 free (479 active atoms, nothing constrained):
@@ -47,5 +69,5 @@ before it is quoted. It also sits inside a pose 6.11 Å from the experimental
 mode ([[aspxtb8-is-substrate-bound-but-not-a-near-attack-complex]]), which is
 why this is an observation and not yet a claim.
 
-## Supports
-- [[the-likely-route-is-a-zn1-hydroxide-with-ser186-as-proton-partner]]
+## Superseded by
+- [[the-crystal-derived-pose-puts-the-carboxylate-on-the-metal]]
