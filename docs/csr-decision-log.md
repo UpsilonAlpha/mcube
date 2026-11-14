@@ -13887,6 +13887,204 @@ Measurement and record only. Two nodes corrected
 (`the-m1-site-is-four-coordinate-at-rest-and-not-when-substrate-bound`).
 **No criterion in `site.yaml` changed.**
 
+**¶281 - aspxtb8 ASSESSED AS A MICHAELIS COMPLEX: it is a genuine, well-anchored
+substrate-bound structure and NOT a near-attack complex. O01...C4x is 3.626 Å
+with the hydroxide 35.7 deg out of the carbonyl plane, and the substrate body
+sits 6.11 Å from the experimental mode. THE FIND: Ser186 OG-H donates a
+hydrogen bond to the nucleophile at H...O 1.696 Å, and the substrate
+carboxylate is anchored by Asn41, not Ser186. Mechanism ranking: a Zn1-hydroxide
+route with Ser186 as the proton partner, which is neither canonical B3 nor
+CphA.**
+(2026-11-14, user: "so now aspxtb - the WT holoenzyme we created - is it a
+valid/likely michaelis complex, and if so what is the most likely reaction
+mechanism (native B3-like, B1-monometallic-like, or B2 CSR-like)")
+
+## 1. Everything within 4.5 Å of the substrate, measured
+
+    SER186  HG   - O01   1.70     <- the nucleophile's hydrogen-bond donor
+    ZN1     ZN   - O01   1.78
+    ASN41   HD22 - O3x   1.85     <- substrate C3 carboxylate, anchored
+    ARG229  HH12 - O5x   2.15     <- side-chain amide carbonyl, anchored
+    HIS88   HE1  - O01   2.65
+    ARG90   HH12 - O1x   3.25     <- the 6a-hydroxyethyl O, not the carboxylate
+    ASN225  HD22 - O01   3.44
+    ASP92   OD2  - O4x   4.09
+    ASP185  OD1  - O01   4.37
+
+## 2. The attack geometry, and it does not work
+
+    O01 ... C4x      attack distance          3.626
+    O01-C4x-O2x      approach angle            38.5 deg
+    O01-C4x-N1x                               133.2 deg
+    O01 out of the carbonyl plane              35.7 deg
+    C4x=O2x          carbonyl bond             1.212
+    C4x-N1x          scissile bond             1.371
+
+    O01 - Zn - O2x   bite angle                87.7 deg
+    O01 ... O2x      separation                2.781
+    His88 - Zn - His164                        86.6 deg
+
+**3.626 Å is not a near-attack conformation.** The convention is <=3.5 Å and
+`site.yaml` asks 3.0-3.5. For comparison ¶126's substituent pose reached
+**3.17 Å unrestrained**, so our preferred arm is further from the scissile
+carbon than the arrangement it was meant to beat.
+
+**And the direction is wrong, which matters more than the distance.**
+Nucleophilic addition to a carbonyl wants the nucleophile over the carbon, near
+the pi* lobe - roughly perpendicular to the carbonyl plane. Ours is **35.7 deg
+out of plane at 38.5 deg to the C=O vector**, which places it **beside the
+carbonyl oxygen, pointing away from the carbon**. With O01...O2x at 2.781 and
+O01...C4x at 3.626, the hydroxide is on the far side of the carbonyl oxygen from
+C4x. To attack it must travel roughly 2 Å around the carbonyl.
+
+**Why: both oxygens are on the same zinc.** O01 at 1.776 and O2x at 2.211, bite
+87.7 deg. The metal pins them 2.781 Å apart, and that fixes the trajectory. One
+honest difference from the ¶276 trap: in 1TMN and 7CPA the two oxygens were
+**bonded to the same atom** (bites 57.2 / 60.1 deg), whereas ours are a genuinely
+separate nucleophile and substrate carbonyl at 87.7 deg. So this is not a
+gem-diolate mimic - it is a real cis pair - but it is a cis pair in the plane of
+the carbonyl rather than above it.
+
+**The substrate itself is unactivated**, which is correct for a Michaelis
+complex but means the 2.211 Å Zn-O2x contact is doing little: C4x=O2x 1.212 Å is
+a free carbonyl (7UHI's is 1.21) and C4x-N1x 1.371 Å is an intact amide (7UHI
+1.37).
+
+## 3. The pose is still 6.11 Å from the experimental mode
+
+Measured directly, aspxtb8's meropenem against `l1_in_relax10.pdb` - 7UHI's
+ligand transferred into this frame at fit RMSD 0.310 Å (¶247):
+
+    aspxtb8 meropenem centroid - Zn           6.96
+    7UHI-transferred centroid  - Zn           5.16
+    CENTROID SEPARATION                       6.11
+
+`relax10` measured 6.20 Å (¶247). **The 8 Å-active-region optimisation moved it
+0.09 Å.** So ¶247's verdict - right coordinate, wrong body - applies to aspxtb8
+unchanged, and this is the single biggest reservation about it.
+
+## 4. THE FIND: Ser186 hydrogen-bonds the nucleophile
+
+    Ser186 OG  - O01     2.672      (HG...O01  1.696)
+    Ser186 OG  - N1x     4.698
+    Ser186 OG  - O4x     6.464
+    Asp185 OD1 - O01     4.367
+
+**A 1.696 Å H...O contact is a strong, well-formed hydrogen bond**, with Ser186's
+hydroxyl proton pointing at the zinc-bound hydroxide. It appeared in an
+unrestrained GFN2 optimisation with the second shell free - nothing put it there.
+
+**This is a mechanistic fork that can be measured rather than argued.** In
+`l1_in_relax10.pdb` - the experiment-derived pose - **Ser186 OG sits 2.72-3.00 Å
+from the substrate C3 carboxylate** (¶265). In aspxtb8 it is **6.464 Å** from
+that carboxylate and 2.672 Å from the nucleophile instead. So the two poses give
+Ser186 two different jobs:
+
+    experiment-derived pose    Ser186 anchors the substrate carboxylate
+    aspxtb8                    Ser186 hydrogen-bonds the nucleophile
+
+Both are chemically sensible and they are mutually exclusive at this geometry.
+
+## 5. The substrate IS anchored, and not by Ser186
+
+    Asn41  ND2 - O3x (C3 carboxylate)    2.859
+    Arg229 NH1 - O5x (side-chain amide)  2.928
+    Arg90  NH1 - O1x (6a-hydroxyethyl)   4.028
+    Asp92  OD2 - O4x (C3 carboxylate)    4.086
+
+**`the-substrate-carboxylate-end-is-unanchored-in-our-models` is too strong.**
+The C3 carboxylate is held by **Asn41 at 2.859** and the side chain by
+**Arg229 at 2.928** - two good hydrogen bonds. What is absent is the *canonical*
+B3 anchor: in SMB-1 and L1 the carboxylate is taken by Ser221/Thr223, and here
+Ser186 has gone to the nucleophile instead. So the right statement is that the
+carboxylate is anchored by a **non-canonical pair**, which is a result, not a
+defect.
+
+## 6. Lys226 cannot do Zn2's catalytic job by contact
+
+    Lys226 NZ - Asp92 OD2   2.749    <- the salt bridge, intact
+    Lys226 NZ - O2x         4.650
+    Lys226 NZ - N1x         5.594
+    Lys226 NZ - O01         5.177
+    Lys226 NZ - Zn          5.044
+
+In canonical di-zinc B3, **Zn2 stabilises the anionic leaving nitrogen** at
+bonding distance. Lys226's ammonium is **5.594 Å from N1x** and **4.650 Å from
+the carbonyl oxygen** - far too long for a hydrogen bond to either.
+
+So `rqk-cations-replace-zn2-electrostatically` survives only in its weak form:
+the cation can act through space, Coulombically, but it is **not positioned to
+donate a hydrogen bond to the oxyanion or to protonate the leaving nitrogen.**
+`thesis-lys226-restrains-asp92-in-place-of-zn2` is untouched - the salt bridge
+is 2.749 and that is the claim - but the lysine's *catalytic* role is not
+supported by this geometry.
+
+**And nothing else is positioned to protonate N1x either**: its nearest
+candidates are Ser186 OG at 4.698 and the zinc at 4.544.
+`question-what-protonates-the-leaving-nitrogen` is not answered by this complex.
+
+## 7. THE RANKING the user asked for
+
+**Native B3-like - NOT AVAILABLE as written.** It needs Zn2 to stabilise the
+anionic nitrogen and a hydroxide bridging two metals. We have one metal, a
+terminal hydroxide, and a lysine 5.594 Å from N1x. The only version that
+survives is "Lys226 substitutes for Zn2", and §6 says it cannot do so by
+contact.
+
+**B2 / CphA-like - ARCHITECTURE ABSENT.** CphA is a **Zn2-site** enzyme whose
+nucleophile is a non-metal-bound water activated by Asp120, with the metal
+binding the substrate carboxylate. Here the metal is at **Zn1**, the nucleophile
+**is** metal-bound at 1.776 Å, and the metal is 5.42-6.70 Å from both
+carboxylate oxygens. `cpha-route-is-closed` is `open` because its stated closure
+rested on a refuted premise, but the structural objection in it stands and this
+geometry does not support the route.
+
+**B1-monometallic-like - CLOSEST, and it is what aspxtb8 is a draft of.** A
+single zinc at the histidine site carrying the hydroxide that attacks the lactam
+carbonyl, as proposed for mono-Zn BcII (¶265). Two differences from the
+precedent, one of which is the novelty: our site is **two histidines plus Arg90**
+rather than three histidines, and in BcII the substrate carbonyl is **not** also
+a metal ligand.
+
+**The route the structure actually points at is a variant of the third, and it
+is novel:** a **Zn1-bound hydroxide with Ser186 as its proton partner**. The
+1.696 Å hydrogen bond is the most specific unrestrained feature in the whole
+complex, it gives the nucleophile somewhere to put its proton without needing
+Asp92 as a general base or a metal-bound second water, and it is **what the only
+published mono-zinc MBL mechanism predicts in kind** - Lisa 2017 has the
+nucleophile activated by a hydrogen-bond network rather than by the metal - while
+disagreeing with it in detail, because ours is also on the metal. That is a
+testable position between the two literatures rather than a restatement of
+either.
+
+**It also makes S214D the relevant mutant after all, for a different reason than
+§6 of ¶277 allowed:** if Ser186 is the nucleophile's proton partner, replacing it
+with an aspartate removes that partner and installs a competing base, and the
+manuscript's own fork - "the aspartate residue directly prevents binding or
+inhibits hydrolysis" - is the prediction.
+
+## 8. What would have to be true, and is not yet
+
+1. **The pose.** 6.11 Å from the experimental mode (§3). Until the body of the
+   substrate is placed where 7UHI puts it, the attack geometry in §2 is a
+   property of a docked pose, not of the enzyme.
+2. **The trajectory.** A barrier from this reactant is dominated by
+   reorganisation - swinging the hydroxide ~2 Å around the carbonyl, or the
+   carbonyl off the metal. That is a real barrier contribution but it is not
+   chemistry, and it will inflate any number computed from here.
+3. **The level.** GFN2 at 0 K with a 479-atom active region and everything
+   beyond frozen. GFN2 is ~0.13 Å short on Zn-O against DFT (¶245), so Zn-O01
+   1.776 is probably ~1.91 Å at def2-SVP, and the Ser186 hydrogen bond needs
+   re-measuring at DFT before it is quoted.
+4. **The lineage.** aspxtb8 descends from the `asppull` actuator (¶276). Its
+   *final* geometry is unrestrained and Asp92 ends where 6DQH measures it, which
+   is the best defence available, but the pose it inherited is the one in (1).
+
+## Status
+
+Measurement and assessment only. Five nodes written or revised. No structure
+built, no section added, no job queued.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**

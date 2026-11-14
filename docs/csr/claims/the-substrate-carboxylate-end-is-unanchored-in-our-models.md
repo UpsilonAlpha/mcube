@@ -8,6 +8,21 @@ checked: [¶273]
 
 # The substrate's far end has no metal anchor in CSR-1, so its contacts are run-dependent rather than fixed
 
+**¶281 NARROWS THIS: the carboxylate IS anchored, by a non-canonical pair.**
+Measured in `aspxtb8`, **Asn41 ND2 - O3x 2.859 Å** and **Arg229 NH1 - O5x
+2.928 Å** - two good hydrogen bonds, neither of them to a metal. So "no metal
+anchor" stands and "unanchored" does not.
+
+What is absent is the *canonical* B3 anchor: in SMB-1 and L1 the substrate
+carboxylate is taken by Ser221/Thr223, and here **Ser186 has gone to the
+nucleophile instead** at 1.696 Å
+([[ser186-hydrogen-bonds-the-nucleophile-in-our-reactant]]), leaving it 6.464 Å
+from the carboxylate. In the experiment-derived pose it does the opposite, sitting
+2.72-3.00 Å from that carboxylate. So which residues hold the substrate is itself
+pose-dependent, and the two readings are mutually exclusive - a result worth
+testing rather than a defect in the model.
+
+
 In CSR-1 the only part of the substrate held by a metal is the **β-lactam
 carbonyl**. In `aspxtb8`, the converged GFN2 QM/MM minimum:
 
