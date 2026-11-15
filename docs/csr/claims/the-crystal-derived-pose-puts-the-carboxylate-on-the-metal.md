@@ -64,6 +64,16 @@ Zn-O1 3.82, against the stored 1.847 / 3.153 - the same arrangement, a looser
 metal contact. The pose is still the right thing to equilibrate; it is not
 independent evidence that the carboxylate binds.
 
+**¶286: THE LIGAND IN THIS POSE IS NOT MEROPENEM.** It is MX0, an oxacephem
+(C13 H16 N2 O8, no sulfur, 23 heavy atoms), and ¶156-s transfer script simply
+renamed it `mer`
+([[the-crystal-derived-pose-is-an-oxacephem-not-meropenem]]). The pharmacophore
+atoms every argument here used - O8, O1, N1, C1 - are shared between the
+classes, so the measurements stand as a **template** for where a bound
+substrate-s carboxylate, carbonyl and leaving nitrogen sit. What does not
+stand is the phrase "the crystal-derived pose of our substrate": there is no
+such pose yet, and making one is a construction.
+
 **So what IS independent about the carboxylate site?** The question is worth
 separating, because three different things have been argued from this pose and
 they do not have the same standing:

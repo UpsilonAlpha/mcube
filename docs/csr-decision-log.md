@@ -14866,6 +14866,137 @@ by unbiased dynamics.
 Geometry and literature only. Nothing built, nothing submitted, no config
 changed.
 
+**¶286 - THE "CRYSTAL-DERIVED POSE" IS AN OXACEPHEM, NOT MEROPENEM: 7UHI's
+MX0 is C13 H16 N2 O8 with no sulfur, against meropenem's C17 H25 N3 O5 S, and
+¶156's transfer simply renamed it `mer`. The pharmacophore positions stand as a
+template; the phrase "the crystal-derived pose of our substrate" does not, and
+there is no such pose to equilibrate. The equilibration is therefore planned as
+a RESTRAINED PULL from our own equilibrated system, needing no build, no new
+parameters and no preprocess. Also recorded: the user's two-metal wild-type
+QM/MM did not keep its metal in the M1 site.**
+(2026-11-15, user: four acknowledgements, two questions, and "plan the
+equilibration")
+
+## 1. "Global fit", defined
+
+Asked what I meant. Two ways to carry a ligand from one structure into another,
+both of which need a superposition first:
+
+- **The ¶156 four-atom fit**: align on **four named atoms** chosen to be the
+  binding site itself - the two metal-binding histidine NE2 atoms, Asp92's CG
+  and the zinc, e.g. `A:105:NE2=A:88:NE2,A:181:NE2=A:164:NE2,A:109:CG=A:92:CG,
+  A:301:ZN=B:1:ZN`. It makes the two **sites** coincide as exactly as four atoms
+  allow, which forces the metal-ligand contacts to come out short.
+- **A global fit**: align on **all ~258 CA atoms** of the chain, by
+  Needleman-Wunsch then Kabsch. It makes the two **proteins** coincide on
+  average and lets the site land where the fold puts it.
+
+The second has no knowledge of the metal site, so it is the control: if a
+contact survives both, it is in the structure, and if it only appears under the
+four-atom fit, the fit put it there. For MX0 the two disagree by mean **1.03 Å**
+(max 1.44), giving **Zn-O8 1.847** against **2.75**. Hence the 1.847 being
+called a transfer artefact.
+
+## 2. The ligand is not our substrate
+
+    7UHI  HETNAM MX0  ...-5-OXA-1-AZABICYCLO[4.2.0]OCT-2-ENE-2-CARBOXYLIC ACID
+          FORMUL MX0  **C13 H16 N2 O8**
+    l1_in_relax10.pdb  13 C, 2 N, 8 O, **no S**, 23 heavy atoms
+    our `mer`          17 C, 3 N, 5 O, **1 S**, 25 H, 51 atoms
+
+MX0 is the **moxalactam** core, an **oxacephem**; meropenem is a carbapenem.
+¶156's transfer script renames the transferred residue to `mer`
+(`--poseres=mer`) and every entry since has called it our substrate's pose.
+**Wrong, and worth catching before a run was built on it.**
+
+What survives: the atoms every argument used - carboxylate, beta-lactam
+carbonyl, ring nitrogen, scissile carbon - are common to both classes, so the
+measurements remain a legitimate **template** for where a bound substrate's
+business end sits in a real B3 complex. What does not survive: any claim that
+equilibrating this pose equilibrates our system.
+
+**And it sharpens the selectivity problem.** MX0 is cephalosporin-class, so 7UHI
+is a **cephem** bound to a B3 MBL with its carboxylate on Zn2 at 2.65 Å. The
+carboxylate-on-metal arrangement is therefore demonstrably available to the
+class S214D does **not** block, which rules out "cephems bind differently at the
+carboxylate" as the explanation.
+
+## 3. Why a proton transfer was said to be necessary - and the concession
+
+I claimed 50 ps could not decide hydroxide against water. Asked why a transfer
+is necessary, and the honest answer is that it is **only** necessary if the run
+is to decide the question **by itself**. Dynamics conserves whatever protonation
+state it is handed, so the state is an input; without a transfer the run cannot
+output a different one. That part stands.
+
+**But it does not follow that the run is uninformative, and saying so was too
+narrow.** Running the pose twice, once with Zn-OH(-) and once with Zn-OH2, and
+comparing observables discriminates indirectly:
+
+- **Zn-O bond length.** Hydroxide sits ~1.85-1.95 Å on a catalytic zinc, water
+  ~2.0-2.2. The crystals give 1.88-2.14 for metal-bound waters.
+- **Hydrogen-bond pattern.** Hydroxide accepts two and donates one; water
+  donates two. Which neighbours orient toward the oxygen is observable.
+- **Whether it stays coordinated at all**, and whether the attack geometry is
+  retained in each case.
+
+So the discrimination is by consistency with measured geometry, not by watching
+a proton move. Worth doing **after** the pose is known to hold, not before, and
+it doubles the cost of Legs B and C.
+
+## 4. The user's two-metal result
+
+A QM/MM on wild-type CSR-1 built with **two** zincs did not keep the metal in
+the **M1** site. This is the first dynamical support for mononuclearity, which
+until now rested entirely on static structures, and it speaks to exactly the gap
+¶285 could not close - no crystal has M1 occupied and M2 empty, so our
+single-metal arrangement had no check.
+
+Recorded as the user's result, not as a measurement of ours. Before it can be
+cited it needs the run directory and section, the QM region and total charge,
+the length, and **where the metal went**: to M2 or onto Asp92 is the mononuclear
+argument directly, whereas into bulk is much weaker, since a two-metal model
+with one under-coordinated site being unstable is nearly tautological.
+
+## 5. Ser186 in the QM region
+
+The user raised adding it for future runs. It needs a new `qm_regions` entry
+(`michaelis_rks` = `michaelis_rk` + `A: {186: SER}`) and the **charge is
+unchanged at 2**, serine being neutral. Recommended, because Ser186's hydrogen
+bonds to the ligand carboxylate are precisely what the planned run is watching,
+and in MM they are point charges - the reason ¶281's Ser186 contacts were ruled
+untrustworthy in the first place.
+
+## 6. The plan
+
+Written to `docs/csr/equilibration-plan.md`, **not submitted**. Three legs, no
+build, no new parameters, no `preprocess`, nothing outside mcube defaults:
+
+- **Leg A `posepull` (`scan`)**: drive `B:1:ZN - C:1:O4x` from 5.42 Å to 2.2 Å
+  and **leave the carbonyl free**. Target 2.2 is 5B15's measured value, not our
+  placed 1.847. If the carbonyl (O2x, currently 2.21 on the metal) does not
+  leave by itself, the arrangement is not accessible to our system - a result,
+  not a failure. Driving both coordinates would assume the answer.
+- **Leg B `poseeq` (`md`)**: `relax10`'s pattern, 10 ns, with the single
+  restraint `[B:1:ZN, C:1:O4x, 2.2, 500.0]` - a coordinate bond inside the 3.0 Å
+  rule - and everything else free, so the solvent re-equilibrates around a
+  ligand that has moved.
+- **Leg C `poseqm` (`qmmm`)**: `aspqm2`'s settings, `require: unset:
+  [restraints, opt_constraints, constraints]`, 50 ps chunked. **This is the
+  test.** Carboxylate stays and carbonyl stays off, and ¶283-¶285 stand;
+  reverts to the `aspxtb8` arrangement, and the carboxylate-on-metal reading is
+  a transfer artefact and much of it goes.
+
+Needs settling before anything is written: whether Ser186 joins the QM region,
+and **which starting structure actually exists on Bunya** -
+`qmmm_aspqm2_results` preferred, `md_relax10_results/NVTtrajectory_lastframe.pdb`
+as fallback. `state.md` cannot be trusted for this, since the `prodpull*`
+sections it reports as run were deleted in ¶262.
+
+Nothing built, nothing submitted, no config changed. The atom identifications
+(O2x on C4x the carbonyl; O3x/O4x on C6x the carboxylate) are from bond-length
+connectivity in `aspxtb8_nowat.pdb`.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
