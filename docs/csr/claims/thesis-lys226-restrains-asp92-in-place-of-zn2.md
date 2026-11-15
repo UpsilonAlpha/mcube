@@ -84,6 +84,23 @@ it is part of what makes it poor.
 - [[the-truncated-form-is-the-one-modelled]]
 - [[question-does-restraining-asp92-lower-the-barrier]]
 
+**¶285: no existing structure can test this, and the reason is now exact.**
+Measured in place, the aspartate is **4.20 Å** from the M1 metal in 6NC5 and
+**4.12** in `refine_16`, both lysine-free, and **4.28** in 6DQH, which has the
+lysine ([[the-zn2-aspartate-is-42-angstroms-from-the-m1-metal-with-or-without-the-lysine]]).
+The lysine therefore makes **no measurable difference** to the distance - but
+that is not a refutation, because in both lysine-free structures the aspartate
+is held out by an **M2 metal it is coordinating at 1.95-2.13 Å**, which does
+the restraining job in the lysine-s absence. The decisive structure would have
+the lysine absent **and** the M2 site empty, and it does not exist: `refine_12`
+has the M2 metal, `refine_16` and 6NC5 have it, 6DQH has the lysine, and the
+wild-type deposits are apo.
+
+**So this thesis is untestable on the current structural record**, and the
+argument should lean on what it predicts instead - that a free Asp92 recruits
+its own metal, which `refine_12` shows at **2.13 Å** - rather than on the
+Asp-to-M1 distance, which the lysine does not control.
+
 ## Supports
 - [[thesis-mechanism-differs-from-canonical-b3]]
 

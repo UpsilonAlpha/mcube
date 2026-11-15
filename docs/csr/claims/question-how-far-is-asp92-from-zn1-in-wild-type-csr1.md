@@ -1,33 +1,46 @@
 ---
 type: question
-status: open
-entries: [¶145, ¶151, ¶179, ¶184, ¶208, ¶284]
+status: supported
+entries: [¶145, ¶151, ¶179, ¶184, ¶208, ¶284, ¶285]
+checked: [¶145, ¶151, ¶179, ¶184, ¶284]
 ---
 
 # How far is Asp92 from Zn1 in wild-type CSR-1?
 
-**¶284 ANSWERS IT: 3.00 Å (OD2), 4.12 (OD1).** 6NC5 superposed onto
-metal-free wild-type 6DN4 - the same protein, **core 257/258, RMSD 0.55 Å** -
-places the M1 metal 3.00 Å from Asp120 OD2, with Lys254 NZ at 4.39 and
-Arg118 NH1 at 3.66. It is a long contact, not a bond, and it is the number
-this question asked for
-([[neither-aspartate-coordinates-the-metal-in-our-own-crystals]]).
+**¶285 ANSWERS IT BY DIRECT MEASUREMENT: ~4.2 Å, AND THE LYSINE DOES NOT
+CHANGE IT.** Measured in place, in the structures that actually contain metals,
+with no superposition of any kind:
 
-**Why this one is not ¶184 again.** ¶184 was voided because it superposed into
-an apo structure and then quoted the result as a measurement. This is the same
-construction and carries the same caveat - the metal is placed, not observed -
-but three things have changed: the fit is reported (0.55 Å over 257 of 258
-residues, so it is not a free parameter), the geometry is **not** our own model
-but one crystal into another, and the answer is used only for the comparison it
-supports, namely that the aspartate is CLOSER in the wild type (3.00) than in
-the lysine-free mutant (4.12). **It is still not an observed wild-type
-Zn-Asp distance, and no such observation exists.** The question therefore stays
-`open` with a number in it rather than closed, which is the honest state: the
-comparison it supports (3.00 in the wild type against 4.12 without the lysine) is
-robust to the placement, because both ends of it are placed the same way.
+    6NC5 ZN302 (M1, no lysine)      Asp91  OD2  **4.20**
+    refine_16 ZN B2 (M1, no lysine) Asp78  OD1  **4.12**
+    6DQH ZN A401 (M1, LYSINE)       Asp120 OD1  **4.28**
 
-**Unmeasured, and no deposited structure constrains it.** Three readings have
-been quoted as "the crystal's" value and none of them is one:
+and where the aspartate does hold a metal it holds **its own**, at the M2 site,
+at 1.95-2.13 Å
+([[the-zn2-aspartate-is-42-angstroms-from-the-m1-metal-with-or-without-the-lysine]]).
+
+**¶284's answer of 3.00 Å is withdrawn.** It came from superposing
+metal-bearing 6NC5 onto metal-free 6DN4 and carrying a metal across. 6NC5 has
+its own metals, so that fit was never needed, and in place the distance is
+**4.20 Å**. The comparison ¶284 built on it - that the aspartate is *closer*
+with the lysine present - goes with it: 4.28 with the lysine against 4.12-4.20
+without is no difference at all.
+
+**So this closes as `supported`, on experimental evidence and without a
+placed metal.** What ¶206 rule 3 excluded was our own minima answering it; this
+answer is four crystals measured in their own frames. The caveat that remains
+is not about the number but about its *cause*: in 6NC5 and `refine_16` the
+aspartate is held out because it is busy coordinating an M2 metal, and no
+structure exists with the lysine absent **and** the M2 site empty, which is the
+one case that would isolate the lysine's contribution
+([[thesis-lys226-restrains-asp92-in-place-of-zn2]]).
+
+**The three readings previously quoted as "the crystal's" value, none of which
+was one.** Kept because each was load-bearing for weeks and the way each
+failed is the reason ¶285 insisted on measuring in place. The heading here used
+to read "unmeasured, and no deposited structure constrains it" - that is now
+wrong: 6NC5 and 6DQH constrain it directly, which is what closed this
+question.
 
 - **2.80 A** - our own model's number. It appears nowhere in any PDB file
   (¶208). It was nonetheless the restraint target, the gate value and the
@@ -60,3 +73,4 @@ does not need the distance.
 
 ## Supported by
 - [[wild-type-csr1-crystals-contain-no-metal]]
+- [[the-zn2-aspartate-is-42-angstroms-from-the-m1-metal-with-or-without-the-lysine]]

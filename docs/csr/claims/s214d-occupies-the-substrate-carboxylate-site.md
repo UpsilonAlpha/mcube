@@ -54,6 +54,23 @@ aspartate prevents binding by sitting in the carboxylate's place. What it does
 refute is the *coordination-environment* mechanism the abstract leans on, since
 Asp172 never comes within 4.06 Å of either metal.
 
+**Steric or electrostatic? Both, and the steric part is the one that survives
+the error bar.** At **1.66 Å** two carboxylate oxygens are not merely repelling
+each other, they are inside one another - the sum of two oxygen van der Waals
+radii is about 3.0 Å - so the ligand simply cannot occupy that point. Like
+charge on top of that only makes it worse. **But 1.66 Å carries the pose-s own
+uncertainty**, and a global-fit transfer moves the ligand by mean 1.03 Å (max
+1.44), so the honest form is **overlapping within error** rather than 1.66 Å
+exactly.
+
+**The solid half of the clash does not involve the ligand.** Asp172 OD2 lands
+**1.47 Å** from our **Ser186 OG**, and Ser186-s position is fixed by two
+independent deposits on protein atoms alone (L1 Ser206 1.44 Å, SMB-1 Ser175
+1.64 Å). So the mutant aspartate demonstrably occupies the **anchor residue-s**
+own hydroxyl position, which needs no ligand pose at all, and the substrate
+clash follows from the anchor being gone rather than being evidence in its own
+right ([[ser186-takes-over-the-canonical-anchor-role]]).
+
 ## Supports
 - [[ser186-is-the-canonical-carboxylate-anchor]]
 - [[the-manuscript-reads-s214d-as-inhibition-by-the-bridging-aspartate]]

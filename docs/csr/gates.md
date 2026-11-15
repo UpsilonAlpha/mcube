@@ -94,3 +94,27 @@ counting donors - which makes it a mechanism statement, not a geometric gate. Se
 
 **Still the user's call**, with the two `unsupported` criteria still
 `required_at: [reactant]`: `O01 - Zn - O2x 45-95°` and `O01 ... O2x 2.0-3.3 Å`.
+
+## ¶285: and "two open positions" is route-dependent too
+
+¶284 replaced the coordination-number window with "two non-protein coordination
+positions". That is better but still wrong as a gate, because the number of
+positions a mechanism needs free depends on the mechanism:
+
+| route | substrate on the metal? | nucleophile on the metal? | positions needed |
+| --- | --- | --- | --- |
+| canonical di-zinc B3 | yes | yes, bridging | **2** |
+| B1 monometallic | **no**, a cation polarises it | yes | **1** |
+| B2 / CphA | yes | **no**, Asp-activated water | **1** |
+| our crystal-derived pose | yes, the carboxylate | yes | **2** |
+
+So a "two free positions" criterion assumes the route where both occupants are
+coordinated, and that route-s substrate contact is the **inherited** one from the
+7UHI transfer. Applied to a B1-like arrangement it would reject a perfectly good
+structure for having one free position. **There is no version of this gate that
+is not a mechanism statement**, which is the standing conclusion about every
+acceptance gate here.
+
+Still outstanding, unchanged: the two `unsupported` criteria that remain
+`required_at: [reactant]` and can still reject a structure -
+`O01 - Zn - O2x 45-95°` and `O01 ... O2x 2.0-3.3 Å`.

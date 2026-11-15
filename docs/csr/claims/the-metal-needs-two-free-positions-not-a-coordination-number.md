@@ -42,6 +42,28 @@ two occupants rather than count them, which makes it a mechanism statement and
 not a geometric gate - exactly the problem
 [[every-acceptance-gate-encodes-a-mechanism]] records.
 
+**And "two" is itself route-dependent, which this node first got wrong.**
+The number of positions that must be free is however many of {substrate,
+nucleophile} the mechanism actually puts on the metal, and that differs by
+route:
+
+| route | substrate on the metal? | nucleophile on the metal? | positions needed |
+| --- | --- | --- | --- |
+| canonical di-zinc B3 | yes, both metals | yes, bridging | **2** |
+| B1 monometallic | **no** - polarised by a cation instead | yes | **1** |
+| B2 / CphA | yes | **no** - Asp-activated water | **1** |
+| our crystal-derived pose | yes, carboxylate | yes | **2** |
+
+So a criterion demanding two free positions silently assumes the route in which
+both are coordinated - and that route is the one whose substrate contact is
+**inherited** from the 7UHI transfer
+([[the-crystal-derived-pose-puts-the-carboxylate-on-the-metal]]). A gate
+written that way would reject a B1-like arrangement for having only one free
+position, which is not a defect in the structure but a difference in
+mechanism. **This is the same failure as the coordination number, one level
+up**: the count encodes the answer
+([[every-acceptance-gate-encodes-a-mechanism]]).
+
 ## Supports
 - [[the-m1-site-is-four-coordinate-at-rest-and-not-when-substrate-bound]]
 - [[every-acceptance-gate-encodes-a-mechanism]]

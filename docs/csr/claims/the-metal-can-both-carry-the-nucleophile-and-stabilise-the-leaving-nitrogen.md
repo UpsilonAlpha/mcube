@@ -29,7 +29,8 @@ over the scissile carbon at 83.6° out of the amide plane**
 **Neither RQK cation is needed for the chemistry on this account.** Arg90 does
 the polarisation and nothing else - it cannot reach N1
 ([[arg90-is-on-the-carbonyl-and-cannot-reach-the-leaving-nitrogen]]) - and
-Lys226 is not involved at all, which is consistent with it being busy holding
+Lys226 has **no direct role in the bond-making and bond-breaking steps**,
+which is consistent with it being busy holding
 Asp92 ([[thesis-lys226-restrains-asp92-in-place-of-zn2]]).
 
 That **sharpens** [[rqk-cations-replace-zn2-electrostatically]] rather than denting
@@ -37,7 +38,25 @@ it. That node already predicts the asymmetry - the cations anchor but cannot tak
 over the catalytic roles - and this measurement is where the line actually falls:
 **Arg90 does the carbonyl polarisation, which is catalytic, and the metal does the
 leaving-group stabilisation.** So the cations take over more than anchoring and
-still not everything, and nothing is left for Lys226 to do in the chemistry.
+still not everything.
+
+**"No direct role" is not "no impact on the chemistry", and the earlier wording
+of this node overstated it.** Two indirect roles are real and neither is small:
+
+1. **It keeps the enzyme mononuclear.** `refine_12` shows what a free Asp92
+   does - it recruits a metal of its own at the M2 site and coordinates it at
+   **2.13 Å**. If the salt bridge is what prevents that, it is the reason
+   there is one metal rather than two, which is the entire premise of this
+   mechanism ([[thesis-lys226-restrains-asp92-in-place-of-zn2]]).
+2. **It is a second-shell electrostatic contribution.** A formal +1 at
+   **5.04-5.28 Å** from the metal sits on a site that has to stabilise an
+   anionic nucleophile and, on Lisa 2017-s account, an anionic intermediate.
+   That shifts the hydroxide-s pKa and the intermediate-s energy without the
+   lysine ever touching either.
+
+So the honest statement is **no catalytic-step role, large structural and
+electrostatic consequence** - and the second part is untested here, because
+nothing in this work computes a pKa or an intermediate energy.
 
 **Open, on three things.** The nucleophile position is empty space, not a
 structure. Nothing is yet shown to protonate N1 - in this frame a water sits

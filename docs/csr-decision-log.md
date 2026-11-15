@@ -14688,6 +14688,184 @@ Outstanding, in order of how much they threaten the argument:
 Nothing was built and nothing was submitted. Everything in this entry is a
 measurement on a deposited or in-house file, or a search over empty space.
 
+**¶285 - A RETRACTION AND SIX ANSWERS. The 3.00 Å figure in ¶284 was a
+superposition artefact: measured in place, in the structures that actually
+contain metals, the Zn2 aspartate is 4.20 Å (6NC5), 4.12 (refine_16) and
+4.28 (6DQH, WITH the lysine) from the M1 metal, so PROPOSITION 1 FAILS
+OUTRIGHT and the lysine makes no difference to that distance. Our Arg90 is
+NOT misplaced - it reproduces 6NC5-s arginine to 0.33 Å on NH1, salt bridge
+and tyrosine included; the metal and the histidine are what moved. The
+Asp-Lys salt bridge has no catalytic-step role but two large indirect ones.
+"Two free positions" is itself route-dependent and that was an overclaim.
+Ser186 takes over Ser221-s anchoring role (recorded as asked).**
+(2026-11-15, user: six follow-ups on ¶284)
+
+Method: every distance below is measured **in the structure-s own frame with no
+superposition**, except ~S~5-s rotamer transfer, whose fit is quoted. ¶284-s error
+was using a fit where none was needed, so this is the correction as much as the
+method.
+
+## 1. RETRACTION - the Zn2 aspartate is ~4.2 Å from the M1 metal, lysine or no lysine
+
+¶284 reported Asp120 OD2 at **3.00 Å** from the wild-type M1 metal, from
+superposing metal-bearing 6NC5 onto metal-free 6DN4 and carrying a metal
+across, and concluded the aspartate is *closer* when the lysine is present.
+**6NC5 has its own metals.** The fit was never needed. Measured in place:
+
+| structure | lysine? | metal site | Asp -> that metal |
+| --- | --- | --- | --- |
+| 6NC5 ZN302 | **no** (225 is HIS) | M1: His87, His163, 2 HOH | Asp91 OD2 **4.20** |
+| 6NC5 ZN301 | no | M2: Asp,His,His + HOH | Asp91 OD2 **1.95** |
+| `refine_16` ZN B2 | **no** (212 is HIS) | M1: 2 His + 3 HOH | Asp78 OD1 **4.12** |
+| `refine_16` ZN B1 | no | M2: Asp,His,His + 3 HOH | Asp78 OD2 **2.06** |
+| `refine_12` ZN B1 | no | M2: Asp,His,His + 3 HOH | Asp78 OD2 **2.13** |
+| 6DQH ZN A401 | **yes**, Lys260 | M1: **3 His** + PO4 + 2 HOH | Asp120 OD1 **4.28** |
+
+**4.20 and 4.12 without the lysine, 4.28 with it.** The 3.00 Å figure and the
+comparison built on it are both withdrawn. ¶284 also called `refine_16` the only
+structure with a CSR-1-family M1 metal and no lysine; **6NC5 is a second one**
+(HOH493 bridges its two metals), and it agrees.
+
+Proposition 1 is therefore refuted, not merely unsupported: the aspartate is
+never an M1 ligand in any structure, and where it does hold a metal it holds its
+own at M2, 1.95-2.13 Å - it recruits a second metal rather than reaching for
+the first. **This closes
+`question-how-far-is-asp92-from-zn1-in-wild-type-csr1`** at last, as `supported`
+on experimental evidence and without a placed metal, after three campaigns
+reopened it. ¶145, ¶151, ¶179 and ¶184 are acknowledged in its `checked`.
+
+## 2. Does the Asp-Lys salt bridge affect the chemistry? Not the steps; two large indirect effects
+
+¶283 said "nothing is left for Lys226 to do in the chemistry". That was an
+overclaim and the node now reads **no direct role in the bond-making and
+bond-breaking steps**, which is what the geometry supports: NZ is 5.830 Å from
+the leaving nitrogen and 6.96-6.98 Å from the canonical Zn1 position, so it is
+neither polariser nor leaving-group stabiliser. Indirectly:
+
+1. **It keeps the enzyme mononuclear.** `refine_12` shows what a free aspartate
+   does - recruits its own metal at M2 and binds it at **2.13 Å**. If the salt
+   bridge prevents that, it is the reason there is one metal rather than two,
+   which is the premise of the whole mechanism.
+2. **Second-shell electrostatics.** A formal +1 at **5.04-5.28 Å** from a metal
+   that must carry an anionic nucleophile, and on Lisa 2017-s account an anionic
+   intermediate, shifts a pKa and an intermediate energy without touching
+   either.
+
+Neither is computed here. Nothing in this work calculates a pKa or an
+intermediate energy, so (2) is a mechanism statement, not a result.
+
+## 3. How is the substrate carboxylate-s position known? It is not, to better than ~1 Å
+
+Three statements have been argued from the crystal-derived pose and they do not
+have the same standing:
+
+| statement | standing |
+| --- | --- |
+| canonical B3 binds the substrate carboxylate **on a metal** | **experimental**: 7UHI 2.65 Å, 5B15 2.23 Å, in place |
+| **Ser186** anchors it and is in the canonical place | **experimental**: protein-only fits, L1 Ser206 1.44 Å, SMB-1 Ser175 1.64 Å |
+| the carboxylate is **1.847 Å from our metal** | **inherited**: a global fit instead gives 2.75, moving MX0 by mean 1.03 Å |
+
+So the S214D overlap is **both steric and electrostatic**, and the steric part is
+the one that survives the error bar - at 1.66 Å two oxygens are inside one
+another, against ~3.0 Å of van der Waals contact - but 1.66 should be stated as
+**overlapping within error**, not as a distance. **The solid half needs no
+ligand at all:** Asp172 OD2 lands **1.47 Å** from our Ser186 OG, and Ser186-s
+position is fixed by two deposits on protein atoms alone. Arguments should run
+through Ser186-s position, which is measured, not the ligand oxygen-s, which is
+placed.
+
+## 4. "Two free positions" is route-dependent - another overclaim corrected
+
+The number of positions that must be free is however many of {substrate,
+nucleophile} the mechanism puts on the metal:
+
+| route | substrate on metal? | nucleophile on metal? | positions needed |
+| --- | --- | --- | --- |
+| canonical di-zinc B3 | yes | yes, bridging | **2** |
+| B1 monometallic | **no** - cation polarises instead | yes | **1** |
+| B2 / CphA | yes | **no** - Asp-activated water | **1** |
+| our crystal-derived pose | yes, carboxylate | yes | **2** |
+
+A gate demanding two silently assumes the route in which both are coordinated -
+and that route-s substrate contact is the **inherited** one. It would reject a
+B1-like arrangement for having one free position, which is a difference in
+mechanism, not a defect in the structure. **Same failure as the coordination
+number, one level up.**
+
+## 5. Metal-bound HRH motifs: yes, three of them, and our arginine is right
+
+Metal-bound HRH structures exist - 6NC5 (two metals, lysine-free), `refine_16`
+(two metals), `refine_12` (one metal at M2). In each, the arginine is **3.67-4.05
+Å** from the M1 metal (6NC5 Arg89 NH1 4.02; `refine_16` Arg76 NH1 3.67), while
+ours reads **5.50** (`relax10`) and **5.76** (`aspxtb8`). I was about to report
+that as a 1.5-1.8 Å error in our arginine. **It is not.** Fitting 6NC5 onto
+`relax10` (core **258/259**, RMSD **0.79 Å**) and carrying Arg89 across:
+
+    atom   crystal Arg, our frame      our Arg90           difference
+           (to Zn / to ligand O1)      (to Zn / to O1)
+    NE          6.00 / 4.05               6.04 / 4.27        **0.38**
+    CZ          6.23 / 3.89               6.19 / 4.01        **0.39**
+    NH1         5.43 / **2.88**           5.50 / **2.98**    **0.33**
+    NH2         7.51 / 5.09               7.38 / 5.19        **0.65**
+
+Every atom within **0.65 Å**, NH1 within **0.33** - inside the fit-s own RMSD.
+**Our arginine is in the crystal position; the metal is what moved**, sitting
+~1.4 Å from 6NC5-s M1 metal, consistent with it lying between the two canonical
+positions. Its partners confirm it independently: Arg NE-Asp OD2 2.77 / 2.83 /
+2.88 / **2.91** (6NC5, `refine_12`, `refine_16`, ours), Arg NH2-Asp OD1 2.90 /
+3.00 / 2.99 / **2.84**, Arg NH1-Tyr OH 2.95 / 2.83 / 2.72 / **3.00**. The
+aspartate is our **Asp125** (not Asp92 - a different, conserved aspartate) and
+the tyrosine our **Tyr192**.
+
+One contact does differ: Arg NH1-His(M1) NE2 is **3.35 Å** in 6NC5 and
+**4.37-4.46** in ours. Since NH1 matches to 0.33 Å, the atom that moved is
+**His164 NE2**, following the metal. So the carbonyl-polarisation geometry is
+robust to the rotamer (2.88 against 2.98), and the single discrepancy in the
+site is downstream of the metal position.
+
+**And the premise behind the question was wrong anyway:** a literature search
+found no precedent for arginine as a direct zinc ligand - it appears only as
+second shell, hydrogen bonding to zinc-bound ligands and influencing site
+geometry, never in a catalytic zinc-s donor set (His, Glu, Asp, Cys plus
+solvent). 3.67-4.05 Å is a second-shell distance in the crystals too.
+
+## 6. Ser186 takes over Ser221-s role - recorded
+
+New claim node, `supported`, resting on the two protein-only fits (L1 Ser206
+1.44 Å, SMB-1 Ser175 1.64 Å), on canonical B3 anchoring the carboxylate with
+that serine, and on S214D occupying the anchor site rather than the metal. The
+second canonical anchor (L1 Ser208 / SMB-1 Thr177) has no counterpart - that
+position is backbone in our frame (Ala188 N 2.44 Å). **CSR-1 has one of the
+two.** The claim rests on where the residue is, which is solid; not on the
+hydrogen-bond length, which is MM-only, since Ser186 is not a QM residue.
+
+## 7. What a 50 ps QM/MM could and could not decide
+
+Asked whether 50 ps of QM/MM on `aspxtb8` with the inherited substrate pose
+could tell us whether the nucleophile is hydroxide or water. **Not as posed**,
+for a structural reason: the protonation state is an **input** to that run, and
+it can only come out changed if a proton actually transfers inside the QM
+region. The only QM acceptor is Asp92, which is **5.09-5.83 Å** from the zinc in
+`aspxtb8` - too far for direct transfer - and bulk is outside the QM region. So
+the experiment is half-blind by construction: a spontaneous transfer would be
+informative, its absence would not be.
+
+It would also not be `aspxtb8`. `aspxtb8` has the **carbonyl** on the metal at
+2.211 Å; the inherited pose has the **carboxylate** on it with the carbonyl
+held by Arg90. Those are different structures, and combining them means
+solvating and equilibrating the crystal-derived pose - which is the experiment
+¶282 and ¶284 already named, still not run.
+
+What that run would genuinely settle is **pose stability**, which is the largest
+open item: whether the carboxylate stays on the metal, whether the attack
+distance closes or opens from 2.63 Å, whether Arg90 keeps the carbonyl at 2.98,
+and whether a water occupies the free position. Worth doing for that. The
+hydroxide-versus-water question needs a different experiment and is not answered
+by unbiased dynamics.
+
+Geometry and literature only. Nothing built, nothing submitted, no config
+changed.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**

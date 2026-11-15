@@ -43,6 +43,15 @@ catalysis no". It is **polarisation yes, leaving-group stabilisation no**, and t
 metal covers the second
 ([[the-metal-can-both-carry-the-nucleophile-and-stabilise-the-leaving-nitrogen]]).
 
+**¶285: the rotamer this rests on is verified against a crystal.** The worry
+was that these numbers come from a side chain our own simulations placed.
+Carrying 6NC5-s Arg89 into our frame puts every guanidinium atom within
+**0.65 Å** of ours and NH1 within **0.33 Å**, giving NH1-O1 **2.88** against
+our 2.98, and the conserved Asp125 salt bridge and Tyr192 hydrogen bond are
+reproduced to 0.2 Å ([[our-arg90-sits-where-the-crystal-arginine-sits]]). So
+the carbonyl contact is robust to the rotamer; what is **not** verified is the
+ligand oxygen it points at.
+
 ## Supports
 - [[rqk-cations-replace-zn2-electrostatically]]
 - [[the-metal-can-both-carry-the-nucleophile-and-stabilise-the-leaving-nitrogen]]

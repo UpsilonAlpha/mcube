@@ -64,6 +64,25 @@ Zn-O1 3.82, against the stored 1.847 / 3.153 - the same arrangement, a looser
 metal contact. The pose is still the right thing to equilibrate; it is not
 independent evidence that the carboxylate binds.
 
+**So what IS independent about the carboxylate site?** The question is worth
+separating, because three different things have been argued from this pose and
+they do not have the same standing:
+
+| statement | standing |
+| --- | --- |
+| canonical B3 binds the substrate carboxylate **on a metal** | **experimental** - 7UHI 2.65 Å, 5B15 2.23 Å, measured in place |
+| **Ser186** is the residue that anchors it, and it is in the canonical place | **experimental** - protein-only fits, L1 Ser206 1.44 Å, SMB-1 Ser175 1.64 Å; no ligand involved |
+| the carboxylate is **1.847 Å from our metal** | **inherited** - a transfer artefact to within ~1 Å; a global fit gives 2.75 |
+
+The first two do not depend on this pose at all. **Only the contact distance
+does**, and it is the one number that should never be quoted as a result.
+
+**Which also answers how the substrate carboxylate-s position is known at all:
+it is not, to better than about 1 Å.** What is known to better than that is
+where the *anchoring residue* sits, from two deposits and the protein backbone
+alone. So arguments should be run through Ser186-s position, which is measured,
+rather than through the ligand oxygen-s, which is placed.
+
 ## Supports
 - [[the-cpha-conditions-are-met-in-the-crystal-derived-pose]]
 - [[arg90-stands-at-the-third-zn1-ligand-position]]
