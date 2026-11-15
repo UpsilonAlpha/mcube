@@ -14997,6 +14997,41 @@ Nothing built, nothing submitted, no config changed. The atom identifications
 (O2x on C4x the carbonyl; O3x/O4x on C6x the carboxylate) are from bond-length
 connectivity in `aspxtb8_nowat.pdb`.
 
+**¶287 - Ser186 ADDED TO THE QM REGION for the planned carboxylate-on-metal
+runs. New `qm_regions` entry `michaelis_rks` = `michaelis_rk` + `A: {186: SER}`,
+charge UNCHANGED at 2. `michaelis_rk` kept alongside it.**
+(2026-11-15, user: "Yes, add it")
+
+Ser186 is the canonical carboxylate anchor - L1 Ser206 OG lands 1.44 Å from
+its OG, SMB-1 Ser175 OG 1.64 Å, both inside their fits' own RMSD - and its
+hydrogen bonds to the ligand carboxylate are exactly what Legs B and C of
+`equilibration-plan.md` exist to measure. In MM those bonds are point charges,
+which is why ¶281's Ser186 contacts were ruled untrustworthy and a node was
+voided over them; watching them in MM again would repeat that deliberately.
+
+**Charge arithmetic, stated although unchanged (¶152):** Zn(2+) +2, Asp92 -1,
+hydroxide -1, zwitterionic ligand 0, Asn225 0, His88 0, His164 0, Arg90 +1,
+Lys226 +1, **Ser186 0** = **+2**. Serine is neutral, so nothing moves.
+
+**`michaelis_rk` is kept.** `aspqm2`'s 300 ps is the comparison baseline and
+changing its region retrospectively would break that comparison, so both
+regions exist and Leg C names the new one.
+
+**Verified locally as far as it can be:** `site.yaml` parses, the three
+top-level keys are intact, all 80 sections still load, `michaelis_rk` is
+byte-identical, and `michaelis_rks` resolves to the nine intended residues.
+`sections.py` could NOT be exercised here - it imports `mcube.preprocess`,
+which is not installed in this environment - so the section-writing path is
+unchecked until Bunya. The anchor `&qmreg_michrks` is defined and not yet
+referenced by any section, which YAML permits and which is correct for now,
+since no section is written until the starting structure is confirmed.
+
+**Still outstanding before anything is submitted:** which starting structure
+exists on Bunya - `qmmm_aspqm2_results` preferred, 
+`md_relax10_results/NVTtrajectory_lastframe.pdb` as fallback. `state.md` cannot
+be trusted for this, the `prodpull*` sections it reports as run having been
+deleted in ¶262. Nothing built, nothing submitted.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**

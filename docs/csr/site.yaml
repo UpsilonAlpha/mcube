@@ -450,6 +450,29 @@ qm_regions:
     C: {2: OH, 1: mer}
     A: {88: HIS, 164: HIS, 92: ASP, 225: ASN, 90: ARG, 226: LYS}
 
+  # `michaelis_rk` plus **Ser186** (user, 2026-11-15, ¶287). For the planned
+  # carboxylate-on-metal runs in `equilibration-plan.md`, where the substrate's
+  # carboxylate end is the thing being watched.
+  #
+  # **Why it has to be QM there.** Ser186 is the canonical carboxylate anchor -
+  # L1 Ser206 OG lands 1.44 Å from its OG and SMB-1 Ser175 OG 1.64 Å, inside
+  # each fit's own RMSD - and its hydrogen bonds to the ligand carboxylate
+  # (OG-O7 2.72, OG-O8 3.00 in the template) are precisely what those runs
+  # measure. Left in MM those bonds are point charges, which is why ¶281's
+  # Ser186 contacts were ruled untrustworthy and a node was voided over them.
+  # Watching them in MM would repeat that mistake deliberately.
+  #
+  # **Charge is UNCHANGED at 2**, serine being neutral: Zn(2+) +2, Asp92 -1,
+  # hydroxide -1, zwitterionic ligand 0, Asn225 0, two neutral His 0, Arg90 +1,
+  # Lys226 +1, **Ser186 0**. Stated here regardless of being unchanged (¶152).
+  #
+  # Not a replacement for `michaelis_rk`: `aspqm2`'s 300 ps is the comparison
+  # baseline and keeps the smaller region, so both exist.
+  michaelis_rks: &qmreg_michrks
+    B: {1: ZN}
+    C: {2: OH, 1: mer}
+    A: {88: HIS, 164: HIS, 92: ASP, 225: ASN, 90: ARG, 226: LYS, 186: SER}
+
 sections:
 
   # ¶42. Each of these is an optimisation only; score the result with a

@@ -85,7 +85,9 @@ moved, which is the part that has never been done.
 
     stage: qmmm
 
-Modelled on `aspqm2`: `qm_residues: *qmreg_michrk`, `charge: 2`,
+Modelled on `aspqm2`, but with **`qm_residues: *qmreg_michrks`** - the region
+including **Ser186**, approved by the user ¶287 and now in `site.yaml`.
+`charge: 2`,
 `skip_optimize: true`, `skip_equilibrate: false`, `rigid_water: false`,
 `time: 50`, chunked by raising `time` to 100, 150, 200 one at a time.
 
@@ -111,15 +113,11 @@ coordination number.
 
 ## Decisions needed before this is submitted
 
-1. **Ser186 in the QM region?** The user raised this. It would need a new
-   `qm_regions` entry - `michaelis_rks`, being `michaelis_rk` plus
-   `A: {186: SER}` - and the **charge is unchanged at 2**, serine being neutral.
-   The case for it: Ser186 is the carboxylate anchor and its hydrogen bonds to
-   the ligand carboxylate are the thing Leg C is watching, and in MM they are
-   point charges, which is why ¶281's Ser186 contacts were ruled
-   untrustworthy. The case against: it grows the region and `aspqm2`'s 300 ps
-   is the comparison baseline. **Recommend adding it**, since the carboxylate
-   end is what the run is about.
+1. ~~Ser186 in the QM region?~~ **SETTLED (user, ¶287): yes.** `michaelis_rks`
+   is written into `site.yaml` - `michaelis_rk` plus `A: {186: SER}` - and the
+   **charge is unchanged at 2**, serine being neutral. Leg C uses it.
+   `michaelis_rk` is kept alongside, because `aspqm2`'s 300 ps is the
+   comparison baseline and changing its region would break the comparison.
 2. **The starting structure.** Preferred is the end of the QM/MM leg
    (`qmmm_aspqm2_results`), to honour "start from a QM/MM equilibrated
    structure"; fallback is `md_relax10_results/NVTtrajectory_lastframe.pdb`.
