@@ -3351,3 +3351,135 @@ sections:
       mult: 1
       sp_engine: dft
       sp_cores: 32
+
+  # ======================================================================
+  # ¶288: the carboxylate-on-metal arrangement, tested in three legs.
+  # Plan and reasoning: `equilibration-plan.md`. Approved ¶287 (Ser186 in the
+  # QM region); start structure resolved ¶288.
+  # ======================================================================
+
+  # LEG A. Drive the substrate's C3 carboxylate onto the metal and LEAVE THE
+  # CARBONYL ALONE.
+  #
+  # Start is `aspxtb8`'s QM/MM optimum - the WT one-zinc Michaelis complex every
+  # measurement in ¶283-¶286 was made on, and a QM/MM-equilibrated structure as
+  # required, not a shifted one. In it: Zn-O4x **5.42**, Zn-O3x 6.70 (the C3
+  # carboxylate, on C6x) and Zn-O2x **2.21** (the beta-lactam carbonyl, on C4x,
+  # currently ON the metal).
+  #
+  # **Only O4x is driven.** `constraints` is required unset so nothing else can
+  # be held. If the arrangement is real the carbonyl should leave on its own as
+  # the carboxylate arrives, because a two-histidine zinc cannot carry carbonyl
+  # + carboxylate + nucleophile; **if it does not leave, the arrangement is not
+  # accessible to this system, and that is the result.** Driving both
+  # coordinates would assume the answer, which is the whole reason this is a
+  # scan and not a two-restraint pull.
+  #
+  # `end: 2.20` is **5B15's measured** Zn2-carboxylate distance (OAE 2.23;
+  # 7UHI's is 2.65). NOT 1.847, which is the ¶156 transfer's own artefact - a
+  # global CA fit of the same ligand gives 2.75. `start` is deliberately
+  # omitted: scan defaults it to the structure's current distance, so the file
+  # supplies it and no hand-typed number can disagree with the coordinates.
+  #
+  # `monitor` carries every quantity the leg exists to watch, so the profile
+  # reports them per point and nothing has to be re-measured afterwards: the
+  # carbonyl leaving, the nucleophile's grip and attack distance, Arg90 holding
+  # the carbonyl, Ser186 reaching the carboxylate, and the leaving nitrogen.
+  posepull:
+    stage: scan
+    submit: {partition: general, cores: 8, mem: 32G, time: "24:00:00"}
+    require:
+      unset: [restraints, constraints, opt_constraints]
+      equals: {charge: 2, rigid_water: false}
+    inputs:
+      pdb_file: protdft/qmmm_aspxtb8/QM_MM_optimized.pdb
+      qm_residues: *qmreg_michrks
+      charge: 2
+      atoms: [B:1:ZN, C:1:O4x]
+      end: 2.20
+      points: 11
+      monitor:
+        - [B:1:ZN, C:1:O2x]
+        - [B:1:ZN, C:2:O01]
+        - [C:2:O01, C:1:C4x]
+        - [A:90:NH1, C:1:O2x]
+        - [A:186:OG, C:1:O4x]
+        - [A:186:OG, C:1:O3x]
+        - [B:1:ZN, C:1:N1x]
+      opt_maxiter: 300
+      rigid_water: false
+      resume: true
+
+  # LEG B. Hold the new coordinate bond and let everything else relax around it.
+  #
+  # `relax10`'s pattern exactly - `gentle: false` because the start is already
+  # 300 K and minimised and those 40 ps of pre-NPT MD are long enough for
+  # coordination drift, which is the one thing these runs exist to avoid
+  # (¶227); `coordination_redetect: false` so the automatic set cannot pick up
+  # the ligand oxygen that was just moved.
+  #
+  # **One restraint, and only one:** Zn-O4x at 2.20. That is a coordinate bond
+  # well inside the 3.0 Å rule and in the metal's direct environment, so it is
+  # restrained for the documented reason - MM represents it with point charges
+  # and cannot do otherwise. The carbonyl, the hydroxide, Ser186, Arg90,
+  # Lys226, Asp92 and the solvent are all free. This is the leg that
+  # re-equilibrates water around a ligand that has moved, which has never been
+  # done for any crystal-derived arrangement.
+  #
+  # `pdb_file` is the scan's LAST point: 11 points over 0..10, so `scan_10.pdb`,
+  # in `protdft/scan_posepull/` because `run.slurm` sends every non-md stage to
+  # `protdft/<section>/`. sections.py refuses to write a section whose
+  # `pdb_file` does not exist, so this cannot be written until Leg A finishes -
+  # which is correct, and is why the three legs are three commands.
+  poseeq:
+    stage: md
+    submit: {partition: gpu_cuda, cores: 4, mem: 32G, time: "03:00:00",
+             extra: [--qos=gpu, --gres=gpu:h100:1]}
+    require:
+      unset: [skip_npt, skip_nvt, gentle]
+      equals: {nvt_time: 10000}
+    inputs:
+      pdb_file: protdft/scan_posepull/scan_10.pdb
+      gentle: false
+      coordination_redetect: false
+      restraints:
+        - [B:1:ZN, C:1:O4x, 2.20, 500.0]
+      nvt_time: 10000
+      nvt_timestep: 0.002
+      traj_frequency: 1000
+      platform: CUDA
+      properties:
+        Precision: mixed
+
+  # LEG C. Unrestrained QM/MM. THIS IS THE TEST.
+  #
+  # `aspqm2`'s settings, with the Ser186 region (¶287) and the charge unchanged
+  # at 2 because serine is neutral. `require: unset` on all three constraint
+  # keys, by design and by precedent: the MM legs restrain the coordinate bond
+  # because MM cannot represent it, QM/MM can, so holding it here would measure
+  # the restraint instead of the chemistry - which is why `aspqm` and `aspqm2`
+  # refuse them outright and `aspdft` did before them (¶134, ¶239).
+  #
+  # **Carboxylate stays on and carbonyl stays off, and ¶283-¶286 stand.
+  # Reverts to `aspxtb8`'s arrangement, and the carboxylate-on-metal reading is
+  # a transfer artefact and most of those entries go with it.** Either way it
+  # decides, which no further geometry will.
+  #
+  # 50 ps first. Extend by raising `time` to 100, 150, 200 and re-running, one
+  # at a time, as `aspqm2` does - `resume: true` continues rather than
+  # restarting, so the chunks are one trajectory.
+  poseqm:
+    stage: qmmm
+    submit: {partition: general, cores: 8, mem: 16G, time: "24:00:00"}
+    require:
+      unset: [restraints, opt_constraints, constraints]
+      equals: {charge: 2, rigid_water: false}
+    inputs:
+      pdb_file: md_poseeq_results/NVTtrajectory_lastframe.pdb
+      qm_residues: *qmreg_michrks
+      charge: 2
+      skip_equilibrate: false
+      skip_optimize: true
+      time: 50
+      resume: true
+      rigid_water: false

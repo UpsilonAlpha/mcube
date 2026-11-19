@@ -15032,6 +15032,53 @@ exists on Bunya - `qmmm_aspqm2_results` preferred,
 be trusted for this, the `prodpull*` sections it reports as run having been
 deleted in ¶262. Nothing built, nothing submitted.
 
+**¶288 - THE THREE SECTIONS WRITTEN AND PRE-FLIGHTED: `posepull` (scan),
+`poseeq` (md), `poseqm` (qmmm). Start structure resolved to
+`protdft/qmmm_aspxtb8/QM_MM_optimized.pdb`, which already exists - the same
+structure every ¶283-¶286 measurement was made on - so nothing waits on
+`aspqm2`. All 9 selectors and 10 QM-region residues resolve. NOT SUBMITTED.**
+(2026-11-19, user: "please give me the commands to run the job")
+
+**Start structure, settled.** `equilibration-plan.md` left this open between
+`qmmm_aspqm2_results` and `md_relax10_results`. Neither is right. `aspqm2` is
+the **aspartate** arm (asppull3 -> relax10 -> aspqm2, `michaelis_rk` region),
+a different lineage; `relax10` is MM. The Michaelis arm's own QM/MM optimum is
+`protdft/qmmm_aspxtb8/QM_MM_optimized.pdb`, confirmed present because
+`pull-from-bunya.sh` has fetched it, and it is the structure `aspxtb8_nowat.pdb`
+is the waterless copy of. QM/MM-equilibrated, as required.
+
+**Mechanics, read out of the source rather than assumed.** `run.slurm` sends
+`md` to `${SECTION}_results/` and every other stage to `protdft/<section>/`,
+so the scan's 11 points land as `protdft/scan_posepull/scan_00.pdb` ..
+`scan_10.pdb` (`scan_{n:02d}.pdb`, scan.py:289) and Leg B starts from
+`scan_10.pdb`. `scan` takes `qm_residues` and `charge` per section - "may be
+set per section", scan.py:43 - so Leg A gets the Ser186 region too, not just
+Leg C. `start` is omitted on purpose: scan defaults it to the structure's
+current distance, so no typed number can disagree with the coordinates.
+
+**Pre-flight, which is what sections.py does before it writes.** Against
+`aspxtb8_nowat.pdb` (valid proxy - no selector is a water): all 9 selectors
+resolve (`B:1:ZN`, `C:1:O4x/O3x/O2x/C4x/N1x`, `C:2:O01`, `A:90:NH1`,
+`A:186:OG`) and all 10 QM-region residues match by name. Current values:
+Zn-O4x **5.42** (driven to 2.20), Zn-O2x **2.21** (carbonyl, left free),
+Zn-O01 **1.78**. **0 failures.** site.yaml parses, three top-level keys
+intact, 83 sections, both anchors resolve.
+
+**Caveat on `require`, stated because it is a known blind spot.** `unset` and
+`equals` see only the section's own `inputs`, not what it inherits from the
+run directory's base `scan`/`qmmm`/`md` keys. So `unset: [constraints]` on
+`posepull` cannot catch a `constraints` set in the base config. `--dry-run`
+first, and mcube prints the region and structure it resolved at startup; that
+is where an inherited value shows up.
+
+**Leg A's `monitor` block carries all seven quantities the leg exists to
+watch**, reported per point: Zn-O2x (does the carbonyl leave on its own),
+Zn-O01 and O01-C4x (the nucleophile's grip and attack distance), Arg90
+NH1-O2x, Ser186 OG-O4x and OG-O3x, Zn-N1x. Nothing needs re-measuring after.
+
+Nothing submitted. The commands were given to the user, who will run them
+when the cluster opens.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
