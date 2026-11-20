@@ -301,3 +301,13 @@ region from 124 atoms to 479 moved the carboxylate rotamer up to 1.5 Å) is abou
 the size of a QM/MM active region at constant level of theory. It argues for a
 larger `actradius` in Leg C, not for 10 ns of MM between two QM/MM legs. Leg B
 is dropped; `poseqm` takes the scan endpoint directly.
+
+## ¶295 - "never redetect on a structure whose geometry was imposed by a restraint"
+
+**Withdrawn in ¶296, 2026-11-20.** Redetection is the check for intruders, which is
+this project's largest invalidation (¶177: six-coordinate in 4995/5000 frames;
+`md_naclong`: Asp92 OD1 at 1.99 Å, HOH557 at 2.27). A restrained pair is the pair
+most worth checking, since a restraint holds a distance without holding the site.
+Always redetect; put the laundering refusal in the ¶71 guard, which needs extending
+to see a scan's driven coordinate. Leg B stays dropped - on level-of-theory
+grounds, which is independent of this.

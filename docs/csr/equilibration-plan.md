@@ -96,6 +96,32 @@ region relaxes around the moved ligand. That is the same frozen-shell
 approximation `aspdft` and `aspxtb` already run under, and the instrument for it
 is `actradius` in Leg C, not a force field.
 
+**And the redetect "exception" written here on 2026-11-20 is withdrawn (D296).**
+Always redetect: detection is the check for intruders, which is this project's
+largest invalidation (D177, a six-coordinate zinc in 4995 of 5000 frames), and a
+restrained pair is the one most worth checking because a restraint holds a
+distance without holding the site. The laundering refusal belongs in the D71
+guard, which needs extending to see a `scan`'s driven coordinate.
+
+## What Leg A is, and what it is not (D296)
+
+`scan` optimises the active region at each point with the driven distance fixed:
+**11 constrained minima at GFN2**, not dynamics. So its +22 kcal/mol is a
+difference between minima along one restrained path - no entropy, no basin width,
+and no statement about a thermally accessible route beside the driven one.
+
+At GFN2 that is a choice rather than a limit: `aspqm2` ran 50 ps of QM/MM MD at
+the same level. The instrument for an accessibility question is therefore
+`umbrella` with `coordinate: distance` on `[B:1:ZN, C:1:O4x]`, whose QM/MM windows
+and `wham` give a PMF - already in mcube, no new code. Its docstring names this
+plan's seeding route outright: *"A distance CV gets its window seeds from
+structures that already sit at the right separation - a `scan` section's
+optimised points, say."*
+
+**So Leg A is the seeding step for that PMF, and its 11 points are the seeds.**
+Whether to spend 11 QM/MM windows is the user's decision, and it needs job
+33244885 finished first, since the seeds are its output.
+
 ## Leg C - `poseqm`: QM/MM with no restraints at all - the actual test
 
     stage: qmmm

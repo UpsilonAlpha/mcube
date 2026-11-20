@@ -15519,6 +15519,70 @@ and that is the user's call - not a force field.
 always the honest division; ¶294's closing line said as much while arguing to
 keep a third.
 
+## ¶296: there is no exception to always-redetect, and at GFN2 a scan of minima is the weaker instrument
+
+Two corrections from the user, 2026-11-20, both of which hold.
+
+## 1. ¶295's "exception" is withdrawn
+
+*"Why except never on a structure whose geometry was imposed by a restraint? You
+should still check to ensure the restrained geometry is preserved otherwise other
+molecules could have drifted in - this has been well established."*
+
+Right, and "well established" understates it: **intruders arriving is this
+project's single largest invalidation.** ¶177 found a six-coordinate zinc in
+**4995 of 5000 frames** in the structure every QM/MM result then descended from;
+`md_naclong` had Asp92 OD1 appear at **1.99 Å** and HOH557 at **2.27 Å**.
+Turning detection off on a restrained endpoint would hide precisely the failure
+detection exists to catch - and a restrained pair is the pair most worth
+checking, because a restraint holds a distance without holding the site.
+
+**I conflated two different actions.** Redetection *measures* what is
+coordinating. Laundering is what happens when a measured row is then *restrained*
+in the next run as though it were structural. The answer is to separate them, not
+to stop measuring. So: **always redetect, with no exception.** The lever against
+laundering is the ¶71 guard.
+
+**And that guard is incomplete** - which is the finding worth keeping from ¶295.
+`preprocess` builds its `imposed` set from **`md.results.restraints` alone**, so a
+`scan`'s driven coordinate can be redetected as structural coordination with
+nothing objecting. The guard built for this failure cannot see the one route this
+plan would have taken. **The fix is to record a scan's driven pair where the
+guard can read it and have the guard refuse it** - an mcube change, so it needs
+writing and testing before it goes in, and it is the user's call whether to
+spend that now. It is not urgent while no stage redetects on a scan endpoint.
+
+## 2. "If we're using GFN then we should do full QM/MM sim, which also gives us dynamics, over a geomopt which just gives a minimum"
+
+**Leg C already is that**, which is worth stating plainly: `poseqm` runs
+`skip_optimize: true`, `skip_equilibrate: false`, `time: 50` - 50 ps of QM/MM MD
+at GFN2, no optimisation anywhere in it.
+
+**Leg A is not, and that is where this lands.** `scan.py`: *"at each point the
+active region is optimised with that distance fixed"* - 11 constrained minima at
+GFN2. `aspxtb` and `aspxtb8` are GFN2 optimisations too. So the project's GFN2
+results are mostly minima, while GFN2 is the one level where dynamics is
+affordable here: `aspqm2` ran **50 ps** of it. The ¶234 decision - long QM/MM
+only at xTB - was about what DFT cannot afford; it is not a reason to use a
+minimum where GFN2 could sample.
+
+What that costs ¶291's reading, concretely: +22.1 kcal/mol at point 8 is a
+difference between constrained minima along one path. It is not a free energy, it
+carries no entropy, and it cannot say how wide the basin is or whether a
+thermally accessible route exists beside the one the restraint drove.
+
+**The right instrument is already in mcube and needs no new code.** `umbrella`
+takes `coordinate: distance` with `atoms` (exactly two), runs QM/MM windows, and
+`wham` returns a PMF. Its own docstring names the seeding route this plan
+produces: *"A distance CV gets its window seeds from structures that already sit
+at the right separation - a `scan` section's optimised points, say."* So Leg A is
+not wasted work - **its 11 points are the window seeds**, and the scan becomes
+the seeding step for a PMF along Zn-O4x rather than the answer itself.
+
+That is a real compute decision (11 QM/MM windows against one 50 ps run) and it
+is the user's, not mine. Job 33244885 should finish first: the seeds are its
+output.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
