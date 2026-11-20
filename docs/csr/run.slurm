@@ -83,6 +83,15 @@ conda activate ASH
 
 ROOT=$PWD
 
+# This script's own directory, which is where site.py and site.yaml live.
+# It used to be reached as `$ROOT/../mcube/docs/csr`, i.e. relative to the RUN
+# directory, which only resolved when the checkout happened to sit beside it.
+# On Bunya it does not - the checkout is /scratch/user/uquadhik/mcube while the
+# runs are in /scratch/user/uquadhik/CSR/* - so the report has been skipped
+# silently, swallowed by the `|| true` below: job 31892313 (qmmm_michrk)
+# printed nothing whatever after its `[DONE]` line (D289).
+HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
 # Thread placement, worked out from the stage and the config and applied here,
 # before anything starts. Nothing to choose and nothing to remember.
 eval "$(mcube env "$ROOT/config.yaml" "$STAGE" "${SECTION_ARGS[@]}")"
@@ -98,6 +107,10 @@ echo "[DONE] $SECTION"
 # Always report the site afterwards: cheap, and it is the first thing anyone
 # asks of a finished structure.
 for PDB in QM_MM_optimized.pdb QM_MM_lastframe.pdb; do
-  [ -f "$PDB" ] && python "$ROOT/../mcube/docs/csr/site.py" sphere "$PDB" \
-      --site="$ROOT/../mcube/docs/csr/site.yaml" || true
+  [ -f "$PDB" ] || continue
+  # Reported rather than swallowed: a finished job must not fail because its
+  # site report did, but a report that never runs must not look like one that
+  # found nothing to say.
+  python "$HERE/site.py" sphere "$PDB" --site="$HERE/site.yaml" \
+    || echo "[WARN] site report failed for $PDB" >&2
 done

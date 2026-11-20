@@ -15079,6 +15079,72 @@ NH1-O2x, Ser186 OG-O4x and OG-O3x, Zn-N1x. Nothing needs re-measuring after.
 Nothing submitted. The commands were given to the user, who will run them
 when the cluster opens.
 
+## ¶289: LEG A SUBMITTED - job 33244793 - and two wrong paths found doing it
+
+**`scan_posepull` is written into `config.yaml` and submitted.** Job
+**33244793**, `general`, 8 cores, 32G, 24 h, `run.slurm scan scan_posepull`,
+from `/scratch/user/uquadhik/CSR/CSR_mich`. The user said to run it once the
+cluster was back; it was, and this is it. `--dry-run` first, which wrote
+nothing and reported **16 selectors checked** against
+`protdft/qmmm_aspxtb8/QM_MM_optimized.pdb` with the `require` block clean - so
+the ¶288 pre-flight, done locally against `aspxtb8_nowat.pdb`, is confirmed
+against the structure the job actually reads.
+
+**¶288 had the checkout one directory too shallow.** `../mcube` does not
+exist. mcube on Bunya is **`/scratch/user/uquadhik/mcube`**, so from any
+`CSR/*` run directory it is **`../../mcube`**. There is no `CSR/mcube`.
+
+**And the branch is not what the notes say.** Both checkouts sit on
+**`fix/pipeline-review`**, not `main`. The two also name the remote
+differently - this machine has `UpsilonAlpha/mcube`, Bunya has
+`UpsilonAlpha/m3bl` - which is a rename GitHub still redirects, since the
+fetch resolved and fast-forwarded `4ce7822 -> b20ef60` cleanly. The content on
+Bunya is exactly what was pushed; only the branch name in the notes was wrong.
+
+**A real defect, found by checking the first path rather than assuming it.**
+`run.slurm` ended with
+
+    [ -f "$PDB" ] && python "$ROOT/../mcube/docs/csr/site.py" sphere "$PDB" \
+        --site="$ROOT/../mcube/docs/csr/site.yaml" || true
+
+and `ROOT=$PWD` is the **run** directory, so that resolved to
+`/scratch/user/uquadhik/CSR/mcube` - nothing. The `|| true` then swallowed it.
+**Verified, not inferred:** job 31892313 (`qmmm_michrk`) printed nothing
+whatever after its `[DONE]` line. So every post-run site report this
+directory should have produced has been missing, unnoticed, since the line was
+written.
+
+Fixed two ways. The path now comes from the script's own location,
+`HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)`, which is where `site.py`
+and `site.yaml` actually live and cannot depend on where the job was
+submitted. And the `|| true` is replaced by `|| echo "[WARN] ..." >&2`: a
+finished job must not fail because its report did, but **a report that never
+runs must not look like one that found nothing to say.** That is the whole
+reason this went unseen.
+
+It could not have affected Leg A - `scan` writes no `QM_MM_*.pdb`, so the loop
+never fires - but Leg C would have produced no site report at all.
+
+**Terminal gotcha, for the next time the cluster is driven from code-server.**
+Two things, both costing a false start here:
+
+- **A `\n` inside the browser `type` action is NOT submitted to the shell.**
+  Three commands typed with trailing newlines concatenated into one line and
+  ran as a single mangled command (it created a file literally named
+  `cc.logecho`, since removed). Type the text, then press **Return** as its own
+  key action, one command at a time.
+- **The code-server terminal is a canvas**, so its output is not in the DOM and
+  cannot be read as text at all. The way through is to redirect every command
+  to a file - `cmd > $L 2>&1` - and fetch that file from the page with
+  **`/<base>/vscode-remote-resource?path=<urlencoded>`**, which serves any
+  readable path as plain text. No screenshots needed, which is the standing
+  rule.
+
+**Next:** Leg A writes `protdft/scan_posepull/scan_energies.csv` and
+`scan_00..10.pdb`, with the seven monitored distances reported per point.
+`poseeq` cannot be written until `scan_10.pdb` exists, and `poseqm` not until
+`md_poseeq_results/NVTtrajectory_lastframe.pdb` does.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
