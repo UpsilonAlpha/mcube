@@ -320,3 +320,11 @@ minima rather than ensembles, with everything beyond 8 Å frozen. It is not a
 barrier, a binding penalty or an accessibility figure. Leg A's results are
 `scan_10.pdb` for the reactant gates and the monitored distances; the ¶296 PMF
 proposal along the same coordinate is withdrawn with it.
+
+## ¶298 - "a five-coordinate endpoint is the state this project treats as invalid"
+
+**Corrected in ¶299, 2026-11-21.** The `Zn coordination number` criterion is
+`range: [4, 5]` and the Leg A endpoint PASSED it at 5 (¶196 tolerates 5
+explicitly). ¶177's invalidation was SIX-coordinate. What fails at the endpoint is
+which atoms are where - O4x nearer the metal than O2x, attack distance 3.99 Å,
+angle 23 deg - not the coordination number.

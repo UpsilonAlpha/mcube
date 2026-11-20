@@ -15714,6 +15714,83 @@ pre-registered "transfer artefact" outcome - rather than a Michaelis-complex
 production run. Those are different claims and the section's comment currently
 reads as the second.
 
+## ¶299: what the gates say the pose IS - and a correction to ¶298
+
+Asked: *"Why is this pose invalid? What is the correct pose?"* Measured rather
+than asserted - `site.py check` run on the unrestrained minimum and on scan
+point 0 under `carbonyl_on_metal`.
+
+### First, a correction to ¶298
+
+**"Five-coordinate is the state this project treats as invalid" is wrong.** The
+`Zn coordination number` criterion is `range: [4, 5]` and the Leg A endpoint
+**PASSED** it at 5 (¶196 tolerates 5 explicitly). ¶177's invalidation was
+**six**-coordinate, not five. I imported the severity of one finding into
+another. What fails at the endpoint is *which* atoms are where, not how many.
+
+### The comparison
+
+| criterion | want | aspxtb8 min | scan pt 0 | **scan pt 10** |
+|---|---|---|---|---|
+| closest substrate O | O2x | O2x 2.21 PASS | O2x 2.23 PASS | **O4x 2.20 FAIL** |
+| Zn-O2x | 2.4-3.0 | 2.21 FAIL | 2.23 FAIL | 2.24 FAIL |
+| Zn coordination | 4-5 | 4 PASS | 4 PASS | 5 PASS |
+| O01-C4x (attack) | 3.0-3.5 | 3.63 WARN | **3.46 PASS** | **3.99** |
+| O01-C4x-O2x | 95-120° | 38 | 45 | **23** |
+| O01-Zn-O2x | 45-95° | 88 PASS | 85 PASS | 93 PASS |
+| O01...O2x | 2.0-3.3 | 2.78 PASS | 2.73 PASS | 2.93 PASS |
+| Asp92 OD1-O01 | 2.5-3.2 | 7.21 WARN | 7.20 WARN | 7.44 WARN |
+
+**So "rejected" does not separate these structures - all three are rejected.**
+What separates them is how many criteria and which. The unrestrained minimum
+fails **one**: Zn-O2x too **tight** at 2.21 against a 2.4-3.0 window whose own
+source line reads "loose" (L1 7UHJ 2.63, thermolysin 2.41, CPA 2.98). Scan point
+0 fails the same one and nothing else, with the attack distance **in range** at
+3.46. The Leg A endpoint adds a second real failure - O4x nearer the metal than
+O2x - and takes the attack geometry the wrong way, 3.46 -> 3.99 Å and 45° -> 23°.
+
+**And that single failure is probably the method, not the structure.** `aspdft`,
+unrestrained at def2-SVP, ends **Zn-O2x 2.501** - inside the window, against
+7UHI/7UHJ's 2.53/2.63. GFN2 is documented to over-bind this zinc (¶245: 0.06-0.08
+Å shorter than DFT on both histidine nitrogens). So the one criterion the GFN2
+minimum fails is one DFT passes on the same arrangement.
+
+### What the correct pose is, as far as the record goes
+
+**Unrestrained, at both levels of theory, the system sits with the beta-lactam
+carbonyl on the zinc and the metal four-coordinate - 2 His, hydroxide, carbonyl.**
+That is the only arrangement anything here reaches without being driven to it,
+it is what L1's time-resolved Michaelis complexes show (¶121), and it passes
+every criterion except the GFN2 bond length.
+
+**But the record does not establish it as the Michaelis complex, for two reasons
+that are bigger than Leg A:**
+
+1. **Asp92 OD1-O01 is 7.2 Å where the criterion wants 2.5-3.2.** The candidate
+   base is nowhere near the nucleophile in any of these three structures. That is
+   a WARN rather than a FAIL only because it is not `required_at: [start]`.
+2. **No pose in this project has survived unrestrained GFN2 QM/MM dynamics.**
+   ¶111: O01-C4x 3.33 -> 6.20 Å over 100 ps, substrate unbound. ¶119: the ohH
+   arm went in at 3.49 and never came back under 3.5 in 50 ps, mean 5.31, max
+   6.20 - and the lysH arm the same, mean 5.67, max 7.23, so protonation was not
+   the cause. `aspqm2`, from `relax10` and in the current lineage, **lost it too:
+   O01-C4x 7.4 Å at 50 ps.** Three runs, three starting structures, same result.
+
+So the honest position: **the carbonyl-on-metal four-coordinate arrangement is
+the best-supported minimum and no arrangement here is a demonstrated Michaelis
+complex**, because the minima do not survive the dynamics. That is the open
+problem, and Leg A did not bear on it.
+
+### What this does to Leg C
+
+`poseqm` would be **the fourth unrestrained GFN2 QM/MM MD of this substrate**,
+started from the structure with the *worst* attack geometry of the three above.
+The three before it lost the substrate. It can still answer a narrow
+pre-registered question - does the fifth donor leave, does the ligand revert to
+`aspxtb8`'s arrangement - but it should not be described as producing a Michaelis
+complex, and a substrate that drifts off would repeat a known result rather than
+add one.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
