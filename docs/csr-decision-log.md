@@ -15145,6 +15145,69 @@ Two things, both costing a false start here:
 `poseeq` cannot be written until `scan_10.pdb` exists, and `poseqm` not until
 `md_poseeq_results/NVTtrajectory_lastframe.pdb` does.
 
+## ¶290: job 33244793 died in 7.8 s with no charge; the scan stage now reads its own
+
+**What happened.** ¶289's job reached geomeTRIC and exited immediately:
+
+    Warning: Charge/mult was not provided to geomeTRICOptimizer
+    Checking if present in QM/MM object
+     No charge/mult information present in fragment either. Exiting.
+     ASH exiting with code: 1
+
+7.8 s, exit 1, nothing written. **`scan.py` read charge and multiplicity from
+`qmmm.inputs` alone** (`charge, mult = qmmm_inputs.get("charge"),
+qmmm_inputs.get("mult")`), and this run directory's base `qmmm:` section has
+`mult: 1` and **no charge at all**.
+
+**This is the ¶288 blind spot firing exactly as described.** `require:
+{equals: {charge: 2}}` passed, because `check_require` reads the section's own
+`inputs` - and the section does say `charge: 2`. The run then ignored that
+number. **A gate that checks a value nothing uses is worse than no gate, because
+it reports that it passed.**
+
+**The fix was NOT to put a charge in the base section**, which was the obvious
+one-line move and is precisely what the project ruled out. `add-qmmm-base.py`
+says so in as many words: *"`charge` is deliberately left at the value a caller
+must override - each section states its own (¶152), and a base charge that
+happens to suit one arm is how an SCF converges on the wrong species while
+looking entirely normal."* Every `qmmm_*` section here carries its own
+(`qmmm_michqm` 0, the six aspartate/Michaelis sections 2), so nothing inherits
+one and adding one would have been invisible until it was wrong.
+
+**So `scan` now reads them from its own section, with `qmmm.inputs` as the
+fallback** - `charge_and_mult()` in `scan.py`, extracted as a function so it
+could be tested rather than asserted. A missing charge is now **raised by name**
+instead of defaulted: there is no safe default charge for a QM region, and
+guessing one is the failure ¶152 exists to prevent. `charge: 0` is handled by
+`.get(key, fallback)` rather than `or`, so a real zero is not read as absence.
+
+**Tested and verified before it was relied on**, as the standing rule requires:
+`tests/test_scan_charge.py`, six cases (section value used, section overrides
+base, base as fallback, zero not treated as absent, missing charge raises
+naming the section, absent `mult` allowed), **6 passed** in the ASH environment
+on Bunya. Full suite there: **339 passed, 1 failed** - the failure is
+`test_membrane_pipeline.py`, an OpenMM membrane fixture opening a nonexistent
+`finalsystem.pdb`, which this change cannot reach; it was not checked against
+the parent commit.
+
+**`neb` and `ts` have the same hole** - they take the QM theory through
+`qm_level_inputs`, whose docstring states that charge and mult still come from
+`qmmm.inputs`. Left alone deliberately: no `neb`/`ts` section needs it today,
+and widening a fix past its evidence is how a second arm acquires a variable
+nobody changed on purpose. Worth doing before the first NEB.
+
+**Resubmitted: job 33244885**, and confirmed running rather than assumed:
+
+    [INFO] Starting structure: .../protdft/qmmm_aspxtb8/QM_MM_optimized.pdb
+    [INFO] Scan 4203-4214: 5.422 -> 2.200 Å in 11 points; active region 476 atoms
+    [STEP] Scan point 0/10: 4203-4214 = 5.422 Å
+    Charge: 2 Mult: 1
+
+**5.422 Å is the Zn-O4x distance ¶283 measured (5.42)**, taken from the
+structure because `start` was deliberately omitted, so the file supplied it and
+no hand-typed number could disagree with the coordinates. That is the one check
+¶288 could not make locally, and it holds.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
