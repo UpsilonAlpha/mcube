@@ -15309,6 +15309,60 @@ Legs B and C have not run. The reading to take now is that **the carboxylate-on-
 metal arrangement is not reached by relaxing into it**, which is what the leg
 was built to test.
 
+## ¶292: Leg B's restraints are invalid - MM was being given a coordination question
+
+**The user, 2026-11-20: "we don't use classical MD for coordination - that's a
+hard rule."** Raised against my own description of Leg B as equilibrating the
+pose "to see whether it survives when nothing is holding it there". That
+description was wrong twice over - and checking it found the config wrong too.
+
+`poseeq` as written restrains **one** coordinate bond, `[B:1:ZN, C:1:O4x, 2.2,
+500.0]`, and the plan document calls the carbonyl and the hydroxide "free" as
+though that were a design choice. At Leg A's endpoint both are coordinating:
+**Zn-O2x ~2.18 Å, Zn-O01 ~1.75 Å**, each well inside the 3.0 Å rule. Free
+means modelled by MM, and MM cannot represent a coordinate bond - which is the
+documented reason the rule exists. Worse, the two bonds handed to MM are exactly
+the pair Leg C exists to adjudicate, so the leg would have pre-answered its own
+successor with the one method that cannot answer it.
+
+**`relax10`, which `poseeq` claims to follow "exactly", restrained Zn-O2x at
+2.60.** Dropping that was not recorded anywhere as a decision. It was an
+oversight.
+
+**A second gap, pre-existing and NOT introduced by this leg: no MD section in
+this project has ever restrained Zn-O01.** `relax10` restrains the O01-C4x
+attack distance but never the hydroxide's bond to the metal. Every MM leg run
+here has let classical terms hold the nucleophile onto the zinc. Flagged, not
+fixed - the restraint list is the user's call.
+
+Leg B is suspended pending that list, with the warning written into `site.yaml`
+above the section itself rather than only into the plan, because the config is
+what gets submitted. Nothing is blocked by the wait: `scan_10.pdb` does not
+exist yet, so `sections.py` would refuse the section regardless.
+
+## And the geometric check does not need a job - but it needs a structure
+
+Asked in the same message: *"isn't this just a geometric check? why does it
+require simulation?"* Largely yes, and the distinction is worth keeping
+straight.
+
+**Geometry answers it, given a structure.** Whether the hydroxide can reach the
+carbonyl is `O01...O2x` 2.0-3.3 Å and `O01-Zn-O2x` 45-95° - two criteria already
+in the argmap, already `unsupported`, already measured at every scan point. For
+the `aspxtb8` structure we have, that check needs no compute at all and has been
+run.
+
+**What needs the scan is the structure, not the measurement.** There is no
+crystal structure of CSR-1 with the carboxylate on the metal; that reading came
+off a template by transfer. The standing rule is crystal structures only - no
+builder, no arbitrarily shifted coordinates - so we may not hand-build the pose
+and measure it, because then the measurement only reports what was built. The
+scan is the structure generator; the geometric check is what runs on its output.
+
+The energy is the part geometry cannot give at all. Geometry can say the pose is
+bad; only the scan says approaching it costs **22 kcal/mol**, which is what
+makes "not accessible" a result rather than an opinion.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**

@@ -71,11 +71,31 @@ with no restraint telling it to.
 Minimise, NPT, then NVT, following `relax10`'s pattern exactly - `gentle:
 false`, `coordination_redetect: false`, CUDA, mixed precision, 10 ns.
 
-**One restraint only:** `[B:1:ZN, C:1:O4x, 2.2, 500.0]`. That is a coordinate
-bond at 2.2 Å, inside the 3.0 Å rule and in the metal's direct environment, so
-it is restrained for the documented reason - MM cannot represent it. Nothing
-else is restrained. The carbonyl, the hydroxide, Ser186, Arg90, Lys226, Asp92
-and the solvent are all free.
+**THE RESTRAINT SET AS WRITTEN IS INVALID AND MUST BE SETTLED BEFORE THIS LEG
+RUNS (user, 2026-11-20: "we don't use classical MD for coordination - that's a
+hard rule").**
+
+As written, `poseeq` restrains one coordinate bond - `[B:1:ZN, C:1:O4x, 2.2,
+500.0]` - and says the carbonyl and the hydroxide are "free". But in Leg A's
+endpoint both of those are still coordinating: Zn-O2x at ~2.18 Å and Zn-O01 at
+~1.75 Å, each well inside the 3.0 Å rule. Leaving them unrestrained hands them
+to MM, which is precisely what MM cannot represent, and it hands MM the very
+question Leg C exists to decide. `relax10`, which this leg claims to follow,
+did restrain Zn-O2x (2.60) - dropping that restraint was not a documented
+choice, it was an oversight.
+
+A second gap, pre-existing and not introduced here: **no MD section in this
+project has ever restrained Zn-O01**, the zinc-hydroxide bond. `relax10`
+restrains the O01-C4x attack distance but not the bond to the metal. That needs
+the user's decision, not a default.
+
+So this leg is suspended pending the restraint list. It cannot be written in any
+case until `scan_10.pdb` exists, so nothing is blocked by waiting. What the leg
+may legitimately do once settled is **re-equilibrate the solvent around a ligand
+that has moved**, with the whole first coordination sphere held at Leg A's
+geometry. What it may not do is decide anything about coordination - including
+whether the pose "survives", which was how it was described to the user and was
+wrong.
 
 This is the "solvate and equilibrate" leg. Note the system **is** already
 solvated; what this does is re-equilibrate the water around a ligand that has
