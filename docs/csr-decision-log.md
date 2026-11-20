@@ -15791,6 +15791,93 @@ pre-registered question - does the fifth donor leave, does the ligand revert to
 complex, and a substrate that drifts off would repeat a known result rather than
 add one.
 
+## ¶300: where the coordination window comes from, and why there is no NEB starting point
+
+## 1. Why the coordination number is restricted
+
+The window is `range: [4, 5]`, `required_at: [reactant]`, on both hypotheses.
+
+**The four is a mechanistic statement.** The resting site is four-coordinate,
+2 His + 2 waters (¶120). On binding, the substrate displaces one water and the
+other becomes the nucleophilic hydroxide, so the complex being built is
+**2 His + hydroxide + carbonyl = four**. The target is four and the criterion
+says so.
+
+**The five is two specific allowances, decided by the user at ¶196**, both
+written into `site.yaml` above the criterion: GOB-18's B3 site expands four- to
+five-coordinate on substrate binding, so a retained second water is a real
+possibility rather than a build error; and Asp92 OD2 sits at 2.80 Å in the
+crystal as a second-shell contact, so a frame where it drifts inside the 2.5 Å
+measurement radius counts as five here while not being five-coordinate in any
+chemical sense. Demanding exactly four would reject both for the wrong reason.
+
+**What the window is really for is the force field.** The Li/Merz 12-6 potential
+"cannot tell a ligand from a non-ligand", which is why the per-atom 3.0 Å
+restraints exist - and over-coordination is this project's documented failure:
+¶177's six-coordinate zinc in 4995 of 5000 frames, ¶120's and ¶130's carboxylate
+rotations. The ceiling at five is a tripwire for that, not a chemical claim that
+six is impossible.
+
+**Two weaknesses worth stating, because Leg A just exercised both.**
+
+- **The criterion counts, it does not identify.** `site.py`'s own docstring says
+  so: *"four donors inside a cutoff can be the wrong four - where the identity
+  of the sphere is the claim, read it off `shell`'s occupancies"* (¶129, ¶130).
+  Leg A's endpoint **PASSED at five while holding the wrong five** - carboxylate
+  and carbonyl both on the metal. The count is not a substitute for the sphere.
+- **The "= 4" rests on a two-histidine sphere, and that assignment is
+  unsettled.** Our zinc is held by His88 and His164; whether the second is
+  BBL His192 or His196 is open - 6DN4 and 6DQ2 give 192, the papers give 196,
+  and residue 196 in that file is ALA (`reference-structures.md`). B3's
+  canonical M1 is 3-His. If a third histidine belongs in this sphere, the
+  window's centre moves by one and every frame judged against it was judged
+  against the wrong number. This is not an argument for changing the window; it
+  is a reason not to treat a passing count as structural confirmation.
+
+## 2. There is no NEB starting point, and the reason is not a close call
+
+**Four `neb` sections are written** - `step1`, `step2` (attack, then ring
+opening) and `pstep1`, `pstep2` (Michaelis -> intermediate -> product). Every one
+of them names endpoint files that **do not exist**.
+
+Measured across all thirteen run directories under `/scratch/user/uquadhik/CSR/`,
+the complete set of `scan` outputs is: `scan_zngln`, `scan_posepull`,
+`scan_aspin`, `scan_aspout`, `scan_aspout_d137`, `scan_michaelis2d`. **None of
+`scan_attack`, `scan_ringopen`, `scan_expel` or `scan_recombine` has ever been
+produced**, and `CSR_mich/protdft/` holds only `qmmm_aspdft`, `aspqm`, `aspqm2`,
+`aspxtb`, `aspxtb8`, `michqm`, `michrk` and `scan_posepull` - no `qmmm_prodopt`,
+no `qmmm_protH_oh`. `sections.py` would refuse all four sections on the absent
+`reactant_pdb`/`product_pdb`.
+
+So the mechanism steps a NEB would connect have not been computed. **A NEB is
+not the next thing that can run; it is downstream of work that has not started.**
+
+**Three further blockers, each independent of the missing files:**
+
+1. **No validated reactant.** A barrier belongs to its two minima. The Michaelis
+   complex is not established (¶299): Asp92 OD1-O01 is 7.2 Å against a 2.5-3.2 Å
+   criterion in every structure we have, and no pose has survived unrestrained
+   GFN2 dynamics.
+2. **The active-region question, unsettled on purpose (¶252).** `actradius` is
+   measured per structure, so one radius gives two slightly different regions
+   and energies over different movable sets are not comparable. `actradius: 0`
+   makes the regions identical by construction but freezes the MM environment,
+   and the two endpoints' environments differ by a constant that does **not**
+   cancel in a barrier. `site.yaml` says outright: settle it before these run.
+3. **The two arms are not NEB-compatible as written.** The reactant arm is
+   `charge: 2` with `qmreg_michrks`; `pstep1`/`pstep2` are `charge: 0` with
+   `qmreg_prod`, because Arg90 and Lys226 became MM (¶190). A NEB needs one QM
+   region and one charge across both endpoints, so these cannot be joined - the
+   endpoints have to be recomputed in one scheme.
+
+**If a reactant endpoint had to be named today** it is
+`protdft/qmmm_aspxtb8/QM_MM_optimized.pdb`: the project's only converged,
+unrestrained QM/MM minimum of a Michaelis-like complex, four-coordinate, failing
+one criterion (Zn-O2x 2.21 vs 2.4-3.0) that DFT does not reproduce (2.501).
+`scan_00.pdb` has a marginally better attack distance (3.46 against 3.63) but it
+is an optimisation under a restraint at the existing distance, not a free
+minimum, so it is the worse NEB endpoint of the two despite the better number.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
