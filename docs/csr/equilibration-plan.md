@@ -64,51 +64,37 @@ coordinates would assume the answer.
 Expected on success: Zn-O2x relaxes out toward ~3.2 Å (the template's 3.153)
 with no restraint telling it to.
 
-## Leg B - `poseeq`: hold it and let everything relax around it
+## Leg B - DROPPED (D295)
 
-    stage: md
+**The user, 2026-11-20: "I see no reason to run B if we're doing the scan from an
+already optimised starting point. There's no reason to drop down to a lower
+level of theory."** Correct. There are two legs.
 
-Minimise, NPT, then NVT, following `relax10`'s pattern exactly - `gentle:
-false`, `coordination_redetect: false`, CUDA, mixed precision, 10 ns.
+The scan starts from `aspxtb8`'s converged QM/MM minimum and runs at QM/MM
+throughout, so an MM leg between it and Leg C re-describes a QM-derived geometry
+with a force field that has no parameters for the species in question - and 10 ns
+is long enough to degrade it. The pipeline order is preprocess -> md -> qmmm for
+a reason; going back up it is not a step.
 
-**Always redetect** (user, 2026-11-20). `coordination_redetect: true`, gated in
-`require.equals`. The recorded rows carry the original structure's distances and
-this leg starts from Leg A's endpoint, where Zn-O2x has moved to ~2.18 Å; the
-earlier rationale for `false` - that redetection would "pick up the ligand
-oxygen that was just moved" - had it backwards, since that oxygen is now a
-coordinate bond and is what should be held. Cost, stated: not numerically
-comparable with runs that used the recorded values, and `coordination_source`
-records which happened.
+**My argument for keeping it (D294) was wrong in its own terms.** The evidence I
+cited - `aspxtb8` (D244), where freeing the second shell from 124 atoms to 479
+moved the carboxylate rotamer by up to 1.5 Å - is evidence for a **larger active
+region in QM/MM**. I used it to argue for an MM leg, which is not what it
+measured.
 
-The `restraints:` list is the **additions** to the detected set, not the whole
-set. Every donor inside 3.0 Å is restrained automatically, Zn-O2x and Zn-O01
-included (D293 retracts the claim that they were free).
+**And the leg could not have been made safe.** `coordination_redetect: true`,
+which the leg needed to be valid at all, would re-measure coordination on
+`scan_10.pdb` - whose Zn-O4x distance of 2.2 Å was **imposed** by the scan's
+driving restraint, a number chosen from 5B15 rather than measured here.
+Redetection would enter it as *detected* coordination: D68's laundering
+mechanism exactly. And the D71 guard does not reach it, because `preprocess`
+compares detection against `md.results.restraints` only, so a scan's driven
+coordinate is invisible to it.
 
-### Why this leg exists at all
-
-Asked directly, 2026-11-20, and the plan's old answer - "this is the solvate and
-equilibrate leg" - did not earn it.
-
-**Legs A and C both freeze everything beyond 8 Å.** They are QM/MM with
-`actradius: 8`: Leg A moved 476 atoms, Leg C will move about as many. So in
-neither leg can the bulk solvent, or the protein past 8 Å, respond to a ligand
-that has been dragged 2.6 Å. **Leg B is the only leg where the whole box
-moves.**
-
-That matters here by measurement, not by principle. `aspxtb8` (D244) freed the
-second shell from 124 atoms to 479 at the same level of theory, and the
-carboxylate rotamer moved by up to 1.5 Å - the largest disagreement with the
-crystal in the project. A solvent shell still arranged around the ligand's old
-position, frozen, pressing on the one region Leg C is supposed to measure, is
-that same error with the sign flipped. Water reorganisation is a nanosecond
-process; 50 ps of QM/MM cannot do it, and 10 ns of restrained MM on a GPU costs
-three hours.
-
-**What this leg is not:** a test. The first shell is restrained throughout, so
-the pose cannot move and MM is never asked to adjudicate coordination. If the
-only question were whether the pose holds, this leg would be unnecessary and
-Leg C would follow Leg A directly. The question it answers is narrower - whether
-Leg C starts from a structure whose surroundings have had a chance to respond.
+**Residual approximation, stated rather than fixed:** nothing beyond the active
+region relaxes around the moved ligand. That is the same frozen-shell
+approximation `aspdft` and `aspxtb` already run under, and the instrument for it
+is `actradius` in Leg C, not a force field.
 
 ## Leg C - `poseqm`: QM/MM with no restraints at all - the actual test
 

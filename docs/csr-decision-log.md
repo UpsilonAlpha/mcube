@@ -15466,6 +15466,59 @@ surroundings have had a chance to respond to the ligand.
 approach; B relaxes everything outside the first shell around it; C is the only
 one that decides anything.
 
+## ¶295: Leg B is dropped - ¶294's justification was wrong, and the leg could not have been made safe
+
+**The user, 2026-11-20: "I see no reason to run B if we're doing the scan from
+an already optimised starting point. There's no reason to drop down to a lower
+level of theory."** Right on both counts. **The plan is two legs:** the scan,
+then unrestrained QM/MM from its endpoint. `poseeq` is removed from `site.yaml`
+- removed, not gated, because a gated section is a section someone submits - and
+`poseqm` now takes `protdft/scan_posepull/scan_10.pdb` directly.
+
+**¶294's argument fails in its own terms.** I justified the leg by the frozen
+second shell, citing `aspxtb8` (¶244): freeing it from 124 atoms to 479 moved the
+carboxylate rotamer by up to 1.5 Å. But that is evidence about the size of a
+**QM/MM active region**, measured at constant level of theory. I used it to
+argue for an MM leg. The instrument it points to is `actradius` in Leg C.
+
+**The level-of-theory point, which I did not make at all.** Leg A starts from
+`aspxtb8`'s converged QM/MM minimum and runs at QM/MM throughout. An MM leg
+inserted after it re-describes a QM-derived geometry - a strained beta-lactam, a
+zinc-bound hydroxide - with a force field that has no parameters for either, for
+10 ns. The pipeline runs preprocess -> md -> qmmm in that order for a reason.
+
+**And the leg could not have been made valid, which is the part worth keeping.**
+It needed `coordination_redetect: true` (¶294, at the user's instruction) to avoid
+restraining the first shell at distances the structure no longer had. But
+redetection on `scan_10.pdb` re-measures a Zn-O4x distance of 2.2 Å that was
+**imposed by the scan's own driving restraint** - a target taken from 5B15, not
+a number this system produced - and would enter it as *detected* coordination.
+That is **¶68's laundering mechanism exactly**: a chosen harmonic distance in one
+run becoming structural truth in the next, after which nothing downstream can
+tell an imposed distance from a crystallographic one.
+
+**The ¶71 guard does not reach it.** `preprocess` builds `imposed` from
+**`md.results.restraints`** and stops only on a pair in both lists. A `scan`'s
+driven coordinate is not in that list, and the redetection path lives in `md`,
+not `preprocess`. So the guard that exists for precisely this failure is blind
+to the one route that would have hit it.
+
+So the general rule the user gave - always redetect - stands, with the exception
+this turn found: **never redetect on a structure whose geometry was imposed by a
+restraint.** Those two together are why the leg had no valid configuration:
+redetect off restrains a pose the structure does not have, redetect on launders
+the target. The leg was the problem, not the setting.
+
+**Residual approximation, stated and not fixed:** nothing outside the active
+region relaxes around a ligand that moved 2.6 Å. That is the same frozen-shell
+approximation `aspdft` and `aspxtb` already run under and which `aspxtb8` was
+built to probe. If it needs addressing, the instrument is `actradius` in Leg C,
+and that is the user's call - not a force field.
+
+**Two legs: A generates the pose and prices the approach, C decides.** Which was
+always the honest division; ¶294's closing line said as much while arguing to
+keep a third.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**

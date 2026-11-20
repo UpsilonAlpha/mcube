@@ -293,3 +293,11 @@ and a section's `restraints:` list is only the additions. The claim came from
 reading config lists instead of the resolved restraint set the run reports in
 `md.results.coordination_restraints`. The companion claim, that `poseeq` leaves
 the carbonyl and hydroxide free, goes with it.
+
+## ¶294 - the frozen second shell justifies an intervening MM leg
+
+**Retracted in ¶295, 2026-11-20.** The evidence cited (¶244: freeing the active
+region from 124 atoms to 479 moved the carboxylate rotamer up to 1.5 Å) is about
+the size of a QM/MM active region at constant level of theory. It argues for a
+larger `actradius` in Leg C, not for 10 ns of MM between two QM/MM legs. Leg B
+is dropped; `poseqm` takes the scan endpoint directly.
