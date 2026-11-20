@@ -34,6 +34,7 @@ from .qmmm import (
     write_pdb,
     resolve_stage_atoms,
     qm_level_inputs,
+    charge_and_mult,
     qm_level_label,
 )
 from ash import *
@@ -165,8 +166,7 @@ def run(args) -> Dict[str, Any]:
     result["reactant_pdb"] = reactant_pdb
     result["product_pdb"] = product_pdb
 
-    charge = qmmm_inputs["charge"]
-    mult = qmmm_inputs["mult"]
+    charge, mult = charge_and_mult(section, neb_inputs, qmmm_inputs)
     numimages = neb_inputs.get("images", 12)
     method = str(neb_inputs.get("method", "neb")).lower()
     if method not in ("neb", "nebts"):

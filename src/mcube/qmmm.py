@@ -730,6 +730,65 @@ def make_qm(inputs: Dict[str, Any], cores: int, runmode: Optional[str] = None):
                      **scc)
 
 
+MULT_DEFAULT = 1
+
+
+def charge_and_mult(section, section_inputs, qmmm_inputs):
+    """(charge, mult) for a scan, neb or ts: the section first, then `qmmm.inputs`.
+
+    **One resolver for all three stages, because they had three different
+    behaviours.** `scan` read `qmmm.inputs` alone and passed `charge=None`
+    straight to the optimizer, which exited after 7.8 s with a message naming
+    neither the key nor the section (job 33244793, ¶290). `neb` raised a bare
+    `KeyError: charge`. `ts` did what `scan` did. Same config, three outcomes,
+    none of them stating where the value was looked for - so this is the one
+    place it is decided, and every stage calls it (¶291).
+
+    **The order is fixed and stated, not inferred:**
+
+    1. `<section>.inputs` - what the arm says about itself, and what
+       `sections.py` gates on through `require: {equals: {charge: 2}}`. Before
+       this that gate checked a number the run ignored, which is worse than no
+       gate because it reports that it passed.
+    2. `qmmm.inputs` - the run-wide base, for a directory that sets one there.
+    3. For `mult` only, MULT_DEFAULT = 1.
+
+    **`charge` has no default and is refused by name.** Every other key in the
+    config may sensibly fall back to a default; this one may not. The base
+    `qmmm:` section carries no charge on purpose - each arm states its own,
+    because a base charge that happens to suit one arm is how an SCF converges
+    on the wrong species while looking entirely normal (¶152, and
+    `docs/csr/add-qmmm-base.py` says so in as many words). A default here would
+    put that failure back, silently.
+
+    **`mult` does default, and says so when it does.** 1 is right for every
+    closed-shell system in this project and wrong loudly rather than quietly
+    for an open-shell one, since the printed line names the source.
+
+    `.get(key, fallback)` rather than `or`, so `charge: 0` is a charge and not
+    an absence - the same distinction `sections.py._flat` exists to keep.
+    """
+    def pick(key, default=None, have_default=False):
+        if (section_inputs or {}).get(key) is not None:
+            return section_inputs[key], "%s.inputs" % section
+        if (qmmm_inputs or {}).get(key) is not None:
+            return qmmm_inputs[key], "qmmm.inputs"
+        return (default, "default") if have_default else (None, None)
+
+    charge, charge_from = pick("charge")
+    if charge is None:
+        raise KeyError(
+            "no `charge` for %s: set it in %s.inputs (preferred - each arm "
+            "states its own charge) or in qmmm.inputs. There is no default "
+            "charge for a QM region." % (section, section))
+    mult, mult_from = pick("mult", MULT_DEFAULT, have_default=True)
+    # Printed every run, so the resolved values and their origins are in the
+    # job output rather than inferred from the config afterwards.
+    print("[INFO] charge=%s (from %s), mult=%s (from %s)"
+          % (charge, charge_from, mult, mult_from))
+    return charge, mult
+
+
 QM_LEVEL_KEYS = ("qm_engine", "xtb_method", "xtb_runmode", "xtb_etemp", "xtb_maxiter",
                  "xtb_pc_hardness")
 
@@ -740,8 +799,9 @@ def qm_level_inputs(qmmm_inputs: Dict[str, Any], stage_inputs_: Optional[Dict[st
 
     The scan, neb and ts stages take the QM theory from `qmmm.inputs`, so without
     this a `qm_engine: dft` set on one of those sections would be silently ignored
-    and the stage would quietly run at xTB. Everything else about the QM/MM setup
-    (charge, mult, force fields) still comes from `qmmm.inputs`.
+    and the stage would quietly run at xTB. The force fields still come from
+    `qmmm.inputs`; charge and mult go through `charge_and_mult` above, which
+    reads the section first.
     """
     merged = dict(qmmm_inputs)
     for key, value in (stage_inputs_ or {}).items():

@@ -40,8 +40,10 @@ taken from `ts.inputs`):
                                      # TIP3P cannot satisfy (D137). QM waters are never
                                      # constrained either way.
 
-Charge, multiplicity, force fields, xTB settings, cores and the active region
-come from qmmm.inputs; set `actatoms_file` to the reactant's active_atoms.
+Force fields, xTB settings, cores and the active region come from qmmm.inputs;
+`charge` and `mult` are read from this section first and from qmmm.inputs only
+as a fallback, and the resolved pair is printed with its source. Set
+`actatoms_file` to the reactant's active_atoms.
 """
 
 from __future__ import annotations
@@ -72,6 +74,7 @@ from .qmmm import (
     write_pdb,
     resolve_stage_atoms,
     qm_level_inputs,
+    charge_and_mult,
     qm_level_label,
 )
 
@@ -122,7 +125,7 @@ def run(args) -> Dict[str, Any]:
     if not inputs.get("pdb_file"):
         save_input(args.config, section, "pdb_file", pdb_file)
 
-    charge, mult = qmmm_inputs.get("charge"), qmmm_inputs.get("mult")
+    charge, mult = charge_and_mult(section, inputs, qmmm_inputs)
     cores = resolve_cores(inputs.get("cores", qmmm_inputs.get("cores")))
     workers = max(1, min(int(inputs.get("freq_workers", 1)), cores))
     if workers > 1:
