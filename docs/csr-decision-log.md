@@ -15632,6 +15632,88 @@ step. Each time I reached for more machinery where the question needed less, and
 each time the user's objection was the simpler reading. **Ask what the leg is
 for before proposing an instrument.**
 
+## ¶298: Leg A finished - the carbonyl never left, the zinc went FIVE-COORDINATE, and no hypothesis in `site.yaml` describes what was built
+
+**Job 33244885 completed** 2026-11-20 13:45, 83.5 min of ASH walltime, **all 11
+points converged**. `scan_10.pdb` exists (3.9 MB). Checked with
+`site.py check` under both hypothesis sets; **both REJECT it**, exit 1 each.
+
+### The endpoint
+
+Driven Zn-O4x 5.422 -> **2.20 Å**, and the sphere `site.py` reports:
+
+| donor | distance |
+|---|---|
+| hydroxide O01 | **1.78** |
+| His164 NE2 | 2.17 |
+| **carboxylate O4x** (driven) | **2.20** |
+| His88 NE2 | 2.22 |
+| **carbonyl O2x** (free throughout) | **2.24** |
+
+**Five donors.** The plan's pre-registered expectation (¶288, and the Leg A
+comment in `site.yaml`) was that *"a two-histidine zinc cannot hold both plus a
+nucleophile"*, so the carbonyl would leave as the carboxylate arrived. **It did
+not leave. It moved 0.007 Å** - 2.231 at point 0, 2.238 at point 10 - while the
+carboxylate came in 3.2 Å. GFN2 under restraint simply accepted a fifth donor.
+
+That is the project's documented failure mode, not a new finding: ¶177 found a
+six-coordinate zinc in 4995 of 5000 frames in the structure every QM/MM result
+then descended from. A five-coordinate endpoint is the state this project treats
+as invalid.
+
+And the attack distance **opened**: O01-C4x 3.457 -> **3.992 Å**, with the
+O01-C4x-O2x angle at **23°** against the 95-120° window.
+
+### The finding I did not expect: the leg tested a pose nothing describes
+
+`substituent_on_metal` as encoded is about **O1x, the 6-alpha hydroxyl**
+(`must_be: C:1:O1x`, `Zn - O1x (6a-OH)` 2.0-2.8 Å, source ¶126/GOB-18). **Leg A
+drove O4x, the C-3 carboxylate.** So the leg built a *third* arrangement, which
+no hypothesis set in `site.yaml` states criteria for, and `site.py check` could
+only measure it against two sets that are about other oxygens.
+
+**So the `substituent_on_metal` rejection must not be read as evidence against
+Leg A's pose** - it fails that set largely because that set wants a different
+oxygen on the metal (Zn-O1x 4.41 Å, want 2.0-2.8). Writing criteria for a
+carboxylate-on-metal pose is a chemical claim about what would count as one, so
+it is the user's to make, not mine to add.
+
+### What is hypothesis-independent, and therefore what Leg A actually says
+
+Two readings survive regardless of which set they are measured against:
+
+1. **The carbonyl never left the metal** (2.24 Å at the endpoint, unrestrained
+   the whole way).
+2. **The zinc is five-coordinate**, holding both substrate oxygens and the
+   hydroxide.
+
+¶288's pre-registered interpretation therefore applies: the carboxylate-on-metal
+arrangement **is not reached by relaxing into it**. With one correction to how
+¶288 framed it - the failure is not that the carboxylate cannot arrive, but that
+its arrival displaces nothing.
+
+### The two formerly-unsupported gates both PASS, and it changes nothing
+
+Under `carbonyl_on_metal`: **O01-Zn-O2x 93°** (want 45-95) and **O01...O2x
+2.93 Å** (want 2.0-3.3). Both were `unsupported` and `required_at: [reactant]`
+and could have rejected a structure; on this one they pass. The structure is
+still rejected under that set, on `closest substrate O` (O4x at 2.20 is nearer
+than O2x at 2.24) and on **Zn-O2x 2.24 being too TIGHT** (want 2.4-3.0, "loose").
+So the gates the project could not support do not rescue this structure, and
+their passing here is not support for them either - it is one five-coordinate
+restrained endpoint.
+
+### Leg C is not submitted
+
+`poseqm` takes `scan_10.pdb`, which `site.py check` rejects under both sets with
+exit 1. The project's own convention is that *"a start structure is accepted by a
+command rather than by eye"*, so this is the user's decision and not a default:
+Leg C from here would be a **release experiment** - does the fifth donor leave,
+and does the ligand revert to `aspxtb8`'s arrangement, which is the plan's
+pre-registered "transfer artefact" outcome - rather than a Michaelis-complex
+production run. Those are different claims and the section's comment currently
+reads as the second.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
