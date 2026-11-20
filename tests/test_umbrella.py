@@ -9,6 +9,7 @@ with OpenMM and mdtraj only; the MD itself is exercised on Bunya.
 """
 
 import math
+import importlib
 import sys
 import textwrap
 import types
@@ -33,7 +34,11 @@ def umbrella(monkeypatch):
     monkeypatch.setitem(sys.modules, "ash", module)
     for name in [m for m in sys.modules if m.startswith("mcube.")]:
         monkeypatch.delitem(sys.modules, name, raising=False)
-    from mcube import umbrella as module_
+    # import_module, not `from mcube import ...`: deleting "mcube.x" from
+    # sys.modules leaves the `x` attribute on the already-imported `mcube`
+    # package, and `from` is satisfied by that - handing back the REAL module
+    # whenever an earlier test file imported it (D291).
+    module_ = importlib.import_module("mcube.umbrella")
     return module_
 
 

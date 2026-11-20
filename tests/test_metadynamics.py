@@ -8,6 +8,7 @@ both modes on a La3+ water box (CPU):
 ASH is replaced by an empty module (mcube.preprocess imports it), as in test_umbrella.
 """
 
+import importlib
 import sys
 import textwrap
 import types
@@ -32,7 +33,11 @@ def mtd(monkeypatch):
     monkeypatch.setitem(sys.modules, "ash", module)
     for name in [m for m in sys.modules if m.startswith("mcube.")]:
         monkeypatch.delitem(sys.modules, name, raising=False)
-    from mcube import metadynamics as module_
+    # import_module, not `from mcube import ...`: deleting "mcube.x" from
+    # sys.modules leaves the `x` attribute on the already-imported `mcube`
+    # package, and `from` is satisfied by that - handing back the REAL module
+    # whenever an earlier test file imported it (D291).
+    module_ = importlib.import_module("mcube.metadynamics")
     return module_
 
 

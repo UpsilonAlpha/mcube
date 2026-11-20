@@ -8,6 +8,7 @@ the config is a result nothing records. Runs without ASH via the stub used in
 tests/test_umbrella.py.
 """
 
+import importlib
 import sys
 import types
 
@@ -32,7 +33,11 @@ def qmmm(monkeypatch):
     # stale attribute on the cached package, imported under another file's stub.
     for name in [m for m in sys.modules if m == "mcube" or m.startswith("mcube.")]:
         monkeypatch.delitem(sys.modules, name, raising=False)
-    from mcube import qmmm
+    # import_module, not `from mcube import ...`: deleting "mcube.x" from
+    # sys.modules leaves the `x` attribute on the already-imported `mcube`
+    # package, and `from` is satisfied by that - handing back the REAL module
+    # whenever an earlier test file imported it (D291).
+    qmmm = importlib.import_module("mcube.qmmm")
     return qmmm
 
 

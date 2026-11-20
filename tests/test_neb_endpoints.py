@@ -5,6 +5,7 @@ against a stub - the same approach as tests/test_umbrella.py. Needs OpenMM,
 because atom_names reads the structure through it.
 """
 
+import importlib
 import sys
 import types
 
@@ -30,7 +31,11 @@ def neb(monkeypatch):
     monkeypatch.setitem(sys.modules, "ash", stub)
     for name in [m for m in sys.modules if m.startswith("mcube.")]:
         monkeypatch.delitem(sys.modules, name, raising=False)
-    from mcube import neb
+    # import_module, not `from mcube import ...`: deleting "mcube.x" from
+    # sys.modules leaves the `x` attribute on the already-imported `mcube`
+    # package, and `from` is satisfied by that - handing back the REAL module
+    # whenever an earlier test file imported it (D291).
+    neb = importlib.import_module("mcube.neb")
     return neb
 
 

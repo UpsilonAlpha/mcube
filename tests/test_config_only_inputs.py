@@ -17,6 +17,7 @@ to be a file path beside the run.
 tests/test_umbrella.py.
 """
 
+import importlib
 import sys
 import textwrap
 import types
@@ -42,7 +43,11 @@ def mc(monkeypatch):
     monkeypatch.setitem(sys.modules, "ash", stub)
     for name in [m for m in sys.modules if m == "mcube" or m.startswith("mcube.")]:
         monkeypatch.delitem(sys.modules, name, raising=False)
-    from mcube import md, neb, preprocess, qmmm
+    # import_module, not `from mcube import ...`: deleting "mcube.x" from
+    # sys.modules leaves the `x` attribute on the already-imported `mcube`
+    # package, and `from` is satisfied by that - handing back the REAL module
+    # whenever an earlier test file imported it (D291).
+    md, neb, preprocess, qmmm = (importlib.import_module("mcube.md"), importlib.import_module("mcube.neb"), importlib.import_module("mcube.preprocess"), importlib.import_module("mcube.qmmm"))
     return types.SimpleNamespace(md=md, neb=neb, preprocess=preprocess, qmmm=qmmm)
 
 

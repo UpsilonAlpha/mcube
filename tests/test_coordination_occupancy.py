@@ -11,6 +11,7 @@ coordination number as a distribution rather than a mean.
 Needs MDAnalysis, which comes with the ASH environment.
 """
 
+import importlib
 import sys
 import types
 
@@ -30,7 +31,11 @@ def postprocess(monkeypatch):
     monkeypatch.setitem(sys.modules, "ash", stub)
     for name in [m for m in sys.modules if m == "mcube" or m.startswith("mcube.")]:
         monkeypatch.delitem(sys.modules, name, raising=False)
-    from mcube import postprocess
+    # import_module, not `from mcube import ...`: deleting "mcube.x" from
+    # sys.modules leaves the `x` attribute on the already-imported `mcube`
+    # package, and `from` is satisfied by that - handing back the REAL module
+    # whenever an earlier test file imported it (D291).
+    postprocess = importlib.import_module("mcube.postprocess")
     return postprocess
 
 

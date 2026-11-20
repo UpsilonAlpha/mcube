@@ -49,6 +49,10 @@ def test_membrane_only_report(patch_files):
 
 
 def test_helpers_load_without_side_effects():
+    # import_module, not `from mcube import ...`: deleting "mcube.x" from
+    # sys.modules leaves the `x` attribute on the already-imported `mcube`
+    # package, and `from` is satisfied by that - handing back the REAL module
+    # whenever an earlier test file imported it (D291).
     module = importlib.import_module("mcube.membrane_analysis")
     assert module.residue_range("290-330") == (290, 330)
     assert module.residue_range("12") == (12, 12)

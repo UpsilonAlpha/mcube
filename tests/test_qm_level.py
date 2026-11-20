@@ -5,6 +5,7 @@ no provenance unless the level is recorded, and GFN2-xTB energies are not
 barriers. Runs without ASH via the stub used in tests/test_umbrella.py.
 """
 
+import importlib
 import sys
 import types
 
@@ -24,7 +25,11 @@ def qmmm(monkeypatch):
     monkeypatch.setitem(sys.modules, "ash", stub)
     for name in [m for m in sys.modules if m.startswith("mcube.")]:
         monkeypatch.delitem(sys.modules, name, raising=False)
-    from mcube import qmmm
+    # import_module, not `from mcube import ...`: deleting "mcube.x" from
+    # sys.modules leaves the `x` attribute on the already-imported `mcube`
+    # package, and `from` is satisfied by that - handing back the REAL module
+    # whenever an earlier test file imported it (D291).
+    qmmm = importlib.import_module("mcube.qmmm")
     return qmmm
 
 

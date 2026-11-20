@@ -13,6 +13,7 @@ and tests/test_umbrella.py take. Needs OpenMM (the `mcube-test` env). The QM/MM
 energies themselves are run on Bunya.
 """
 
+import importlib
 import sys
 import types
 
@@ -41,7 +42,11 @@ def qmmm(monkeypatch):
     monkeypatch.setitem(sys.modules, "ash", stub)
     for name in [m for m in sys.modules if m.startswith("mcube")]:
         monkeypatch.delitem(sys.modules, name, raising=False)
-    from mcube import qmmm as module
+    # import_module, not `from mcube import ...`: deleting "mcube.x" from
+    # sys.modules leaves the `x` attribute on the already-imported `mcube`
+    # package, and `from` is satisfied by that - handing back the REAL module
+    # whenever an earlier test file imported it (D291).
+    module = importlib.import_module("mcube.qmmm")
     return module
 
 

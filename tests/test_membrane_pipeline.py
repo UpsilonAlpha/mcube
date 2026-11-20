@@ -8,6 +8,7 @@ ASH is replaced by a module that only records the keyword arguments mcube passes
 so these tests run without ASH installed and check mcube's side of the interface.
 """
 
+import importlib
 import sys
 import types
 from pathlib import Path
@@ -89,7 +90,11 @@ def ash(monkeypatch):
 
 @pytest.fixture
 def md(ash):
-    from mcube import md as md_module
+    # import_module, not `from mcube import ...`: deleting "mcube.x" from
+    # sys.modules leaves the `x` attribute on the already-imported `mcube`
+    # package, and `from` is satisfied by that - handing back the REAL module
+    # whenever an earlier test file imported it (D291).
+    md_module = importlib.import_module("mcube.md")
     return md_module
 
 

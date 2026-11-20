@@ -13,6 +13,7 @@ nonsense, not as an error), and a run with nothing on disk still fails with a
 message that says which input to set.
 """
 
+import importlib
 import sys
 import types
 
@@ -32,7 +33,11 @@ def md_mod(monkeypatch):
     monkeypatch.setitem(sys.modules, "ash", stub)
     for name in [m for m in sys.modules if m == "mcube" or m.startswith("mcube.")]:
         monkeypatch.delitem(sys.modules, name, raising=False)
-    from mcube import md
+    # import_module, not `from mcube import ...`: deleting "mcube.x" from
+    # sys.modules leaves the `x` attribute on the already-imported `mcube`
+    # package, and `from` is satisfied by that - handing back the REAL module
+    # whenever an earlier test file imported it (D291).
+    md = importlib.import_module("mcube.md")
     globals()["MD_TRAJECTORIES"] = md.MD_TRAJECTORIES
     globals()["salvage_results"] = md.salvage_results
     return md

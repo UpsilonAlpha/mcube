@@ -17,6 +17,7 @@ it, or the thing being benchmarked is not the thing being run.
 Needs OpenMM, which the module chain imports at import time.
 """
 
+import importlib
 import sys
 import types
 
@@ -62,7 +63,11 @@ def sp_mod(monkeypatch):
     for name in [m for m in sys.modules if m == "mcube" or m.startswith("mcube.")]:
         monkeypatch.delitem(sys.modules, name, raising=False)
 
-    from mcube import sp as module
+    # import_module, not `from mcube import ...`: deleting "mcube.x" from
+    # sys.modules leaves the `x` attribute on the already-imported `mcube`
+    # package, and `from` is satisfied by that - handing back the REAL module
+    # whenever an earlier test file imported it (D291).
+    module = importlib.import_module("mcube.sp")
     monkeypatch.setattr(module, "make_mm",
                         lambda *a, **k: calls.__setitem__("mm", calls["mm"] + 1))
     monkeypatch.setattr(module, "make_dft",
