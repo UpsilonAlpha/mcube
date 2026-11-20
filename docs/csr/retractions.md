@@ -311,3 +311,12 @@ most worth checking, since a restraint holds a distance without holding the site
 Always redetect; put the laundering refusal in the ¶71 guard, which needs extending
 to see a scan's driven coordinate. Leg B stays dropped - on level-of-theory
 grounds, which is independent of this.
+
+## ¶291 / ¶294 - "+22.1 kcal/mol" quoted as the cost of the approach
+
+**Withdrawn in ¶297, 2026-11-20.** A `scan` energy is the work a restrained
+optimiser did along a coordinate we invented in order to BUILD a structure, over
+minima rather than ensembles, with everything beyond 8 Å frozen. It is not a
+barrier, a binding penalty or an accessibility figure. Leg A's results are
+`scan_10.pdb` for the reactant gates and the monitored distances; the ¶296 PMF
+proposal along the same coordinate is withdrawn with it.

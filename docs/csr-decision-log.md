@@ -15583,6 +15583,55 @@ That is a real compute decision (11 QM/MM windows against one 50 ps run) and it
 is the user's, not mine. Job 33244885 should finish first: the seeds are its
 output.
 
+## ¶297: the PMF is withdrawn - the scan forces a structure, and its energies are not a result
+
+**The user, 2026-11-20: "the scan is to force a structure for geometric checks,
+a PMF doesn't help with our main goal, does it."** It does not. ¶296's proposal
+is withdrawn before any compute was spent on it.
+
+**Why it was wrong, and it is not a question of rigour.** `scan` drives Zn-O4x
+from 5.42 Å to 2.2 Å because that is how we obtain a structure in the
+carboxylate-on-metal arrangement without hand-building one, which the standing
+rule forbids. **Nothing claims the enzyme reaches that arrangement by having the
+carboxylate dragged onto the zinc out of an already-bound complex** - the
+substrate binds from solution. The driven coordinate is an artefact of the
+construction. A free energy along an artefact is still a free energy along an
+artefact, and a PMF would have been 11 QM/MM windows spent making a number more
+precise that was never the quantity in question.
+
+**And the number I should not have been quoting is the scan energy.** ¶291 and
+¶294 both reported **+22.1 kcal/mol** as "the cost", and I repeated it to the user
+as though the leg had priced something. It is the work a restrained optimiser did
+along a coordinate we invented, over minima rather than ensembles, with
+everything beyond 8 Å frozen. It is not a barrier, not a binding penalty, not
+an accessibility figure. If it is reported at all it is as "the restraint had to
+push", and that sentence carries no mechanism.
+
+**What Leg A legitimately produces, which is what it was built for:**
+
+1. **`scan_10.pdb`** - the endpoint, for the reactant gates in `gates.md`:
+   `O01 - Zn - O2x` **45-95°** and `O01 ... O2x` **2.0-3.3 Å**. Both are
+   `required_at: [reactant]`, both are currently `unsupported`, and both can
+   **reject** the structure. That is a geometric test with a pass/fail, which is
+   what the leg exists to feed.
+2. **The monitored distances**, which are geometry and need no energy at all: the
+   carbonyl still on the metal at **2.18 Å** after the carboxylate has been
+   hauled in 2.6 Å, and the attack distance **opening** from 3.457 to 3.977 Å.
+
+Those two readings already carry ¶288's pre-registered interpretation, and they
+carry it without reference to any energy.
+
+**Then Leg C decides**, by unrestrained QM/MM dynamics at GFN2 - 50 ps,
+`skip_optimize: true`. Two legs and one gate between them.
+
+**The pattern in my last four entries, stated so it stops repeating.** ¶294
+argued for an MM leg from evidence about QM/MM active regions. ¶295 proposed
+switching detection off to avoid laundering, when detection is the check for the
+project's largest failure mode. ¶296 proposed a PMF for a structure-generation
+step. Each time I reached for more machinery where the question needed less, and
+each time the user's objection was the simpler reading. **Ask what the leg is
+for before proposing an instrument.**
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**

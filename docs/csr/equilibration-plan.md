@@ -103,24 +103,39 @@ restrained pair is the one most worth checking because a restraint holds a
 distance without holding the site. The laundering refusal belongs in the D71
 guard, which needs extending to see a `scan`'s driven coordinate.
 
-## What Leg A is, and what it is not (D296)
+## What Leg A is for, and what its energies are not (D297)
+
+**The scan forces a structure for the geometric checks. That is its whole job**
+(user, 2026-11-20: "the scan is to force a structure for geometric checks, a PMF
+doesn't help with our main goal"). D296 proposed an umbrella PMF along Zn-O4x
+and that proposal is **withdrawn**.
 
 `scan` optimises the active region at each point with the driven distance fixed:
-**11 constrained minima at GFN2**, not dynamics. So its +22 kcal/mol is a
-difference between minima along one restrained path - no entropy, no basin width,
-and no statement about a thermally accessible route beside the driven one.
+11 constrained minima at GFN2. Those minima are a means of arriving at an
+endpoint, not a measurement. **Nothing claims the enzyme reaches this pose by
+having the carboxylate dragged onto the zinc from an already-bound structure** -
+the substrate binds from solution. So the driven coordinate is an artefact of how
+we build the structure, and a free energy along it answers a question nobody
+asked. A PMF there would be rigour spent on the wrong quantity.
 
-At GFN2 that is a choice rather than a limit: `aspqm2` ran 50 ps of QM/MM MD at
-the same level. The instrument for an accessibility question is therefore
-`umbrella` with `coordinate: distance` on `[B:1:ZN, C:1:O4x]`, whose QM/MM windows
-and `wham` give a PMF - already in mcube, no new code. Its docstring names this
-plan's seeding route outright: *"A distance CV gets its window seeds from
-structures that already sit at the right separation - a `scan` section's
-optimised points, say."*
+**So the +22.1 kcal/mol must not be cited as a result,** and D291 and D294 both
+quoted it as "the cost". It is the work a restrained optimiser did along an
+artificial coordinate, with the region beyond 8 Å frozen. Report it, if at all,
+as evidence that the restraint had to push - never as a barrier, a binding
+penalty, or an accessibility figure.
 
-**So Leg A is the seeding step for that PMF, and its 11 points are the seeds.**
-Whether to spend 11 QM/MM windows is the user's decision, and it needs job
-33244885 finished first, since the seeds are its output.
+**What Leg A legitimately yields:**
+
+1. `scan_10.pdb`, the endpoint structure, for the reactant gates - **`O01 - Zn -
+   O2x` 45-95 deg** and **`O01 ... O2x` 2.0-3.3 Å**, both `required_at:
+   [reactant]`, both currently `unsupported`, and both able to **reject** the
+   structure (`gates.md`).
+2. The monitored distances along the path, which are geometry and need no energy
+   to read: the carbonyl staying on the metal at 2.18 Å and the attack distance
+   opening from 3.457 to 3.977 Å.
+
+**Then Leg C decides**, by unrestrained QM/MM dynamics, which is the only leg
+that decides anything. Two legs, one gate between them.
 
 ## Leg C - `poseqm`: QM/MM with no restraints at all - the actual test
 
