@@ -39,9 +39,10 @@ anything not given there is taken from `scan.inputs`):
         opt_maxiter: 200
         resume: true          # continue from scan_energies.csv if it exists
 
-Charge, multiplicity, force fields, xTB settings, cores and the active region
-come from qmmm.inputs (`extra_qm_residues`/`qm_residues` may be set per
-section). Outputs (in the working directory): one PDB per point
+Force fields, xTB settings, cores and the active region come from qmmm.inputs
+(`extra_qm_residues`/`qm_residues` may be set per section). `charge` and
+`mult` are read from this section first and from qmmm.inputs only as a
+fallback, because the base `qmmm:` section deliberately carries no charge. Outputs (in the working directory): one PDB per point
 (scan_XX.pdb, or scan_KK_XX.pdb for a grid) and scan_energies.csv; results go
 to the section after every point.
 """
@@ -172,6 +173,34 @@ def read_done(csvfile: Path) -> List[Dict[str, str]]:
         return list(csv.DictReader(f))
 
 
+def charge_and_mult(section, inputs, qmmm_inputs):
+    """(charge, mult) for a scan: this section first, `qmmm.inputs` as fallback.
+
+    The base `qmmm:` section carries NO charge on purpose - each arm states its
+    own, because a base charge that happens to suit one arm is how an SCF
+    converges on the wrong species while looking entirely normal (¶152, and
+    `docs/csr/add-qmmm-base.py` says so in as many words). A scan that read
+    charge only from the base therefore could not run at all in a directory
+    following that rule: job 33244793 reached geomeTRIC with charge=None and
+    exited in 7.8 s (¶290).
+
+    The section value is also the one `sections.py` gates on through
+    `require: {equals: {charge: 2}}`, so before this the gate checked a number
+    the run then ignored - a gate reading a value nothing uses is worse than no
+    gate, because it reports that it passed.
+
+    Raised rather than defaulted: there is no safe default charge for a QM
+    region, and guessing one is the failure mode ¶152 exists to prevent.
+    """
+    charge = inputs.get("charge", qmmm_inputs.get("charge"))
+    mult = inputs.get("mult", qmmm_inputs.get("mult"))
+    if charge is None:
+        raise KeyError("%s.inputs needs `charge`: neither this section nor "
+                       "qmmm.inputs sets one, and the optimizer will not start "
+                       "without it" % section)
+    return charge, mult
+
+
 def run(args) -> Dict[str, Any]:
     section = getattr(args, "section", None) or "scan"
     preprocess = load_section(args.config, "preprocess")
@@ -194,7 +223,7 @@ def run(args) -> Dict[str, Any]:
     if not inputs.get("pdb_file"):
         save_input(args.config, section, "pdb_file", pdb_file)
 
-    charge, mult = qmmm_inputs.get("charge"), qmmm_inputs.get("mult")
+    charge, mult = charge_and_mult(section, inputs, qmmm_inputs)
     cores = resolve_cores(inputs.get("cores", qmmm_inputs.get("cores")))
     forcefields, implicit = mm_settings(qmmm_inputs, md, args.config)
 
