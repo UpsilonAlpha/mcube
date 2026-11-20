@@ -15412,6 +15412,60 @@ whether the pose "survives when nothing is holding it there", was wrong and MM
 is not the arbiter of coordination. That was the user's original correction and
 it was right. My elaboration of it was not.
 
+## ¶294: always redetect coordination, and what Leg B is actually for
+
+**"Yes, always redetect coordination"** (user, 2026-11-20). `poseeq` now sets
+`coordination_redetect: true` and **gates it** in `require.equals` alongside
+`nvt_time`, so a later edit cannot quietly drop it.
+
+The rationale written in `site.yaml` for `false` - redetect off "so the
+automatic set cannot pick up the ligand oxygen that was just moved" - had it
+backwards. After Leg A that oxygen is a coordinate bond at 2.2 Å, which is
+precisely what the 3.0 Å rule says to hold. Keeping the recorded rows instead
+restrains the first shell at distances the structure no longer has: Zn-O2x is
+2.18 Å at Leg A's endpoint, not the preprocess value. The cost of redetecting
+is stated rather than hidden - the run is not numerically comparable with those
+that used the recorded values, and `coordination_source` records which happened.
+
+**I also left a stale comment block behind when I wrote ¶293's correction into
+`site.yaml`.** The old LEG B comment, still asserting that the carbonyl and the
+hydroxide are "free", sat directly above the new one that retracts it. Two
+contradictory comments on one section, one of them the thing I had just
+retracted. Replaced by a single block. A retraction that leaves the retracted
+text in place is not a retraction.
+
+## "Why is Leg B necessary?"
+
+Asked in the same message, and the plan's answer - "this is the solvate and
+equilibrate leg" - did not earn it. The real answer is narrower and is about
+active regions.
+
+**Legs A and C both freeze everything beyond 8 Å.** Both are QM/MM with
+`actradius: 8`; Leg A moved **476 atoms** and Leg C will move about as many. So
+in neither leg can the bulk solvent, or the protein past 8 Å, respond to a
+ligand that has been dragged 2.6 Å. **Leg B is the only leg in which the whole
+box moves** - `md` has no active region.
+
+And the frozen shell is known to matter here by measurement, not by principle:
+**`aspxtb8` (¶244) freed the second shell from 124 atoms to 479 at the same level
+of theory and the carboxylate rotamer moved by up to 1.5 Å**, the largest
+disagreement with the crystal in the project. A solvent shell still arranged
+around the ligand's old position, frozen, pressing on the one region Leg C
+exists to measure, is that same error with the sign flipped. Water
+reorganisation is a nanosecond process; 50 ps of QM/MM cannot do it, and 10 ns
+of restrained MM on an H100 costs three hours.
+
+**What Leg B is not, and this is where my earlier description was wrong: it is
+not a test.** The first shell is restrained throughout, so the pose cannot move
+and MM is never asked to adjudicate coordination. If the only question were
+whether the pose holds, Leg B would be unnecessary and Leg C should follow Leg A
+directly. The question it answers is whether Leg C starts from a structure whose
+surroundings have had a chance to respond to the ligand.
+
+**So the honest scope of each leg:** A generates the pose and prices the
+approach; B relaxes everything outside the first shell around it; C is the only
+one that decides anything.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**

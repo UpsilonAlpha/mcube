@@ -71,27 +71,44 @@ with no restraint telling it to.
 Minimise, NPT, then NVT, following `relax10`'s pattern exactly - `gentle:
 false`, `coordination_redetect: false`, CUDA, mixed precision, 10 ns.
 
-**One restraint is WRITTEN here; it is not the only one applied.** `md_restraints`
-builds "the detected metal coordination, plus any asked for" - so
-`preprocess.results.coordination`, every donor inside the 3.0 Å radius, is
-restrained automatically on every MM leg, and the `restraints:` list in a section
-is the *additions*. Zn-O2x and Zn-O01 are in that detected set. They are held.
+**Always redetect** (user, 2026-11-20). `coordination_redetect: true`, gated in
+`require.equals`. The recorded rows carry the original structure's distances and
+this leg starts from Leg A's endpoint, where Zn-O2x has moved to ~2.18 Å; the
+earlier rationale for `false` - that redetection would "pick up the ligand
+oxygen that was just moved" - had it backwards, since that oxygen is now a
+coordinate bond and is what should be held. Cost, stated: not numerically
+comparable with runs that used the recorded values, and `coordination_source`
+records which happened.
 
-So the earlier claim here - that this leg leaves the carbonyl and the hydroxide
-free, and that no MD section has ever restrained Zn-O01 - was **wrong, and is
-retracted (¶293)**. It read a config list as if it were the whole restraint set.
-`relax10`'s hand-written `[B:1:ZN, C:1:O2x, 2.60, 500.0]` was an override of a
-detected row, which is why it looks like the only place the carbonyl appears.
+The `restraints:` list is the **additions** to the detected set, not the whole
+set. Every donor inside 3.0 Å is restrained automatically, Zn-O2x and Zn-O01
+included (D293 retracts the claim that they were free).
 
-**The live question is different, and it is `coordination_redetect`.** This leg
-sets it `false`, so the detected restraints come from the ORIGINAL structure and
-hold Zn-O2x and Zn-O01 at their preprocess distances - while the leg starts from
-Leg A's endpoint, where Zn-O2x has gone to ~2.18 Å. Holding the sphere at
-distances the structure no longer has is restraining it to a different pose.
-`true` would re-measure on `scan_10.pdb` with the same metals, cutoff and donor
-elements, which is the documented route for an edited frame - at the cost that
-the run is then not numerically comparable with the ones that used the recorded
-values. That choice is the user's.
+### Why this leg exists at all
+
+Asked directly, 2026-11-20, and the plan's old answer - "this is the solvate and
+equilibrate leg" - did not earn it.
+
+**Legs A and C both freeze everything beyond 8 Å.** They are QM/MM with
+`actradius: 8`: Leg A moved 476 atoms, Leg C will move about as many. So in
+neither leg can the bulk solvent, or the protein past 8 Å, respond to a ligand
+that has been dragged 2.6 Å. **Leg B is the only leg where the whole box
+moves.**
+
+That matters here by measurement, not by principle. `aspxtb8` (D244) freed the
+second shell from 124 atoms to 479 at the same level of theory, and the
+carboxylate rotamer moved by up to 1.5 Å - the largest disagreement with the
+crystal in the project. A solvent shell still arranged around the ligand's old
+position, frozen, pressing on the one region Leg C is supposed to measure, is
+that same error with the sign flipped. Water reorganisation is a nanosecond
+process; 50 ps of QM/MM cannot do it, and 10 ns of restrained MM on a GPU costs
+three hours.
+
+**What this leg is not:** a test. The first shell is restrained throughout, so
+the pose cannot move and MM is never asked to adjudicate coordination. If the
+only question were whether the pose holds, this leg would be unnecessary and
+Leg C would follow Leg A directly. The question it answers is narrower - whether
+Leg C starts from a structure whose surroundings have had a chance to respond.
 
 ## Leg C - `poseqm`: QM/MM with no restraints at all - the actual test
 

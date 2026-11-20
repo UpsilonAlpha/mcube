@@ -3410,50 +3410,58 @@ sections:
       rigid_water: false
       resume: true
 
-  # LEG B. Hold the new coordinate bond and let everything else relax around it.
+  # LEG B. Relax the solvent and the second shell around a ligand that moved.
   #
-  # `relax10`'s pattern exactly - `gentle: false` because the start is already
-  # 300 K and minimised and those 40 ps of pre-NPT MD are long enough for
-  # coordination drift, which is the one thing these runs exist to avoid
-  # (¶227); `coordination_redetect: false` so the automatic set cannot pick up
-  # the ligand oxygen that was just moved.
+  # **Why this leg exists, stated narrowly (D294).** Legs A and C are both QM/MM
+  # with `actradius: 8`: Leg A moved 476 atoms and froze everything beyond, and
+  # Leg C will do the same. So neither leg lets the bulk solvent or the protein
+  # past 8 A respond to a ligand that has been dragged 2.6 A. This is the only
+  # leg where the whole box moves. The project has MEASURED that the frozen
+  # shell matters: `aspxtb8` (D244) freed it from 124 to 479 atoms at the same
+  # level of theory and the carboxylate rotamer moved up to 1.5 A. Leaving a
+  # solvent shell arranged around the OLD ligand position, frozen, pressing on
+  # the region Leg C is meant to measure, is the same error with the sign
+  # flipped.
   #
-  # **One restraint, and only one:** Zn-O4x at 2.20. That is a coordinate bond
-  # well inside the 3.0 Å rule and in the metal's direct environment, so it is
-  # restrained for the documented reason - MM represents it with point charges
-  # and cannot do otherwise. The carbonyl, the hydroxide, Ser186, Arg90,
-  # Lys226, Asp92 and the solvent are all free. This is the leg that
-  # re-equilibrates water around a ligand that has moved, which has never been
-  # done for any crystal-derived arrangement.
+  # **What it is NOT.** It does not test whether the pose survives. The first
+  # shell is restrained throughout, so the pose cannot move and MM is never
+  # asked to adjudicate coordination - which it must not be. Leg C decides that.
+  #
+  # `relax10`'s pattern - `gentle: false` because the start is already 300 K and
+  # minimised, and those 40 ps of pre-NPT MD are long enough for coordination
+  # drift, which is the one thing these runs exist to avoid (D227).
+  #
+  # **`coordination_redetect: true`** - always redetect (user, 2026-11-20). The
+  # recorded rows carry the ORIGINAL structure's distances, and this leg starts
+  # from Leg A's endpoint where Zn-O2x has moved to ~2.18 A; holding the sphere
+  # where the structure no longer has it restrains a pose that is not there.
+  # Redetection re-measures on `scan_10.pdb` under the same metals, cutoff and
+  # donor elements. The cost, stated: the run is not numerically comparable with
+  # those that used the recorded values, and `coordination_source` records which
+  # happened. The earlier rationale here - redetect false "so the automatic set
+  # cannot pick up the ligand oxygen that was just moved" - had it backwards:
+  # that oxygen is now a coordinate bond and is exactly what should be held.
+  #
+  # The `restraints:` list below is the ADDITIONS to the detected set, not the
+  # whole set (D293). The explicit Zn-O4x row overrides its detected
+  # counterpart, which is how the 2.20 target gets stated rather than inferred.
   #
   # `pdb_file` is the scan's LAST point: 11 points over 0..10, so `scan_10.pdb`,
   # in `protdft/scan_posepull/` because `run.slurm` sends every non-md stage to
   # `protdft/<section>/`. sections.py refuses to write a section whose
   # `pdb_file` does not exist, so this cannot be written until Leg A finishes -
   # which is correct, and is why the three legs are three commands.
-  # LEG B. The restraint list below is the ADDITIONS, not the whole set:
-  # `md_restraints` applies the detected coordination (every donor inside the
-  # 3.0 A radius, from `preprocess.results.coordination`) plus whatever a section
-  # asks for. Zn-O2x and Zn-O01 are in the detected set and are held. An earlier
-  # comment here said they were free and that Zn-O01 had never been restrained;
-  # both were wrong and are retracted (D293).
-  #
-  # What IS open: `coordination_redetect: false` means those detected rows carry
-  # the ORIGINAL structure's distances, while this leg starts from Leg A's
-  # endpoint where Zn-O2x has moved to ~2.18 A. `true` re-measures on
-  # `scan_10.pdb` by the same rule, at the cost of comparability with the runs
-  # that used the recorded numbers. The user's call.
   poseeq:
     stage: md
     submit: {partition: gpu_cuda, cores: 4, mem: 32G, time: "03:00:00",
              extra: [--qos=gpu, --gres=gpu:h100:1]}
     require:
       unset: [skip_npt, skip_nvt, gentle]
-      equals: {nvt_time: 10000}
+      equals: {nvt_time: 10000, coordination_redetect: true}
     inputs:
       pdb_file: protdft/scan_posepull/scan_10.pdb
       gentle: false
-      coordination_redetect: false
+      coordination_redetect: true
       restraints:
         - [B:1:ZN, C:1:O4x, 2.20, 500.0]
       nvt_time: 10000
