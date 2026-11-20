@@ -15208,6 +15208,107 @@ structure because `start` was deliberately omitted, so the file supplied it and
 no hand-typed number could disagree with the coordinates. That is the one check
 ¶288 could not make locally, and it holds.
 
+## ¶291: one charge resolver for scan, neb and ts - and the test suite was order-dependent
+
+**The user's rule, stated 2026-11-20 and to be applied to the config system
+generally:** *"we want the config system to have sensible defaults, but be clear
+and deterministic - no hidden/obfuscated behaviour."* ¶290 fixed `scan` alone,
+which left the hole open elsewhere and left three stages disagreeing. Closed as
+asked.
+
+**Three stages, three behaviours, from the same config.** Before this:
+
+| stage | missing `charge` | section's own `charge` |
+|---|---|---|
+| `scan` | `charge=None` to the optimizer, exit 1 after 7.8 s, message naming neither key nor section | ignored (¶290 fixed this one) |
+| `neb` | bare `KeyError: 'charge'` | ignored |
+| `ts` | `charge=None`, same silent path as `scan` | ignored |
+
+None of them said where the value had been looked for. **`charge_and_mult()` in
+`qmmm.py` is now the single place it is decided**, and all three call it - and
+the test asserts the *identity* (`mcube.scan.charge_and_mult is
+mcube.qmmm.charge_and_mult`, and likewise for neb and ts) rather than trusting
+that three call sites agree.
+
+**The order is fixed and written down:** `<section>.inputs`, then
+`qmmm.inputs`, then - for `mult` only - `MULT_DEFAULT = 1`.
+
+- **`charge` has no default and is refused by name**, with a message that says
+  there is no default charge for a QM region, so the next reader does not add
+  one. The base `qmmm:` section carries none deliberately (¶152).
+- **`mult` does default, and the output says when it did.**
+- **The resolved pair and the source of each are printed every run:**
+  `[INFO] charge=2 (from scan_posepull.inputs), mult=1 (from qmmm.inputs)`.
+  A resolution nothing reports is a resolution nobody can check, which is the
+  whole complaint ¶290 recorded about the `require` gate.
+- `.get` with an explicit `None` test, not `or`, so **`charge: 0` is a charge
+  and not an absence** - the same distinction `sections.py._flat` exists to keep.
+
+`neb` and `ts` were left alone in ¶290 on the grounds that nothing needed them
+yet. That was the wrong call: the cost of fixing them was one shared function,
+and leaving two stages on a different rule is the hidden behaviour the user's
+instruction is about.
+
+## And the test suite's result depended on file order
+
+Found while verifying this, and worth more than the fix that found it.
+
+**The full suite had never been run to completion in this project's records.**
+¶290's "339 passed, 1 failed" was a `-x` run that stopped at the first
+failure. The real baseline is **847 passed, 6 failed**.
+
+All six were `test_membrane_pipeline.py`, and **they are not membrane bugs**:
+that file passes **14/14 when run alone**. The fixtures stub `ash`, delete every
+`mcube.*` from `sys.modules`, and re-import with `from mcube import md`. But
+deleting `sys.modules["mcube.md"]` **does not remove the `md` attribute from the
+already-imported `mcube` package**, and `from mcube import md` is satisfied by
+that attribute - so the fixture silently got the **real** module back whenever
+any earlier test file had imported it, and really called OpenMM on a
+`finalsystem.pdb` that does not exist.
+
+So the suite's result depended on which files ran first. My own new test file
+made it worse before it made it better: importing `mcube.qmmm` at module level
+broke `test_xtb_runmode::test_inputfile_is_accepted`, which had been passing -
+caught by running the parent commit in a throwaway worktree rather than
+assuming, since 7 failures against a 6-failure baseline is not "the same
+failures".
+
+`importlib.import_module("mcube.x")` goes through `sys.modules`, finds it
+absent and imports it fresh under the stub. **25 fixtures changed**, each with
+the reason written at the call site.
+
+**Result: 859 passed, 0 failed**, against 847/6 before. Verified on Bunya in the
+ASH environment, which is the only place the suite can run.
+
+## Leg A, at the same time
+
+Job 33244885 reached **point 8 of 10** while this was going on, and the profile
+is already saying something. Monitored distances, point 0 -> point 8, as the
+Zn-O4x restraint goes 5.42 -> 2.84 Å:
+
+| quantity | 0 | 8 |
+|---|---|---|
+| **Zn-O2x** (carbonyl, left free) | 2.231 | **2.179** |
+| Zn-O01 (hydroxide) | 1.778 | 1.752 |
+| **O01-C4x** (attack distance) | 3.457 | **3.977** |
+| Arg90 NH1-O2x | 6.26 | 5.90 |
+| Ser186 OG-O4x | 6.54 | 5.12 |
+| Zn-N1x | 4.53 | 4.07 |
+| **relative energy** | 0.0 | **+22.1 kcal/mol** |
+
+Every point converged. **The carbonyl does not leave** - it is still on the
+metal at 2.18 Å after the carboxylate has been dragged in by 2.6 Å - the
+hydroxide stays, the attack distance gets **worse**, and the cost is already
+22 kcal/mol with two points to go.
+
+¶288 wrote down in advance what that would mean: *"if it does not leave, the
+arrangement is not accessible to this system, and that is the result."* Read
+carefully, though: this is a restrained path on one surface, the energies are
+relative along it and are not free energies, and the two remaining points and
+Legs B and C have not run. The reading to take now is that **the carboxylate-on-
+metal arrangement is not reached by relaxing into it**, which is what the leg
+was built to test.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
