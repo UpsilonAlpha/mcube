@@ -3431,18 +3431,18 @@ sections:
   # `protdft/<section>/`. sections.py refuses to write a section whose
   # `pdb_file` does not exist, so this cannot be written until Leg A finishes -
   # which is correct, and is why the three legs are three commands.
-  # LEG B. DO NOT SUBMIT AS WRITTEN - the restraint list is invalid.
+  # LEG B. The restraint list below is the ADDITIONS, not the whole set:
+  # `md_restraints` applies the detected coordination (every donor inside the
+  # 3.0 A radius, from `preprocess.results.coordination`) plus whatever a section
+  # asks for. Zn-O2x and Zn-O01 are in the detected set and are held. An earlier
+  # comment here said they were free and that Zn-O01 had never been restrained;
+  # both were wrong and are retracted (D293).
   #
-  # "We don't use classical MD for coordination - that's a hard rule" (user,
-  # 2026-11-20). The single Zn-O4x restraint below holds one coordinate bond and
-  # leaves the other two free: at Leg A's endpoint Zn-O2x is ~2.18 Å and Zn-O01
-  # ~1.75 Å, both inside the 3.0 Å rule, so MM would be modelling two
-  # coordinate bonds it cannot represent - and deciding the question Leg C
-  # exists to decide. `relax10`, which this section copies, restrained Zn-O2x at
-  # 2.60; dropping it was an oversight, not a choice. Separately, no MD section
-  # here has ever restrained Zn-O01 at all.
-  #
-  # The restraint list is the user's call. See docs/csr/equilibration-plan.md.
+  # What IS open: `coordination_redetect: false` means those detected rows carry
+  # the ORIGINAL structure's distances, while this leg starts from Leg A's
+  # endpoint where Zn-O2x has moved to ~2.18 A. `true` re-measures on
+  # `scan_10.pdb` by the same rule, at the cost of comparability with the runs
+  # that used the recorded numbers. The user's call.
   poseeq:
     stage: md
     submit: {partition: gpu_cuda, cores: 4, mem: 32G, time: "03:00:00",

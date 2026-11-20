@@ -15363,6 +15363,55 @@ The energy is the part geometry cannot give at all. Geometry can say the pose is
 bad; only the scan says approaching it costs **22 kcal/mol**, which is what
 makes "not accessible" a result rather than an opinion.
 
+## ¶293: ¶292 RETRACTED - the detected coordination is restrained automatically
+
+**The user, 2026-11-20: "That can't be right - everything within 3A should be
+restrained, that's another hard rule."** Correct, and the code says so.
+
+`md_restraints` in `src/mcube/md.py` returns **"the detected metal coordination,
+plus any asked for"**. `preprocess.results.coordination` - every donor inside the
+3.0 Å radius - is restrained on every MM leg without a section mentioning it,
+and a section's `restraints:` list is the **additions**. `preprocess.py` states
+the rule in as many words: *"the standing rule here is to restrain everything
+within the 3.0 A radius at its crystal distance"*.
+
+So both claims in ¶292 are **wrong and retracted**:
+
+- that `poseeq` leaves the carbonyl and the hydroxide free - it does not; Zn-O2x
+  and Zn-O01 are in the detected set and are held;
+- that **no MD section in this project has ever restrained Zn-O01** - every one
+  of them has.
+
+**The error:** I read a config `restraints:` list as if it were the complete
+restraint set, and read `relax10`'s hand-written `[B:1:ZN, C:1:O2x, 2.60,
+500.0]` as the only thing holding the carbonyl. It is an **override** of a
+detected row - which is exactly what the "an explicit restraint on a pair wins"
+branch of `md_restraints` exists for, and why the carboxylate appears in that
+list and the hydroxide does not. `state.md` had the counter-evidence already:
+¶214 records `coordination_redetect` *adding its own* `Zn-OD2 2.79` restraint to
+`eq6`, which only makes sense if detection generates restraints.
+
+It is the same mistake as the config hole two entries ago, from the other side.
+There I complained that a resolution nothing prints is one nobody can check;
+here the resolution IS printed - `md.results.coordination_restraints`, and
+`coordination_source` naming where the rows came from - and I reasoned from the
+config file instead of from the run. **Read the resolved set, not the input.**
+
+**¶292's verdict does not survive, but the leg is still not ready, for a smaller
+reason.** `poseeq` sets `coordination_redetect: false`, so its detected rows
+carry the **original** structure's distances while the leg starts from Leg A's
+endpoint, where Zn-O2x has moved to ~2.18 Å. That holds the first shell at a
+pose the structure no longer has. `true` re-measures on `scan_10.pdb` under the
+same metals, cutoff and donor elements - the documented route for an edited
+frame (¶115) - and costs numerical comparability with every run that used the
+recorded values. That is a real choice and it is the user's, but it is a choice
+about which distances, not about whether coordination is restrained at all.
+
+What stands from ¶292: the description I gave the user, of Leg B as testing
+whether the pose "survives when nothing is holding it there", was wrong and MM
+is not the arbiter of coordination. That was the user's original correction and
+it was right. My elaboration of it was not.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**

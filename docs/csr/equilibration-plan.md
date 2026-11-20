@@ -71,35 +71,27 @@ with no restraint telling it to.
 Minimise, NPT, then NVT, following `relax10`'s pattern exactly - `gentle:
 false`, `coordination_redetect: false`, CUDA, mixed precision, 10 ns.
 
-**THE RESTRAINT SET AS WRITTEN IS INVALID AND MUST BE SETTLED BEFORE THIS LEG
-RUNS (user, 2026-11-20: "we don't use classical MD for coordination - that's a
-hard rule").**
+**One restraint is WRITTEN here; it is not the only one applied.** `md_restraints`
+builds "the detected metal coordination, plus any asked for" - so
+`preprocess.results.coordination`, every donor inside the 3.0 Å radius, is
+restrained automatically on every MM leg, and the `restraints:` list in a section
+is the *additions*. Zn-O2x and Zn-O01 are in that detected set. They are held.
 
-As written, `poseeq` restrains one coordinate bond - `[B:1:ZN, C:1:O4x, 2.2,
-500.0]` - and says the carbonyl and the hydroxide are "free". But in Leg A's
-endpoint both of those are still coordinating: Zn-O2x at ~2.18 Å and Zn-O01 at
-~1.75 Å, each well inside the 3.0 Å rule. Leaving them unrestrained hands them
-to MM, which is precisely what MM cannot represent, and it hands MM the very
-question Leg C exists to decide. `relax10`, which this leg claims to follow,
-did restrain Zn-O2x (2.60) - dropping that restraint was not a documented
-choice, it was an oversight.
+So the earlier claim here - that this leg leaves the carbonyl and the hydroxide
+free, and that no MD section has ever restrained Zn-O01 - was **wrong, and is
+retracted (¶293)**. It read a config list as if it were the whole restraint set.
+`relax10`'s hand-written `[B:1:ZN, C:1:O2x, 2.60, 500.0]` was an override of a
+detected row, which is why it looks like the only place the carbonyl appears.
 
-A second gap, pre-existing and not introduced here: **no MD section in this
-project has ever restrained Zn-O01**, the zinc-hydroxide bond. `relax10`
-restrains the O01-C4x attack distance but not the bond to the metal. That needs
-the user's decision, not a default.
-
-So this leg is suspended pending the restraint list. It cannot be written in any
-case until `scan_10.pdb` exists, so nothing is blocked by waiting. What the leg
-may legitimately do once settled is **re-equilibrate the solvent around a ligand
-that has moved**, with the whole first coordination sphere held at Leg A's
-geometry. What it may not do is decide anything about coordination - including
-whether the pose "survives", which was how it was described to the user and was
-wrong.
-
-This is the "solvate and equilibrate" leg. Note the system **is** already
-solvated; what this does is re-equilibrate the water around a ligand that has
-moved, which is the part that has never been done.
+**The live question is different, and it is `coordination_redetect`.** This leg
+sets it `false`, so the detected restraints come from the ORIGINAL structure and
+hold Zn-O2x and Zn-O01 at their preprocess distances - while the leg starts from
+Leg A's endpoint, where Zn-O2x has gone to ~2.18 Å. Holding the sphere at
+distances the structure no longer has is restraining it to a different pose.
+`true` would re-measure on `scan_10.pdb` with the same metals, cutoff and donor
+elements, which is the documented route for an edited frame - at the cost that
+the run is then not numerically comparable with the ones that used the recorded
+values. That choice is the user's.
 
 ## Leg C - `poseqm`: QM/MM with no restraints at all - the actual test
 

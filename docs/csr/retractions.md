@@ -284,3 +284,12 @@ displacement **0.0000 A** while sitting 2.091 and 2.238 A from the metal. They w
 frozen at their MM positions. The difference is active-region size, not level of
 theory, and `aspdft` cannot be an instrument of record for Asp92 while the
 competing coordination sites are nailed shut.
+
+## ¶292 - "no MD section here has ever restrained Zn-O01"
+
+**Retracted in ¶293, 2026-11-20.** Every MD leg restrains it. `md_restraints`
+applies `preprocess.results.coordination` - everything inside the 3.0 Å radius -
+and a section's `restraints:` list is only the additions. The claim came from
+reading config lists instead of the resolved restraint set the run reports in
+`md.results.coordination_restraints`. The companion claim, that `poseeq` leaves
+the carbonyl and hydroxide free, goes with it.
