@@ -1341,9 +1341,42 @@ sections:
   # into the section, so the config still records which structure produced the
   # path - but naming it is how the choice gets reviewed rather than inherited.
 
+  # LEG 1 OF THE MECHANISM. The start structure is now fixed (D305): `aspxtb8`'s
+  # converged unrestrained QM/MM minimum, as a STATED alpha-site model.
+  #
+  # The assumption travels with every result from this section: our single metal
+  # is modelled at the alpha site; wild-type CSR-1 has no observed catalytic
+  # metal (Pedroso et al.: "no metal ions were observed in the crystal structures
+  # of CSR-1 and CSR-1trunc"); and every structure bearing on which subsite a
+  # lone metal takes - theirs and ours - had one site mutated back to canonical
+  # before a metal would sit in it. Their single mutant restored alpha and a
+  # metal appeared in alpha; our double/triple mutant restored beta and it
+  # appears in beta, occ 0.70. The argument for alpha is that it retains two of
+  # three ligands where beta has lost two, and that alpha is the site carrying
+  # the beta-lactam carbonyl at 2.53-2.63 A in the only genuine B3 Michaelis
+  # complex (D301) - which this structure has at 2.501 A at DFT.
+  #
+  # `qm_residues: *qmreg_michrks` is NOT optional here. This leg drives the
+  # nucleophile, and Ser186 is its hydrogen-bond partner at HG...O01 1.843 A
+  # (D303). With Ser186 outside the QM region that contact is the artefact D282
+  # voided - an MM charge against a QM anion with no Pauli repulsion - so a scan
+  # of the attack with Ser186 as MM would measure the artefact along the whole
+  # path. `aspxtb8` itself ran `*qmreg_michrk`, without the serine.
+  #
+  # `start` is deliberately omitted: it defaults to the structure's own distance,
+  # 3.63 A as measured, so the first point records what the minimum actually has
+  # rather than what we assumed.
   attack:                      # step 1 product: drive the nucleophile in
     stage: scan
+    submit: {partition: general, cores: 8, mem: 32G, time: "24:00:00"}
+    require:
+      unset: [restraints, constraints, opt_constraints]
+      equals: {charge: 2, rigid_water: false}
     inputs:
+      pdb_file: protdft/qmmm_aspxtb8/QM_MM_optimized.pdb
+      qm_residues: *qmreg_michrks
+      charge: 2
+      rigid_water: false
       atoms: [C:2:O01, C:1:C4x]
       end: 1.45                # C-O single bond; `start` defaults to the current distance
       points: 16
@@ -1351,6 +1384,9 @@ sections:
         - [B:1:ZN, C:1:O2x]    # does the carbonyl engage the zinc as the carbon rehybridises?
         - [C:1:C4x, C:1:N1x]   # the bond that breaks in step 2 should lengthen here
         - [A:226:NZ, C:2:O01]  # Lys226 as proton donor or acceptor (question 1)
+        - [A:186:OG, C:2:O01]  # does Ser186 hold the nucleophile through the attack,
+                               # or hand it off? D303's contact, now on the path
+        - [B:1:ZN, C:2:O01]    # does the nucleophile stay on the metal as it attacks
       opt_maxiter: 300
       resume: true
 
