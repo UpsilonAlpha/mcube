@@ -16066,6 +16066,63 @@ whose key geometry is unavailable to a one-metal enzyme. A methodology agent is
 reading how this has been done for other novel enzymes. Nothing about `aspxtb8`
 is disqualified by ¶301's Asp92 argument, which is withdrawn here.
 
+## ¶303: a pre-registered test was already satisfied by a run we had - Ser186 holds the nucleophile
+
+¶302 left the pose question with a hole: Asp92 cannot be the nucleophile's
+partner in a mono-zinc model, and nothing else had been proposed. **The answer
+was already in the project, in a node marked void, with its own test written
+into it.**
+
+[[ser186-hydrogen-bonds-the-nucleophile-in-our-reactant]] was voided at ¶282
+because `aspxtb8` runs `qm_residues: *qmreg_michrk`, which excludes Ser186 - so
+its 1.696 Å HG...O01 contact was a fixed-charge MM hydroxyl pointing at a QM
+anion across the boundary, with no Pauli repulsion to stop it collapsing. The
+node said what would restore it: *"add Ser186 to the QM region and re-run. If
+the contact survives at 1.8-2.0 Å with the residue treated quantum-mechanically,
+this node can be restored."* It was never submitted.
+
+**It did not need submitting. `scan_posepull` already runs `*qmreg_michrks`,
+which includes Ser186 (¶287)**, so every frame of the leg I spent yesterday on
+satisfies the condition. Measured on `scan_00.pdb`:
+
+    Ser186 OG - O01        2.767     (was 2.672 across the MM boundary)
+    Ser186 HG ... O01      **1.843**  (was 1.696)
+    OG - HG ... O01        155.1 deg
+    Asp185 OD1 - O01       4.400
+    Ser186 OG - N1x        4.667
+
+**1.843 Å is inside the node's own 1.8-2.0 Å window**, and the lengthening from
+1.696 is exactly the predicted effect of treating the donor quantum-mechanically.
+Node restored to `supported`.
+
+**The fork it described is now visible inside one trajectory.** As the carboxylate
+is pulled onto the metal along `posepull`, Ser186 releases the nucleophile and
+follows the carboxylate: HG...O01 **1.843 -> 3.628 Å** while OG-O4x closes
+6.54 -> 5.12. The residue does not do both jobs at once in our system either, and
+now that is measured across two poses of one enzyme rather than inferred across
+two different structures.
+
+**Why it matters for the actual goal.** The question is how to FIND a mono-zinc
+B3 pose, and the di-zinc references cannot supply the one thing that matters -
+how the nucleophile is held when there is no bridge and no second metal. Ser186
+is this project's only candidate answer that needs neither, it is the **intersite**
+residue (¶266) so it sits where a bridging partner would, and it matches in kind
+the only published mono-zinc MBL mechanism (activation by hydrogen-bond network
+rather than by the metal).
+
+**Caveats carried.** GFN2 at 0 K, ~0.13 Å short on Zn-O against DFT (¶245), so
+the distance needs re-measuring at def2-SVP before it is quoted as a number.
+`scan_00` is a constrained optimisation, though the constrained coordinate is
+Zn-O4x at its existing 5.42 Å and nowhere near these atoms. The pose is still
+6.11 Å from the experimental mode.
+
+**Method note, since this is the second time today.** ¶301's agent report and this
+both turned on reading what the project had already written down rather than
+computing something new - a voided node carrying its own acceptance criterion,
+and a run whose QM region happened to satisfy it. The leg was submitted for a
+different purpose entirely and I did not notice at the time that it also ran
+¶282's test.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
