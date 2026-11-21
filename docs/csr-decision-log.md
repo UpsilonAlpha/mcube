@@ -16325,6 +16325,73 @@ bearing on the subsite had a site repaired first.
 A Zoom-branded installer with a randomised name sitting in a crystallography data
 folder is the shape of malware. **Not touched, not run** - flagged for the user.
 
+## ¶306: the attack scan is submitted - job 33284354
+
+**The mechanism leg is running**, from the start structure ¶305 fixed. First time
+this project has driven its own chemistry rather than its construction.
+
+**Nothing new was written.** The `attack` section has been in `site.yaml` since
+the mechanism legs were laid out, with `pdb_file` deliberately unset and a
+comment saying why: *"Which Michaelis complex these start from is still being
+settled, so neither section fixes `pdb_file` yet: set it here before running
+one."* That was the only thing missing, and ¶305 settled it. The scan coordinate,
+`end: 1.45`, `points: 16` and three of the five monitors were already there -
+including the 16 points that make `scan_15.pdb`, which is exactly what the
+`step1` NEB section already names as its product.
+
+**What I added, and why each:**
+
+- `pdb_file: protdft/qmmm_aspxtb8/QM_MM_optimized.pdb` - ¶305's decision, with
+  the α-site assumption written above the section so it travels with every
+  result rather than living in a log entry.
+- **`qm_residues: *qmreg_michrks`, not the `*qmreg_michrk` that `aspxtb8` itself
+  ran.** This leg drives the nucleophile, and Ser186 is its hydrogen-bond partner
+  at HG...O01 1.843 Å (¶303). With Ser186 outside the QM region that contact is
+  the artefact ¶282 voided, so the scan would have measured an MM charge against
+  a QM anion along the whole path.
+- `charge: 2` on the section (¶152), `rigid_water: false`, and a `require:` gate
+  on both plus `unset` on all three constraint keys.
+- Two monitors added to the three already present: **Ser186 OG-O01** and
+  **Zn-O01**.
+- `start` left omitted, so point 0 records the minimum's own **3.63 Å** rather
+  than a number we chose.
+
+**Pre-flight:** `DRY RUN - config.yaml not touched. Checks passed for:
+scan_attack`, exit 0, 12 selectors resolved. Then submitted: **job 33284354**,
+`general`, 8 cores, 32 G, 24 h, confirmed **R** on bun128.
+
+### What each monitor is being asked, written before the answers arrive
+
+- **Ser186 OG-O01.** Holds through the attack, or hands off? If it stays in
+  hydrogen-bond range while the C-O bond forms, Ser186 is the organiser of the
+  nucleophile and the mono-zinc site needs no second metal and no Asp92 - the
+  one mechanism our own structures contain. If it lengthens, the proton has
+  nowhere identified to go and the base question reopens.
+- **Zn-O01.** Should lengthen from 1.78 Å as the alkoxide forms and charge moves
+  onto the substrate. If it does not, the metal is holding the alkoxide, which
+  changes what the intermediate is.
+- **Zn-O2x.** Should shorten as C4x rehybridises and the carbonyl becomes an
+  alkoxide - the tetrahedral intermediate's defining contact.
+- **C4x-N1x.** Should lengthen: this is the bond step 2 breaks, and its weakening
+  here is what makes the two steps one mechanism rather than two scans.
+- **Lys226 NZ-O01.** The proton question (¶1's question 1), measured rather than
+  assumed.
+
+### What this leg will NOT give
+
+**A barrier.** The top of a driven scan is not a transition state, and ¶297's
+rule stands even though this coordinate is the chemistry's own rather than an
+invented one: the barrier comes from `step1`'s NEB-CI plus a `ts` run with the
+imaginary mode checked against the reaction coordinate and an IRC in each
+direction. The scan's profile is an upper bound and a path, and its real product
+is `scan_15.pdb` - the first NEB endpoint this project has ever had.
+
+**One thing to fix before that NEB runs:** `step1`'s `reactant_pdb` still points
+at `protdft/qmmm_protH_oh/QM_MM_optimized.pdb`, a lineage that does not exist in
+any run directory (¶300). It needs repointing at the same `aspxtb8` minimum this
+scan started from, or the barrier would be computed between two unrelated
+structures. Flagged, not silently rewired.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
