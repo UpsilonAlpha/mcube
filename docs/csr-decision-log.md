@@ -16123,6 +16123,117 @@ and a run whose QM region happened to satisfy it. The leg was submitted for a
 different purpose entirely and I did not notice at the time that it also ran
 ¶282's test.
 
+## ¶304: how a pose like this is actually built - and the subsite claim does NOT survive checking
+
+A methodology agent read the literature on building a Michaelis complex where no
+experimental one exists. Its central recommendation rested on one factual claim
+about **our own enzyme's paper**, so I checked that claim in the primary before
+acting on any of it. **It does not hold as stated.**
+
+### What Pedroso et al. actually says (read directly, PMC7381538)
+
+Confirmed, quoting the paper:
+
+- *"no metal ions were observed in the crystal structures of CSR-1 and
+  CSR-1trunc (Fig. S4), suggesting reduced metal ion affinity"* - which matches
+  ¶277/¶279 from our own files.
+- *"in CSR-1trunc,sm electron density indicates the presence of one bound Zn2+ in
+  the α-site, while in the double and triple mutants both the α- and β-sites are
+  occupied by Zn2+ ions"*.
+- The mutants were made *"to create variants where either the α, the β or both
+  metal binding sites are identical to the canonical B3 MBL motif"*.
+- B3-RQK's motif is **HRH/DQK** against canonical **HHH/DHH**, so α = His88,
+  **Arg90**, His164 and β = Asp92, Gln93, Lys226 in our numbering. That confirms
+  the role column of `reference-structures.md` from the paper's own side.
+
+**NOT confirmed, and this is the part the recommendation was built on.** The
+agent reported ITC affinities of **α ~2 µM against β ~150 µM** and used that split
+to conclude our metal belongs in α. The main text says only that the
+mutations' effect on metal binding *"was confirmed using isothermal titration
+calorimetry (ITC; **Fig. S5, Table S4**)"*. **The numbers are in supplementary
+material that is not in the accessible text**, so they are unverified here and
+must not be quoted.
+
+**And the structural fact does not say what it was used to say.** The single
+mutant that shows one zinc in the α-site is the one **whose α-site was mutated
+back to canonical HHH**. In wild-type CSR-1 the α site is **HRH** - the arginine
+is present - and no metal was observed at all. So *"CSR-1 binds its single zinc
+in α"* is demonstrated for **an α-restored mutant**, not for the wild type this
+project models. The honest position: for wild-type CSR-1 the subsite is
+**unobserved**, and the argument for α is the ligand-count one (α has lost one
+of three ligands, β two of three), which is reasoning and not a measurement.
+
+**A conflict with our own crystals that must be kept in view.** Our only
+one-metal original is `dmCSR_mutant_1metal_refine_12.pdb`, S214D, and the record
+places that metal at **M2/β**. S214D adds a carboxylate at an intersite
+position, so it may create its own site - but it means our own experimental
+one-metal structure and the inference above point at different subsites.
+**Unresolved, and it is now the most consequential open question in the project.**
+
+### What the methodology survey established, which stands on its own
+
+The agent's protocol findings do not depend on the subsite claim.
+
+**Nobody in the MBL QM/MM literature runs long unrestrained QM/MM MD on a
+Michaelis complex.** Gatti (PLoS One 2013, mono-Zn CphA + biapenem) ran 100 ps of
+**classical** MD then a static PES. Lisa (Nat Commun 2017, NDM-1) ran 10 ns
+classical MD then **QM/MM minimisations only**. Xu/Guo validated a CphA pose with
+**500 ps of classical MD**. So our 50-100 ps unrestrained GFN2 QM/MM test is more
+demanding than anything these papers imposed on their own models.
+
+**And the one group that tried to keep a meropenem-derived ligand in an MBL site
+under dynamics had to restrain it, and said so:** Lisa et al.,
+*"We applied a restraint to keep the hydrolysed meropenem bound to the active
+site"* - in a **di-zinc** enzyme. (The agent read that paper's full text; quoted
+from its report, not independently checked.) So our substrate loss is a **known
+behaviour of MBL-carbapenem complexes under MD**, not a unique pathology of our
+pose - which retires the mystery ¶299 recorded and removes it as an argument
+against `aspxtb8`. It is equally not evidence the pose is right.
+
+**The accepted standard of proof is downstream, not pose-intrinsic.** Across the
+primaries: RMSD to a post-chemistry crystal structure; a computed barrier in
+range (BioExcel's sanity band is 5-25 kcal/mol, >80% of real barriers 14-20) and
+ideally matching a measured rate; reproduction of a measured distance in an
+intermediate (Wu/Xu/Guo: N4-Zn 2.18 +/- 0.16 against 2.22 experimental);
+reproduction of a downstream product or branch ratio; or, where the pose will not
+sit still, a **free-energy penalty to the near-attack conformation** computed by
+umbrella sampling rather than a declaration that the pose is wrong (EctC,
+Catalysts 2023). Pose stability appears as a criterion in exactly one place, and
+there it is classical MD.
+
+**Pose generation: docking is the wrong instrument and reverse-driving is the
+published route.** A 2026 LpxC analysis finds ~80% of docked poses that pass a
+donor-count criterion put the wrong atoms on the zinc, which is consistent with
+¶126's "no docked pose puts anything within 5 Å of the metal". Gatti's protocol
+instead **builds the reactant by driving uphill from a crystallographic product
+with relaxed QM/MM scans**, so the reactant geometry is an output of the
+chemistry rather than an input chosen by us. SMB-1 (J Mol Model 2020) built a B3
+Michaelis complex by transfer from NDM-1's **hydrolysed** ampicillin complex -
+cross-subclass, from a product, with the lactam re-formed.
+
+**One confound named, which bears directly on our own results.** The CphA
+literature warns that semi-empirical methods need reparameterisation to describe
+an active-site metal properly. GFN2 is the prime suspect for a ligand leaving a
+zinc in 50 ps, and ¶245 already measured GFN2 running 0.06-0.08 Å short on both
+histidine nitrogens. Separating "bad pose" from "bad Hamiltonian" needs the same
+release run at MM with a validated zinc model and at DFT.
+
+### Gaps the survey closed by establishing there is nothing to find
+
+**No published protocol computes which subsite a single metal occupies by free
+energy** in any MBL - the decision is always made experimentally (ITC, XAS) or by
+the ligand-set argument. **No protocol exists for placing a nucleophile when no
+bridging water is resolved**; the three published moves are analogy to a
+post-chemistry structure, emergence from a backward scan, or declining to model
+it. **No minimum QM/MM MD duration** for an accepted Michaelis complex is stated
+anywhere.
+
+### What I am not doing
+
+Not proposing compute. The subsite question now gates the pose, it is
+experimental rather than computational, and the two pieces of evidence we have
+point different ways.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**

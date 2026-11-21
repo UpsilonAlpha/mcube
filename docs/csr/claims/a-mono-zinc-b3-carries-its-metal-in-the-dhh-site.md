@@ -1,7 +1,7 @@
 ---
 type: claim
 status: open
-entries: [¶301]
+entries: [¶301, ¶304]
 ---
 
 # A mono-zinc B3 enzyme carries its single metal in the DHH (M2) site, not the 3H (M1) site
@@ -49,6 +49,42 @@ has an experimental catalytic metal (¶277, ¶279).
 **Our metal is already nearer M2 than the arrangement assumes**
 ([[our-single-metal-sits-between-the-canonical-zn1-and-zn2-positions]]): 1.77 Å
 from where 7UHI's Zn2 lands in our frame.
+
+**¶304: CHECKED AGAINST CSR-1'S OWN PAPER, AND IT POINTS THE OTHER WAY - but not
+as cleanly as it first appeared.** Read directly from Pedroso et al.
+(PMC7381538): *"in CSR-1trunc,sm electron density indicates the presence of one
+bound Zn2+ in the α-site, while in the double and triple mutants both the α- and
+β-sites are occupied"*. So when a CSR-1 variant holds **one** zinc, it is in α -
+the 3H-equivalent site - which is the opposite of the GOB-18/B2 pattern this node
+describes, and would make the metal's substrate contact the **carbonyl** after
+all.
+
+**Three qualifications that stop this closing the question.**
+
+1. **That single mutant is the one whose α site was mutated back to canonical
+   HHH** (the mutants were made *"to create variants where either the α, the β or
+   both metal binding sites are identical to the canonical B3 MBL motif"*). In
+   wild-type CSR-1, α is **HRH** - Arg90 in place of the third histidine - and
+   *"no metal ions were observed in the crystal structures of CSR-1 and
+   CSR-1trunc"*. So one-zinc-in-α is observed for an α-RESTORED variant, not for
+   the wild type this project models.
+2. **The ITC affinity split that was offered as the decisive evidence is
+   unverified.** The figures reported to this project (α ~2 µM, β ~150 µM) are not
+   in the paper's accessible text, which cites only *"Fig. S5, Table S4"*. Not
+   quotable until the supplement is read.
+3. **Our own one-metal crystal disagrees.** `dmCSR_mutant_1metal_refine_12.pdb`
+   (S214D) places its single zinc at **M2/β** (¶277, ¶279). S214D introduces a
+   carboxylate at an intersite position and may make its own site, but it is the
+   only experimental one-metal structure we hold and it does not agree with the
+   inference above.
+
+So the node stays `open`, with its content now the weaker half of a live
+two-sided question rather than a standing rival. **The ligand-count argument
+favours α** - α has lost one of three ligands, β two of three - and that is
+reasoning, not measurement. **Settling this needs the Pedroso supplement
+(Table S4), not compute**, and it gates the pose: α keeps the carbonyl contact
+and `aspxtb8`, β makes the contact the carboxylate and leaving nitrogen and
+discards it.
 
 ## Refutes
 - [[carbonyl-coordinates-zn1-in-the-michaelis-complex]]
