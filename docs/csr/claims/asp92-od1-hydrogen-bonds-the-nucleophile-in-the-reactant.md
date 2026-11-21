@@ -1,7 +1,7 @@
 ---
 type: claim
 status: open
-entries: [¶119, ¶278]
+entries: [¶119, ¶278, ¶302]
 ---
 
 # Asp92 OD1 hydrogen-bonds the nucleophile at 2.5-3.2 angstroms in the reactant
@@ -52,6 +52,17 @@ Zn2, which we do not have
 ([[asp92-is-a-zn2-ligand-in-b3-structures]]). So the 7.2 Å is a consequence of
 the vacant subsite and not an independent pose error, and this gate cannot be
 satisfied while the aspartate is unanchored.
+
+**¶302 WITHDRAWS THE CONCLUSION DRAWN ABOVE, while keeping the measurements.**
+The experimental 2.8-3.9 Å is a **bridging**-hydroxide geometry: in 1SML, 5AXO
+and 5K0W the nucleophile sits BETWEEN two metals (Zn1-OH 1.82-2.06, Zn2-OH
+2.06-2.07) and Asp120 is close to it because Asp120 **ligates the second metal**.
+We have one metal and a **terminal** hydroxide, so there is no bridge to occupy
+and no second metal for the aspartate to hold. Asp92 at 5.1-5.8 Å from the metal
+and 7.2 Å from the hydroxide is therefore the expected consequence of the vacant
+subsite, not an independent pose error - and this gate, as written, asks a
+mono-zinc structure to reproduce a di-zinc second shell. **It should not fail a
+structure on that basis.**
 
 **A rival diagnosis, tested and rejected.** It was put to this project that 7.2 Å
 is what a hydroxide placed on the solvent-exposed face of M1, *anti* to Asp92,

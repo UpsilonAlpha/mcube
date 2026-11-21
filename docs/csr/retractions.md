@@ -328,3 +328,19 @@ proposal along the same coordinate is withdrawn with it.
 explicitly). ¶177's invalidation was SIX-coordinate. What fails at the endpoint is
 which atoms are where - O4x nearer the metal than O2x, attack distance 3.99 Å,
 angle 23 deg - not the coordination number.
+
+## ¶301 - "Asp92 at 7.2 Å is the part that is not defensible"
+
+**Withdrawn in ¶302, 2026-11-21.** The experimental 2.76-3.86 Å is a
+BRIDGING-hydroxide geometry: Asp120 is close to the nucleophile because it ligates
+the second metal. With one metal and a terminal hydroxide there is no bridge and no
+second metal, so 7.2 Å follows from the vacant subsite rather than from a bad
+pose. The residue identification was right (Asp92 = D120, agreed in all columns);
+the comparison was not like for like.
+
+## ¶300 - the "= 4" baseline rests on an unsettled two-histidine sphere
+
+**Withdrawn in ¶302.** Our M1 is two-histidine by subclass definition: His88 [116]
+and His164, with B3's third position, H118, being **Arg90** - the R of RQK. The
+His192-vs-His196 conflict is about which number names His164, not about how many
+histidines coordinate.

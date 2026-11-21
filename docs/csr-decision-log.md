@@ -15982,6 +15982,90 @@ explained by GFN2. What is no longer defensible is treating the **subsite** as
 settled, and that is a chemical decision with a large downstream cost either way.
 No compute proposed here.
 
+## ¶302: right aspartate, wrong inference - and two further corrections from our own record
+
+Asked: *"Are you sure you're looking at the right aspartate?"* The residue is
+right. **What I did with it was wrong**, and checking it turned up two more
+errors of mine plus one near-miss.
+
+### The aspartate is correct
+
+`reference-structures.md`'s authoritative table: **Asp92 = D120 in 6DN4, 6DQH,
+dmCSR-1 and the papers alike, status "agreed"** - the only one of the seven site
+residues with no numbering conflict. Its role column reads **Zn2**. So Asp92 is
+the Zn2/DHH aspartate, and it is the residue the literature comparison was about.
+
+### But its 7.2 Å is not evidence against our pose, and ¶301 treated it as if it were
+
+In every reference structure that distance is short **for a structural reason
+that cannot apply to us**: the nucleophile there is a **bridging** hydroxide
+between two metals, and Asp120 is short of it because Asp120 **ligates the second
+metal**. 1SML Zn1-OH 1.88 / Zn2-OH 2.06; 5AXO 1.82 / 2.07; 5K0W 2.06 / 2.07 -
+bridging in all three.
+
+**We have one metal and a TERMINAL hydroxide.** There is no second metal for
+Asp92 to ligate and no bridge for the hydroxide to occupy, so Asp92 sitting
+5.1-5.8 Å from the metal and 7.2 Å from the hydroxide is the **expected
+consequence of the vacant subsite**, not a defect in the pose. ¶301 called the
+7.2 Å "the part that is not defensible" and that reading is **withdrawn**: it
+compares a terminal-hydroxide geometry against a bridging-hydroxide reference
+and reports the difference as a fault.
+
+What survives is narrower and was already on the map: a mono-zinc model cannot
+reproduce the di-zinc second shell, which is
+[[asp92-is-a-zn2-ligand-in-b3-structures]] and
+[[csr1-is-mono-zinc-with-zn2-vacant]], not a new finding.
+
+### Correction 2: the two-histidine M1 is not an open question
+
+¶300 flagged that our "= 4" coordination baseline rests on a two-histidine
+sphere and warned that if a third histidine belonged there the window's centre
+would move. **The table answers it: our M1 is two-histidine by subclass
+definition.** His88 [116] and His164 [192/196] are the Zn1 histidines, and the
+third canonical position, B3's H118, is **Arg90** - the R of RQK. Both subsites
+are substituted in this group: Zn1 loses a His to Arg, Zn2 loses His121 and
+His263 to Gln93 and Lys226. So the count is right and that warning is withdrawn.
+
+### A near-miss worth recording: Ser186 at 2.67 Å
+
+Measuring what is actually near the hydroxide in `aspxtb8_nowat.pdb` gives:
+
+    S186 OG   2.672      <- closest protein partner by far
+    O2x       2.781      (the substrate carbonyl)
+    C4x       3.626
+    K226 NZ   5.177
+    D92 OD2   6.040      D92 OD1 7.211
+    R90 NH1   7.192      (NH1-Zn 5.756, so NOT ligating)
+
+**I nearly reported the 2.672 as the answer to where the hydroxide's partner is.
+It is the voided artefact.** `aspxtb8` runs `qm_residues: *qmreg_michrk`, which
+does **not** include Ser186, so Ser186 is an MM atom at the QM/MM boundary - the
+exact condition that voided
+[[ser186-hydrogen-bonds-the-nucleophile-in-our-reactant]] (¶281, ¶282), where
+electrostatic embedding lets an MM charge feel the anion's charge and the contact
+closes for the wrong reason. The number is not usable.
+
+**The honest version of that measurement exists and has not been taken.** The
+`posepull` scan runs `*qmreg_michrks`, which **does** include Ser186 (¶287), so
+Ser186 is quantum in `scan_00.pdb` through `scan_10.pdb`. The scan monitored
+Ser186 OG to O4x and O3x but **not to O01**, so the one contact that matters here
+was not logged. It is a geometric read on files that already exist - no compute.
+
+### Also noted, not acted on
+
+Arg90 NH1 is **5.756 Å from the zinc** in our minimum, so in this structure it
+is not occupying the third Zn1 ligand position, whatever the canonical alignment
+says. [[arg90-stands-at-the-third-zn1-ligand-position]] should be read as a
+statement about the crystal, not about our optimised geometry.
+
+### Where this leaves the pose problem
+
+The user's framing is the right one: **the goal is FINDING the pose for a
+mono-zinc B3**, and we have been judging candidates against di-zinc references
+whose key geometry is unavailable to a one-metal enzyme. A methodology agent is
+reading how this has been done for other novel enzymes. Nothing about `aspxtb8`
+is disqualified by ¶301's Asp92 argument, which is withdrawn here.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
