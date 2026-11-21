@@ -15878,6 +15878,110 @@ one criterion (Zn-O2x 2.21 vs 2.4-3.0) that DFT does not reproduce (2.501).
 is an optimisation under a restraint at the existing distance, not a free
 minimum, so it is the worse NEB endpoint of the two despite the better number.
 
+## ¶301: the literature answer, and it relocates the problem to the metal's SUBSITE
+
+A literature agent read the deposits and papers; the numbers below that it calls
+measured it computed from PDB coordinates, not from paper text. I verified the
+one claim that bears on our own structure before accepting it. The first attempt
+at this ran two hours, fanned out to sub-agents and returned nothing; the second,
+with three questions, no delegation and an instruction to stop and report, took
+ten minutes and 18 tool calls. **The brief was the problem, not the model.**
+
+### What the carbonyl does, experimentally
+
+From the L1 time-resolved series (7UHH-7UHL, moxalactam, beta-lactam intact):
+
+    Zn1 - O(carbonyl)        2.53 (7UHI)  2.63 (7UHJ)  2.53 (7UHL)
+    Zn2 - O(carbonyl)        4.09         4.07         4.02
+    Zn2 - O(carboxylate)     2.65         2.54         ~2.5
+    Zn2 - N(lactam)          2.67         2.78          -
+
+**The carbonyl is on Zn1 (3H/M1) and nowhere near Zn2; the carboxylate and the
+leaving nitrogen are on Zn2.** No substituent oxygen is metal-bound, which is
+also true in SMB-1's hydrolysed-meropenem complex 5AXO (6-alpha-hydroxyethyl O
+3.26 from Zn1, hydrogen-bonded to the bridging hydroxide at 2.70). Occupancies
+are partial (Zn1 0.48-0.53), so these are TR snapshots.
+
+**Our numbers against that:** Zn-O(carbonyl) **2.501 at DFT - on the experimental
+range** - and **2.21 at GFN2, ~0.3 Å short**, which is the one criterion the
+`aspxtb8` minimum fails and is now confirmed as GFN2's over-binding rather than a
+structural error. Zn-O(hydroxide) **1.78** is 0.04 Å below the shortest
+crystallographic value found (1.82, 5AXO at 1.4-1.6 Å) - short, not anomalous.
+
+### The Asp92 problem is real, and it is not what I was told it was
+
+Experimental Asp120 carboxylate to nucleophile: **1SML 2.83/2.97, 5AXO 2.76/3.07,
+5K0W 3.61/3.86** - 2.8-3.9 Å across three B3 enzymes, with the aspartate also
+ligating a metal (OD2-Zn 2.07-2.19). Ours is **7.21**. So the gate
+`Asp92 OD1 - O01 2.5-3.2` gains experimental backing where it had only ¶119's own
+frames, and our structures miss it by more than 3 Å.
+
+**The agent's diagnosis was that the hydroxide sits on the solvent-exposed face
+of M1, *anti* to Asp92 - "the right ligand on the wrong face". I measured it on
+`aspxtb8_nowat.pdb` and that is wrong:**
+
+    Zn - O01            1.776        OD1 - Zn - O01   135.8 deg
+    Zn - O2x            2.211        OD2 - Zn - O01   114.1 deg
+    Zn - Asp92 OD1      5.830        O2x - Zn - O01    87.7 deg
+    Zn - Asp92 OD2      5.092        CG  - Zn - O01   123.8 deg
+
+135.8 and 114.1 are tilted away from the aspartate face, not anti to it. **The
+hydroxide is roughly where it should be; the ASPARTATE is 5.1-5.8 Å out.** In
+every reference enzyme that residue is held by **Zn2**, which we do not have, and
+our position matches our own crystal reference (`aspdft` Zn-OD2 5.122 against
+6DQH's 5.14). So the 7.2 Å is a consequence of the vacant subsite, already on
+the map as [[asp92-is-a-zn2-ligand-in-b3-structures]] - not a new pose error.
+
+### Which turns the whole question into one about the SUBSITE
+
+**Mono-zinc GOB-18 is reported to carry its single metal in the DHH (M2) site and
+to be fully active against carbapenems** (Moran-Barrio, AAC 2016), and the
+mono-zinc B2 enzymes carry theirs in the DHH site crystallographically. If that
+holds for a mono-zinc B3, **the lone metal's substrate contacts are the
+carboxylate and the leaving nitrogen - not the carbonyl.** Our entire model is an
+M1 model.
+
+Its weakness, stated: **there is no crystal structure of any mono-zinc B3.**
+Deposited GOB-18 (5K0W) is di-zinc, so the mono-Zn/DHH assignment is spectroscopy
+and mutagenesis, reached here through a search summary rather than the primary
+text. New node, `open`: [[a-mono-zinc-b3-carries-its-metal-in-the-dhh-site]].
+
+**It would explain three unexplained things at once.** Asp92 at 7.2 Å instead of
+2.8-3.9. The substrate carboxylate dangling at 5.4 Å with no partner, where every
+B3 complex pins it at 2.3-2.7. And the substrate leaving in every unrestrained
+QM/MM MD we have run (¶111, ¶119, `aspqm2` at 7.4 Å) - a complex anchored only
+through the carbonyl, with the carboxylate end free, is one contact from nothing.
+And our metal already sits **1.77 Å from where 7UHI's Zn2 lands in our frame**
+(¶284), so it is nearer M2 than the arrangement built on it assumes.
+
+### Gaps the agent could not close, recorded as gaps
+
+No published general base for a mono-zinc B3 or for B3-RQK, and nothing at all on
+CSR-1's. No mono-zinc B3 crystal structure. **No experimental
+nucleophile-to-scissile-carbon distance or attack angle exists for any B3** - no
+deposit holds an intact substrate *and* a nucleophile, and the L1 TR series has no
+bridging-water density at any time point (nearest water 5.7-7.1 Å). The L1
+authors retreat from the Asp120 general-base proposal and argue a
+metal-activated nucleophile needs none, giving D120 a Zn2-positioning role, with
+the nucleophile a bulk water that diffuses in.
+
+### One incidental correction to our own records
+
+The deposits: **6DN4 has zero HETATM records - no metal at all**; 6DQ2 phosphate
+only; **6DQH has one Zn at a 3H/M1 site** (His116/His118/His192, phosphate O 2.32,
+waters 2.03/2.50); 6NC5 six Zn. So `reference-structures.md`'s ZN2 sphere
+(ZN2-His116 2.25, ZN2-His192 2.15) **cannot have come from 6DN4**, and the ¶179
+citation of 6DN4 for a His116-His192 distance of 3.63 Å needs its source
+rechecked. Flagged, not fixed. Also noted: 6DQH reads **H-A-H-L-D-Q** at 116-121,
+a His where RQK wild type has Arg, so it is not an RQK wild-type sequence there.
+
+### Where this leaves the starting minimum
+
+`aspxtb8` survives as the best M1 reactant and its single failing criterion is
+explained by GFN2. What is no longer defensible is treating the **subsite** as
+settled, and that is a chemical decision with a large downstream cost either way.
+No compute proposed here.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**

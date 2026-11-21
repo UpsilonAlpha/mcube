@@ -32,7 +32,36 @@ converged geometries do not produce. **Open**, and it should not fail a
 structure until the Asp92 question is settled
 ([[question-how-far-is-asp92-from-zn1-in-wild-type-csr1]]).
 
+**¶301: THE WINDOW NOW HAS EXPERIMENTAL BACKING, where before it had only ¶119's
+own frames.** Asp120 carboxylate oxygen to the nucleophile oxygen, measured
+from deposited coordinates:
+
+    L1 1SML   (resting di-Zn)   2.83 / 2.97
+    SMB-1 5AXO (product)        2.76 / 3.07
+    GOB-18 5K0W (di-Zn)         3.61 / 3.86
+
+So **2.8-3.9 Å across three B3 enzymes**, and in each the aspartate is also a
+metal ligand (OD2-Zn 2.07-2.19). The gate's 2.5-3.2 Å window sits inside that
+range at the tight end. The contact is real and experimental; it is the one gate
+on this map whose provenance improved.
+
+**Our structures are 7.2 Å, and ¶301 locates why.** Measured on
+`aspxtb8_nowat.pdb`: Zn-OD1 **5.830**, Zn-OD2 **5.092**, OD1-O01 **7.211**. The
+aspartate is not ligating anything - in every reference enzyme it is held by
+Zn2, which we do not have
+([[asp92-is-a-zn2-ligand-in-b3-structures]]). So the 7.2 Å is a consequence of
+the vacant subsite and not an independent pose error, and this gate cannot be
+satisfied while the aspartate is unanchored.
+
+**A rival diagnosis, tested and rejected.** It was put to this project that 7.2 Å
+is what a hydroxide placed on the solvent-exposed face of M1, *anti* to Asp92,
+would give - the right ligand on the wrong face. Measured, the angles are
+**OD1-Zn-O01 135.8 deg** and **OD2-Zn-O01 114.1 deg**: tilted away from the
+aspartate face, but nowhere near anti (180 deg). The hydroxide is not on the
+wrong face; the aspartate is simply 5-5.8 Å out.
+
 ## Supports
+- [[every-acceptance-gate-encodes-a-mechanism]]## Supports
 - [[every-acceptance-gate-encodes-a-mechanism]]
 
 ## Requires
