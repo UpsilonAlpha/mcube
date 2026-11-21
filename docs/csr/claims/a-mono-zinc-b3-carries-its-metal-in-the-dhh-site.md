@@ -1,7 +1,7 @@
 ---
 type: claim
 status: open
-entries: [¶301, ¶304]
+entries: [¶301, ¶304, ¶305]
 ---
 
 # A mono-zinc B3 enzyme carries its single metal in the DHH (M2) site, not the 3H (M1) site
@@ -72,11 +72,19 @@ all.
    unverified.** The figures reported to this project (α ~2 µM, β ~150 µM) are not
    in the paper's accessible text, which cites only *"Fig. S5, Table S4"*. Not
    quotable until the supplement is read.
-3. **Our own one-metal crystal disagrees.** `dmCSR_mutant_1metal_refine_12.pdb`
-   (S214D) places its single zinc at **M2/β** (¶277, ¶279). S214D introduces a
-   carboxylate at an intersite position and may make its own site, but it is the
-   only experimental one-metal structure we hold and it does not agree with the
-   inference above.
+3. **Our own one-metal crystal was read as disagreeing. ¶305 shows it does not.**
+   `dmCSR_mutant_1metal_refine_12.pdb` does place its single zinc (occ **0.70**)
+   at **β** - coordinated by Asp78 2.13, His79 2.22, His212 2.12 - but residues
+   79 and 212 are **HIS in that file, not Gln and Lys**: `dmCSR-1` already carries
+   Q121H and K263H, so its β site is canonical DHH **by engineering**. Their
+   single mutant restored α and a metal appeared in α; ours restored β and the
+   metal appears in β. **Both observations say only that a metal occupies
+   whichever site has been repaired.**
+
+4. **What our occupancies do show.** In `refine_16`, with both sites present in
+   one crystal, **β is 1.00 and α is 0.53** - and that α site still has its
+   arginine, coordinating through His74 and His150 alone. So an **HRH α site is
+   half-occupied even against a canonical β**: weak, but real.
 
 So the node stays `open`, with its content now the weaker half of a live
 two-sided question rather than a standing rival. **The ligand-count argument

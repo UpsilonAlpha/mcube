@@ -16234,6 +16234,97 @@ Not proposing compute. The subsite question now gates the pose, it is
 experimental rather than computational, and the two pieces of evidence we have
 point different ways.
 
+## ¶305: the subsite question is answered by our OWN crystals' occupancies - and the answer is that neither structure speaks for wild type
+
+The user: *"pretty sure we have it in the record alongside an original crystals
+with occupancy for the zinc."* The Pedroso supplement is **not** in our files -
+nothing matching it anywhere under `Library/University`. **The occupancies are,
+and they are better evidence than the supplement would have been**, because they
+are ours and they are primary.
+
+Read from the two originals, with each zinc's site assigned **by its coordinating
+residues** rather than by its label (¶279 records that `ZN1`/`ZN2` are swapped in
+these files, so the labels cannot be trusted):
+
+    dmCSR_mutant_1metal_refine_12.pdb        ONE zinc, occ 0.70, B 9.03
+      Asp78  OD2  2.13      (our Asp92   - beta)
+      HIS79  NE2  2.22      (our Gln93   - beta, MUTATED to His)
+      HIS212 NE2  2.12      (our Lys226  - beta, MUTATED to His)
+      + 3 waters at 2.07-2.38          -> the metal is in the BETA site
+
+    dmCSR_mutant_2metal_refine_16.pdb        TWO zincs
+      ZN occ 1.00, B 14.90             -> BETA   (Asp78 2.06, His79 2.11, His212 2.18)
+      ZN occ 0.53, B 11.89             -> ALPHA  (His150 2.05, His74 2.23, only TWO His)
+
+### The thing to notice, which resolves ¶304's apparent conflict
+
+**Residues 79 and 212 are HIS in these files, not GLN and LYS.** These are the
+**beta-restored** variants - `dmCSR-1` already carries Q121H and K263H (¶277's
+alignment: *"WT -> plain dm, TWO subs: Q121->H, K254->H"*), and
+`dmCSR_mutant_*` adds S214D on top. So their beta site is canonical **DHH
+because it was engineered to be**, and the single zinc goes there.
+
+**That is the mirror image of the Pedroso observation, not a contradiction of
+it.** Their single mutant restored **alpha** and a zinc appeared in alpha; our
+double/triple mutant restored **beta** and the zinc appears in beta. **Both say
+the same thing: the metal occupies whichever site has been mutated back to
+canonical.** Neither says anything about wild-type CSR-1, where alpha is HRH,
+beta is DQK, and *"no metal ions were observed"* at all.
+
+So ¶304's framing - our crystals "disagreeing" with the alpha inference - is
+**withdrawn**. There was never a disagreement about wild type; there were two
+engineered sites each attracting a metal.
+
+### What the occupancies DO tell us, and it is not nothing
+
+In `refine_16` both sites are available in one crystal, and they are **not
+equally occupied: beta 1.00 against alpha 0.53.** Beta there is canonical DHH
+while **alpha still has its arginine** (only His74 and His150 coordinate - two
+His, not three, exactly as ¶302 established for the RQK alpha site). So in our
+own hands, **an HRH alpha site is a weak site - half-occupied even when the
+competing site is canonical.**
+
+For wild type that leaves a contest between two degraded sites: alpha has lost
+one of three ligands, beta two of three. The ligand-count argument still favours
+alpha, and it is now the only argument standing, because every structure anyone
+has - theirs and ours - has had one site repaired before a metal would sit in it.
+**The wild-type subsite is unobserved and, on this evidence, unobservable in a
+crystal.**
+
+### Which is why the user's steer is the right one
+
+*"I agree that standard of proof is downstream and not pose-intrinsic - that's
+why we just need a reasonable start, and why this works at all."*
+
+Correct, and it is what ¶304's survey found independently: no primary in this
+field validates a Michaelis complex by the pose's own properties. So the subsite
+does not need settling before work proceeds - it needs **stating as an
+assumption**, with the chemistry carrying the proof.
+
+**The start is `aspxtb8`'s minimum, as an alpha model, on these grounds:**
+
+1. Alpha is the site that retains two of three ligands in wild type, and the only
+   argument available favours it.
+2. Alpha is the site that carries the **beta-lactam carbonyl** at 2.53-2.63 Å in
+   the only genuine B3 Michaelis complex (¶301), and `aspxtb8` has that contact at
+   **2.501 Å at DFT** - on the experimental range.
+3. It is a converged, unrestrained QM/MM minimum, and ¶304 retired the one
+   objection to it (substrate loss under MD is published MBL behaviour, which
+   Lisa et al. restrained around in a di-zinc enzyme).
+4. Its nucleophile has a partner that needs no second metal - Ser186 at
+   **HG...O01 1.843 Å** with Ser186 quantum (¶303).
+
+**The assumption to carry in writing, every time:** our single metal is modelled
+at alpha; wild-type CSR-1 has no observed catalytic metal; and every structure
+bearing on the subsite had a site repaired first.
+
+### Housekeeping, unrelated
+
+`.../SCIE4481/bioinformatic_data/MM/Structure/CSR/` contains an executable named
+`Zoom_cm_fo19Z9vvrZo4_mN+6Tt2fPrIhVBOWitivpmKp89jg6VqYfh-tB@7thL23+efBW5K4AM_k07c12d7bc748cfe2_.exe`.
+A Zoom-branded installer with a randomised name sitting in a crystallography data
+folder is the shape of malware. **Not touched, not run** - flagged for the user.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
