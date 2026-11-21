@@ -1,7 +1,7 @@
 ---
 type: question
 status: open
-entries: [¶126, ¶196, ¶278]
+entries: [¶126, ¶196, ¶278, ¶298]
 ---
 
 # Does the substituent-on-metal arrangement survive as a mechanism, or was it an artefact of the docked pose?
@@ -37,6 +37,19 @@ without one. That is a real argument and the reason this is not simply dropped.
 **What would settle it:** a barrier from each arrangement on the same topology,
 or an experimental complex of a carbapenem with a 6-alpha-hydroxyethyl group on
 any B3 enzyme showing which oxygen the metal takes.
+
+**¶298: `scan_posepull` DID NOT TEST THIS, and should not be credited with it.**
+That scan drove **O4x, the C-3 carboxylate**. This question is about **O1x, the
+6-alpha-hydroxyethyl oxygen**, which is what `substituent_on_metal` encodes
+(`must_be: C:1:O1x`, `Zn - O1x 2.0-2.8`). At the scan endpoint O1x is **4.41 Å**
+from the metal, so the hypothesis fails there for the trivial reason that its own
+oxygen was never brought in.
+
+**This question therefore remains exactly as open as ¶278 left it**, and the
+`substituent_on_metal` rejection recorded in ¶298 is not evidence against it.
+What would still settle it is unchanged: a barrier from each arrangement on one
+topology, or an experimental complex of a carbapenem with a 6-alpha-hydroxyethyl
+group on any B3 enzyme showing which oxygen the metal takes.
 
 ## Supports
 - [[every-acceptance-gate-encodes-a-mechanism]]

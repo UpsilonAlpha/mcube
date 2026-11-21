@@ -1,7 +1,7 @@
 ---
 type: claim
 status: unsupported
-entries: [¶200, ¶201, ¶276, ¶278]
+entries: [¶200, ¶201, ¶276, ¶278, ¶299]
 ---
 
 # The reactant must hold the nucleophile and carbonyl cis on the metal, O-Zn-O 45-95 degrees and O...O 2.0-3.3 angstroms
@@ -38,6 +38,19 @@ degrees out of the lactam carbonyl plane** in all three tracked frames (relax10
 oxygen's side rather than over the carbon. That is a statement about position
 relative to the pi system, so it needs no window
 ([[question-can-burgi-dunitz-coexist-with-carbonyl-on-one-zinc]]).
+
+**¶299 MEASURES THE PREDICTION AND IT HOLDS: the windows do not discriminate.**
+`site.py check` run on three of our own structures - the `aspxtb8` minimum, the
+`posepull` scan's first point and its last - gives **O01-Zn-O2x 88, 85, 93 deg**
+and **O01...O2x 2.78, 2.73, 2.93 Å**. All six values pass. They pass on the scan
+endpoint, which is **five-coordinate with the wrong oxygen nearest the metal and
+an O01-C4x-O2x angle of 23 deg**, and which both hypothesis sets reject. So a
+structure can fail its mechanism outright and still clear both windows, which is
+what "any cis pair of oxygens on the zinc passes them" means in practice.
+
+These are our own structures and so the weakest class of evidence; they cannot
+support the windows and are not offered as doing so. What they do is demonstrate
+the non-discrimination on a case where the answer is independently known.
 
 ## Supports
 - [[every-acceptance-gate-encodes-a-mechanism]]

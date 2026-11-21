@@ -2,7 +2,7 @@
 type: observation
 status: supported
 evidence: ours
-entries: [¶247, ¶282]
+entries: [¶247, ¶282, ¶298]
 checked: [¶282]
 ---
 
@@ -92,6 +92,29 @@ it is not, to better than about 1 Å.** What is known to better than that is
 where the *anchoring residue* sits, from two deposits and the protein backbone
 alone. So arguments should be run through Ser186-s position, which is measured,
 rather than through the ligand oxygen-s, which is placed.
+
+**¶298: THE ARRANGEMENT HAS NOW BEEN DRIVEN IN OUR OWN SYSTEM, AND THE CARBONYL
+DOES NOT LEAVE.** `scan_posepull` (job 33244885, 11 points, all converged) drove
+**Zn-O4x from 5.42 to 2.20 Å** at GFN2 QM/MM from the `aspxtb8` minimum, with
+the carbonyl left completely free and **nothing restraining it** - the test ¶288
+pre-registered, on the reasoning that a two-histidine zinc cannot hold the
+carboxylate, the carbonyl and a nucleophile at once.
+
+It held all three. At the endpoint: hydroxide O01 **1.78**, His164 **2.17**,
+carboxylate O4x **2.20**, His88 **2.22**, carbonyl O2x **2.24** - five donors.
+**The carbonyl moved 0.007 Å across the whole scan** (2.231 to 2.238) while the
+carboxylate came in 3.2 Å. The attack geometry went the wrong way: O01-C4x
+**3.457 -> 3.992 Å**, O01-C4x-O2x **45 -> 23 deg**.
+
+So the failure is not that the carboxylate cannot reach our metal - it reaches it
+at the template's own distance. **It is that its arrival displaces nothing.**
+This bears on the pose's viability in our system and not on the first two rows
+of the table above, which are experimental and do not depend on it.
+
+**What this is not.** It is a path of constrained minima along a coordinate we
+invented in order to build the structure, with the environment beyond 8 Å frozen,
+so its energies are not a barrier or a binding penalty (¶297). The geometric
+readings are the result.
 
 ## Supports
 - [[the-cpha-conditions-are-met-in-the-crystal-derived-pose]]
