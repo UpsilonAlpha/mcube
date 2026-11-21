@@ -1417,10 +1417,40 @@ sections:
   # endpoints and the NEB - `actradius` is measured per structure, so the same
   # radius can give slightly different regions on two geometries, and energies
   # over different sets of movable atoms are not comparable.
+  # ¶307: `step1`'s reactant was `protdft/qmmm_protH_oh/QM_MM_optimized.pdb`, a
+  # lineage that exists in NO run directory - checked across all thirteen under
+  # /scratch/user/uquadhik/CSR/ (¶300). Left there, this section would have
+  # computed a barrier between two unrelated structures, and `neb`'s atom-order
+  # guard would not have caught it: both files carry the same topology, so the
+  # check that exists would have passed while the physics was meaningless.
+  #
+  # It now points at the same `aspxtb8` minimum `scan_attack` was driven from, so
+  # the reactant of the barrier is the reactant of the scan.
+  #
+  # **Both NEBs also needed `qm_residues` and `charge` stated.** Their endpoints
+  # are `scan_attack`/`scan_ringopen` points, which run `*qmreg_michrks` at
+  # charge 2; a NEB over a different QM region or charge from its own endpoints
+  # does not compute their barrier. `charge` is now refused by name rather than
+  # defaulted (¶291), so this would have failed loudly - but it should be right,
+  # not merely loud.
+  #
+  # **STILL BLOCKING, and deliberately not fixed here: `actradius` (¶252).** A
+  # radius is measured per structure, so one value gives two slightly different
+  # active regions and energies over different movable sets are not comparable;
+  # `actradius: 0` makes the regions identical by construction but freezes the MM
+  # environment, and two endpoints have different environments, so that frozen
+  # term does not cancel in a barrier. Gating on either would smuggle the
+  # decision in. Settle it before these run.
   step1:                       # NEB over the attack
     stage: neb
+    submit: {partition: general, cores: 8, mem: 32G, time: "48:00:00"}
+    require:
+      unset: [qm_engine]
+      equals: {charge: 2, images: 12, method: nebts, interpolation: idpp}
     inputs:
-      reactant_pdb: protdft/qmmm_protH_oh/QM_MM_optimized.pdb
+      qm_residues: *qmreg_michrks
+      charge: 2                # the endpoints' charge; stated per ¶152
+      reactant_pdb: protdft/qmmm_aspxtb8/QM_MM_optimized.pdb
       product_pdb: protdft/scan_attack/scan_15.pdb
       images: 12
       method: nebts            # NEB-CI then a geomeTRIC TS optimisation of the climbing image
@@ -1428,7 +1458,13 @@ sections:
 
   step2:
     stage: neb
+    submit: {partition: general, cores: 8, mem: 32G, time: "48:00:00"}
+    require:
+      unset: [qm_engine]
+      equals: {charge: 2, images: 12, method: nebts, interpolation: idpp}
     inputs:
+      qm_residues: *qmreg_michrks
+      charge: 2
       reactant_pdb: protdft/scan_attack/scan_15.pdb
       product_pdb: protdft/scan_ringopen/scan_11.pdb
       images: 12
