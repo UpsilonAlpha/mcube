@@ -16392,6 +16392,91 @@ any run directory (¶300). It needs repointing at the same `aspxtb8` minimum thi
 scan started from, or the barrier would be computed between two unrelated
 structures. Flagged, not silently rewired.
 
+## ¶308: the attack scan is COMPLETE, and it is a reaction - maximum, product, and every monitor doing what was pre-registered
+
+Job **33284354 COMPLETED**, exit 0:0, elapsed 01:46:27, **all 16 points
+converged**. Queue otherwise empty. `step1`'s reactant was repointed first
+(¶307), so the barrier this feeds will be between the structures it was actually
+computed from.
+
+### The profile
+
+O01...C4x driven 3.626 -> 1.450 Å, nothing else restrained:
+
+| pt | O01-C4x | rel kcal | Zn-O2x | C4x-N1x | Ser186 OG-O01 | Zn-O01 | Lys226 NZ-O01 |
+|---|---|---|---|---|---|---|---|
+| 0 | 3.626 | 0.00 | 2.242 | 1.368 | 2.813 | 1.782 | 5.258 |
+| 1 | 3.481 | **-0.29** | 2.226 | 1.369 | 2.773 | 1.779 | 5.244 |
+| 3 | 3.191 | 0.32 | 2.198 | 1.371 | 2.700 | 1.776 | 5.219 |
+| 5 | 2.901 | 2.69 | 2.183 | 1.373 | 2.659 | 1.781 | 5.260 |
+| 7 | 2.611 | 6.91 | 2.149 | 1.375 | **2.630** | 1.794 | 5.318 |
+| 8 | 2.465 | 9.59 | 2.114 | 1.376 | **2.630** | 1.810 | 5.320 |
+| 10 | 2.175 | 13.47 | 2.017 | 1.384 | 2.671 | 1.874 | 5.338 |
+| **11** | **2.030** | **14.24** | 1.974 | 1.397 | 2.711 | 1.936 | 5.362 |
+| 12 | 1.885 | 13.50 | 1.916 | 1.414 | 2.764 | 2.020 | 5.380 |
+| 13 | 1.740 | 10.75 | 1.880 | 1.434 | 2.818 | 2.140 | 5.386 |
+| 14 | 1.595 | 6.55 | 1.856 | 1.459 | 2.890 | 2.266 | 5.401 |
+| 15 | 1.450 | **0.56** | 1.861 | **1.485** | 3.016 | 2.361 | 5.254 |
+
+**A maximum with points either side of it** - 13.47 / **14.24** / 13.50 - and a
+**product at 1.45 Å essentially isoenergetic with the reactant (+0.56
+kcal/mol)**. That is a reaction step, not a wall.
+
+### Every pre-registered question answered, and in the affirmative
+
+¶306 wrote these down before the run. Reading them back:
+
+- **Ser186 holds the nucleophile through the approach and lets go once the bond
+  is made.** OG-O01 **tightens** 2.813 -> **2.630** between points 0 and 8, holds
+  there across the rise, then relaxes to 3.016 at the product. It organises the
+  nucleophile exactly where it is needed and releases when it is not. **This is
+  the mono-zinc answer this project had been missing** - no second metal, no
+  Asp92, and Asp92 stays 6-7 Å out the whole way as ¶302 said it must.
+- **The metal hands the nucleophile off.** Zn-O01 **1.782 -> 2.361** as O01
+  becomes a substituent on carbon. Predicted, and the size of it (0.58 Å) is
+  larger than I expected.
+- **The zinc takes up the developing alkoxide.** Zn-O2x **2.242 -> 1.861**,
+  tightening monotonically as C4x rehybridises. So the metal's job in this step
+  is **oxyanion stabilisation**, which is what the second zinc does in a
+  di-zinc B3 - done here by the only metal present.
+- **The step-2 bond is primed.** C4x-N1x **1.368 -> 1.485**, +0.117 Å. The two
+  steps are one mechanism.
+- **Lys226 is not the nucleophile's proton partner.** NZ-O01 stays 5.2-5.4 Å
+  throughout, never approaching. Question 1 of ¶1, answered negatively for this
+  step.
+
+One small thing worth recording: points 1-2 sit **below** point 0 by ~0.29
+kcal/mol, so `aspxtb8`'s minimum is marginally off the attack coordinate's own
+minimum, which lies near 3.48 Å. ¶288's habit of omitting `start` is what
+exposed it.
+
+### What this is NOT, stated as plainly as the result
+
+- **14.24 kcal/mol is not a barrier.** The maximum of a driven scan is not a
+  transition state. The barrier comes from `step1`'s NEB-CI plus a `ts` run with
+  exactly one imaginary mode checked against the reaction coordinate and an IRC
+  in each direction. Until then this is a path and an upper bound.
+- **It is not quotable at this level of theory.** GFN2 over-binds this zinc
+  (¶245: 0.06-0.08 Å short on both histidine nitrogens) and the CphA literature
+  warns semi-empirical methods need reparameterisation for an active-site metal
+  (¶304). The agreement with the field's band - BioExcel's 5-25 kcal/mol with most
+  real barriers 14-20, and Gatti's CphA ~12 computed against ~14 experimental -
+  is encouraging and is not evidence.
+- 0 K, single path, no entropy, everything beyond the 8 Å active region frozen,
+  and the α-site assumption of ¶305 carried throughout.
+
+### What is now unblocked
+
+**`scan_15.pdb` exists**, so for the first time this project has a real NEB
+endpoint. Two things follow, neither started:
+
+1. **`ringopen`** can be written - its `pdb_file` needs setting to
+   `protdft/scan_attack/scan_15.pdb`, the same way `attack`'s was set, and its
+   `start: 1.39` should be checked against the **1.485 Å** this scan actually
+   produced rather than the number measured in an older lineage.
+2. **`step1`** is unblocked apart from `actradius` (¶252), which still has to be
+   settled before a barrier means anything.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
