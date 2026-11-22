@@ -16733,6 +16733,75 @@ inconsistently with nothing saying so.
 **Nothing submitted.** `attackmin` is the one job this unblocks, and `step1`
 cannot be submitted until it has produced a frame.
 
+**¶310 - `attackmin` IS SUBMITTED AND RUNNING: job 33303644, bun149, started
+2026-11-23 09:55 AEST, 8 cores / 32 GB / 24 h. 129 QM atoms, and its active
+region came out at 481 - a THIRD value after `aspxtb8`'s 479 and
+`scan_attack`'s 476. That is ¶309's per-structure mechanism behaving exactly as
+measured, and it turns the follow-up `frozen_check.py` run from prudent into
+mandatory, because it can now fail.** (2026-11-23, user: "Submit attackmin")
+
+    submit: sbatch -J attackmin -p general --cpus-per-task=8 --mem=32G
+            -t 24:00:00 run.slurm qmmm qmmm_attackmin
+    recorded: qm_level GFN2-xTB, metal_parameters iod,
+              pdb_file_source qmmm_attackmin.inputs.pdb_file
+    [INFO] QM atoms: 129          (`*qmreg_michrks`)
+    Active region size: 481       (derived on scan_15's geometry)
+
+Queue was empty of our jobs before submitting, so nothing is competing for the
+run directory's `config.yaml` (`running-on-bunya.md`: never two stages against
+one config).
+
+## The 481 is not a surprise, and it is the thing to check next
+
+Three structures in this chain have now each produced their own 8 Å sphere:
+
+    qmmm_aspxtb8     479   derived on qmmm_aspxtb's output   (its own INPUT)
+    scan_attack      476   derived on aspxtb8's output
+    qmmm_attackmin   481   derived on scan_15
+
+¶309 showed the `aspxtb8` → `scan_15` pair passes because the scan could not
+move an atom outside its own 476, so everything frozen agreed. **`attackmin` is
+free to move any of its 481**, and `step1` will derive its region from the
+REACTANT - `aspxtb8`'s output under `*qmreg_michrks`, i.e. the scan's **476**.
+So if `attackmin` relaxes an atom that sits inside 481 but outside 476, the two
+`step1` endpoints will disagree on an atom the NEB freezes, and ASH's midpoint
+switch stops being a no-op.
+
+**So the check is not optional and is pre-registered here:**
+
+    python docs/csr/frozen_check.py \
+        protdft/qmmm_aspxtb8/QM_MM_optimized.pdb \
+        protdft/qmmm_attackmin/QM_MM_optimized.pdb \
+        --actatoms protdft/scan_attack/active_atoms_used
+
+- **PASS** → `step1` is sound at `actradius: 8` and can be submitted once the
+  endpoint exists.
+- **FAIL** → the remedy is **a wider radius on the NEB**, not a different
+  endpoint. `step1`'s region has to contain everything that moved anywhere in
+  the chain, so raise `actradius` on `step1`/`step2` until `frozen_check.py`
+  passes, re-derive, and record the new count in place of ¶309's pre-registered
+  476. Changing the endpoint would only move the problem, since every structure
+  in the chain has its own sphere.
+
+That is also the honest limit of ¶309's result: it settled the radius **for the
+pair that existed**, and each new link in the chain has to be measured rather
+than inherited. The script is the reason that costs one command.
+
+## What the job itself decides
+
+The pre-registered readings are in `site.yaml` above the section and are
+unchanged: holding near O01-C4x 1.45-1.55 Å with C4x-N1x 1.48-1.55 means a real
+tetrahedral intermediate and an elementary attack; opening back past ~2.5 Å
+means there is no intermediate and both NEB sections are void, replaced by one
+NEB from `aspxtb8` to the ring-opened product; C4x-N1x breaking past ~1.8 Å on
+its own means attack and ring opening are concerted and `ringopen` is not a
+separate scan either.
+
+No check is scheduled against it. `aspxtb8` converged in 103 steps from a
+comparable start, so this should be hours rather than the 24 h wall, and a
+polling job that cannot act on what it sees is one this project has agreed not
+to run.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
