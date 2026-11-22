@@ -1411,12 +1411,125 @@ sections:
   # reactant's own atom order because `scan` writes every point through the
   # reactant's MM topology. Fill both in from the runs that produced them.
   #
-  # The active region is not set here and cannot be copied from the endpoints:
-  # each run derives it from `actradius`/`actregion_origin` on its own structure
-  # and records the list it used. Check those counts match across the two
-  # endpoints and the NEB - `actradius` is measured per structure, so the same
-  # radius can give slightly different regions on two geometries, and energies
-  # over different sets of movable atoms are not comparable.
+  # ---- the product minimum the NEB actually needs (¶309) ----
+  #
+  # `scan.py`'s own first line: "at each point the active region is optimised
+  # with that distance fixed". So **`scan_15.pdb` is a CONSTRAINED minimum**, held
+  # at O01-C4x = 1.450 Å, and its gradient along that coordinate is not zero. A
+  # NEB freezes its endpoints and measures from them, so a constrained product
+  # gives a reaction energy and a reverse barrier that belong to no stationary
+  # point. ¶300 rejected `scan_00` as a REACTANT on exactly this reasoning -
+  # "an optimisation under a restraint at the existing distance, not a free
+  # minimum, so it is the worse NEB endpoint of the two despite the better
+  # number" - and the same sentence condemns `scan_15` as a product. It was not
+  # applied to the product end, which is the gap this section closes.
+  #
+  # One key differs from `aspxtb8`: `pdb_file`. Everything else - the QM region,
+  # the charge, the radius, the absence of constraints, flexible waters - is
+  # `aspxtb8`'s, so the two endpoints of `step1` are minima of ONE surface. That
+  # is what ¶207's "two-surfaces" bug was about, and it is the reason this is a
+  # `qmmm` optimisation rather than anything cleverer.
+  #
+  # **Pre-registered readings, before the result (¶178).** This job decides
+  # whether the mechanism has two steps or one, so write down now what each
+  # outcome means:
+  #   - **It holds, O01-C4x near 1.45-1.55 and C4x-N1x near 1.48-1.55** -> a
+  #     genuine tetrahedral intermediate exists, the attack IS an elementary
+  #     step, and this is `step1`'s product and `step2`'s reactant. The scan's
+  #     point-11 maximum (14.24 kcal/mol) becomes a barrier belonging to two
+  #     minima.
+  #   - **O01-C4x opens back past ~2.5 Å and the carbonyl re-forms** -> there is
+  #     no intermediate. The attack is not a separate elementary step, `step1`
+  #     and `step2` are both void, and what replaces them is ONE NEB from
+  #     `aspxtb8` to the ring-opened product. That is ¶17's warning read
+  #     backwards: a single NEB over two barriers returns one saddle, but a
+  #     single CONCERTED step is one barrier and one saddle, which is what a
+  #     single NEB is for.
+  #   - **C4x-N1x breaks on its own, past ~1.8 Å** -> attack and ring opening
+  #     are concerted, the same conclusion follows, and `ringopen` is not a
+  #     separate scan either.
+  #
+  # Cheap on the measurement that exists: `aspxtb8` converged in 103 steps with
+  # nothing constrained, and this starts 1.45 Å from it along one coordinate.
+  attackmin:                   # free minimum from the attack scan's last point
+    stage: qmmm
+    submit: {partition: general, cores: 8, mem: 32G, time: "24:00:00"}
+    require:
+      unset: [restraints, opt_constraints, constraints]
+      same_as: {section: aspxtb8, except: [pdb_file, qm_residues]}
+    inputs:
+      pdb_file: protdft/scan_attack/scan_15.pdb
+      qm_residues: *qmreg_michrks   # the scan's region, not aspxtb8's michrk
+      charge: 2
+      actradius: 8
+      skip_equilibrate: true
+      skip_optimize: false
+      opt_maxiter: 300
+      rigid_water: false
+
+  # The active region IS set here, and 8 Å is the answer - ¶309 settled it by
+  # measurement rather than by argument, and what had to be measured turned out
+  # not to be what ¶252 was worried about.
+  #
+  # **What ¶252 feared** is real, and is now measured. `actradius` is re-derived
+  # per structure, so one radius gives two slightly different regions on two
+  # geometries: `qmmm_aspxtb8` wrote **479** active atoms and `scan_attack`
+  # **476**, the difference being one boundary water, HOH D7338. The cause is
+  # plain rather than mysterious - aspxtb8 derived its region on `qmmm_aspxtb`'s
+  # geometry, which is its own INPUT, while the scan derived its on aspxtb8's
+  # OUTPUT. Two structures, two spheres.
+  #
+  # **But a NEB only ever has one active region.** `neb.py` calls
+  # `resolve_actatoms` on the REACTANT alone and hands that one list to ASH for
+  # every image, so two regions never coexist inside a path. This NEB derives it
+  # on `qmmm_aspxtb8/QM_MM_optimized.pdb` under `*qmreg_michrks` - the same file
+  # and the same QM region `scan_attack` used - so it gets the scan's 476, not
+  # aspxtb8's 479. **The run must print `NEB active region: 476 atoms`. If it
+  # prints anything else the region has moved and the endpoints need rechecking
+  # before the numbers mean anything.**
+  #
+  # **The hazard ¶252 understated.** ASH does not hold the inactive atoms at one
+  # geometry at all. `KnarrCalculator.Compute` rebuilds each image's full
+  # coordinates from whichever endpoint its index is nearest - the reactant's for
+  # the first half of the path, the product's for the second - so endpoints whose
+  # frozen atoms sit anywhere different give a frozen environment that SWITCHES
+  # at the midpoint of the path, which is exactly where the climbing image goes.
+  # Nothing in ASH's ActiveRegion path checks, warns or RMSD-tests that, and its
+  # own comment there claims the opposite ("Inactive part of reactant will be
+  # used for all images"). A barrier would absorb that step in silence.
+  #
+  # So the condition is not "the counts match" but "the endpoints agree on every
+  # atom OUTSIDE the region". `docs/csr/frozen_check.py` measures it, and this
+  # pair **PASSES**: of 47979 atoms, 474 differ between the endpoints, the
+  # largest by 2.211 Å, and every one of them is inside the 476-atom region.
+  # Everything frozen is identical, so the midpoint switch is a no-op - and the
+  # verdict holds under either candidate region, since 474 sits inside 476 sits
+  # inside 479.
+  #
+  # That is a property of the LINEAGE, not of the radius: `scan_attack` ran at
+  # `actradius: 8` from this reactant, so it could not move an atom outside the
+  # region. **Run `frozen_check.py` on `step2`'s pair once `ringopen` exists** -
+  # the guarantee only survives while every structure in the chain shares one
+  # radius.
+  #
+  # `actradius: 0` is therefore not needed and would be worse: it freezes the
+  # whole MM environment to buy an identical region the lineage already
+  # guarantees, and ¶235 chose it for a single-structure optimisation, not for a
+  # path across two. 8 Å is the base `qmmm` default (¶105/¶106: 5 Å diverged,
+  # 8 Å was healthy) and is what `aspxtb8` converged under in 103 steps with
+  # nothing constrained.
+  #
+  # **`numfreq: false` on both, and that is a cost trap rather than a
+  # preference.** `neb.py` defaults `numfreq` to True and takes `hessatoms =
+  # hessian_atoms or qm_atoms`, so leaving it unset runs a numerical Hessian over
+  # the WHOLE QM region after the path - 3N x 2 gradients, ~780 for this region,
+  # which at GFN2's measured 1-2 min per QM/MM gradient is 13-26 h on top of the
+  # NEB and would carry the job past its 48 h wall. It is redundant twice over:
+  # `method: nebts` already builds a partial Hessian and optimises the climbing
+  # image with it, and `saddle1`/`saddle2` exist to do tsopt, freq and IRC
+  # properly with `hessian_atoms` restricted to the five reacting atoms.
+  # Confirming a saddle is `ts`'s job.
+  #
   # ¶307: `step1`'s reactant was `protdft/qmmm_protH_oh/QM_MM_optimized.pdb`, a
   # lineage that exists in NO run directory - checked across all thirteen under
   # /scratch/user/uquadhik/CSR/ (¶300). Left there, this section would have
@@ -1433,43 +1546,42 @@ sections:
   # does not compute their barrier. `charge` is now refused by name rather than
   # defaulted (¶291), so this would have failed loudly - but it should be right,
   # not merely loud.
-  #
-  # **STILL BLOCKING, and deliberately not fixed here: `actradius` (¶252).** A
-  # radius is measured per structure, so one value gives two slightly different
-  # active regions and energies over different movable sets are not comparable;
-  # `actradius: 0` makes the regions identical by construction but freezes the MM
-  # environment, and two endpoints have different environments, so that frozen
-  # term does not cancel in a barrier. Gating on either would smuggle the
-  # decision in. Settle it before these run.
   step1:                       # NEB over the attack
     stage: neb
     submit: {partition: general, cores: 8, mem: 32G, time: "48:00:00"}
     require:
       unset: [qm_engine]
-      equals: {charge: 2, images: 12, method: nebts, interpolation: idpp}
+      equals: {charge: 2, images: 12, method: nebts, interpolation: idpp,
+               actradius: 8, numfreq: false}
     inputs:
       qm_residues: *qmreg_michrks
       charge: 2                # the endpoints' charge; stated per ¶152
       reactant_pdb: protdft/qmmm_aspxtb8/QM_MM_optimized.pdb
-      product_pdb: protdft/scan_attack/scan_15.pdb
+      product_pdb: protdft/qmmm_attackmin/QM_MM_optimized.pdb
       images: 12
       method: nebts            # NEB-CI then a geomeTRIC TS optimisation of the climbing image
       interpolation: idpp
+      actradius: 8             # stated, not inherited: ¶309 settled it, and
+                               # `require.equals` reads this section's own inputs
+      numfreq: false           # `saddle1` does the frequencies; see above
 
   step2:
     stage: neb
     submit: {partition: general, cores: 8, mem: 32G, time: "48:00:00"}
     require:
       unset: [qm_engine]
-      equals: {charge: 2, images: 12, method: nebts, interpolation: idpp}
+      equals: {charge: 2, images: 12, method: nebts, interpolation: idpp,
+               actradius: 8, numfreq: false}
     inputs:
       qm_residues: *qmreg_michrks
       charge: 2
-      reactant_pdb: protdft/scan_attack/scan_15.pdb
+      reactant_pdb: protdft/qmmm_attackmin/QM_MM_optimized.pdb
       product_pdb: protdft/scan_ringopen/scan_11.pdb
       images: 12
       method: nebts
       interpolation: idpp
+      actradius: 8             # as step1; re-run frozen_check.py on THIS pair
+      numfreq: false           # `saddle2` does the frequencies
 
   # Keys are bare names: sections.py writes each as <stage>_<name>, so a key
   # cannot be shared by two stages - `step1` is the NEB's, and the matching TS
