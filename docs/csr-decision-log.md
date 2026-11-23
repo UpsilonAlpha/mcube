@@ -17837,6 +17837,30 @@ as well. Two decisions are the user's and neither is taken here:
               `check_path_shape` back in reach - with `nebts` the diagnostic
               sits behind the step that died, which is ¶318's finding
 
+## MEASURED WITHIN MINUTES, and the prediction hit exactly
+
+Both jobs went R on bun151/bun153 and printed their regions. Read with `grep -H`
+rather than `-h`, because a 10-atom difference assigned to the wrong job would be
+a real error:
+
+    protdft/reactmin9-33317685.out:Active region size: 665    <- predicted, exact
+    protdft/attackmin9-33317686.out:Active region size: 655
+    both:                          [INFO] QM atoms: 129
+
+**And the two QM atom lists are identical, element for element**, 2774-2778
+(Ser186's side chain) included. So ¶316's QM-region defect is closed by
+measurement and not by assertion: the endpoints are on one QM region for the
+first time.
+
+**The 655-versus-665 is the residue this entry pre-registered**, arriving on
+schedule: `attackmin9` derives its sphere on its own relaxed geometry and gets
+ten atoms fewer. That is D115's design, not a fault - and it is 18× smaller
+than the 184-atom gap that produced ¶317's 112 kcal/mol, which is the whole
+point of the exercise. What it means concretely is that `step1` will re-derive on
+`reactmin9`'s OUTPUT and may free up to ten atoms that `attackmin9` held rigid,
+so the condition still has a ten-atom tail. `frozen_check.py` on the new pair is
+what decides whether those ten are displaced atoms or merely boundary ones.
+
 ## What is still open, and is not these jobs
 
     leg 2            `step2`'s reactant is repointed to attackmin9, but its
