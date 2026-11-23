@@ -1527,6 +1527,103 @@ sections:
       opt_maxiter: 300
       rigid_water: false
 
+  # ---- THE step1 ENDPOINTS, RE-MINIMISED WITH THE NEB'S OWN REGION (¶319) ----
+  #
+  # `aspxtb8` and `attackmin` above are 8 Å optimisations and `step1` is a 9 Å
+  # NEB, so 184 atoms moved for the first time inside the path and the MM energy
+  # fell ~112 kcal/mol at image 1 (¶317). ¶318 identified that as ¶207's
+  # two-surfaces bug in a second costume - the endpoint's movable set differing
+  # from the path's - and ruled out the other direction: narrowing the region to
+  # the QM atoms would freeze ≥375 of the 504 atoms displaced between the
+  # endpoints and switch them from reactant to product geometry at the MIDPOINT,
+  # where the climbing image goes. So the endpoints widen to meet the NEB, and
+  # these two sections are that. Authorised by the user, 2026-11-23
+  # ("Re-minimise at 9").
+  #
+  # **`reactmin9` fixes BOTH of ¶316's defects at once.** It moves 8 → 9 Å AND
+  # `*qmreg_michrk` → `*qmreg_michrks`, because `aspxtb8` ran 124 QM atoms while
+  # the NEB and `attackmin` run 129 - so the old reactant was a minimum of
+  # neither its own product's surface nor the path's. Which is why
+  # `attackmin9`'s gate can be `except: [pdb_file]` and nothing else: after this
+  # the two endpoints differ in the STRUCTURE and in no setting at all. That is
+  # the strongest statement `require` can make and the hole in `attackmin`'s own
+  # gate (`except: [pdb_file, qm_residues]`) is what let ¶316's defect through.
+  #
+  # **Both continue from a converged minimum rather than redoing one**, which is
+  # `aspxtb8`'s own move - "it continues from `aspxtb`'s converged minimum and
+  # reopens the 8 Å active region, so ~485 atoms are free where 124 were". Here
+  # 665 are free where 479 and 481 were. The first-shell geometry is already at
+  # its minimum; what has to relax is the outer shell, which is the point.
+  #
+  # **Pre-registered, before the runs (¶178):**
+  #   - **`reactmin9` MUST print `Active region: 665 atoms`.** Not an estimate:
+  #     it derives the region on `qmmm_aspxtb8/QM_MM_optimized.pdb` at 9 Å under
+  #     `*qmreg_michrks`, which is the same file, radius and QM region `step1`
+  #     derived its own 665 on. Anything else and the two are not the same
+  #     region and the run should be stopped.
+  #   - **`attackmin9` may print something other than 665** and that is correct,
+  #     not a failure: `actradius` is re-derived per structure by design (D115),
+  #     so a different geometry gives a different sphere. It is the PAIR that
+  #     has to be checked, with `frozen_check.py --origin B:1:ZN` on the two
+  #     outputs, and 9 Å is not guaranteed to still pass on a new pair (¶312).
+  #   - **The MM energies must come within a few kcal/mol of each other**, since
+  #     both will then be minima of the same 665-atom region. ¶317's table is
+  #     the baseline to beat: MM -241.16051532 (reactant) against -241.38348747
+  #     at the lowest interior image, a 140 kcal/mol gap that should largely
+  #     close.
+  #
+  # **The residue this does NOT remove, stated plainly.** `reactmin9` relaxes
+  # under the region derived from `aspxtb8`'s geometry, and `step1` will then
+  # re-derive on `reactmin9`'s OUTPUT - so if the relaxation moves a boundary
+  # residue across the 9 Å line the two sets differ again, by a handful of atoms
+  # rather than by a whole shell. That cannot be removed by pinning a list
+  # (D115 refuses index lists, ¶318) and iterating to self-consistency is not
+  # worth a job, so it is measured instead of fixed: diff the two
+  # `active_atoms_used` files and check what `step1` prints.
+  #
+  # **Cost.** The only timing this project has for an xTB QM/MM optimisation is
+  # ~159 s/step over 467 active atoms, and `aspxtb8` converged in 103 steps from
+  # a converged minimum. 665 atoms is 42% more in geomeTRIC's linear algebra, so
+  # ~100 steps at ~225-350 s is 6-10 h and `time: "24:00:00"` holds unless it
+  # runs the full 300. If it times out, restart from the trajectory's last frame
+  # rather than from the beginning; the submit block is otherwise both parents'
+  # unchanged.
+  reactmin9:                   # step1 reactant: 9 A region, 129 QM atoms
+    stage: qmmm
+    submit: {partition: general, cores: 8, mem: 32G, time: "24:00:00"}
+    require:
+      unset: [restraints, opt_constraints, constraints]
+      equals: {charge: 2, rigid_water: false, actradius: 9,
+               skip_equilibrate: true, skip_optimize: false}
+      same_as: {section: aspxtb8, except: [pdb_file, qm_residues, actradius]}
+    inputs:
+      pdb_file: protdft/qmmm_aspxtb8/QM_MM_optimized.pdb
+      qm_residues: *qmreg_michrks   # 129, not aspxtb8's 124 (¶316)
+      charge: 2
+      actradius: 9                  # the NEB's own radius (¶312/¶317)
+      skip_equilibrate: true
+      skip_optimize: false
+      opt_maxiter: 300
+      rigid_water: false
+
+  attackmin9:                  # step1 product: the same, from attackmin
+    stage: qmmm
+    submit: {partition: general, cores: 8, mem: 32G, time: "24:00:00"}
+    require:
+      unset: [restraints, opt_constraints, constraints]
+      equals: {charge: 2, rigid_water: false, actradius: 9,
+               skip_equilibrate: true, skip_optimize: false}
+      same_as: {section: reactmin9, except: [pdb_file]}
+    inputs:
+      pdb_file: protdft/qmmm_attackmin/QM_MM_optimized.pdb
+      qm_residues: *qmreg_michrks
+      charge: 2
+      actradius: 9
+      skip_equilibrate: true
+      skip_optimize: false
+      opt_maxiter: 300
+      rigid_water: false
+
   # The active region IS set here, and it is **9 Å** (¶312). ¶309 settled the
   # QUESTION by measurement rather than argument - and then ¶311 failed ¶309's
   # own check at 8 Å, which is the whole reason the number moved. The reasoning
@@ -1802,8 +1899,11 @@ sections:
     inputs:
       qm_residues: *qmreg_michrks
       charge: 2                # the endpoints' charge; stated per ¶152
-      reactant_pdb: protdft/qmmm_aspxtb8/QM_MM_optimized.pdb
-      product_pdb: protdft/qmmm_attackmin/QM_MM_optimized.pdb
+      reactant_pdb: protdft/qmmm_reactmin9/QM_MM_optimized.pdb
+      product_pdb: protdft/qmmm_attackmin9/QM_MM_optimized.pdb
+                               # ¶319: NOT aspxtb8/attackmin. Those are 8 Å
+                               # minima and this is a 9 Å path, which is the
+                               # whole of ¶317's artefact
       images: 12
       method: nebts            # NEB-CI then a geomeTRIC TS optimisation of the climbing image
       interpolation: idpp
@@ -1822,8 +1922,14 @@ sections:
     inputs:
       qm_residues: *qmreg_michrks
       charge: 2
-      reactant_pdb: protdft/qmmm_attackmin/QM_MM_optimized.pdb
+      reactant_pdb: protdft/qmmm_attackmin9/QM_MM_optimized.pdb
       product_pdb: protdft/scan_ringopen/scan_11.pdb
+                               # ¶319: the reactant is repointed with step1's,
+                               # same reason. The PRODUCT is still a constrained
+                               # scan point and is still wrong (¶311/¶314): leg 2
+                               # needs its own free minimum at 9 Å from
+                               # `ringopen`'s last point, which does not exist
+                               # and is not written here
       images: 12
       method: nebts
       interpolation: idpp
