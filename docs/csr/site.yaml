@@ -1467,9 +1467,36 @@ sections:
       opt_maxiter: 300
       rigid_water: false
 
-  # The active region IS set here, and 8 Å is the answer - ¶309 settled it by
-  # measurement rather than by argument, and what had to be measured turned out
-  # not to be what ¶252 was worried about.
+  # The active region IS set here, and it is **9 Å** (¶312). ¶309 settled the
+  # QUESTION by measurement rather than argument - and then ¶311 failed ¶309's
+  # own check at 8 Å, which is the whole reason the number moved. The reasoning
+  # below is ¶309's and stands; the radius it concluded with did not survive the
+  # next structure in the chain, exactly as ¶310 warned it might not.
+  #
+  # **Why 9 and not 8.** `attackmin`'s free optimisation displaced 504 atoms
+  # relative to `aspxtb8`, and **30 of them fall outside the 476-atom region an
+  # 8 Å radius gives** - Trp21 (26 atoms, 0.49 Å at worst) and two waters,
+  # HOH 7338 and HOH A4A8. Those are whole residues sitting on the 8 Å line, and
+  # their nearest approach to the Zn in THIS reactant decides the threshold:
+  #
+  #     Trp21      8.22 Å        actradius   active atoms   outside
+  #     HOH 7338   8.08 Å          8.0           476          30  FAIL
+  #     HOH A4A8   8.48 Å          8.5           582           0  pass
+  #                                  9.0           665           0  pass
+  #                                 10.0           799           0  pass
+  #
+  # **8.5 is the minimum and was rejected.** It clears the worst offender by
+  # 0.02 Å, and a boundary residue with 0.02 Å of margin is precisely what
+  # produced this failure - three times now, HOH 7338 each time. 9 Å gives
+  # 0.52 Å of headroom at 665 active atoms. That is 39% more than anything this
+  # project has optimised, which ¶141 makes acceptable: the geomeTRIC grinding of
+  # ¶105 came from CONSTRAINED WATERS, not from region size ("Remove the water
+  # constraints and they do not occur at all"), and these NEBs constrain nothing.
+  # The QM cost is in the 129 QM atoms, which `actradius` does not change.
+  #
+  # Re-derive it with `frozen_check.py --origin B:1:ZN` on any new endpoint pair
+  # rather than trusting 9 to keep holding; the radius is a property of the pair,
+  # which is the lesson of this entry and not a detail of it.
   #
   # **What ¶252 feared** is real, and is now measured. `actradius` is re-derived
   # per structure, so one radius gives two slightly different regions on two
@@ -1484,9 +1511,13 @@ sections:
   # every image, so two regions never coexist inside a path. This NEB derives it
   # on `qmmm_aspxtb8/QM_MM_optimized.pdb` under `*qmreg_michrks` - the same file
   # and the same QM region `scan_attack` used - so it gets the scan's 476, not
-  # aspxtb8's 479. **The run must print `NEB active region: 476 atoms`. If it
-  # prints anything else the region has moved and the endpoints need rechecking
-  # before the numbers mean anything.**
+  # aspxtb8's 479 - at the 8 Å those counts were measured at. At the 9 Å now
+  # set, the same derivation gives **665**. **The run must print `NEB active
+  # region: 665 atoms`. If it prints anything else the region has moved and the
+  # endpoints need rechecking before the numbers mean anything.** The 665 is
+  # predicted by `frozen_check.py --origin B:1:ZN`, whose residue grouping
+  # reproduces ASH's own 476 exactly at 8 Å - which is why it is quoted, and
+  # also why a disagreement would mean the prediction is wrong rather than the run.
   #
   # **The hazard ¶252 understated.** ASH does not hold the inactive atoms at one
   # geometry at all. `KnarrCalculator.Compute` rebuilds each image's full
@@ -1499,12 +1530,12 @@ sections:
   # used for all images"). A barrier would absorb that step in silence.
   #
   # So the condition is not "the counts match" but "the endpoints agree on every
-  # atom OUTSIDE the region". `docs/csr/frozen_check.py` measures it, and this
-  # pair **PASSES**: of 47979 atoms, 474 differ between the endpoints, the
-  # largest by 2.211 Å, and every one of them is inside the 476-atom region.
-  # Everything frozen is identical, so the midpoint switch is a no-op - and the
-  # verdict holds under either candidate region, since 474 sits inside 476 sits
-  # inside 479.
+  # atom OUTSIDE the region". `docs/csr/frozen_check.py` measures it. On
+  # `aspxtb8` against `scan_attack/scan_15` it PASSED at 8 Å: 474 atoms differed
+  # and all were inside the 476. **On `aspxtb8` against `attackmin` - the pair
+  # this section actually uses - it FAILED at 8 Å and passes at 9**, which is the
+  # change recorded above. The scan could not move an atom outside its own
+  # region; a free optimisation can, and did.
   #
   # That is a property of the LINEAGE, not of the radius: `scan_attack` ran at
   # `actradius: 8` from this reactant, so it could not move an atom outside the
@@ -1517,7 +1548,10 @@ sections:
   # guarantees, and ¶235 chose it for a single-structure optimisation, not for a
   # path across two. 8 Å is the base `qmmm` default (¶105/¶106: 5 Å diverged,
   # 8 Å was healthy) and is what `aspxtb8` converged under in 103 steps with
-  # nothing constrained.
+  # nothing constrained, so the 9 here is a deliberate override of a working
+  # default for this stage only, not a change to it: the endpoint runs that
+  # produced these structures keep 8, and widening theirs would only move the
+  # boundary somewhere else.
   #
   # **`numfreq: false` on both, and that is a cost trap rather than a
   # preference.** `neb.py` defaults `numfreq` to True and takes `hessatoms =
@@ -1552,7 +1586,7 @@ sections:
     require:
       unset: [qm_engine]
       equals: {charge: 2, images: 12, method: nebts, interpolation: idpp,
-               actradius: 8, numfreq: false}
+               actradius: 9, numfreq: false}
     inputs:
       qm_residues: *qmreg_michrks
       charge: 2                # the endpoints' charge; stated per ¶152
@@ -1561,8 +1595,9 @@ sections:
       images: 12
       method: nebts            # NEB-CI then a geomeTRIC TS optimisation of the climbing image
       interpolation: idpp
-      actradius: 8             # stated, not inherited: ¶309 settled it, and
-                               # `require.equals` reads this section's own inputs
+      actradius: 9             # NOT the qmmm default of 8: ¶311 measured 30
+                               # displaced atoms outside the 8 Å region, and 9
+                               # is the first value with real margin (¶312)
       numfreq: false           # `saddle1` does the frequencies; see above
 
   step2:
@@ -1571,7 +1606,7 @@ sections:
     require:
       unset: [qm_engine]
       equals: {charge: 2, images: 12, method: nebts, interpolation: idpp,
-               actradius: 8, numfreq: false}
+               actradius: 9, numfreq: false}
     inputs:
       qm_residues: *qmreg_michrks
       charge: 2
@@ -1580,7 +1615,7 @@ sections:
       images: 12
       method: nebts
       interpolation: idpp
-      actradius: 8             # as step1; re-run frozen_check.py on THIS pair
+      actradius: 9             # as step1; re-run frozen_check.py on THIS pair
       numfreq: false           # `saddle2` does the frequencies
 
   # Keys are bare names: sections.py writes each as <stage>_<name>, so a key

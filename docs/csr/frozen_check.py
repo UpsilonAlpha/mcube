@@ -59,6 +59,65 @@ def label(key):
     return f"{chain}:{resseq}:{resname}:{atom}"
 
 
+def radius_report(keys, xyz, moved, origin, radii):
+    """Which candidate `actradius` values contain everything that moved.
+
+    `actregiondefine` selects WHOLE RESIDUES: a residue with any atom inside the
+    radius comes in entire. So the threshold for each residue is its nearest
+    approach to the origin, and the region a radius gives is reproducible from
+    the structure alone - which is the point, because it says what to set
+    BEFORE committing a job to it rather than reading it out of the output
+    afterwards.
+
+    Sizes are computed on the structure given first, which for a NEB is the
+    reactant - the one `neb.py` derives the region from. Confirm the chosen
+    value against the `NEB active region: N atoms` the run prints; a disagreement
+    means the residue grouping here does not match ASH's and the rest of this
+    report should not be trusted either.
+    """
+    want = tuple(origin.split(":"))
+    if len(want) != 3:
+        print(f"[WARN] --origin {origin!r} is not CHAIN:RESSEQ:ATOM; skipping radii")
+        return
+    hit = [i for i, k in enumerate(keys)
+           if (k[0], k[1], k[3]) == want]
+    if not hit:
+        print(f"[WARN] --origin {origin!r} matches no atom; skipping radii")
+        return
+    centre = xyz[hit[0]]
+    print(f"[INFO] radii centred on {label(keys[hit[0]])} (index {hit[0]})")
+
+    residues = OrderedDict()
+    for i, k in enumerate(keys):
+        residues.setdefault(k[:3], []).append(i)
+    nearest = {res: min(math.dist(xyz[i], centre) for i in ix)
+               for res, ix in residues.items()}
+
+    movedset = set(moved)
+    print("    radius   active atoms   displaced atoms outside")
+    for token in radii.split(","):
+        token = token.strip()
+        if not token:
+            continue
+        r = float(token)
+        region = set()
+        for res, ix in residues.items():
+            if nearest[res] <= r:
+                region.update(ix)
+        outside = len(movedset - region)
+        verdict = "PASS" if not outside else "FAIL"
+        print(f"    {r:6.2f}   {len(region):12d}   {outside:5d}   {verdict}")
+
+    # The residues that force the answer, with the radius each one needs.
+    offenders = sorted({keys[i][:3] for i in moved}, key=lambda res: -nearest[res])
+    print("    the residues that set the threshold (nearest approach):")
+    for res in offenders[:6]:
+        chain, resseq, resname = res
+        print(f"        {chain}:{resseq}:{resname:4s} {nearest[res]:.2f} A")
+    if len(offenders) > 6:
+        print(f"        ... {len(offenders) - 6} more, all closer")
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split(chr(10))[0])
     parser.add_argument("reactant")
@@ -69,6 +128,12 @@ def main(argv=None):
                              "PDB coordinates carry 3 decimals, so anything "
                              "smaller is rounding)")
     parser.add_argument("--show", type=int, default=12, help="moved atoms to list")
+    parser.add_argument("--origin", help="CHAIN:RESSEQ:ATOM to centre candidate "
+                                         "radii on, e.g. B:1:ZN. With it, size "
+                                         "each radius in --radii and say which "
+                                         "ones contain everything that moved")
+    parser.add_argument("--radii", default="8,8.5,9,9.5,10,11,12",
+                        help="comma-separated candidate `actradius` values")
     args = parser.parse_args(argv)
 
     left_keys, left_xyz = read_pdb(args.reactant)
@@ -92,6 +157,9 @@ def main(argv=None):
     moved = [i for i, d in enumerate(disp) if d > args.tol]
     print(f"[INFO] {len(moved)} of {len(disp)} atoms moved by more than "
           f"{args.tol} A; largest displacement {max(disp):.3f} A")
+
+    if args.origin:
+        radius_report(left_keys, left_xyz, moved, args.origin, args.radii)
 
     if args.actatoms is None:
         print(chr(10) + "No --actatoms given, so the verdict is not computable. "
