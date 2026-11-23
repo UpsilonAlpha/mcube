@@ -18507,6 +18507,73 @@ answer is the same as ¶319's: a free minimisation at 9 Å from `ringopen`'s las
 point becomes `step2`'s product. **Not a widening of `ringopen` to 9** - the
 output's own last sentence says why, and it is ¶317 from the other side.
 
+**¶329 - `step1` NEB-CI CONVERGED IN 46 ITERATIONS on the corrected endpoints,
+against 63 on the broken ones - but the barrier is not readable yet: the job was
+still in its post-NEB phase when the code-server session expired, and
+`saddlepoint.pdb` had not been written. Also found: the NEB output directory is
+REUSED across runs and still holds `geometric_OPTtraj*`, `Numfreq_dir`,
+`Hessian_from_partial` and `smallhessian` from the killed `nebts` run, none of
+which `method: neb` produces.** (2026-11-23)
+
+    732: Calculation successfully converged in 46 iterations and 0 func. calls!
+
+**46 against ¶315's 63 is worth having.** Same system, same images, same
+interpolation; what changed is that both endpoints are now minima of the path's
+own region (¶319/¶322). A path that no longer has to accommodate a ~100
+kcal/mol step at each end converges in 73% of the iterations, which is a second,
+independent sign that ¶317's diagnosis was right - and it was not predicted, so
+it is a bonus rather than a test.
+
+## The barrier is NOT in this entry, and must not be guessed
+
+At expiry the job was still running: 182 xtb gradient calls logged, the tail
+showing a fresh multiprocessing pool and single `--grad` calls, and no
+`Barrier`, `Saddlepoint` or `image no` line anywhere in the output yet.
+`protdft/neb_step1/saddlepoint.pdb` does not exist, so `saddle1` is still
+unsubmittable for ¶324's reason. **Everything needed is on disk and survives
+the session** - the job is a separate Slurm job and `/scratch` persists.
+
+## A trap for whoever reads it next: the output directory is reused
+
+`ls protdft/neb_step1/` at convergence showed, alongside this run's
+`knarr_MEP_FULL.xyz`, `knarr_MEP.xyz`, `Saddlepoint-NEBCIapprox.xyz` and
+`ASH_NEB.result`:
+
+    geometric_OPTtraj_Full.xyz   geometric_OPTtraj.log   geometric_OPTtraj.tmp
+    Numfreq_dir   ASH_NumFreq.result   Hessian_from_partial   smallhessian
+
+**`method: neb` runs no geomeTRIC optimisation and `numfreq: false` runs no
+NumFreq, so none of those is from this run.** They are 33304392's, the `nebts`
+job that died OUT_OF_MEMORY in exactly that geomeTRIC step. mcube writes a
+section's output into one directory per section name and does not clear it, so a
+re-run leaves the previous run's files beside its own.
+
+**Why that matters beyond tidiness.** Had 33304392 got one step further it would
+have written `saddlepoint.pdb`, and `sections.py` would then have accepted
+`saddle1` against a stale saddle from a run whose path was unusable - with no
+warning, because the check is only that the file exists. That is ¶311's defect
+(a structure inherited from a run whose settings differ) in its sharpest form:
+not a wrong file named in the config, but the RIGHT path holding a stale file.
+`region_check.py` cannot catch it either, since it reads intent from the config
+rather than mtimes.
+
+**So before submitting `saddle1`: check that `saddlepoint.pdb` is NEWER than
+`ASH_NEB.result` from this run.** Not written as a tool here - it wants a
+decision about whether mcube should clear a section's directory on re-run, which
+is a change to shared code.
+
+## What the next session does, in order
+
+    1  check the job: `squeue -j 33319693`, then `grep -nE
+       'Barrier|Saddlepoint|image no|converged in' protdft/step1-33319693.out`
+    2  read `max(mep_energies)`, NEVER `saddlepoint_energy` (¶309/¶315)
+    3  check `check_path_shape` did not fire, and that the climbing image is
+       NOT image 0 - both are ¶323's pre-registered conditions, and with
+       `method: neb` the diagnostic is finally reachable (¶318/¶320)
+    4  confirm `saddlepoint.pdb` post-dates this run, per the trap above
+    5  `python sections.py site.yaml saddle1 --submit` - the user authorised it
+       on 2026-11-23 ("Yes, submit saddle1") and that authorisation stands
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
