@@ -1392,12 +1392,23 @@ sections:
 
   # LEG 2 OF THE MECHANISM, and the section `step2` has been waiting on.
   #
-  # **`pdb_file` is `attackmin`'s output, not `scan_attack/scan_15.pdb`.** The
-  # two are 0.004 Å apart along O01-C4x (¶311), so this is not a geometry
-  # choice: `scan_15` is a CONSTRAINED minimum held at 1.450 Å and `attackmin`
-  # is the free one. Leg 2 has to begin where leg 1 ended, and `attackmin` is
-  # also `step2`'s own reactant - so the NEB's reactant and this scan's point 0
-  # are one file by construction rather than by coincidence.
+  # **`pdb_file` is `attackmin9`'s output, not `scan_attack/scan_15.pdb`.** The
+  # scan point and `attackmin`'s free minimum are 0.004 Å apart along O01-C4x
+  # (¶311), so this was never a geometry choice: `scan_15` is a CONSTRAINED
+  # minimum held at 1.450 Å and the `*min` runs are free ones. Leg 2 has to begin
+  # where leg 1 ended, and that structure is also `step2`'s own reactant - so the
+  # NEB's reactant and this scan's point 0 are one file by construction rather
+  # than by coincidence.
+  #
+  # **¶325: that sentence is why this moved from `attackmin` to `attackmin9`.**
+  # When `step2`'s reactant was repointed to the 9 Å minimum (¶319) and this
+  # was left on the 8 Å one, the one-file property it states quietly broke - leg
+  # 2's scan would have walked from a different intermediate than leg 2's NEB
+  # starts from, which is the lineage mismatch "ate"316 found one stage up. Keeping
+  # them one file is the whole point of the paragraph, so this follows `step2`.
+  # `start` stays omitted, so point 0 records `attackmin9`'s OWN C4x-N1x rather
+  # than the 1.485 Å measured on `attackmin` - which is exactly why no number
+  # is written here.
   #
   # **`start` is omitted, and that is what replaces the stale 1.39.** `scan.py`
   # defaults it to the distance in the structure it is given and prints what it
@@ -1446,12 +1457,13 @@ sections:
       equals: {charge: 2, rigid_water: false}
       same_as: {section: attack, except: [pdb_file, atoms, end, points, monitor]}
     inputs:
-      pdb_file: protdft/qmmm_attackmin/QM_MM_optimized.pdb
+      pdb_file: protdft/qmmm_attackmin9/QM_MM_optimized.pdb
       qm_residues: *qmreg_michrks
       charge: 2
       rigid_water: false
       atoms: [C:1:C4x, C:1:N1x]
-      end: 2.80                # fully broken; `start` defaults to the measured 1.485
+      end: 2.80                # fully broken; `start` defaults to whatever
+                               # `attackmin9` holds (1.485 on `attackmin`, ¶311)
       points: 12               # scan_00 .. scan_11, and `step2` names scan_11
       monitor:
         - [A:226:NZ, C:1:N1x]  # who protonates the leaving nitrogen
