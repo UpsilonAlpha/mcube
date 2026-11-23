@@ -18019,6 +18019,45 @@ itself undecided.
                    Three instances of that defect have now been found by hand
     ringopen       written, dry-run clean, not submitted (¶314)
 
+**¶321 - THE STEP RATE, MEASURED, AND IT RETIRES A GUESS I HAD JUST
+WRITTEN. `reactmin9` and `attackmin9` are running at **14-17 s per optimiser
+step over 665 active atoms**, not the ~225-350 s ¶319/¶320 extrapolated - 15×
+off. So an endpoint re-minimisation is ~25-30 min rather than 6-10 h, the whole
+`saddle1` sequence is ~1.5-4 h rather than ~26-60 h, and both the timeout worry
+and the `irc: false` fallback those entries proposed are unnecessary.**
+(2026-11-23, during the runs)
+
+    job          wall      steps in optimization_energies.log   s/step
+    reactmin9    12:42     45                                   16.9
+    attackmin9   12:42     57                                   13.4
+
+**Where the wrong number came from, because it is a reusable trap.** The ~159
+s/step figure is the CHANNEL project's 8 Å runs, quoted in `aspxtb8`'s own
+comment - and that same comment says why it does not transfer: those runs held
+active-region waters RIGID, and "the rigid-water constraints degenerate TRIC's
+coordinate system". Everything in this chain sets `rigid_water: false`, so the
+only timing the project had for an xTB QM/MM optimisation was a timing of a
+DIFFERENT optimiser problem. I scaled it by active-region size, which is the
+one dimension it was not wrong in.
+
+Against ¶315's 2.80 s per QM/MM gradient, the remaining ~11-14 s a step is
+geomeTRIC's linear algebra over 665 atoms. That is the number to scale next
+time, and it is now measured on this system at this region size.
+
+**What it changes.** Nothing about the method and everything about the planning:
+`time: "24:00:00"` on the endpoints is enormous rather than tight, `saddle1` and
+`saddle2` fit their 48 h several times over, and the `irc: false` first pass
+¶320 offered as a lever is not needed. The cost comments in `site.yaml` are
+corrected rather than left standing, since a stale estimate in a config file is
+read as a current one.
+
+**And the discipline it earns, which is ¶317's with the sign flipped:** ¶317
+recorded "do not attribute a magnitude to a mechanism before decomposing it,
+when the components are sitting in the run directory". This is the same error on
+a cost rather than an energy - I extrapolated a rate across a change in the
+optimiser's constraint treatment when the measurement was twelve minutes away in
+a running job. Read `optimization_energies.log`; it has one line per step.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**

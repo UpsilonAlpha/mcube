@@ -1581,13 +1581,16 @@ sections:
   # worth a job, so it is measured instead of fixed: diff the two
   # `active_atoms_used` files and check what `step1` prints.
   #
-  # **Cost.** The only timing this project has for an xTB QM/MM optimisation is
-  # ~159 s/step over 467 active atoms, and `aspxtb8` converged in 103 steps from
-  # a converged minimum. 665 atoms is 42% more in geomeTRIC's linear algebra, so
-  # ~100 steps at ~225-350 s is 6-10 h and `time: "24:00:00"` holds unless it
-  # runs the full 300. If it times out, restart from the trajectory's last frame
-  # rather than from the beginning; the submit block is otherwise both parents'
-  # unchanged.
+  # **Cost - MEASURED on these two runs, and the estimate it replaces was 15×
+  # too slow.** At 12:42 wall `reactmin9` had done 45 optimiser steps and
+  # `attackmin9` 57, i.e. **14-17 s per step over 665 active atoms**. So
+  # `aspxtb8`'s 103 steps is ~25-30 min and even the `opt_maxiter: 300` ceiling
+  # is ~70-85 min: `time: "24:00:00"` is enormous and the timeout worry was
+  # misplaced. The ~159 s/step this was extrapolated from is the CHANNEL
+  # project's figure, and those runs held waters rigid - which the `aspxtb8`
+  # comment above says degenerates TRIC's coordinate system. These constrain
+  # nothing, so that number never applied. Against ¶315's 2.80 s per QM/MM
+  # gradient, the remaining ~11-14 s a step is geomeTRIC's linear algebra.
   reactmin9:                   # step1 reactant: 9 A region, 129 QM atoms
     stage: qmmm
     submit: {partition: general, cores: 8, mem: 32G, time: "24:00:00"}
@@ -1984,15 +1987,14 @@ sections:
   # **Cost, and the one number that is a guess.** At ¶315's measured 2.80 s per
   # xTB/MM gradient the frequencies are free: 6 gradients per Hessian atom over
   # five atoms is ~90 s. The TS optimisation and the two IRC minimisations are
-  # each full active-region optimisations over 665 atoms, so each costs what a
-  # `qmmm` run costs - ~8 h if they behave like `aspxtb8`'s 103 steps, giving
-  # ~26 h for all three, inside the 48 h wall. At the `opt_maxiter: 300` ceiling
-  # it is ~60 h and is not. **The lever then is `irc: false` on a first pass and
-  # a separate IRC run**, not more wall time: a TS optimisation that has not
-  # converged in 300 steps has a different problem. `mem: 32G` is the guess - it
-  # is what every `qmmm` optimisation here uses, and this holds ONE OpenMM system
-  # rather than `nebts`'s fourteen, so it is not the 32 G that failed in ¶315,
-  # but it is not measured either.
+  # each full active-region optimisations over 665 atoms, and ¶321 measured
+  # that at **14-17 s a step** on `reactmin9`/`attackmin9` - so each is ~25-30
+  # min at ~100 steps and ~70-85 min at the `opt_maxiter: 300` ceiling. All
+  # three plus the frequencies is **~1.5-4 h**, nowhere near the 48 h wall, and
+  # the `irc: false` fallback this comment first carried is unnecessary. `mem:
+  # 32G` remains the guess - it is what every `qmmm` optimisation here uses, and
+  # this holds ONE OpenMM system rather than `nebts`'s fourteen, so it is not the
+  # 32 G that failed in ¶315, but it is not measured.
   #
   # **And `saddlepoint_energy` from the NEB must not be believed** (¶309/¶315):
   # the ActiveRegion branch multiplies by `hartoeV` where the other divides
