@@ -1716,10 +1716,11 @@ sections:
   # the WHOLE QM region after the path - 3N x 2 gradients, ~780 for this region,
   # which at GFN2's measured 1-2 min per QM/MM gradient is 13-26 h on top of the
   # NEB and would carry the job past its 48 h wall. It is redundant twice over:
-  # `method: nebts` already builds a partial Hessian and optimises the climbing
-  # image with it, and `saddle1`/`saddle2` exist to do tsopt, freq and IRC
-  # properly with `hessian_atoms` restricted to the five reacting atoms.
-  # Confirming a saddle is `ts`'s job.
+  # `saddle1`/`saddle2` exist to do tsopt, freq and IRC properly, with
+  # `hessian_atoms` restricted to the five reacting atoms. Confirming a saddle
+  # is `ts`'s job. (¶320 removed the other reason this said: `method: nebts`
+  # built a partial Hessian of its own, and the method here is now `neb`. The
+  # cost argument above is unaffected and is the one that decides it.)
   #
   # ¶307: `step1`'s reactant was `protdft/qmmm_protH_oh/QM_MM_optimized.pdb`, a
   # lineage that exists in NO run directory - checked across all thirteen under
@@ -1894,7 +1895,7 @@ sections:
     submit: {partition: general, cores: 12, mem: 32G, time: "48:00:00"}
     require:
       unset: [qm_engine]
-      equals: {charge: 2, images: 12, method: nebts, interpolation: idpp,
+      equals: {charge: 2, images: 12, method: neb, interpolation: idpp,
                actradius: 9, numfreq: false}
     inputs:
       qm_residues: *qmreg_michrks
@@ -1905,7 +1906,16 @@ sections:
                                # minima and this is a 9 Å path, which is the
                                # whole of ¶317's artefact
       images: 12
-      method: nebts            # NEB-CI then a geomeTRIC TS optimisation of the climbing image
+      method: neb              # NEB-CI ONLY. `saddle1` does the TS optimisation
+                               # (¶320, user: "neb then ts"). `nebts` ran both in one
+                               # call and 33304392 died OUT_OF_MEMORY inside the
+                               # second, losing the first as well - and it put
+                               # `check_path_shape` behind the step that died,
+                               # which is ¶318's finding. ASH's `NEB` defaults to
+                               # `CI=True` (`interface_knarr.py:348`) and returns
+                               # `saddlepoint_fragment` (line 642), so
+                               # `saddlepoint.pdb` is still written and
+                               # `saddle1`'s input is unchanged
       interpolation: idpp
       actradius: 9             # NOT the qmmm default of 8: ¶311 measured 30
                                # displaced atoms outside the 8 Å region, and 9
@@ -1917,7 +1927,7 @@ sections:
     submit: {partition: general, cores: 12, mem: 32G, time: "48:00:00"}
     require:
       unset: [qm_engine]
-      equals: {charge: 2, images: 12, method: nebts, interpolation: idpp,
+      equals: {charge: 2, images: 12, method: neb, interpolation: idpp,
                actradius: 9, numfreq: false}
     inputs:
       qm_residues: *qmreg_michrks
@@ -1931,7 +1941,7 @@ sections:
                                # `ringopen`'s last point, which does not exist
                                # and is not written here
       images: 12
-      method: nebts
+      method: neb              # as step1 (¶320); `saddle2` does the TS
       interpolation: idpp
       actradius: 9             # as step1; re-run frozen_check.py on THIS pair
       numfreq: false           # `saddle2` does the frequencies
@@ -1944,10 +1954,70 @@ sections:
   # that mode is the reaction coordinate. `ts` checks both and then runs an IRC
   # in each direction, which is what establishes the saddle connects the two
   # minima the NEB was built from rather than some other pair.
+  # ---- THE TS STAGE IS NOW ON THE CRITICAL PATH, SO IT IS WRITTEN (¶320) ----
+  #
+  # Taking the TS optimisation out of `nebts` makes these two the stage that
+  # produces the barrier, and as skeletons they could not have produced one.
+  # **Three keys were missing and every one of them was a hazard:**
+  #
+  #   qm_residues   ABSENT here AND in the base `qmmm.inputs`, so there was no
+  #                 QM region to resolve at all
+  #   charge        ABSENT in both. `ts` reads it from the section first and
+  #                 `qmmm.inputs` as a fallback, and the base block has `mult: 1`
+  #                 and no charge
+  #   actradius     inherited **8 Å** from the base block, against the 9 Å of the
+  #                 NEB that produces the input. That is ¶207's two-surfaces bug
+  #                 a THIRD time (¶318), and this instance would have landed
+  #                 directly on the published barrier: a TS refined with 184
+  #                 fewer atoms free than the path it came from
+  #
+  # All three are stated here and held by `require.equals`, and the QM region is
+  # the same `*qmreg_michrks` anchor the NEBs and both endpoints use.
+  #
+  # **`qm_engine` stays unset and gated.** The prescribed sequence is xTB for the
+  # path and the approximate saddle, THEN DFT to re-optimise the stationary
+  # points (¶309 §5, `qm-levels.md` step 3). Which functional is undecided -
+  # wB97X-V/def2-SVP at ~1.8 h per gradient versus r2SCAN - and ¶309 recorded
+  # that choosing among them "is a decision for the user, not a default to pick
+  # quietly". `require.unset: [qm_engine]` keeps it from drifting in.
+  #
+  # **Cost, and the one number that is a guess.** At ¶315's measured 2.80 s per
+  # xTB/MM gradient the frequencies are free: 6 gradients per Hessian atom over
+  # five atoms is ~90 s. The TS optimisation and the two IRC minimisations are
+  # each full active-region optimisations over 665 atoms, so each costs what a
+  # `qmmm` run costs - ~8 h if they behave like `aspxtb8`'s 103 steps, giving
+  # ~26 h for all three, inside the 48 h wall. At the `opt_maxiter: 300` ceiling
+  # it is ~60 h and is not. **The lever then is `irc: false` on a first pass and
+  # a separate IRC run**, not more wall time: a TS optimisation that has not
+  # converged in 300 steps has a different problem. `mem: 32G` is the guess - it
+  # is what every `qmmm` optimisation here uses, and this holds ONE OpenMM system
+  # rather than `nebts`'s fourteen, so it is not the 32 G that failed in ¶315,
+  # but it is not measured either.
+  #
+  # **And `saddlepoint_energy` from the NEB must not be believed** (¶309/¶315):
+  # the ActiveRegion branch multiplies by `hartoeV` where the other divides
+  # (`interface_knarr.py:1176` against `:1208`), so it comes back ×hartoeV^2.
+  # Check it against `max(mep_energies)`. `ts` recomputes the energy itself, so
+  # this affects the NEB's reported number and not the refinement.
+  #
+  # **What `require` still cannot say** is ¶318's condition: that this section's
+  # `qm_residues` and `actradius` must match the section that produced
+  # `pdb_file`. `require` compares two sections' inputs and knows nothing about
+  # which section produced a file, so the match above is maintained by hand and
+  # that `sections.py` gate remains proposed and unbuilt.
   saddle1:
     stage: ts
+    submit: {partition: general, cores: 8, mem: 32G, time: "48:00:00"}
+    require:
+      unset: [qm_engine, restraints, opt_constraints, constraints]
+      equals: {charge: 2, rigid_water: false, actradius: 9,
+               tsopt: true, freq: true}
     inputs:
       pdb_file: protdft/neb_step1/saddlepoint.pdb
+      qm_residues: *qmreg_michrks   # step1's region; the base block has none
+      charge: 2
+      actradius: 9                  # step1's radius, NOT the base block's 8
+      rigid_water: false
       hessian_atoms: [C:2:O01, C:1:C4x, C:1:O2x, C:1:N1x, B:1:ZN]
       monitor:
         - [C:2:O01, C:1:C4x]
@@ -1958,8 +2028,18 @@ sections:
 
   saddle2:
     stage: ts
+    submit: {partition: general, cores: 8, mem: 32G, time: "48:00:00"}
+    require:
+      unset: [qm_engine, restraints, opt_constraints, constraints]
+      equals: {charge: 2, rigid_water: false, actradius: 9,
+               tsopt: true, freq: true}
+      same_as: {section: saddle1, except: [pdb_file, hessian_atoms, monitor]}
     inputs:
       pdb_file: protdft/neb_step2/saddlepoint.pdb
+      qm_residues: *qmreg_michrks
+      charge: 2
+      actradius: 9
+      rigid_water: false
       hessian_atoms: [C:1:C4x, C:1:N1x, A:226:NZ, B:1:ZN]
       monitor:
         - [C:1:C4x, C:1:N1x]
@@ -3436,14 +3516,16 @@ sections:
     submit: {partition: general, cores: 8, mem: 32G, time: "48:00:00"}
     require:
       unset: [qm_engine]
-      equals: {charge: 0, images: 12, method: nebts, interpolation: idpp}
+      equals: {charge: 0, images: 12, method: neb, interpolation: idpp}
     inputs:
       qm_residues: *qmreg_prod
       charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (¶190)
       reactant_pdb: protdft/scan_recombine/scan_12.pdb
       product_pdb: protdft/qmmm_prodopt/QM_MM_optimized.pdb
       images: 12
-      method: nebts
+      method: neb              # ¶320, as the reactant arm. This arm is still
+                               # blocked on ¶300's charge/region mismatch and needs
+                               # rebuilding in one scheme regardless
       interpolation: idpp
 
   pstep1:                      # Michaelis complex <-> intermediate
@@ -3451,14 +3533,16 @@ sections:
     submit: {partition: general, cores: 8, mem: 32G, time: "48:00:00"}
     require:
       unset: [qm_engine]
-      equals: {charge: 0, images: 12, method: nebts, interpolation: idpp}
+      equals: {charge: 0, images: 12, method: neb, interpolation: idpp}
     inputs:
       qm_residues: *qmreg_prod
       charge: 0            # 2 -> 0: Arg90 and Lys226 are MM now (¶190)
       reactant_pdb: protdft/scan_expel/scan_16.pdb
       product_pdb: protdft/scan_recombine/scan_12.pdb
       images: 12
-      method: nebts
+      method: neb              # ¶320, as the reactant arm. This arm is still
+                               # blocked on ¶300's charge/region mismatch and needs
+                               # rebuilding in one scheme regardless
       interpolation: idpp
 
   # A saddle is a transition state only if it has exactly one imaginary mode and
