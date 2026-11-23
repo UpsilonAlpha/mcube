@@ -17761,6 +17761,113 @@ Comment-only corrections, no behaviour touched.
                        OOM there loses the diagnostic. `neb.py` change + tests
     ringopen           written, dry-run clean, not submitted (¶314)
 
+**¶319 - BOTH step1 ENDPOINTS RESUBMITTED AT 9 Å. `reactmin9` (33317685) and
+`attackmin9` (33317686), each continuing from its converged 8 Å minimum into the
+NEB's own 665-atom region, and `reactmin9` moving the reactant from 124 QM atoms
+to 129 at the same time - so ¶316's two defects and ¶317's one are closed by the
+same two jobs. `step1` and `step2` are repointed at them. **`step1` is still NOT
+resubmittable**: the OOM that killed 33304392 is untouched.** (2026-11-23, user:
+"Re-minimise at 9")
+
+## What was submitted, exactly
+
+    sbatch -J reactmin9  -p general --cpus-per-task=8 --mem=32G -t 24:00:00 \
+           .../docs/csr/run.slurm qmmm qmmm_reactmin9      -> 33317685
+    sbatch -J attackmin9 -p general --cpus-per-task=8 --mem=32G -t 24:00:00 \
+           .../docs/csr/run.slurm qmmm qmmm_attackmin9     -> 33317686
+
+Both dry-ran clean first (`Checks passed for: qmmm_reactmin9`,
+`qmmm_attackmin9`, exit 0) on `0344eaf`. The submit blocks are both parents'
+unchanged, which is deliberate: ¶317 left `step1`'s `mem: 32G` alone on the same
+grounds, and these two optimisations hold ONE OpenMM system each rather than
+fourteen, so the memory that killed the NEB is not their constraint.
+
+    reactmin9    pdb_file  protdft/qmmm_aspxtb8/QM_MM_optimized.pdb
+                 8 → 9 Å, *qmreg_michrk → *qmreg_michrks (124 → 129 QM atoms)
+    attackmin9   pdb_file  protdft/qmmm_attackmin/QM_MM_optimized.pdb
+                 8 → 9 Å and nothing else
+
+**Both continue from a converged minimum rather than redoing one**, which is
+`aspxtb8`'s own move relative to `aspxtb` (¶241: "it continues from `aspxtb`'s
+converged minimum and reopens the 8 Å active region"). Here 665 atoms are free
+where 479 and 481 were. The first shell is already at its minimum; the outer
+shell is what has to relax, and that is the entire point.
+
+**And the gate is now as tight as `require` can make it.** `attackmin9` says
+`same_as: {section: reactmin9, except: [pdb_file]}` - the two endpoints differ in
+the STRUCTURE and in no setting whatever. `attackmin`'s own gate said
+`except: [pdb_file, qm_residues]`, and that second exception is the hole ¶316's
+defect came through: it licensed a 124-atom reactant against a 129-atom product
+and `sections.py` had no reason to object.
+
+## Pre-registered, before the jobs land (¶178)
+
+    reactmin9 MUST print   [INFO] Active region: 665 atoms
+                           Not an estimate. It derives the region on
+                           qmmm_aspxtb8/QM_MM_optimized.pdb at 9 Å under
+                           *qmreg_michrks - the same file, radius and QM region
+                           step1 derived its own 665 on. Anything else means the
+                           two are not the same region: STOP the job
+    attackmin9 need not    actradius is re-derived per structure by design
+                           (D115), so a different geometry gives a different
+                           sphere. It is the PAIR that has to be checked
+    then, no compute       frozen_check.py on the two new outputs with
+                           --origin B:1:ZN and --actatoms reactmin9's
+                           active_atoms. 9 Å is not guaranteed to pass on a new
+                           pair, which is ¶312's own lesson
+    the MM energies        both will be minima of the same 665-atom region, so
+                           they should come within a few kcal/mol of each other.
+                           ¶317's baseline to beat: MM -241.16051532 at the
+                           reactant against -241.38348747 at the lowest interior
+                           image, a 140 kcal/mol gap that should largely close
+
+## `step1` IS NOT READY AND THIS DID NOT MAKE IT READY
+
+Stated plainly because the opposite is the easy thing to assume. Job 33304392
+died OUT_OF_MEMORY at 31.97/32.00 GB inside NEBTS's saddlepoint optimisation
+(¶315), and nothing in ¶319 touches that. Resubmitting `step1` as it stands
+would reach the same place and die again, now having burnt the endpoints' 12 h
+as well. Two decisions are the user's and neither is taken here:
+
+    memory    32 G was not enough for 14 image calculators plus geomeTRIC's
+              internal coordinates and a 97 MB Hessian. The replacement number
+              is a decision about a future job
+    method    `method: neb` then `ts` separately is what `qm-levels.md`
+              prescribes anyway (¶309 ~S~5), and it would also put
+              `check_path_shape` back in reach - with `nebts` the diagnostic
+              sits behind the step that died, which is ¶318's finding
+
+## What is still open, and is not these jobs
+
+    leg 2            `step2`'s reactant is repointed to attackmin9, but its
+                     PRODUCT is still `scan_ringopen/scan_11.pdb`, a constrained
+                     scan point (¶311/¶314). Leg 2 needs its own free minimum
+                     at 9 Å from ringopen's last point. Not written: ringopen
+                     has not run
+    ringopen         deliberately LEFT on qmmm_attackmin rather than repointed.
+                     It is a path-finder whose own endpoints get re-minimised at
+                     9 Å afterwards, and its pre-registered readings are all
+                     first-shell, so the outer shell's 8-versus-9 Å relaxation
+                     cannot change them. Repointing it would have blocked a 1.3 h
+                     job behind a 12 h one for no gain
+    the residue      reactmin9 relaxes under the region derived from aspxtb8's
+                     geometry and step1 will re-derive on reactmin9's OUTPUT, so
+                     a boundary residue crossing the 9 Å line puts the two sets
+                     a handful of atoms apart again. Not removable by pinning a
+                     list (D115, ¶318); measured instead, by diffing the two
+                     active_atoms_used files
+    check_path_shape still behind NEBTS's saddle opt (¶318). A `neb.py` change
+                     with tests, not made
+    pstep1/pstep2    unchanged and still blocked on ¶300's third blocker
+
+## Note on reading `sections.py` output through the bridge
+
+ASH echoes the entire input script to stdout before running it, so a
+`sections.py` dry-run is ~500 lines of `sections.py` itself with the verdict at
+the bottom. Filter it: `grep -Ev '^   >' ` or grep for `DRY RUN|NOT WRITING`.
+Recorded in `binder-physics/docs/BUNYA_BROWSER_SHELL.md` as well, since that is
+the document for the bridge.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
