@@ -17034,6 +17034,73 @@ structure later. A radius is a property of a PAIR, and the tool now says so.
     step2            needs ringopen, then frozen_check.py on ITS pair at 9 Å
     ringopen         unwritten; `start` to be checked against 1.485, not 1.39
 
+**¶313 - THE FIRST NEB THIS PROJECT HAS EVER RUN IS SUBMITTED AND RUNNING: job
+33304392, 12 cores, 32 GB, 48 h, `neb_step1` over the attack. And the check
+¶312 pre-registered is MET - the run printed `NEB active region: 665 atoms`, the
+number `frozen_check.py` predicted from the reactant before the job existed.**
+(2026-11-23, user: "Submit step1")
+
+    submit: sbatch -J step1 -p general --cpus-per-task=12 --mem=32G
+            -t 48:00:00 run.slurm neb neb_step1
+
+Everything pre-registered or warned about, read out of the running job's own
+output:
+
+    [INFO] Endpoints: qmmm_aspxtb8/QM_MM_optimized.pdb
+                   -> qmmm_attackmin/QM_MM_optimized.pdb
+    [INFO] charge=2 (from neb_step1.inputs), mult=1 (from qmmm.inputs)
+    [INFO] 12 NEB images run in parallel: run this stage with
+           OMP_PROC_BIND/OMP_PLACES unset (the xtb-parallel recipe)
+    [INFO] QM atoms: 129
+    [INFO] Endpoints are the same 47979 atoms in the same order
+    Active region size: 665
+    [INFO] NEB active region: 665 atoms
+    [INFO] NEBTS with 12 images; options: {'interpolation': 'idpp',
+           'hessian_for_TS': 'partial'}
+    Active Region feature active. Setting RMSD-alignment in NEB to false.
+    Endpoints are frozen. Reactant and product will only be calculated once
+      in the beginning and then frozen.
+    There are 14 images including the frozen endpoints.
+
+**The 665 is the one that mattered.** ¶312 said the run must print it and be
+stopped otherwise, because the number came from `frozen_check.py` replicating
+`actregiondefine`'s whole-residue selection rather than from ASH. It agrees, so
+the replication is right, and with it the finding that depends on it: every atom
+differing between the two endpoints is inside the region, so the frozen
+environment is identical at both ends and ASH's midpoint switch (¶309) is a
+no-op.
+
+**"There are 14 images including the frozen endpoints" confirms the cost
+arithmetic.** 12 interior images computed every primary iteration, endpoints
+once - which is what ¶309 costed DFT against (12 gradients per iteration at
+~1.8 h each) and the reason this runs at GFN2. `charge=2 (from
+neb_step1.inputs)` is ¶152's rule working: the base `qmmm` section carries no
+charge and the arm states its own.
+
+**Two things to read when it finishes, both already written down:**
+
+1. **`saddlepoint_energy` against `max(mep_energies)`** (¶309, item 6). ASH's
+   ActiveRegion branch of `prepare_saddlepoint` multiplies by `hartoeV` where
+   the non-ActiveRegion branch divides, so the saddle energy may be wrong by a
+   factor of ~740. Whether it survives into the result depends on whether
+   `Optimizer` resets `SP.energy`, which only this run can show.
+2. **`check_path_shape`'s warning**, if it fires. An interior image below both
+   endpoints means either a genuine intermediate inside what was assumed to be
+   one elementary step, or endpoints and path on different surfaces. The second
+   cause is excluded here by construction - `rigid_water: false` throughout the
+   chain - so if it fires, it is the first.
+
+The barrier to beat is the scan's **14.24 kcal/mol** at point 11, which is a
+constrained-optimisation maximum along an invented coordinate. A NEB-CI saddle
+is the real quantity, and the literature range is 5-25 with most at 14-20
+(¶306). Nothing about that comparison is a free energy, and ¶207's reason 1
+still applies: report it as a potential-energy barrier.
+
+**12 cores rather than 8, decided at submit time.** `neb_workers =
+min(images, cores)`, so 8 cores would have run each iteration in two waves of 8
+and 4 - twice the wall clock for identical gradients. The 48 h is still ¶252's
+unmeasured guess; this run replaces it, so `seff 33304392` when it ends.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
