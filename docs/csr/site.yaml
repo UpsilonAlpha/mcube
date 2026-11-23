@@ -1390,17 +1390,77 @@ sections:
       opt_maxiter: 300
       resume: true
 
+  # LEG 2 OF THE MECHANISM, and the section `step2` has been waiting on.
+  #
+  # **`pdb_file` is `attackmin`'s output, not `scan_attack/scan_15.pdb`.** The
+  # two are 0.004 Å apart along O01-C4x (¶311), so this is not a geometry
+  # choice: `scan_15` is a CONSTRAINED minimum held at 1.450 Å and `attackmin`
+  # is the free one. Leg 2 has to begin where leg 1 ended, and `attackmin` is
+  # also `step2`'s own reactant - so the NEB's reactant and this scan's point 0
+  # are one file by construction rather than by coincidence.
+  #
+  # **`start` is omitted, and that is what replaces the stale 1.39.** `scan.py`
+  # defaults it to the distance in the structure it is given and prints what it
+  # used, so point 0 records what the intermediate actually has: **1.485 Å**, as
+  # measured (¶311). The 1.39 was left here from the lineage that existed before
+  # `attackmin` did, and it was not harmless - it would have COMPRESSED C4x-N1x
+  # 0.095 Å below the value the bond holds in its own minimum, making point 0 an
+  # uphill constrained structure and every relative energy on the profile a
+  # measurement from it. Writing 1.485 in by hand would read correctly today and
+  # compress the bond again the next time this runs from a different structure;
+  # ¶170 set no `start` on the product arm's scans for exactly this reason.
+  #
+  # **`same_as: {section: attack}` rather than a list of `equals`.** The two legs
+  # must be the same surface or their barriers belong to different systems, and
+  # the only things entitled to differ are the structure, the coordinate driven,
+  # and what is watched along it. That is ¶207's two-surfaces bug closed by
+  # declaration instead of by inspection - and it is why the QM region here is
+  # leg 1's and not something better. `*qmreg_michrks` does NOT contain Gln93,
+  # the Q of RQK (¶170). Adding it to leg 2 alone would put the two legs on
+  # different surfaces, which is the worse error; if Gln93 goes in, it goes into
+  # the whole arm and the arm is re-run.
+  #
+  # **Monitors.** The three already here ask who protonates the leaving nitrogen.
+  # Three are added, each of which can void the result rather than decorate it:
+  #   - `O01-C4x`, the bond leg 1 made. If it breaks as N1x leaves, this scan is
+  #     the attack running backwards and not ring opening at all, and the
+  #     intermediate is not on the path to the product.
+  #   - `Zn-O2x`, 1.860 Å at the intermediate (¶311). The oxyanion is on the
+  #     metal; whether it stays there through the break is the mono-Zn question,
+  #     since a B1 enzyme would put its second zinc on the leaving nitrogen and
+  #     this site has no second zinc.
+  #   - `Ser186 OG-N1x`. Ser186 moved 1.52 Å between `scan_15` and the free
+  #     minimum, more than any residue but the nucleophile's own waters (¶312),
+  #     and at OG-O01 3.042 Å it did NOT take the proton (¶311). With Lys226 NZ
+  #     5.251 Å from O01, the serine is the only other candidate near enough to
+  #     shuttle one to the nitrogen.
+  #
+  # Cost from the measurement that exists: `scan_attack` ran 16 points in
+  # 01:46:27 on 8 cores (¶308), ~6.7 min a point, so 12 points is about 1.3 h.
+  # The submit block is `attack`'s unchanged.
   ringopen:                    # step 2 product: break C-N from the intermediate
     stage: scan
+    submit: {partition: general, cores: 8, mem: 32G, time: "24:00:00"}
+    require:
+      unset: [restraints, constraints, opt_constraints]
+      equals: {charge: 2, rigid_water: false}
+      same_as: {section: attack, except: [pdb_file, atoms, end, points, monitor]}
     inputs:
+      pdb_file: protdft/qmmm_attackmin/QM_MM_optimized.pdb
+      qm_residues: *qmreg_michrks
+      charge: 2
+      rigid_water: false
       atoms: [C:1:C4x, C:1:N1x]
-      start: 1.39              # as measured in the optimised complex
-      end: 2.80
-      points: 12
+      end: 2.80                # fully broken; `start` defaults to the measured 1.485
+      points: 12               # scan_00 .. scan_11, and `step2` names scan_11
       monitor:
         - [A:226:NZ, C:1:N1x]  # who protonates the leaving nitrogen
         - [A:92:OD2, C:1:N1x]
         - [B:1:ZN, C:1:N1x]    # a mono-Zn site has no Zn2 to stabilise the anion
+        - [A:186:OG, C:1:N1x]  # Ser186: the only other donor within reach (¶311)
+        - [C:2:O01, C:1:C4x]   # leg 1's bond. If it breaks, this is the attack
+                               # in reverse rather than ring opening
+        - [B:1:ZN, C:1:O2x]    # does the oxyanion stay on the metal through the break
       opt_maxiter: 300
       resume: true
 
