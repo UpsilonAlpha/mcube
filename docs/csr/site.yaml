@@ -1733,10 +1733,22 @@ sections:
   # **The condition a NEB endpoint must satisfy, stated properly:** it has to be
   # a minimum of the NEB's OWN active region and QM region, not of its own.
   # `neb.py` resolves the region from the reactant, so the order is: resolve the
-  # region, minimise both endpoints with exactly that region, then run. mcube
-  # cannot express that today - no `qmmm` section can be handed an explicit
-  # active-atom list - although `actatoms_record` already writes
-  # `active_atoms_used` for every run, so the data to pin it with exists.
+  # region, minimise both endpoints with exactly that region, then run.
+  #
+  # ¶318: that means giving the endpoint `qmmm` sections THIS section's
+  # `actradius` and `actregion_origin` and letting each re-derive on its own
+  # structure. Pinning an explicit index list instead is not a missing feature,
+  # it is a refusal: `resolve_actatoms` raises on `actatoms`/`actatoms_from`
+  # because "an index list is only valid against one atom order" (D115), so the
+  # 479-vs-481 difference is designed in and is not the thing to remove.
+  #
+  # ¶318 also answers the other half: the active region must NOT be narrowed to
+  # the QM atoms to make the regions match. ¶312 measured 504 atoms displaced
+  # between the endpoints, all inside the 665-atom region, and `*qmreg_michrks`
+  # holds no ordered water at all - so a QM-only region would freeze >=375 of
+  # them, including HOH D:3171 at 1.695 Å, and ASH switches frozen coordinates
+  # from reactant to product AT THE MIDPOINT, where the climbing image goes.
+  # That trades bad endpoints for a bad barrier.
   #
   # ---- AND `step1`'s REACTANT IS THE WRONG STRUCTURE (¶316) ----
   #

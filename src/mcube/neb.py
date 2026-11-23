@@ -211,7 +211,8 @@ def run(args) -> Dict[str, Any]:
     # own working directory from ASH, so inputfile mode does not collide.
     qmmm_theory = make_qmmm(qmmm_inputs, mm, react, qm_atoms, boundary_excluded, theory_cores)
 
-    # Active region: actatoms_file, else actradius around actregion_origin, else the QM atoms
+    # Active region: actradius around actregion_origin, else the QM atoms. Always
+    # re-derived here - an explicit index list is refused (D115, resolve_actatoms).
     act_inputs = {**qmmm_inputs, **{k: neb_inputs[k] for k in ACT_KEYS if k in neb_inputs}}
     actatoms = resolve_actatoms(args.config, act_inputs, mm, react,
                                 qm_atoms, boundary_excluded, reactant_pdb)

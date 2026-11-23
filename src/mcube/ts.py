@@ -42,8 +42,10 @@ taken from `ts.inputs`):
 
 Force fields, xTB settings, cores and the active region come from qmmm.inputs;
 `charge` and `mult` are read from this section first and from qmmm.inputs only
-as a fallback, and the resolved pair is printed with its source. Set
-`actatoms_file` to the reactant's active_atoms.
+as a fallback, and the resolved pair is printed with its source. The active
+region is re-derived on this section's own structure; an explicit index list
+cannot be given (D115, `resolve_actatoms`), and `results.actatoms_file` is the
+record of what was used, not an input.
 """
 
 from __future__ import annotations

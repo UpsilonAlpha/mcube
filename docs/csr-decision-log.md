@@ -17580,6 +17580,187 @@ live. Both endpoints need re-minimising either way.
                        system, and no way to pin an explicit active-atom list
     ringopen           written, dry-run clean, not submitted (¶314)
 
+**¶318 - YES, THIS IS ONE OF THEM. It is pitfall 3 of ¶207's own list - the
+two-surfaces bug - in a second costume the list never named, and ¶207 even
+predicted the symptom we got ("interior images can dip below the reactant").
+mcube installed a warning for exactly this, `check_path_shape`, and it NEVER
+PRINTED: `method: nebts` puts it downstream of the saddlepoint optimisation that
+OOM-killed the job. And NO, the active region must NOT be QM-only - ¶312's own
+table already rules it out, 504 displaced atoms against a 129-atom QM region.**
+(2026-11-23, user: "remember when I asked you to check NEB pitfalls? is this one
+of them? should it be QM-only?")
+
+No compute. Read from the repo and from ¶207/¶252/¶309/¶312 as written.
+
+## 1. It is pitfall 3, named in general and fixed in one species only
+
+¶207's third machinery bug, verbatim: "`qmmm`, `scan` and `ts` held
+active-region MM waters rigid as optimizer constraints; `neb` cannot, since
+ASH's NEB exposes no constraints argument. **So the endpoints were not minima of
+the surface the path was evaluated on, and interior images could dip below the
+reactant.**"
+
+That sentence is ¶317's finding, stated thirteen months of project-time early.
+What differs is only the mechanism that makes the movable sets differ:
+
+    ¶207's instance   endpoint optimisation holds active-region waters RIGID,
+                      the NEB leaves them free        → fixed, `rigid_water: false`
+    ¶317's instance   endpoint optimisation has 481 atoms movable at 8 Å,
+                      the NEB has 665 at 9 Å          → open
+
+Same genus: **any difference between the movable set the endpoint was optimised
+under and the movable set the path is evaluated on.** `rigid_water: false` closes
+one species of it and is blind to the other. ¶309's pitfall review certified
+"the two-surfaces bug ... needed `rigid_water: false` on everything in the chain,
+and both endpoints have it" - true, and it certified the species while reading as
+though it had certified the genus. The radius was reviewed in the same entry, in
+¶309 ~S~1, but as a question about whether the two ENDPOINTS' regions match each
+other, never about whether either matches the NEB's.
+
+## 2. The warning that would have said so on day one, and why it stayed silent
+
+`neb.check_path_shape` (`src/mcube/neb.py:123`) warns when an interior image lies
+below both endpoints, and its own text names the diagnosis: "the endpoints were
+optimised with active-region MM waters held rigid while the path leaves them
+free". Right genus, wrong species, and it would have pointed at ¶317's answer
+immediately - its `drop` is `min(ends) - min(interior)`, which for this run is
+~128 kcal/mol.
+
+It never ran. The call is at `neb.py:240`, AFTER `neb_function(...)` returns:
+
+    NEB_result = neb_function(...)        # NEBTS: NEB-CI *and* the saddle opt
+    energies = getattr(NEB_result, "MEP_energies_dict", None)
+    if energies:
+        check_path_shape(list(energies.values()))
+
+`method: nebts` makes `neb_function` NEBTS, which runs the saddlepoint
+optimisation inside that one call - and that is where the job was killed
+OUT_OF_MEMORY (¶315). The process died before line 240. **So the diagnostic the
+project built for this pitfall is positioned behind the most expensive and most
+fragile step of the stage, and a stage that dies there loses it.** ¶315/¶316/
+¶317 then spent three entries re-deriving what it would have printed for free.
+
+Not fixed here, because the fix is a design choice with more than one answer:
+check the shape as soon as `MEP_energies_dict` exists rather than after the whole
+call, or run `method: neb` first and `ts` separately (which is what
+`qm-levels.md` prescribes anyway, ~S~5 of ¶309). Either is a `neb.py` change with
+tests.
+
+## 3. QM-only: it is option 2 of three already recorded, and it is ruled out
+
+The user's instinct matches the record. The 2026-10-22 entry that introduced
+`check_path_shape` listed three fixes for the two-surfaces problem, and the
+second is "to keep MM waters out of the active region entirely so no stage can
+move them". `resolve_actatoms` already supports it with no new code: with
+`actradius` unset (or 0, which is falsy) it returns `list(qm_atoms)`, and
+`aspxtb`/`aspdft` ran that way (¶235).
+
+It would close BOTH species of the genus, completely and by construction. The
+region becomes the `qm_residues` selector set - identical for both endpoints and
+every image, not re-derived per structure - so even the 479-vs-481 residue
+disappears.
+
+**And ¶312's table already says what it would cost, so this needs no
+measurement:**
+
+    [INFO] 504 of 47979 atoms moved by more than 0.001 A; largest 2.229 A
+        radius   active atoms   displaced atoms outside
+          8.00            476      30   FAIL
+          9.00            665       0   PASS
+
+All 504 displaced atoms are inside the 665-atom region. `*qmreg_michrks` is 129
+atoms and contains **no ordered water at all** beyond the hydroxide nucleophile
+(Zn, OH, mer, His88, His164, Asp92, Asn225, Arg90, Lys226, Ser186). So a QM-only
+region would freeze **at least 504 - 129 = 375 displaced atoms**, and ¶312's own
+list of the largest movers says which:
+
+    D:3171:HOH   1.695 Å   the second-largest mover in the system, and MM
+    A:21:TRP     0.492 Å   MM
+    ... forty-odd residues of first and second shell plus ordered water
+
+ASH takes a frozen atom's coordinates from the NEAREST endpoint and switches at
+the midpoint (¶309). Under QM-only, HOH 3171 would sit at its reactant position
+for images 1-6 and its product position 1.695 Å away for images 7-12, with 374
+more atoms stepping with it - **a discontinuity in the MM energy placed exactly
+at the midpoint, which is where the climbing image goes, and the CI is chosen by
+`argmax` of energy (¶316).** ¶252 part 2 wrote this down before any of it ran:
+"two endpoints' environments differ by a constant that does not cancel in a
+barrier."
+
+**So QM-only trades a contaminated pair of ENDPOINTS for a contaminated
+BARRIER**, which is strictly worse. ¶317's decomposition is what makes the
+comparison concrete: the interior images of the failed run agree among themselves
+to ~12 kcal/mol, in line with the QM span of 11.4, and it is only the two
+endpoints that are off the common zero. QM-only moves the artefact into the
+middle of the path.
+
+It also surrenders ¶207 reason 4's only mitigation. "Bulk water reorganisation
+stands, mitigated by a 476-atom active region" (¶309 ~S~4) - a QM-only region
+mitigates it with nothing, and reports a barrier in which no part of the
+environment may respond to the reaction at all.
+
+**¶309's no-op verdict on the midpoint switch was always conditional on the
+region containing every differing atom, and only ¶318 states the condition.**
+"474 differ between the endpoints, ALL of them inside the 476-atom active region,
+so the switch is a no-op" is sound as written and does not survive shrinking the
+region. The two findings are one rule: **the active region must contain every
+atom that differs between the endpoints (or the switch is real), and the
+endpoints must be optimised with that same region (or they are not minima of
+it).** `frozen_check.py` checks the first. Nothing checks the second.
+
+## 4. So ¶317's route (b) is withdrawn: pinning an index list is a REFUSAL
+
+¶317 and `site.yaml` both say mcube "cannot express" an explicit active-atom
+list, "though `actatoms_record` already writes `active_atoms_used` for every run,
+so the data to pin it with exists". That reads as a missing feature and it is
+not: `resolve_actatoms` raises on `actatoms` and `actatoms_from` with its reason
+on the error path, and the docstring states it - "It is never carried in as a
+list of indices - not from a file given on the command line, not from a key in
+this section, and not from another section's results. An index list is only
+valid against one atom order, so a region built on one frame and applied to
+another freezes the wrong atoms and nothing in the output says so (D115)."
+
+So the "exact" route I offered the user is the one the code forbids on purpose,
+and the few-atom difference it was meant to remove is designed in: "re-deriving
+costs one `actregiondefine` call and removes the staleness instead of guarding
+it." **There is one route, not two:** give both endpoint `qmmm` sections the
+NEB's own `actradius: 9` and `actregion_origin`, let each re-derive on its own
+structure, and certify the pair with `frozen_check.py` at 9 Å.
+
+And the sentence to overturn is ¶312's: "The endpoint runs keep 8 Å: widening
+theirs would only put the boundary somewhere else, and the radius that has to be
+generous is the NEB's, because it is the one freezing atoms the two endpoints
+must agree on." The second half is right. The first half is the decision that
+caused ¶317's artefact - the endpoint runs cannot keep 8 Å if the NEB uses 9.
+
+## 5. Two stale docs that sent me the wrong way, fixed here
+
+Both advertise the capability D115 removed:
+
+    src/mcube/neb.py:214   "# Active region: actatoms_file, else actradius ..."
+    src/mcube/ts.py:46     "Set `actatoms_file` to the reactant's active_atoms."
+
+`neb.py`'s comment describes a branch `resolve_actatoms` does not have, and
+`ts.py`'s line instructs the reader to set a key that now raises. `actatoms_file`
+survives only as a RESULT (`qmmm.py:852`, the path of the list a run wrote).
+Comment-only corrections, no behaviour touched.
+
+## State
+
+    pitfall            YES: ¶207's bug 3, second costume. `rigid_water: false`
+                       closed one species and nothing closed the genus
+    QM-only            NO. 504 displaced atoms, >=375 of them MM, would be
+                       frozen and switched at the midpoint (¶312's table)
+    the rule           region must contain every atom differing between the
+                       endpoints AND the endpoints must be optimised with it.
+                       `frozen_check.py` checks the first only
+    the one fix        both endpoint `qmmm` sections at `actradius: 9` with the
+                       NEB's `actregion_origin`, re-derived per structure, then
+                       `frozen_check.py` on the new pair. Two jobs, the user's
+    not fixed          `check_path_shape` sits behind NEBTS's saddle opt, so an
+                       OOM there loses the diagnostic. `neb.py` change + tests
+    ringopen           written, dry-run clean, not submitted (¶314)
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
