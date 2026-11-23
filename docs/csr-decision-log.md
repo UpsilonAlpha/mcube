@@ -17101,6 +17101,199 @@ min(images, cores)`, so 8 cores would have run each iteration in two waves of 8
 and 4 - twice the wall clock for identical gradients. The 48 h is still ¶252's
 unmeasured guess; this run replaces it, so `seff 33304392` when it ends.
 
+**¶314 - `ringopen` is written and it validates: `DRY RUN - config.yaml not
+touched. Checks passed for: scan_ringopen`, exit 0. It starts from the free
+tetrahedral intermediate, and its `start` is omitted rather than corrected,
+which is the only form of the fix that cannot go stale.** (2026-11-23, user:
+"Write ringopen")
+
+It had been a skeleton since the day it was drafted: `atoms`, `start`, `end`,
+`points`, three monitors, `opt_maxiter`, `resume`. No `pdb_file`, no `submit`,
+no `require`, no `qm_residues`, no `charge`. Two of those are worse than
+incomplete:
+
+- **No `pdb_file`.** `scan.py` falls back to `qmmm.results.optimized_pdb` and
+  then WRITES what it resolved back into the section (`save_input`, line 199).
+  So the structure would have been whichever qmmm section ran last, and the
+  config would afterwards look as though that had been chosen.
+- **`start: 1.39`.** C4x-N1x in the actual intermediate is **1.485 Å** (¶311).
+  1.39 would have COMPRESSED the bond 0.095 Å below its own equilibrium value,
+  so point 0 would have been an uphill constrained structure and every relative
+  energy on the profile measured from it.
+
+**`start` is now omitted, not set to 1.485.** `scan.py` line 104 defaults it to
+the distance in the structure it is given, and prints what it used. 1.485 written
+in by hand would read correctly today and compress the bond again the next time
+this runs from a different structure; ¶170 set no `start` on the product arm's
+scans for exactly this reason, and the discipline had simply never been applied
+back to this section.
+
+**What it is now:**
+
+    pdb_file     protdft/qmmm_attackmin/QM_MM_optimized.pdb
+    qm_residues  *qmreg_michrks       charge 2, rigid_water false
+    atoms        C:1:C4x - C:1:N1x    end 2.80, points 12 (scan_00 .. scan_11)
+    require      unset: restraints, constraints, opt_constraints
+                 equals: charge 2, rigid_water false
+                 same_as: attack, except pdb_file/atoms/end/points/monitor
+    submit       general, 8 cores, 32 G, 24 h
+
+**`same_as: {section: attack}` is the key the section was missing.** `step2`'s
+endpoints are a minimum of leg 1's surface and a point of leg 2's scan, so if the
+two legs differ in anything but the structure, the driven coordinate and the
+monitors, their barriers belong to different systems. Declaring it beats
+inspecting it, and the dry run confirmed it against **config.yaml's own written
+`scan_attack`** - what the job read, not what the site file intended.
+
+It also settles a question by inheritance rather than by choice: `*qmreg_michrks`
+does not contain **Gln93**, the Q of RQK (¶170). Adding it to leg 2 alone would
+put the legs on different surfaces, which is the worse error. If Gln93 goes in,
+it goes into the whole arm and the arm is re-run.
+
+**Three monitors added to the three that were there,** each able to void the
+result rather than decorate it:
+
+    O01-C4x        leg 1's bond. If it breaks as N1x leaves, this is the attack
+                   in reverse and not ring opening at all
+    Zn-O2x         1.860 Å at the intermediate (¶311): does the oxyanion stay
+                   on the metal through the break, with no second zinc to take
+                   the leaving nitrogen
+    Ser186 OG-N1x  Ser186 moved 1.52 Å into the free minimum, more than any
+                   residue but the nucleophile's waters (¶312), and at OG-O01
+                   3.042 Å it did NOT take the proton (¶311). With Lys226 NZ
+                   5.251 Å away it is the only other donor within reach
+
+Cost, from the measurement that exists: `scan_attack` ran 16 points in 01:46:27
+on 8 cores (¶308), so 12 points is about 1.3 h. Not submitted - the user asked
+for it written.
+
+**¶315 - THE NEB CONVERGED IN 35 MINUTES AND ITS BARRIER IS UNREADABLE. The
+frozen endpoints and the interior images are not on a common energy zero: both
+endpoints sit ~100 kcal/mol ABOVE every interior image, so ASH reports `Barrier
+energy: 0.0 kcal/mol` and picks the reactant itself as the climbing image. The
+job then died OUT_OF_MEMORY at 31.97 of 32.00 GB. And ¶309's `hartoeV` bug is
+CONFIRMED to eight figures.** (2026-11-23, job 33304392)
+
+    sacct   33304392  OUT_OF_MEMORY  01:17:01  exit 0:125
+    seff    CPU 03:02:37 of 15:24:12 core-walltime (19.76%)
+            Memory 31.97 GB of 32.00 GB (99.92%)
+
+**The NEB itself worked, and it was cheap.** `Calculation successfully converged
+in 63 iterations and 758 func. calls`, `NEB job finished in 2123.53 seconds`.
+758/63 = 12.03, so each iteration computed exactly the 12 interior images ¶313
+costed. **2.80 s per QM/MM gradient** at GFN2 with one core per image - which
+replaces ¶252's unmeasured 48 h guess with 35 minutes, and sharpens ¶309's
+refusal of DFT here: at `aspdft`'s measured ~1.8 h per DFT/MM gradient this same
+NEB is ~2300× the cost.
+
+## The profile, and why no barrier can be read from it
+
+    Img.     dS        E(Eh) dE(kcal/mol) MaxF(eV/Ang)
+       0   0.00  -439.760348       0.0000     0.000000     <- frozen reactant
+       1   1.15  -439.940612    -113.1175     0.097397
+       2   2.32  -439.960132    -125.3661     0.050672
+       3   3.47  -439.966339    -129.2611     0.095111
+       4   4.59  -439.966592    -129.4202     0.073883
+       5   5.74  -439.966102    -129.1126     0.072730
+       6   6.92  -439.964620    -128.1828     0.050704
+       7   8.09  -439.964776    -128.2805     0.038749
+       8   9.24  -439.960027    -125.3005     0.058087
+       9  10.43  -439.946665    -116.9155     0.049871
+      10  11.70  -439.966212    -129.1818     0.067233
+      11  12.93  -439.965086    -128.4749     0.037203
+      12  14.19  -439.952664    -120.6802     0.077999
+      13  15.44  -439.800355     -25.1049     0.000000     <- frozen product
+
+    HEI 0        Barrier energy: 0.0 kcal/mol
+
+**Both frozen endpoints are spikes.** Image 0 is 113.1 kcal/mol above image 1;
+image 13 is 95.6 kcal/mol above image 12. Both endpoints are **converged
+unrestrained QM/MM minima** - `aspxtb8` and `attackmin`, the second of which
+converged freely in 40 gradients (¶311) - and a minimum cannot sit 100 kcal/mol
+above a structure one interpolation step away from it. So the endpoint energies
+and the interior-image energies are not on a common zero. ASH computes the
+endpoints once ("Reactant and product will only be calculated once in the
+beginning and then frozen") and the interior images every iteration, and the two
+numbers are not the same quantity.
+
+**¶313's item 2 fired, and its two candidate causes are both excluded.** It
+pre-registered that an interior image below both endpoints means either a genuine
+intermediate inside an assumed elementary step, or endpoints and path on
+different surfaces. It is neither:
+
+- A genuine intermediate is ONE image below its neighbours. Here **every** interior
+  image is ~100 kcal/mol below **both** endpoints, symmetrically.
+- The two-surfaces bug of ¶207 is excluded by construction, `rigid_water: false`
+  on both endpoints and throughout - and `frozen_check.py` had already shown
+  every atom that differs between the endpoints is inside the 665-atom region
+  (¶312), which the run itself confirmed by printing 665.
+
+So this is a third cause, and ¶312's pass was correct and insufficient:
+`frozen_check.py` answers a question about GEOMETRY - which atoms move - and says
+nothing about how ASH assembles the two energies.
+
+**The interior profile is jagged too, which points the same way.** Relative to
+image 1: 0, -12.2, -16.1, -16.3, -16.0, -15.1, -15.2, -12.2, -3.8, -16.1, -15.4,
+-7.6. Image 9 is 12.3 kcal/mol ABOVE both its neighbours on a path whose forces
+converged to RMSF 0.0065 eV/Å. Converged forces with a jagged energy profile is
+an energy problem, not a geometry one.
+
+**And the path geometry is contaminated with it**, so the MEP is not salvageable
+either: Knarr uses energy-weighted springs and the climbing image is selected by
+energy. `Switch-on CI` picked `HEI 0` - the frozen reactant - so the climbing
+image was applied to the reactant endpoint and never to a real maximum.
+`Saddlepoint assumed to be image no. 0` says so outright, and
+`Saddlepoint-NEBCIapprox.xyz` is therefore the reactant.
+
+## ¶309's `hartoeV` bug, confirmed exactly
+
+    NEBCIapprox Saddlepoint energy: -325624.74562392756 Eh
+    max(mep_energies)             :     -439.760348      Eh
+    ratio                          =      740.45954
+    hartoeV^2 = 27.211386245988^2  =      740.45954
+
+¶309 read ASH's `prepare_saddlepoint` and found the ActiveRegion branch
+multiplying by `constants.hartoeV` where the other branch divides, and predicted
+the saddle energy could be wrong "by a factor of ~740". It is wrong by
+**hartoeV^2 to eight significant figures**, which also confirms the mechanism and
+not merely the magnitude: Knarr works in eV, the correct conversion is a
+division, and multiplying instead gives E_Eh × hartoeV^2. The pre-registered
+check did exactly what it was written to do.
+
+## Where the memory went, measured rather than guessed
+
+    Partial Hessian over 27 atoms, chosen BY ASH from the CI tangent
+      (we set no `partial_hessian_atoms`): 27×3×2 = 162 gradients
+    Hessian_from_partial              97 MB on disk
+    optimization_energies.log         2 lines
+
+**The saddlepoint optimisation never finished its first step.** The NEB had
+already converged, the partial Hessian was built, geomeTRIC printed its
+convergence criteria and rebuilt the 47,979-atom fragment, and the job was killed
+there. Peak 31.97 of 32.00 GB. The NEB phase holds 14 image calculators, each
+with its own OpenMM simulation of the 47,979-atom system, and the TS optimiser
+adds geomeTRIC's internal-coordinate machinery and the 97 MB Hessian on top of
+whatever of that is still resident. **Memory is the binding constraint on this
+stage, not time** - and `cores: 12` bought 2.4-fold parallelism, not 12-fold
+(19.76% of 12 cores), so it is not where the next change belongs either.
+
+`mem: 32G` is LEFT AS IT IS in `site.yaml`, with the measurement written into the
+comment above `step1`. A larger number is a decision about a future job and the
+user's to make; recording that 31.97 GB was not enough is this entry's job.
+
+## State
+
+    ringopen         written, dry-run exit 0, NOT submitted (¶314)
+    step1            ran, converged, barrier NOT readable. Nothing from
+                     33304392 is usable: not the barrier, not the saddle
+                     energy (hartoeV^2), not the MEP (CI applied to image 0)
+    step2            unchanged, and inherits the same defect the moment it runs
+    saddle1          its input `protdft/neb_step1/saddlepoint.pdb` was never
+                     written, and `Saddlepoint-NEBCIapprox.xyz` is the reactant
+    next question    which energy ASH reports for a frozen endpoint versus an
+                     interior image, read from the ActiveRegion code, BEFORE
+                     another NEB is submitted. Costs no compute.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**

@@ -1649,9 +1649,45 @@ sections:
   # `thread_policy` (`cli.py`), which is what makes parallel images safe:
   # bound, all twelve would land on the same cores.
   #
-  # The 48 h is still a guess (¶252: "Not measured by anything this project has
-  # run"), and this is the run that replaces it. Time it with `seff` and write
-  # the number here.
+  # ---- MEASURED, job 33304392 (¶315). Read this before resubmitting. ----
+  #
+  # Time is not the constraint and never was. The NEB converged in **63
+  # iterations, 758 gradients, 2123.53 s** - 35 minutes, against a 48 h wall, at
+  # **2.80 s per QM/MM gradient**. ¶252's guess was 80× too generous.
+  #
+  # **MEMORY is the constraint.** The job was killed OUT_OF_MEMORY at **31.97 of
+  # 32.00 GB**, inside the FIRST step of the saddlepoint optimisation that
+  # follows NEB-CI. 14 image calculators each hold an OpenMM simulation of the
+  # 47,979-atom system, and geomeTRIC then adds its internal coordinates and a
+  # 97 MB Hessian on top. `mem: 32G` is left unchanged here deliberately: the
+  # number to replace it with is a decision about a future job, and this comment
+  # is the record that 32 G was not enough.
+  #
+  # `cores: 12` is NOT where the next change belongs either: `seff` reports
+  # 19.76% of 12 cores, i.e. 2.4-fold real parallelism, not 12-fold.
+  #
+  # **AND THE BARRIER FROM THIS RUN IS UNREADABLE**, which matters more than
+  # either. Both frozen endpoints came out ~100 kcal/mol ABOVE every interior
+  # image - image 0 is 113.1 above image 1, image 13 is 95.6 above image 12 -
+  # so ASH reported `Barrier energy: 0.0 kcal/mol` and picked the reactant
+  # itself as the climbing image (`Saddlepoint assumed to be image no. 0`). Both
+  # endpoints are converged unrestrained minima, so neither can genuinely sit
+  # 100 kcal/mol above a structure one interpolation step away: the frozen
+  # endpoints and the interior images are not on a common energy zero. That is
+  # NOT the two-surfaces bug (¶207, excluded by `rigid_water: false`
+  # throughout) and NOT a genuine intermediate (which would be ONE image below
+  # its neighbours, not every image below BOTH ends). `frozen_check.py`'s pass
+  # stands and was never enough: it answers which atoms move, not which energy
+  # ASH reports for a frozen endpoint.
+  #
+  # So do not resubmit either NEB on more memory alone. The open question is
+  # which energy ASH's ActiveRegion code reports for a frozen endpoint versus an
+  # interior image, and reading that costs no compute.
+  #
+  # ¶309's `hartoeV` bug is also CONFIRMED, exactly: the saddle energy came back
+  # as max(mep_energies) × hartoeV^2 = ×740.45954, to eight figures. Any
+  # `saddlepoint_energy` from this stage must be checked against
+  # `max(mep_energies)` before it is believed.
   step1:                       # NEB over the attack
     stage: neb
     submit: {partition: general, cores: 12, mem: 32G, time: "48:00:00"}
