@@ -16951,6 +16951,89 @@ cannot run commands.**
     ringopen         still unwritten; its start should be checked against the
                      1.485 this chain actually produced, not 1.39
 
+**¶312 - `actradius` IS 9 Å ON BOTH NEBs, and `step1` now passes every gate:
+`sbatch -J step1 -p general --cpus-per-task=8 --mem=32G -t 48:00:00 run.slurm
+neb neb_step1`. The radius was confirmed by the project's own tool on Bunya
+rather than by my arithmetic: 8 Å gives 476 active atoms and 30 displaced atoms
+outside, 9 Å gives 665 and none. Also withdrawn: ¶311's claim that a hidden pane
+cannot run commands. It was a new shell and a stale log, which is the trap the
+browser-shell document warns about by name.** (2026-11-23, user: "code server is
+fine, everything you need to drive it should be in bunya browser shell.md / set
+actradius to 9, that's fine")
+
+## The confirmation, from `frozen_check.py` on Bunya
+
+    reactant protdft/qmmm_aspxtb8/QM_MM_optimized.pdb: 47979 atoms
+    product  protdft/qmmm_attackmin/QM_MM_optimized.pdb: 47979 atoms
+    [OK]   same atoms in the same order
+    [INFO] 504 of 47979 atoms moved by more than 0.001 A; largest 2.229 A
+    [INFO] radii centred on B:1:ZN:ZN (index 4203)
+        radius   active atoms   displaced atoms outside
+          8.00            476      30   FAIL
+          8.50            582       0   PASS
+          9.00            665       0   PASS
+         10.00            799       0   PASS
+        the residues that set the threshold (nearest approach):
+            D:A4A8:HOH  8.48 A
+            A:21:TRP    8.22 A
+            D:7338:HOH  8.08 A
+
+Identical to the numbers ¶311 quoted from arithmetic done in the browser, **476
+included**, which is the agreement that licensed quoting them. `step1` must now
+print `NEB active region: 665 atoms`; anything else and the prediction is wrong
+and the run should be stopped.
+
+9 Å over the 8.5 Å minimum is 0.52 Å of headroom instead of 0.02 Å, on a
+boundary that has now moved three times with HOH 7338 involved each time. The
+endpoint runs keep 8 Å: widening theirs would only put the boundary somewhere
+else, and the radius that has to be generous is the NEB's, because it is the one
+freezing atoms the two endpoints must agree on.
+
+## What moved, and it is the active site rather than the protein
+
+The by-residue breakdown is worth keeping, because it is the first direct view of
+what the attack actually displaces:
+
+    C:2:OH       2.229 Å   the nucleophile - the largest mover, as it should be
+    A:186:SER    1.522 Å   Ser186 rotating away as it releases O01
+    D:3171:HOH   1.695 Å
+    A:92:ASP     0.990 Å
+    C:1:mer      0.954 Å
+    A:164:HIS    0.727 Å
+    B:1:ZN       0.579 Å   the metal itself relaxes
+    A:21:TRP     0.492 Å   the offender - 8.22 Å out, and moving as much as His88
+    A:88:HIS     0.469 Å
+
+Forty-odd residues in all, every one of them first or second shell plus ordered
+water. **Ser186 at 1.522 Å is independent support for the hand-off** already read
+off the scan monitors (OG-O01 2.672 → 3.042): it does not merely lengthen a
+contact, the residue moves. And Trp21 moving 0.49 Å at 8.22 Å from the metal is
+the reason this failed at 8 - not a water on a boundary, a whole tryptophan
+relaxing as far as a first-shell histidine.
+
+## `frozen_check.py` now answers the radius question itself
+
+`--origin CHAIN:RESSEQ:ATOM` and `--radii` were added, so "what radius does this
+pair need" is answered from the reactant alone **before** a job is committed to
+it, instead of being read out of the output afterwards. It replicates
+`actregiondefine`'s whole-residue selection, which is what makes the prediction
+checkable: reproducing ASH's 476 exactly at 8 Å is the test, and a disagreement
+would mean the grouping is wrong rather than the run. Tested locally on a single
+atom perturbed in Val34, nearest approach 19.14 Å: fails every radius below 20
+and passes at 20.
+
+This is the instrument ¶309 should have produced and did not. ¶309 settled a
+radius for the pair in front of it and wrote the answer into the config as though
+it were a property of the project; ¶310 said that was a limit, ¶311 hit it one
+structure later. A radius is a property of a PAIR, and the tool now says so.
+
+## State
+
+    qmmm_attackmin   DONE, converged, the intermediate is real (¶311)
+    step1            GATES PASS, NOT SUBMITTED - 12 images, nebts, 9 Å, 48 h
+    step2            needs ringopen, then frozen_check.py on ITS pair at 9 Å
+    ringopen         unwritten; `start` to be checked against 1.485, not 1.39
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**

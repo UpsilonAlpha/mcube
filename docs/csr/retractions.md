@@ -344,3 +344,21 @@ the comparison was not like for like.
 and His164, with B3's third position, H118, being **Arg90** - the R of RQK. The
 His192-vs-His196 conflict is about which number names His164, not about how many
 histidines coordinate.
+
+## ¶311 - "a hidden code-server pane can still read files and cannot run commands"
+
+**Withdrawn in ¶312, 2026-11-23.** The pane's visibility had nothing to do with
+it. The user's page interaction had given the terminal a **new shell** - `pwd`
+came back `/home/uquadhik`, with the conda environment and every variable gone -
+so commands referring to `$O` wrote nowhere, and the `o.txt` I kept fetching was
+the OLD shell's file, still sitting in scratch with plausible content. That is
+exactly the stale-log trap `BUNYA_BROWSER_SHELL.md` Å2 warns about: *"a
+successful fetch proves the FILE exists, never that YOUR command produced it."*
+`Screen Reader Optimized` was off, focus was correct, and typing worked
+immediately once the shell was re-established. The measurements in ¶311 were all
+taken from file fetches and are unaffected; only the explanation was wrong.
+
+**The rule that should have been applied, and now is:** truncate the log with
+`: > $CCL` as the first command of every round and put `date` at the top, use a
+distinctive variable prefix rather than a bare letter, and probe a shell before
+trusting it.
