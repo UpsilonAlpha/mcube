@@ -715,7 +715,31 @@ first shell was already right and only the environment moved.
 > The active region must contain every atom that differs between the endpoints
 > (or ASH's midpoint switch is real), AND every structure must be optimised with
 > the region of the calculation that consumes it (or it is not a minimum of it).
-> `frozen_check.py` checks the first. **Nothing checks the second.**
+
+**Both halves now have a tool, and both cost nothing. Run them at every stage
+handoff** - which is also when you have to be at the terminal anyway (¶324):
+
+    frozen_check.py R.pdb P.pdb --origin B:1:ZN --actatoms <the run's list>
+        the FIRST half. Also prints a radius sweep. Read the sweep, not just the
+        verdict: the verdict uses the list the producing run derived on its own
+        INPUT, while the consumer re-derives on its OUTPUT, and those differ
+        (¶323 - 665 atoms both ways, 13 atoms apart). And judge the sweep's
+        FAILs on DISPLACEMENT, not on count: at 9 Å the 13 offenders all move
+        under 0.05 Å where ¶312's 8 Å failure had Trp21 at 0.49
+
+    region_check.py site.yaml [--config config.yaml] [--strict]
+        the SECOND half, added ¶328. Reads the producing section off the output
+        path and compares qm_residues/actradius/actregion_origin as each run
+        EFFECTIVELY resolves them, base `qmmm.inputs` included - which is the
+        part that catches ¶320. `neb` and `ts` differences FAIL; `qmmm` and
+        `scan` are information, because they re-minimise. **Its one current FAIL
+        is `step2`'s product from `scan_ringopen` at 8 Å**, which is leg 2's
+        instance of ¶317 and is not fixable until `ringopen` has run
+
+**Fix a FAIL by re-minimising the structure with the consuming section's region,
+never by widening the consumer to match** - widening re-creates ¶317 from the
+other side, which is why `attackmin9` exists at 9 Å and `step1` was not moved
+to 9.5 when `frozen_check` asked for it.
 
 Three instances found by hand so far: rigid waters (¶207), `actradius` 8-against-9
 on the NEB endpoints (¶317), and `saddle1`/`saddle2` inheriting `actradius: 8`
