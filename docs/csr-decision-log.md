@@ -18359,6 +18359,67 @@ the session ending; only my ability to read it is.
 **So the barrier is not in this entry.** The checks to run on it before `saddle1`
 are in ¶324, and `saddle1` cannot be pre-submitted (¶324's structural reason).
 
+**¶327 - `S214D` IS THE DEPOSIT NUMBER AND `K263H` IS BBL, settled by
+monotonicity with no new data: the manuscript mixes two schemes in one sentence
+rather than using an unknown third. And two items I had been carrying as open
+were already answered in the project's own files - the ZN2 sphere is correctly
+attributed and His192-vs-His196 is a frame question "+PA+"267 closed. The carry-over
+list was stale, which is ¶179's lesson in a new costume.** (2026-11-23, while
+`step1` runs)
+
+## 1. Which manuscript label is not BBL
+
+`reference-structures.md` said "**at least one of `S214D` and `K263H` is not
+BBL**" and left it there. Laid out as offsets from our numbering it resolves
+without any new evidence:
+
+    ours      88   90   92   93   164   186   226
+    papers   116  118  120  121   196   214   263
+    offset   +28  +28  +28  +28   +32   +28   +37
+
+An insertion-only numbering gives a **non-decreasing** offset. The sequence
++28 → +32 → **+28** → +37 is impossible at exactly one position, our 186, and
+every other entry is consistent - **`K263H` included**, since +37 after +32 needs
+only five further inserted residues between our 164 and our 226. And +28 is
+precisely 6DN4's own constant offset, which is what the serine's number is.
+
+**So the question to put to the lab changes shape.** Not "which numbering is
+this?" but "`S214D` is 6DN4's numbering while `K263H` is BBL - which do you
+want?". The two cannot both be BBL, and the manuscript currently reads as though
+they are. Consequence already in the record: `Lys254` (6DN4's) and `Lys260`
+(¶261, 6DQH's) are each right in their own frame and neither is the paper's
+`K263`.
+
+## 2. Two carry-over items that were already answered
+
+    "the ZN2 sphere cannot have come from 6DN4, which has zero HETATM records"
+        NOT A DEFECT. `reference-structures.md` attributes that sphere to
+        `CSR_truncated_2metal` - its section header says "The WT frame,
+        measured (`refstruct.py`, metal at the two-histidine site)" and the
+        comparison table names the file. 6DN4 appears there only for Asp-to-His
+        distances (3.00-3.07 Å at 1.99 Å, ¶179), which need no metal. The file
+        also states plainly that "no wild-type CSR-1 structure, ours or
+        deposited, has an experimental metal in the catalytic site"
+
+    "His192 vs His196 for the second M1 histidine"
+        ANSWERED. "Deposits say 192; the canonical B3 M1 motif in the
+        literature is H116/H118/H196 ... both are right in their own frame, and
+        neither is wrong." The row is marked CONFLICT because the two columns
+        disagree, not because the question is open
+
+**The lesson, and it is ¶179's.** That entry recorded "the third time in a week
+that something settled in the log was re-derived from scratch instead of read",
+and the fix was `state.md`. These two were not re-derived - they were carried
+forward as open in a working list while the documents answered them, which is
+the same failure one level up: the list of open questions is itself a thing that
+goes stale. Checking the file before investigating cost two greps.
+
+**Nothing else on that list was cleared.** Still genuinely open and still
+unverified: the Pedroso **Table S4** ITC values; the user's 2-metal WT QM/MM
+result, which needs its run directory, section, QM region, total charge and
+length before it can be cited; the mutant arm's choice between 6NC5 di-zinc and
+`refine_12`; and GOB-18's zinc site against the primary JBC/ASM papers.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**

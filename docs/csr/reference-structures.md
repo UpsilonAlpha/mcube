@@ -63,6 +63,24 @@ CSR-1 manuscript and is **not** verified against a BBL alignment.
   *decrease* along the sequence. So **at least one of `S214D` and `K263H` is
   not BBL** — worth settling with the lab before the manuscript is submitted.
 
+  **¶327 settles WHICH, by monotonicity alone and with no new data.** Lay the
+  `papers` column out as offsets from our numbering:
+
+      ours      88   90   92   93   164   186   226
+      papers   116  118  120  121   196   214   263
+      offset   +28  +28  +28  +28   +32   +28   +37
+
+  An insertion-only scheme gives a non-decreasing offset, so the sequence
+  +28 → +32 → **+28** → +37 is impossible at ONE position: our 186. Every other
+  entry is consistent, **`K263H` included** — +37 after +32 needs only a further
+  five inserted residues between our 164 and our 226. And +28 is exactly 6DN4's
+  own constant offset. **So `S214D` is the deposit number and `K263H` is BBL**,
+  which means the manuscript mixes two schemes in one sentence rather than
+  using an unknown third one. That is the thing to put to the lab: not "which
+  numbering is this?" but "`S214D` is 6DN4's numbering while `K263H` is BBL
+  — which do you want?". It also means `Lys254` (6DN4's) and `Lys260`
+  (¶261, 6DQH's) are both right in their own frame and neither is the paper's.
+
 **6NC5 is ours − 1 and dmCSR‑1 is ours − 14**, both constant. 6DN4 is ours + 28,
 constant — which is exactly what made it look like BBL (¶267, retracted).
 
