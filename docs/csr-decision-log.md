@@ -18420,6 +18420,82 @@ result, which needs its run directory, section, QM region, total charge and
 length before it can be cited; the mutant arm's choice between 6NC5 di-zinc and
 `refine_12`; and GOB-18's zinc site against the primary JBC/ASM papers.
 
+**¶328 - `region_check.py` WRITTEN, RUN AND VERIFIED, and it finds the leg-2
+instance of ¶317 by itself. One FAIL across all ~90 sections: **`step2`'s
+product comes from `scan_ringopen` at 8 Å while `step2` runs 9** - known in
+¶319's words, now located automatically. Everything built today passes. The key
+design point is that severity follows the CONSUMING stage: a `qmmm` or `scan`
+that re-minimises may widen the region freely, and that is how `attackmin9` is
+the fix rather than the defect; a `neb` freezes its endpoints and a `ts` reports
+the barrier, so for those two it is ¶317 and ¶320.** (2026-11-23, autonomous
+while `step1` runs)
+
+## The verdict, `--strict`, exit 1
+
+    [FAIL   ] step2  neb  product_pdb  <- scan_ringopen  (read from site.yaml)
+          actradius      scan_ringopen: 8
+                         step2: 9
+
+    No other strict-stage difference. step1, saddle1, saddle2, reactmin9 and
+    attackmin9 all pass.
+
+    Information (re-minimising stages, deliberate):
+        attack (pdb_file <- qmmm_aspxtb8)        qm_residues, 124 -> 129
+        michrk (pdb_file <- qmmm_michqm)         qm_residues
+        posepull (pdb_file <- qmmm_aspxtb8)      qm_residues
+        ringopen (pdb_file <- qmmm_attackmin9)   actradius, 9 -> 8
+
+**`attack`'s row is ¶316's defect, detected automatically.** It took three
+entries to find by hand; the script prints it as a line. That is the whole case
+for the tool.
+
+## Why severity by consuming stage, which the first version got wrong
+
+The first run flagged `attackmin9` as a failure for widening 8 → 9 from its
+producer - and `attackmin9` IS THE FIX. A stage that re-minimises relaxes
+whatever the new region frees, so widening is how a region gets corrected. A
+stage that holds the structure fixed cannot:
+
+    neb   freezes BOTH endpoints. A structure optimised with a narrower region
+          is not a stationary point of the path's surface, and every interior
+          image is measured from it (¶317: ~100 kcal/mol, all MM)
+    ts    re-optimises, but it reports the barrier, so a narrower region puts
+          the mismatch in the published number (¶320)
+
+So `neb` and `ts` fail and the rest is information - with the proviso the output
+states: a `scan`'s own difference matters where its OUTPUT feeds a `neb`, and
+that surfaces as the neb's row, which is exactly how `step2` was caught.
+
+**Intent is read from existing vocabulary only**, because `sections.py` refuses
+`require` keys it does not know: `same_as.except`, plus `require.equals` for a
+re-minimising stage. `equals` deliberately does NOT count for a `neb` - pinning
+`actradius: 9` says nothing about whether a frozen endpoint is a minimum of 9 Å,
+which is the thing ¶317 measured going wrong.
+
+## What it is and is not
+
+It compares `qm_residues`, `actradius` and `actregion_origin` as each run
+EFFECTIVELY resolves them - the section's own value, else the base
+`qmmm.inputs`. Resolving against the base is the point: `saddle1` set no
+`actradius` at all, so reading its own inputs would have called it consistent
+while it silently inherited 8. Without a `config.yaml` it says so, rather than
+reporting `(unset)` as if that were an answer.
+
+**A standalone script, not a `require` key, deliberately.** `sections.py` is
+shared with the channel project, `require` rejects unknown keys, and the blast
+radius of making this fatal across every site.yaml is unmeasured. Promoting it
+into `sections.py` is the follow-up and needs that sweep first. Run it at each
+stage handoff, as `frozen_check.py` is run - and "+PA+"324 established that each
+handoff needs a live session anyway.
+
+## The one FAIL is not fixable yet
+
+`scan_ringopen` has not run, so its product does not exist; `step2` was already
+blocked on that and on ¶300. When leg 2 reaches the same point leg 1 did, the
+answer is the same as ¶319's: a free minimisation at 9 Å from `ringopen`'s last
+point becomes `step2`'s product. **Not a widening of `ringopen` to 9** - the
+output's own last sentence says why, and it is ¶317 from the other side.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
