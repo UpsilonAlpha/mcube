@@ -59,6 +59,29 @@ REGION_KEYS = ("qm_residues", "actradius", "actregion_origin")
 # Structure inputs, in the order a section's own region is derived against.
 STRUCTURE_KEYS = ("pdb_file", "reactant_pdb", "product_pdb")
 
+# Stages that resolve no QM region at all, so comparing one is meaningless.
+NO_QM_STAGES = ("preprocess", "md", "postprocess")
+
+# **Severity is a property of the CONSUMING stage, and this is the distinction
+# D317 and D320 turn on.** A stage that re-minimises what it is given may widen
+# the region freely - that is exactly what `attackmin9` does, and what makes it
+# the FIX rather than the defect. A stage that holds the structure fixed cannot:
+#
+#   neb   FREEZES both endpoints. A structure optimised with a narrower region
+#         is not a stationary point of the path's surface, and every interior
+#         image is measured from it. This is D317: ~100 kcal/mol, all MM
+#   ts    re-optimises, but it reports the barrier, so a region narrower than
+#         the path that produced the guess puts the mismatch in the published
+#         number. This is D320
+#
+#   qmmm  a free optimisation - it relaxes whatever the new region frees
+#   scan  constrained per point, but still re-minimises the region
+#
+# So `neb` and `ts` differences are failures and the rest are information. A
+# `scan` or `qmmm` difference still matters when its OUTPUT feeds a `neb`, and
+# that shows up as the neb's own row rather than as the scan's.
+STRICT_STAGES = ("neb", "ts")
+
 # mcube writes a section's output under `protdft/<stage>_<name>/`, which is the
 # only link from a consumed file back to the run that produced it.
 OUTPUT_DIR = re.compile(r"(?:^|/)protdft/([a-z]+_[A-Za-z0-9_]+)/")
@@ -78,11 +101,25 @@ def effective(inputs, base, key):
 
 
 def declared_except(body):
-    """Keys a section's `require.same_as` already says may differ."""
-    same = ((body.get("require") or {}).get("same_as")) or {}
-    if isinstance(same, str):
-        return set()
-    return set(same.get("except") or [])
+    """Keys the section already says, in its own `require`, may differ.
+
+    Two signals, both existing vocabulary, because adding a `require` key would
+    make `sections.py` reject the file (it refuses keys it does not know):
+
+      `same_as.except`  names keys that differ from a named reference
+      `equals`          pins a key to a value, which is the author stating it
+
+    `equals` counts only for a re-minimising stage. For a `neb` it would let a
+    section declare its way out of the one condition that matters: pinning
+    `actradius: 9` says nothing about whether a frozen endpoint is a minimum of
+    9 A, which is precisely what D317 measured going wrong.
+    """
+    require = body.get("require") or {}
+    same = require.get("same_as") or {}
+    keys = set() if isinstance(same, str) else set(same.get("except") or [])
+    if body.get("stage", "qmmm") not in STRICT_STAGES:
+        keys |= set((require.get("equals") or {}).keys())
+    return keys
 
 
 def describe(value):
@@ -133,11 +170,13 @@ def main(argv=None):
                 return (body.get("inputs") or {}), "site.yaml"
         return None, "nowhere"
 
-    rows, differing, unknown_producer = [], [], []
+    rows, differing, informational, unknown_producer = [], [], [], []
     for name, body in sorted(sections.items()):
         if args.only and name != args.only:
             continue
         stage = body.get("stage", "qmmm")
+        if stage in NO_QM_STAGES:
+            continue
         inputs = body.get("inputs") or {}
         allowed = declared_except(body)
         for key in STRUCTURE_KEYS:
@@ -160,7 +199,8 @@ def main(argv=None):
                     diffs.append((rk, theirs, mine, rk in allowed))
             rows.append((name, stage, key, producer, where, diffs))
             if any(not declared for _, _, _, declared in diffs):
-                differing.append(name)
+                (differing if stage in STRICT_STAGES else informational).append(
+                    "%s (%s <- %s)" % (name, key, producer))
 
     print("Region consistency: does each section run the region of the section "
           "that produced its structure?")
@@ -171,8 +211,9 @@ def main(argv=None):
         if not diffs:
             print("  [OK]    %-12s %-6s %-14s <- %s" % (name, stage, key, producer))
             continue
-        print("  [DIFFERS] %-12s %-6s %-14s <- %s   (producer read from %s)"
-              % (name, stage, key, producer, where))
+        print("  [%s] %-12s %-6s %-14s <- %s   (producer read from %s)"
+              % ("FAIL   " if stage in STRICT_STAGES else "differs",
+                 name, stage, key, producer, where))
         for rk, theirs, mine, declared in diffs:
             print("        %-18s %s: %s" % (rk, producer, describe(theirs)))
             print("        %-18s %s: %s%s"
@@ -188,14 +229,26 @@ def main(argv=None):
 
     print()
     if differing:
-        print("UNDECLARED DIFFERENCES in: %s" % ", ".join(sorted(set(differing))))
-        print("A difference is not automatically wrong - `attackmin` changed "
-              "`qm_residues` deliberately. But each one is a structure optimised "
-              "with one movable set and consumed by a calculation using another, "
-              "which is D207/D317/D320's defect, so each needs a reason written "
-              "down. Declare an intended one in `require.same_as.except`.")
+        print("FAIL - a frozen or barrier-reporting stage runs a different "
+              "region from the run that produced its structure:")
+        for item in sorted(set(differing)):
+            print("    %s" % item)
+        print("  This is D317 (a NEB endpoint that is not a minimum of the "
+              "path's region: ~100 kcal/mol, all MM) and D320 (a TS refined "
+              "with 184 fewer atoms free than its own path). Fix it by "
+              "re-minimising the structure with the consuming section's region, "
+              "never by widening the consumer to match - that re-creates D317 "
+              "from the other side.")
     else:
-        print("No undeclared differences.")
+        print("No strict-stage differences: every `neb` endpoint and `ts` guess "
+              "runs the region of the run that produced it.")
+    if informational:
+        print()
+        print("Information - a re-minimising stage widening or changing its "
+              "region, which is usually deliberate and is how a region gets "
+              "fixed. It matters only where the OUTPUT then feeds a `neb`:")
+        for item in sorted(set(informational)):
+            print("    %s" % item)
     return 1 if (args.strict and differing) else 0
 
 
