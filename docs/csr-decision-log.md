@@ -17294,6 +17294,168 @@ user's to make; recording that 31.97 GB was not enough is this entry's job.
                      interior image, read from the ActiveRegion code, BEFORE
                      another NEB is submitted. Costs no compute.
 
+**¶316 - ¶315's question is answered and its direction of error was backwards.
+The FROZEN ENDPOINTS ARE CORRECT - image 13's energy equals `attackmin`'s own
+converged energy to 0.044 kcal/mol - so it is every INTERIOR image that is ~100
+kcal/mol too low. ¶309's midpoint switch is not a no-op; it is where the defect
+lives. And a second, separate defect is OURS: the two endpoints were optimised on
+DIFFERENT QM regions, 124 atoms against 129.** (2026-11-23, user: "you don't need
+to ask to read the output of a program you run")
+
+Read from ASH 0.9dev as installed at `/scratch/user/uquadhik/ash`, and from job
+33304392's own output. No compute.
+
+## 1. The endpoints are right, measured for free
+
+    attackmin's own job, final line   energy : -439.80042577956294
+    NEB image 13 (frozen product)              -439.800355
+    difference                                  0.0000708 Eh = 0.044 kcal/mol
+
+That is the 6-decimal print agreeing with the full value. So the frozen product
+energy in the NEB **is** `attackmin`'s converged QM/MM energy, and ASH's splice
+reproduces an endpoint exactly when the active region it is given is that
+endpoint's own.
+
+**Which inverts ¶315.** Image 12 sits at -439.952664, i.e. **95.6 kcal/mol below
+a converged minimum of its own surface**. An interpolated geometry cannot be
+below a minimum. ¶315 said the endpoints and the interior images "are not the
+same quantity" and left the direction open; the direction is now fixed, and it is
+the interior images that are wrong.
+
+**So ¶309's finding was understated, not overstated.** ¶309 established that
+`KnarrCalculator.Compute` rebuilds each image's full coordinates from whichever
+endpoint it is nearest, and ¶310/¶312 reasoned that if the endpoints agree
+outside the active region the switch is a no-op. The geometry reasoning was
+right - `frozen_check.py` passed and the run printed its 665 - and the
+conclusion drawn from it was wrong, because the energies are not a function of
+the frozen part alone. Interior images carry an artefact of about 100 kcal/mol
+that the endpoints do not.
+
+Located in source, `interfaces/interface_knarr.py` lines 1030-1046 (the parallel
+branch; 896-919 is the identical serial one):
+
+    if min([0,self.numimages-1], key=lambda x:abs(x-image_number)) == 0:
+        full_coords = copy.deepcopy(self.full_fragment_reactant.coords)
+    elif min([0,self.numimages-1], key=lambda x:abs(x-image_number)) == self.numimages-1:
+        full_coords = copy.deepcopy(self.full_fragment_product.coords)
+    for i, c in enumerate(full_coords):
+        if i in self.actatoms:
+            curr_c, currcoords = currcoords[0], currcoords[1:]
+            full_coords[i] = curr_c
+
+Five lines above it ASH says so itself, for every image of every iteration in the
+mode we ran: `print("Warning: NEB-parallel with ActiveRegion is highly
+experimental")` (line 1023).
+
+**What is NOT yet established** is which term of the QM/MM energy carries the
+~100 kcal/mol. The cheapest test is a single point: take `knarr_MEP_FULL.xyz`
+frame 12, run it through `sp` on the full system at 129 QM atoms, and compare
+with -439.952664. If the single point disagrees, the NEB's own interior energies
+are wrong and the MEP geometries may still be usable; if it agrees, the
+interpolated geometry really is 95.6 kcal/mol below the product and the
+interpolation is producing unphysical structures. That is one job, and it decides
+whether this stage is usable at all.
+
+## 2. ¶315's zeroing suspicion was wrong, and the reason is worth keeping
+
+`Compute` builds a fresh `E = np.zeros(shape=(path.GetNim(), 1))` every iteration
+(line 793), fills only `list_to_compute`, and installs it wholesale with
+`path.SetEnergy(E)` (line 1096) - and `SetEnergy` with no index assigns, it does
+not merge (`knarr/KNARRatom/path.py:145-152`). That looks exactly like a bug that
+zeroes the frozen endpoints.
+
+It is not, because Knarr puts them back by index immediately afterwards
+(`knarr/KNARRjobs/neb.py:333-335`):
+
+    calculator.Compute(path, list_to_compute=range(1, path.GetNim() - 1))
+    path.SetEnergy(Ereactant, x=0)
+    path.SetEnergy(Eproduct, x=path.GetNim() - 1)
+
+**Worth recording even though it is not our bug**: the endpoint energies survive
+by repair rather than by design, so any caller that computes the interior
+directly and skips those two lines silently gets zeros at both ends - and zero eV
+is the maximum of an array whose real entries are about -11,967 eV, so it would
+present as exactly the symptom ¶315 described. I guessed this was the cause and
+it was not; checked before writing, which is the only reason it is not in the log
+as a finding.
+
+Also confirmed: the call pattern is `[0, 13]` at iteration -1 and `[1..12]` for
+each of iterations 0-62, so 2 + 63×12 = **758 function calls**, exactly what the
+convergence line reported.
+
+## 3. Why the saddle landed on image 0, in one line
+
+`CI = np.argmax(path.GetEnergy())` - `interface_knarr.py:1172` and
+`knarr/KNARRjobs/neb.py:608`. The climbing image and the saddlepoint are selected
+**by energy**, so an energy array in which the reactant is the maximum puts both
+on the reactant. `Saddlepoint assumed to be image no. 0` is that line executing
+correctly on bad input, not a separate failure.
+
+## 4. ¶309's `hartoeV` bug, now located as well as measured
+
+    interface_knarr.py:1176   saddle_energy = path.GetEnergy()[CI][0]*constants.hartoeV
+    interface_knarr.py:1208   saddle_energy = path.GetEnergy()[CI][0]/constants.hartoeV
+
+1176 is the ActiveRegion branch, 1208 the other. ¶315 measured the factor as
+740.45954 = hartoeV^2; this is the line.
+
+## 5. AND A SEPARATE DEFECT, WHICH IS OURS
+
+    aspxtb8    [INFO] QM atoms: 124      <- *qmreg_michrk, no Ser186
+    attackmin  [INFO] QM atoms: 129      <- *qmreg_michrks
+    step1      [INFO] QM atoms: 129
+
+The 129-atom list is the 124 plus **2774, 2775, 2776, 2777, 2778** - five atoms,
+Ser186's side chain, which is the only difference between `michrk` and `michrks`.
+
+**So `step1`'s two endpoints are minima of two different surfaces, and its
+reactant is a minimum of neither its own nor the NEB's.** `aspxtb8` was optimised
+with Ser186 as MM point charges; `step1` evaluates that geometry with Ser186's
+side chain in the QM region, holding the Ser186 HG...O01 contact at 1.843 Å to an
+anionic nucleophile (¶303). That contact is precisely the one ¶282 voided as an
+MM artefact. A geometry optimised with it as MM is not stationary once it is QM,
+and it relaxes as soon as the active region may move - which is the reactant's
+113.1 kcal/mol drop at image 1, independent of anything ASH does.
+
+**site.yaml said this in words and nobody drew the consequence.** The comment
+above `attack` reads "`aspxtb8` itself ran `*qmreg_michrk`, without the serine",
+written to justify putting Ser186 in the SCAN's region. The same sentence
+condemns `aspxtb8` as that scan's and that NEB's reactant endpoint, exactly as
+¶309's reading of `scan.py` condemned `scan_15` as a product endpoint
+(¶311/¶314). Same error, one surface up: a structure inherited from an
+upstream run whose settings differ from the run consuming it.
+
+**The gate that would have caught it does not exist.** `step1`'s `require` block
+checks `charge`, `images`, `method`, `interpolation`, `actradius` and `numfreq`
+by value, and `qm_residues` not at all - and no `require` key can express "the
+section that produced `reactant_pdb` must have run the same `qm_residues` as
+this one", because `require` compares two sections' inputs and knows nothing
+about which section produced a file. That is a `sections.py` change and needs
+tests before it goes in the repo, so it is proposed, not done.
+
+## What this costs
+
+Nothing from 33304392 survives, which ¶315 already said. What is new is that
+fixing ASH's interior energies would not have been enough: the reactant endpoint
+has to be re-minimised at 129 QM atoms before `step1` means anything, and that is
+a job. `step2` is unaffected by this one - both its endpoints are `michrks` -
+but it inherits the interior-energy artefact in full.
+
+## State
+
+    the ASH defect     interior images ~100 kcal/mol below the endpoints;
+                       endpoints verified correct; term not yet identified
+    cheapest next test one `sp` on knarr_MEP_FULL.xyz frame 12 at 129 QM atoms
+                       against -439.952664. One job. Decides if `neb` is usable
+    our defect         step1's reactant optimised at 124 QM atoms, NEB at 129.
+                       Needs a 129-atom re-minimisation of aspxtb8 before
+                       step1 can be repeated at all
+    step2              endpoints consistent with each other (both michrks) and
+                       with its own surface; blocked on the ASH defect only
+    ringopen           written, dry-run clean, not submitted (¶314)
+    sections.py        proposed: a gate tying a section's `qm_residues` to the
+                       section that produced its input structure
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
