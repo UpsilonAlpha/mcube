@@ -18225,6 +18225,68 @@ for this run:
     hartoeV       `saddlepoint_energy` will still be wrong by hartoeV^2
                   (¶309/¶315). Read `max(mep_energies)` instead
 
+**¶324 - `saddle1` CANNOT BE PRE-SUBMITTED, and the reason is structural
+rather than cautious: `sections.py` refuses to write a section whose structure
+input does not exist, and the job reads its settings from that written section -
+so a Slurm `--dependency` chain would launch a job with nothing to read. Every
+stage handoff in this pipeline needs a live session. `step1` (33319693) is
+running healthy at ~49-65 s an iteration, which is ~51 min for ¶315's 63
+iterations, and the OnDemand session expires first. The user's authorisation to
+submit `saddle1` stands and carries to the next session.** (2026-11-23, user:
+"Yes, submit saddle1")
+
+## Why the dependency route is closed
+
+    sections.py:325   if problems: print("NOT WRITING. Problems:") ... SystemExit(1)
+    sections.py:335   if dry_run: ...
+    sections.py:359   if submit: subprocess.run(cmd)
+
+The refusal precedes BOTH the dry-run branch and the submit branch, so `--submit`
+cannot write `ts_saddle1` into config.yaml while `protdft/neb_step1/
+saddlepoint.pdb` is absent - which is correct behaviour and the same gate that
+caught ¶311's `scan_15`. And `run.slurm ts ts_saddle1` reads that config
+section, which only `sections.py` writes. So hand-rolling
+`sbatch --dependency=afterok:33319693` would queue a job that starts and finds no
+section: it bypasses the selector and structure checks to arrive at a failure.
+
+**Worth keeping as a property of the pipeline, not a complaint about it.** The
+checks are what make a section safe to run, and they can only run once the input
+exists. A chained multi-stage run is therefore not available here, and the
+alternative - pre-writing sections against files that do not exist yet - is the
+thing ¶311/¶314 spent two entries undoing.
+
+## `step1`'s state, and it is healthy
+
+    [INFO] QM atoms: 129                  identical to both endpoints
+    [INFO] NEB active region: 665 atoms   ¶323's pre-registered figure
+    springconstants  [5.] → [5.] uniform across all 13, no spring blow-up
+    iteration 4   04:40:48
+    iteration 5   04:41:37                49 s, and ~50-65 s including setup
+
+63 iterations at that rate is ~51 min. The convergence column is falling slowly
+(0.2748 → 0.2733 → 0.2716, ~0.0017 an iteration), so it may want more than 63 -
+¶315's count was on different endpoints and is not a promise. `time: "48:00:00"`
+is ample either way, and the memory question is settled by construction now that
+the saddle optimisation is `saddle1`'s (¶320): 32 G carried the NEB phase of
+33304392 to convergence.
+
+## What to check when it lands, BEFORE submitting `saddle1`
+
+Carried from ¶323 so the next session does not have to re-derive it:
+
+    check_path_shape   now reachable (¶318). If it fires with a large drop, the
+                       radius attribution of ¶318/¶323 is wrong and `saddle1`
+                       must NOT be submitted on that path
+    the climbing image must not be image 0. "Saddlepoint assumed to be image no.
+                       0" was the signature of ¶316's broken run, and image 0 is
+                       now a minimum of the path's own surface
+    the barrier        read `max(mep_energies)`, never `saddlepoint_energy`: the
+                       ActiveRegion branch multiplies by `hartoeV` where the
+                       other divides (¶309/¶315)
+    the shape          a single maximum. Two would mean the step is not
+                       elementary and wants splitting at the intervening minimum
+    then               `python sections.py site.yaml saddle1 --submit`
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
