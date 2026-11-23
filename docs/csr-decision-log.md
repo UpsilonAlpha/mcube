@@ -18488,6 +18488,17 @@ into `sections.py` is the follow-up and needs that sweep first. Run it at each
 stage handoff, as `frozen_check.py` is run - and "+PA+"324 established that each
 handoff needs a live session anyway.
 
+## Both branches verified, which is what lets it stay in the repo
+
+    from the run directory          rc=1, one FAIL (step2), 5 rows differ
+    from a directory with no config rc=0, the [WARN] fires, 10 rows differ
+
+The second number is the point: without `config.yaml` an inherited key reads as
+`(unset)` and produces five spurious differences, which is precisely what the
+warning says will happen. So the degraded mode is self-describing rather than
+quietly wrong - and it cannot be used to clear a section, since ¶320's defect
+was an inherited key.
+
 ## The one FAIL is not fixable yet
 
 `scan_ringopen` has not run, so its product does not exist; `step2` was already
