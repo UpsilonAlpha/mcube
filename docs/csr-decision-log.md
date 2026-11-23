@@ -18129,6 +18129,102 @@ it costs nothing.
     then          `step1` is submittable - `method: neb` now, ¶320 - and that is
                  compute, so it is the user's call
 
+**¶323 - BOTH ENDPOINTS CONVERGED, THE PAIR PASSES, AND `step1` IS SUBMITTED
+(33319693). The two minima now sit on ONE surface and their difference is a
+believable reaction energy for the first time: **the tetrahedral intermediate is
++8.41 kcal/mol above the Michaelis complex**, QM costing 13.54 and MM relaxing
+5.13. ¶317's 140 kcal/mol MM gap has closed to 5.13. And the 9 Å gate needed
+reading rather than obeying: it FAILS at the default 0.001 Å tolerance on 13
+atoms and PASSES at 0.05, all 13 moving less than 0.05 Å.** (2026-11-23, user:
+"Yes, submit step1")
+
+## Both endpoints, converged, on the same surface
+
+    reactmin9   61 steps   total -439.97112777161675   converged: True
+                           xtb   -198.60188165976
+                           MM    -241.36924611185674
+    attackmin9  53 steps   total -439.95772247274607   converged: True
+                           xtb   -198.58029980898
+                           MM    -241.37742266376608
+
+Both sums reproduce their printed totals to the last digit. ~15 min each at
+¶321's 14-17 s a step.
+
+## The reaction energy, which is the point of all of this
+
+    product - reactant     +0.01340530 Eh  =  **+8.41 kcal/mol**
+      xtb                  +0.02158185 Eh  =   +13.54
+      MM                   -0.00817655 Eh  =    -5.13
+
+**This is the first number from this project that a barrier can be built on.**
+An intermediate 8.41 kcal/mol above the Michaelis complex, under an attack scan
+whose maximum is 14.24 (¶308) and beside CphA's ~14 kcal/mol PMF, is the shape
+a tetrahedral intermediate should have. Compare what the same two structures gave
+before re-minimisation: image 0 to image 13 was **-25.10 kcal/mol**, i.e. the
+"product" appeared 25 kcal/mol DOWNHILL, on endpoints that were not minima of the
+path's surface.
+
+**And ¶319's pre-registered MM condition is met on both sides.** It asked that
+the MM energies "come within a few kcal/mol of each other" against a 140 kcal/mol
+gap. They are 5.13 apart.
+
+## The caveat that stops this being compared to the old run
+
+`aspxtb8` ran **124** QM atoms and `reactmin9` runs **129**. Those are different
+Hamiltonians, so `reactmin9`'s total is NOT comparable to `aspxtb8`'s or to NEB
+image 0's, and no "the reactant fell N kcal/mol" figure is quoted here for the
+reactant side - unlike ¶322's product side, where the QM region was unchanged
+and the 98.70 kcal/mol drop is a real comparison. What matters is that the two NEW
+endpoints share a QM region and an active region, which is the condition the
+barrier needs and the one ¶316/¶317 found broken.
+
+## The gate: FAIL at 0.001 Å, PASS at 0.05, and both are recorded
+
+    frozen_check.py reactmin9 attackmin9 --origin B:1:ZN --actatoms <reactmin9's>
+
+    tol 0.001:  653 atoms moved, largest 2.016 Å
+        radius   active   outside            tol 0.05:  318 moved
+          8.00      500      164  FAIL         8.00   500   28  FAIL
+          8.50      547      117  FAIL         8.50   547   13  FAIL
+          9.00      665       13  FAIL         9.00   665    0  PASS
+          9.50      746        0  PASS
+
+So **all 13 atoms that fail at 9 Å move between 0.001 and 0.05 Å** - third-shell
+backbone (Ala224 8.70 Å, Tyr256 8.54, Tyr183 8.41, Ala184 8.39). ¶312's 8 Å
+failure was 30 atoms including Trp21 at **0.49 Å**, which is 10-500× larger and was
+real. Judged on magnitude rather than on the count, 9 Å holds, and widening to
+9.5 would re-create ¶317's defect exactly - endpoints minimised at 9 against a
+path at 9.5.
+
+**The trap in the output, worth naming.** The run prints a `[PASS]` as well, and
+it is for the WRONG SET: `--actatoms` uses the list `reactmin9` actually used,
+derived on its INPUT (`aspxtb8`'s output), while `step1` re-derives on
+`reactmin9`'s OUTPUT. Both are 665 atoms and they are different 665 atoms. The
+radius sweep is the one that describes what `step1` will do; the `[PASS]` line
+describes what `reactmin9` did. Reading only the verdict would have licensed this
+submission for a reason that was not true.
+
+## Submitted
+
+    sbatch -J step1 -p general --cpus-per-task=12 --mem=32G -t 48:00:00
+           .../run.slurm neb neb_step1          ->  33319693, PD
+
+`method: neb` (¶320), so NEB-CI only and `saddle1` does the TS. Pre-registered
+for this run:
+
+    region        must print `NEB active region: N atoms` derived on reactmin9's
+                  output. 665 is expected but NOT guaranteed - the sweep's 9 Å
+                  sphere on that structure is also 665, but membership differs
+                  from reactmin9's own list by the 13 atoms above
+    memory        32 G was enough for the NEB phase of 33304392 and the saddle
+                  optimisation that broke it is gone, so this should fit
+    check_path_shape  now REACHABLE (¶318). If it fires with a large drop, the
+                  radius story is wrong and "+PA+"318/"+PA+"323 need revisiting
+    the barrier   image 0 is now a minimum of the path's own surface, so the
+                  maximum should be a real climbing image and not image 0
+    hartoeV       `saddlepoint_energy` will still be wrong by hartoeV^2
+                  (¶309/¶315). Read `max(mep_energies)` instead
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
