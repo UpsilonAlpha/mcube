@@ -18287,6 +18287,78 @@ Carried from ¶323 so the next session does not have to re-derive it:
                        elementary and wants splitting at the intervening minimum
     then               `python sections.py site.yaml saddle1 --submit`
 
+**¶326 - TWO FREE FIXES WHILE `step1` RUNS, and the second is a verdict that
+never got carried across. `ringopen` follows `step2` onto `attackmin9` and
+dry-runs clean on it. And `state.md` still PRESCRIBED the Asp92 restraint targets
+¶216 voided - OD2 2.76 Å as a target in item 0 and as a convergence gate in ¶2's
+list - eleven weeks after 6DQH measured 5.14. Both are marked. `step1` is at
+iteration 10 and will not finish before the code-server session expires.**
+(2026-11-23, user: "once barrier logged and pushed keep working autonomously
+until code server expires")
+
+## 1. `ringopen` had to follow `step2`, and its own comment says why
+
+¶319 repointed `step2`'s reactant to `attackmin9` and I left `ringopen` on
+`attackmin`, reasoning that the scan is a path-finder whose endpoints get
+re-minimised afterwards. That reasoning missed what `ringopen`'s own comment was
+written to secure, in its own words: *"`attackmin` is also `step2`'s own reactant
+- so the NEB's reactant and this scan's point 0 are one file by construction
+rather than by coincidence."* Repointing one and not the other broke exactly that
+property, leaving leg 2's scan walking from a different intermediate than leg 2's
+NEB starts from - ¶316's lineage mismatch, one stage down.
+
+    DRY RUN - config.yaml not touched. Checks passed for: scan_ringopen
+    sbatch -J ringopen -p general --cpus-per-task=8 --mem=32G -t 24:00:00 ...
+
+Validated against the new structure, which matters because the selectors are
+re-checked in it. `start` stays omitted, so point 0 now records `attackmin9`'s
+own C4x-N1x rather than the 1.485 Å measured on `attackmin` - which is precisely
+why no number was ever written there (¶314). Not submitted: that is compute.
+
+## 2. `state.md` was still telling the next run to restrain a voided distance
+
+`state.md` records ¶216's void correctly in three places - the 2.76 Å row is
+marked "**VOID as a wild-type value**", the open-question row says 6DQH answers
+it, and the ¶277 graft paragraph notes the carboxylate is "OUTSIDE the 3 Å
+restraint radius". But two PRESCRIPTIVE rows were never updated:
+
+    item 0, line 686   "Targets: **OD2 2.76 Å, OD1 3.90 Å** from the
+                       superposition" - marked "settled, re-confirmed"
+    gate 2, line 759   "**Gate STANDS** ... Judge at **2.76 Å**"
+
+So a reader following the table would restrain Asp92 at 2.76 and judge
+convergence against it, while the same file says that number is void. **This is
+¶112's failure mode exactly** - "the verdict was never carried across" - and it
+is the one that put the running system into a state M1 had rejected.
+
+Both now carry the void inline, with 6DQH's **OD1 4.28 / OD2 5.14 / CG 5.15** at
+1.10 Å resolution and the reason the superposition cannot measure it (6NC5's
+ZN302 into **apo** 6DN4 measures where an apo carboxylate sits relative to where
+a metal would be). The gate itself is kept rather than deleted: the collapse
+toward 2.0 Å it was written against is a real artefact (¶173/¶177), but a run
+landing near 2.76 is now FAILING it, not passing.
+
+**One consequence is flagged and NOT acted on.** At 5.14 Å the carboxylate is
+outside the user's 3 Å restraint radius, so whether Asp92 is restrained at all
+changes - and "everything within 3A should be restrained" is a standing hard
+rule. That is the user's call; no section was touched.
+
+## 3. `step1`'s progress, and it will not land in this session
+
+    iteration  3   0.2748      (04:40 area)
+    iteration  5   0.2716      04:41:37
+    iteration 10   0.2583      ~04:48
+
+Springs uniform at [5.] across all 13, no blow-up, the convergence column falling
+monotonically but slowly (~0.0027 an iteration over the last five). 10 iterations
+in ~12 min is ~70 s each, against ¶315's 34 s on the old endpoints - so
+¶315's 63-iteration count is not a promise here, and 53 more iterations is ~60
+min against the ~35 min the OnDemand session has left. The job is unaffected by
+the session ending; only my ability to read it is.
+
+**So the barrier is not in this entry.** The checks to run on it before `saddle1`
+are in ¶324, and `saddle1` cannot be pre-submitted (¶324's structural reason).
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
