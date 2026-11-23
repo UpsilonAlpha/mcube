@@ -17892,6 +17892,133 @@ the bottom. Filter it: `grep -Ev '^   >' ` or grep for `DRY RUN|NOT WRITING`.
 Recorded in `binder-physics/docs/BUNYA_BROWSER_SHELL.md` as well, since that is
 the document for the bridge.
 
+**¶320 - THE NEBs AND THE TS ARE SPLIT. All four `neb` sections move to
+`method: neb`, and `saddle1`/`saddle2` do the TS optimisation - which meant
+WRITING them, because as skeletons they had no QM region, no charge, and an
+inherited `actradius: 8` against the NEB's 9. That last one is ¶207's
+two-surfaces bug a THIRD time and the only instance that would have landed on
+the published barrier. Dry-run refuses all four on absent structures ONLY, with
+no `require` problem, which is the correct state.** (2026-11-23, user: "neb then
+ts")
+
+## Why this is the right half of the choice, and not only on memory
+
+The user chose it over raising `mem` on `nebts`, and three things favour it:
+
+    the OOM        33304392 converged the NEB in 2123 s and then died
+                   OUT_OF_MEMORY in the saddle optimisation, losing the NEB with
+                   it (¶315). Split, a converged path is saved before anything
+                   expensive starts
+    the diagnostic `check_path_shape` is called at `neb.py:240`, AFTER
+                   `neb_function` returns - and `nebts` runs the saddle
+                   optimisation INSIDE that call, so the diagnostic for exactly
+                   the defect of ¶317 was stranded behind the step that killed
+                   the job (¶318). With `method: neb` it is reachable
+    the sequence   `qm-levels.md` step 3 already prescribes scan/neb at xTB to
+                   find the path, THEN `ts` to re-optimise the stationary points
+                   (¶309 §5). `nebts` was the deviation, not this
+
+## The ASH facts that make it safe, read rather than assumed
+
+    interface_knarr.py:348   def NEB(..., CI=True, free_end=False, ...)
+    interface_knarr.py:642   ASH_Results(label="NEB-CI calc", energy=...,
+                             saddlepoint_fragment=Saddlepoint_fragment, ...)
+    interface_knarr.py:619   ASH_Results(label="NEB-CI calc (fail)") - no
+                             saddlepoint, which mcube reports and returns on
+
+So plain `NEB` is already climbing-image, and it returns the
+`saddlepoint_fragment` that `neb.py:251` writes as `saddlepoint.pdb`.
+`saddle1`/`saddle2`'s input is therefore unchanged by this, which is the whole
+reason the split costs nothing. Had `CI` defaulted to False the split would have
+needed `CI: true` adding, and the saddles would have had no input at all.
+
+## Writing the saddles, and the three hazards in them
+
+They were four keys of intent. What was missing:
+
+    qm_residues   ABSENT here AND in the base `qmmm.inputs` (which has
+                  forcefields, cores, temp, timestep, mult, actradius,
+                  opt_maxiter, actregion_origin - and no QM region), so there was
+                  nothing to resolve
+    charge        ABSENT in both. `ts` reads it from the section first and
+                  `qmmm.inputs` as a fallback; the base block has `mult: 1` and
+                  no charge
+    actradius     inherited **8** from the base block. The NEB producing the
+                  input runs 9
+
+**The third is the serious one.** A TS refined with 184 fewer atoms free than the
+path it came from is the same defect as ¶317's, one stage later, and it would
+have been the published barrier rather than an intermediate quantity. It also
+shows the genus is not specific to NEB endpoints: ¶207's bug is "the movable set
+of the structure differs from the movable set of the calculation consuming it",
+and the base block's `actradius: 8` propagates that into every stage that does
+not override it.
+
+All three are now stated and held by `require.equals: {charge: 2, rigid_water:
+false, actradius: 9, tsopt: true, freq: true}`, with `*qmreg_michrks` - the same
+anchor the NEBs and both endpoints use - and `same_as: {section: saddle1, except:
+[pdb_file, hessian_atoms, monitor]}` on `saddle2` so the two saddles are one
+model.
+
+**`qm_engine` stays unset and is gated by `require.unset`.** The DFT level is
+still undecided and still the user's (¶309 §5: wB97X-V/def2-SVP at ~1.8 h per
+gradient versus r2SCAN), and this is the section it would eventually go on.
+
+## Cost, with the one guessed number named
+
+At ¶315's measured 2.80 s per xTB/MM gradient the frequencies are free - 6
+gradients per Hessian atom over five atoms is ~90 s. The TS optimisation and the
+two IRC minimisations are each full active-region optimisations over 665 atoms,
+so each costs what a `qmmm` run costs: ~8 h at `aspxtb8`'s 103 steps, ~26 h for
+all three, inside 48 h. At the `opt_maxiter: 300` ceiling it is ~60 h and is not,
+and the lever then is `irc: false` on a first pass plus a separate IRC run, not
+more wall time. **`mem: 32G` is a guess** - it is what every `qmmm` optimisation
+here uses and this holds one OpenMM system rather than fourteen, so it is not the
+32 G that failed in ¶315, but it is not measured.
+
+## Validated, and the refusal is the right one
+
+    python sections.py site.yaml step1 saddle1 saddle2 --dry-run
+    NOT WRITING. Problems:
+      - step1: reactant_pdb missing: protdft/qmmm_reactmin9/QM_MM_optimized.pdb
+      - step1: product_pdb missing: protdft/qmmm_attackmin9/QM_MM_optimized.pdb
+      - saddle1: pdb_file missing: protdft/neb_step1/saddlepoint.pdb
+      - saddle2: pdb_file missing: protdft/neb_step2/saddlepoint.pdb
+
+**Absent structures only, and no `require` problem**, which matters because
+`sections.py` runs the `require` checks even for a section whose structure is
+missing - the problems accumulate rather than short-circuiting. So every gate
+added here is satisfied, and the four sections are refused for the one correct
+reason: the jobs that produce their inputs have not finished. That is the state
+¶309 called "the correct state for a barrier whose product has not been found".
+
+## The product arm switched too, and is still blocked
+
+`pstep1`/`pstep2` move to `method: neb` for the same reason - leaving `nebts`
+there would have left a known OOM waiting - but they remain blocked on ¶300's
+third blocker, charge 0 and `qmreg_prod` against the reactant arm's charge 2 and
+`*qmreg_michrks`, and need rebuilding in one scheme regardless. `psaddle1`/
+`psaddle2` are deliberately NOT written: they would need a QM region that is
+itself undecided.
+
+## State
+
+    the chain      reactmin9 + attackmin9 (running) → step1 (`neb`) → saddle1
+                   (`ts`: tsopt, freq, IRC). Same for leg 2 once ringopen and a
+                   free minimum at 9 Å from its last point exist
+    submit next    step1, as soon as 33317685/33317686 write their
+                   QM_MM_optimized.pdb. Run `frozen_check.py` on the new pair
+                   first - it costs nothing and 9 Å is not guaranteed to pass on
+                   a new pair (¶312)
+    still true     any `saddlepoint_energy` from a `neb` section is wrong by
+                   hartoeV^2 in the ActiveRegion branch (¶309/¶315,
+                   `interface_knarr.py:1176` against `:1208`). Check it against
+                   `max(mep_energies)`. `ts` recomputes its own energies
+    still unbuilt  the `sections.py` gate tying a section's `qm_residues` and
+                   `actradius` to the section that produced its input (¶318).
+                   Three instances of that defect have now been found by hand
+    ringopen       written, dry-run clean, not submitted (¶314)
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
