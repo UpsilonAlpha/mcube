@@ -679,6 +679,65 @@ Every one of these was a *reading* failure, not a computing failure.
 
 ## 4. The plan (audit `audit-2026-11-02.md`, adopted in ¶178)
 
+### 4z. THE MECHANISM CHAIN, as of 2026-11-23 — read this before touching leg 1
+
+The one place the live chain is stated. Written after ¶317-¶327 rebuilt it; if it
+disagrees with an entry below, this is newer.
+
+    reactmin9    DONE  33317685, 61 steps.  -439.97112777  (xtb -198.60188166,
+                       MM -241.36924611).  9 Å, 665 active, 129 QM
+    attackmin9   DONE  33317686, 53 steps.  -439.95772247  (xtb -198.58029981,
+                       MM -241.37742266).  9 Å, 655 active, 129 QM
+    step1        RUNNING 33319693, `method: neb`, 665 active, 129 QM
+    saddle1      READY, needs step1's saddlepoint.pdb. Cannot be pre-submitted
+    ringopen     READY on attackmin9, dry-run clean, NOT submitted
+    step2        blocked: its product is still a constrained scan point
+    saddle2      READY, needs step2
+
+**The reaction energy, and it is the first usable number from this chain:**
+**+8.41 kcal/mol** for the tetrahedral intermediate above the Michaelis complex
+(QM +13.54, MM -5.13). The same two structures before re-minimisation gave
+**-25.10**, i.e. the product apparently downhill. Under an attack scan whose
+maximum is 14.24 (¶308) and beside CphA's ~14 kcal/mol PMF, +8.41 is the shape a
+tetrahedral intermediate should have. Potential energy, not free energy
+(¶207 reason 1): never set it beside a PMF as the same quantity.
+
+**Why the whole chain was rebuilt today.** `step1`'s first run (33304392) put
+every interior image ~100 kcal/mol below both endpoints. ¶317 decomposed it:
+all of it was MM, because the NEB frees 665 active atoms where the 8 Å
+endpoints had relaxed 481. ¶318 identified that as ¶207's two-surfaces bug in a
+second costume, and ¶322 confirmed it by re-minimisation - the product endpoint
+fell 98.70 kcal/mol, of which 99.66 is MM while the QM term ROSE 0.96, so the
+first shell was already right and only the environment moved.
+
+**The rule that came out of it, and it holds for every stage, not just NEB:**
+
+> The active region must contain every atom that differs between the endpoints
+> (or ASH's midpoint switch is real), AND every structure must be optimised with
+> the region of the calculation that consumes it (or it is not a minimum of it).
+> `frozen_check.py` checks the first. **Nothing checks the second.**
+
+Three instances found by hand so far: rigid waters (¶207), `actradius` 8-against-9
+on the NEB endpoints (¶317), and `saddle1`/`saddle2` inheriting `actradius: 8`
+from the base `qmmm.inputs` while refining a 9 Å path (¶320) - the last of which
+would have landed on the published barrier. The `sections.py` gate for it is
+proposed and **unbuilt** (¶318).
+
+**Reading rules for anything out of this chain:**
+
+    saddlepoint_energy   WRONG by hartoeV^2 in ASH's ActiveRegion branch
+                         (`interface_knarr.py:1176` vs `:1208`). Use
+                         `max(mep_energies)`
+    knarr_MEP_FULL.xyz   mixes units - endpoints in Eh, interior frames in eV
+    check_path_shape     now reachable, since `method: neb` no longer hides it
+                         behind a saddle optimisation. If it fires with a large
+                         drop, ¶318/¶323's radius story is wrong
+    an explicit actatoms list   REFUSED by design (D115). Set `actradius` and
+                         `actregion_origin` and let each run re-derive
+    step rate            14-17 s per optimiser step at 665 active atoms
+                         (¶321). The channel project's ~159 s/step does NOT
+                         transfer - those runs held waters rigid
+
 Items 1–3 gate everything below them. **Status is maintained here.**
 
 | # | Item | Status |
