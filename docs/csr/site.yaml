@@ -1580,9 +1580,21 @@ sections:
   # does not compute their barrier. `charge` is now refused by name rather than
   # defaulted (¶291), so this would have failed loudly - but it should be right,
   # not merely loud.
+  # `cores: 12`, one per image, and that is a correctness-free but 2x choice:
+  # `neb.py` sets `neb_workers = min(images, cores)` and `theory_cores =
+  # cores // neb_workers`. At 8 cores with 12 images that is 8 workers and 1
+  # core each, so every NEB iteration computes its gradients in TWO waves of
+  # 8 and 4 - about twice the wall clock for the same work. At 12 it is one
+  # wave of 12, still 1 core per xTB. Thread binding is off for this stage by
+  # `thread_policy` (`cli.py`), which is what makes parallel images safe:
+  # bound, all twelve would land on the same cores.
+  #
+  # The 48 h is still a guess (¶252: "Not measured by anything this project has
+  # run"), and this is the run that replaces it. Time it with `seff` and write
+  # the number here.
   step1:                       # NEB over the attack
     stage: neb
-    submit: {partition: general, cores: 8, mem: 32G, time: "48:00:00"}
+    submit: {partition: general, cores: 12, mem: 32G, time: "48:00:00"}
     require:
       unset: [qm_engine]
       equals: {charge: 2, images: 12, method: nebts, interpolation: idpp,
@@ -1602,7 +1614,7 @@ sections:
 
   step2:
     stage: neb
-    submit: {partition: general, cores: 8, mem: 32G, time: "48:00:00"}
+    submit: {partition: general, cores: 12, mem: 32G, time: "48:00:00"}
     require:
       unset: [qm_engine]
       equals: {charge: 2, images: 12, method: nebts, interpolation: idpp,
