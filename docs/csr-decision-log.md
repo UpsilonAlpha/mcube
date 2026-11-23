@@ -18562,6 +18562,29 @@ rather than mtimes.
 decision about whether mcube should clear a section's directory on re-run, which
 is a change to shared code.
 
+## The post-NEB phase, and a message to check rather than assume
+
+At 05:21, 44:25 into the job and ~16 minutes after NEB-CI converged, the output's
+last line was:
+
+    Error: Could not grab polarizability from QM-part of QM/MM theory.
+
+with the gradient count past 182 and still rising, and no `saddlepoint*` file.
+**Polarizability is a NumFreq concern, so ASH appears to be running a frequency
+step of its own at the climbing image** - `numfreq: false` governs only mcube's
+NumFreq call (`neb.py`'s `if neb_inputs.get("numfreq", True)`), not anything ASH
+does inside `NEB`. `knarr_mode.xyz` and `CItangent.xyz` in the directory are
+consistent with that: NEB-CI wants the TS mode.
+
+If so, `Numfreq_dir`, `ASH_NumFreq.result`, `Hessian_from_partial` and
+`smallhessian` may be THIS run's after all rather than the stale `nebts` files
+the section above takes them for - the `geometric_OPTtraj*` set is still stale,
+since `method: neb` runs no geomeTRIC. **Resolve it by mtime, not by reasoning**,
+which is the same rule the stale-`saddlepoint.pdb` trap needs. Stated as a
+question because it was not settled before the session expired: at ~2.8 s a
+gradient (¶315), 6 per Hessian atom over 129 QM atoms is ~774 gradients and
+~36 minutes serially, which would account for the tail.
+
 ## What the next session does, in order
 
     1  check the job: `squeue -j 33319693`, then `grep -nE
