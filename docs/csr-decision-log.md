@@ -17294,7 +17294,9 @@ user's to make; recording that 31.97 GB was not enough is this entry's job.
                      interior image, read from the ActiveRegion code, BEFORE
                      another NEB is submitted. Costs no compute.
 
-**¶316 - ¶315's question is answered and its direction of error was backwards.
+**[ATTRIBUTION CORRECTED by ¶317 - the cause is the active-region
+radius, not ASH's midpoint switch. The measurements stand. See
+`csr/retractions.md`.]** **¶316 - ¶315's question is answered and its direction of error was backwards.
 The FROZEN ENDPOINTS ARE CORRECT - image 13's energy equals `attackmin`'s own
 converged energy to 0.044 kcal/mol - so it is every INTERIOR image that is ~100
 kcal/mol too low. ¶309's midpoint switch is not a no-op; it is where the defect
@@ -17455,6 +17457,128 @@ but it inherits the interior-energy artefact in full.
     ringopen           written, dry-run clean, not submitted (¶314)
     sections.py        proposed: a gate tying a section's `qm_residues` to the
                        section that produced its input structure
+
+**¶317 - THE TEST RAN AND IT WAS FREE. The ~100 kcal/mol is **entirely in the
+MM energy** - the QM energy is flat to 1 kcal/mol across the whole path - and the
+cause is that **the NEB's 665-atom active region is bigger than either endpoint
+was ever optimised with**. `attackmin` relaxed 481 atoms at 8 Å; the NEB frees
+665 at 9 Å, so 184 atoms move for the first time and the MM energy falls off a
+cliff at image 1. ¶309's midpoint switch is NOT implicated and ¶316's
+attribution to it is WITHDRAWN: image 13 reproduces `attackmin`'s own xtb AND
+OpenMM components to 0.04 kcal/mol.** (2026-11-23, user: "Run it")
+
+**No job was submitted.** The user authorised a single point to decide this, and
+the authorised question turned out to be answerable from files already on disk:
+each `Pooljob_image_N/energy` holds that image's xtb energy, and the QM/MM total
+is `xtb + OpenMM` exactly (verified on `attackmin`, whose own log prints both).
+Subtracting gives the MM term per image for nothing. Also: mcube has no stage
+that would have run the authorised test - `sp` is PySCF/DFT in its QM/MM branch
+and xTB only in `cluster` mode, which has no MM at all - so the job would have
+had to be new code as well as new compute.
+
+## The decomposition, and it is exact
+
+    image   xtb (Eh)        MM (Eh)         total (Eh)      dE vs img 0
+      0    -198.59983268   -241.16051532   -439.760348        0.00    frozen R
+      1    -198.60098699   -241.33962501   -439.940612     -113.12
+     11    -198.58159853   -241.38348747   -439.965086     -128.47
+     12    -198.58161463   -241.37104937   -439.952664     -120.68
+     13    -198.58177039   -241.21858461   -439.800355      -25.10    frozen P
+
+    img 0 -> 1    dQM  -0.72   dMM  -112.39   total  -113.12  kcal/mol
+    img 13 <- 12  dQM  +0.10   dMM   -95.68   total   -95.58  kcal/mol
+
+Both totals reproduce the Summary table's own dE differences to the last digit
+(-113.1175, and 120.6802-25.1049 = 95.5753), so the arithmetic is the run's, not
+mine. **The QM energy spans 11.4 kcal/mol over all fourteen images** - barrier
+scale, and in line with the attack scan's 14.24 (¶308). Everything anomalous is
+in the MM term.
+
+**And image 13 is `attackmin` exactly**, component by component:
+
+    attackmin's own job   xtb -198.58182824   OpenMM -241.21859754
+    NEB image 13          xtb -198.58177039   MM     -241.21858461
+    difference                   0.04 kcal/mol        0.008 kcal/mol
+
+## So the splice is faithful, and ¶316 blamed the wrong thing
+
+¶316 concluded that ASH's midpoint switch (¶309) "is where the defect lives".
+It is not. The switch rebuilds each image's full coordinates from the nearer
+endpoint, and if it were corrupting anything the endpoint it reproduces would not
+come back identical in both components. It does. ¶310 and ¶312 were right that
+the switch is a no-op here, and ¶316 overturned a correct conclusion on the
+strength of a pattern it had not yet decomposed. Withdrawn in
+`csr/retractions.md`.
+
+## The actual cause, and it is ours
+
+    attackmin   actradius 8   Active region size: 481
+    aspxtb8     actradius 8   479
+    step1       actradius 9   665   <- what the NEB freed
+
+**665 - 481 = 184 atoms that the NEB lets move and `attackmin` held rigid.** They
+are the outer shell of the active region: ordered water and second-shell
+side chains, held at whatever geometry the lineage behind them happened to leave,
+and never minimised under step1's own Hamiltonian. The NEB frees them at image 1
+and the MM energy drops 112 kcal/mol, then the path proceeds normally - which is
+why the interior images agree among themselves to ~12 kcal/mol while both
+endpoints stand ~100 kcal/mol clear of them, and why the interior profile is
+jagged (184 newly mobile MM atoms relaxing differently in different images, not
+chemistry).
+
+**¶312's radius decision and the endpoint decision are coupled, and nothing in
+the project noticed.** ¶312 widened 8 → 9 because `frozen_check.py` measured 30
+displaced atoms outside the 8 Å region and the frozen environment has to be
+identical at both ends. That reasoning was right. What it did not see is that
+widening the region past what the endpoints were optimised at is precisely what
+makes the endpoints non-stationary on the NEB's surface. `frozen_check.py`
+enforces one condition and silently breaks another, and ¶312's "0.52 Å margin"
+bought the first at the cost of the second.
+
+**¶252's "one radius, two regions" was retired too early.** The summary of ¶309
+said it "does not apply INSIDE a NEB" because `neb.py` resolves one region from
+the reactant - true, and irrelevant. It applies between the endpoint
+OPTIMISATIONS and the NEB, which is a boundary nobody was looking at. Even at
+`actradius: 8` it would bite: the NEB resolves 479 on the reactant while
+`attackmin` relaxed 481 on its own input, so the two sets differ whatever the
+radius is.
+
+**The condition a NEB endpoint has to satisfy, stated properly for the first
+time:** an endpoint must be a minimum of the NEB's OWN active region and QM
+region, not of its own. Since `neb.py` resolves the region from the reactant,
+the order is: resolve the region, minimise both endpoints with exactly that
+region, then run the NEB. mcube cannot express that today - there is no way to
+hand a `qmmm` section an explicit active-atom list - though `actatoms_record`
+already writes `active_atoms_used` for every run, so the data to pin it with
+exists.
+
+## What ¶316's second finding is worth, now that it is measured
+
+The QM-region mismatch is real and still stands: `aspxtb8` ran 124 QM atoms,
+`step1` runs 129. But it is NOT the main term, and ¶316 implied it was. The QM
+region is identical across all fourteen images, so it cannot produce any
+inter-image difference at all; and the reactant's relaxation is 99.4% MM
+(dQM -0.72 of dE -113.12), so putting Ser186's side chain into QM contributes
+little to the spike. The 184-atom relaxation accounts for ~95 kcal/mol on its own
+- that is the product's figure, where there is no QM-region mismatch - and the
+reactant's extra ~17 kcal/mol is where the Ser186 change and the older lineage
+live. Both endpoints need re-minimising either way.
+
+## State
+
+    cause              established: endpoints not minima of the NEB's active
+                       region. 184 atoms free in the NEB, rigid in attackmin
+    not the cause      ASH's midpoint switch (¶309) - splice verified faithful
+    still a defect     aspxtb8 at 124 QM atoms vs the NEB's 129, but small
+    the fix            minimise BOTH endpoints with the NEB's own actradius and
+                       qm_residues, then run. Two jobs, not written: the user's
+    a third ASH bug    `knarr_MEP_FULL.xyz` mixes units - endpoint frames in Eh,
+                       interior frames in eV (`Image 1. Energy:
+                       -11971.393925687722`). The Summary table is clean; that
+                       file is not, and anything reading it gets 12 frames wrong
+    mcube gap          no stage does a GFN2 xTB/MM single point on a solvated
+                       system, and no way to pin an explicit active-atom list
+    ringopen           written, dry-run clean, not submitted (¶314)
 
 ## Resources (see `running-on-bunya.md`)
 

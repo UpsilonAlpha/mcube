@@ -1686,16 +1686,57 @@ sections:
   # 13's energy (-439.800355) is `attackmin`'s own converged energy
   # (-439.80042578) to 0.044 kcal/mol, so the frozen endpoints are CORRECT and
   # image 12 sits 95.6 kcal/mol BELOW a converged minimum of its own surface.
-  # ¶309's midpoint switch is therefore not a no-op - it is where the defect
-  # lives, and the geometry argument that made it look harmless was right about
-  # geometry and silent about energy. ASH's own code prints `Warning:
-  # NEB-parallel with ActiveRegion is highly experimental` for every image of
-  # every iteration in this mode (`interface_knarr.py:1023`).
   #
-  # Cheapest test, one job: `sp` on `knarr_MEP_FULL.xyz` frame 12 at 129 QM
-  # atoms against -439.952664. Agreement means the interpolated geometries
-  # themselves are unphysical; disagreement means only the NEB's energies are,
-  # and the MEP geometries may survive.
+  # **¶317 then decomposed it, and the cause is THIS SECTION'S `actradius`.**
+  # Each image's xtb energy is in its own `Pooljob_image_N/energy`, and a QM/MM
+  # total is `xtb + OpenMM` exactly, so the MM term comes out by subtraction for
+  # free:
+  #
+  #     image    xtb (Eh)        MM (Eh)         total (Eh)
+  #       0     -198.59983268   -241.16051532   -439.760348   frozen reactant
+  #       1     -198.60098699   -241.33962501   -439.940612
+  #      12     -198.58161463   -241.37104937   -439.952664
+  #      13     -198.58177039   -241.21858461   -439.800355   frozen product
+  #
+  #     img 0 → 1     dQM -0.72   dMM -112.39  kcal/mol
+  #     img 13 <- 12   dQM +0.10   dMM  -95.68  kcal/mol
+  #
+  # **All of it is MM. The QM energy spans 11.4 kcal/mol over all fourteen
+  # images** - barrier scale, in line with the scan's 14.24. And the cause:
+  #
+  #     attackmin   actradius 8   481 active atoms
+  #     aspxtb8     actradius 8   479
+  #     step1       actradius 9   665    <- 184 atoms the NEB frees
+  #
+  # Those 184 atoms - the outer shell of ordered water and second-shell side
+  # chains - were RIGID in `attackmin` and are mobile here, so they relax at
+  # image 1 and the MM energy falls off a cliff. The endpoints are not minima of
+  # THIS section's active region, and that is the whole artefact.
+  #
+  # **So ¶312's radius choice and the endpoints are coupled, which nothing
+  # noticed.** Widening 8 → 9 was right for the reason ¶312 gave - 30 displaced
+  # atoms outside the 8 Å region - and widening past what the endpoints were
+  # optimised at is exactly what makes them non-stationary. `frozen_check.py`
+  # enforces one condition and silently breaks the other. ¶252's "one radius,
+  # two regions" applies here after all: not inside the NEB, but between the
+  # endpoint OPTIMISATIONS and the NEB. Even at 8 Å it bites, since the NEB
+  # resolves 479 on the reactant while `attackmin` relaxed 481 on its own input.
+  #
+  # **ASH's midpoint switch (¶309) is NOT implicated** and ¶316's attribution
+  # to it is withdrawn: image 13 reproduces `attackmin`'s xtb AND OpenMM
+  # components to 0.04 and 0.008 kcal/mol, so the splice is faithful. ASH does
+  # print `Warning: NEB-parallel with ActiveRegion is highly experimental` for
+  # every image of every iteration here (`interface_knarr.py:1023`), and a third
+  # ASH defect is real but cosmetic: `knarr_MEP_FULL.xyz` writes its endpoint
+  # frames in Eh and its interior frames in eV.
+  #
+  # **The condition a NEB endpoint must satisfy, stated properly:** it has to be
+  # a minimum of the NEB's OWN active region and QM region, not of its own.
+  # `neb.py` resolves the region from the reactant, so the order is: resolve the
+  # region, minimise both endpoints with exactly that region, then run. mcube
+  # cannot express that today - no `qmmm` section can be handed an explicit
+  # active-atom list - although `actatoms_record` already writes
+  # `active_atoms_used` for every run, so the data to pin it with exists.
   #
   # ---- AND `step1`'s REACTANT IS THE WRONG STRUCTURE (¶316) ----
   #
@@ -1711,8 +1752,15 @@ sections:
   # ¶309's reading of `scan.py` condemned `scan_15` as its product. Ser186
   # HG...O01 is 1.843 Å to an anionic nucleophile (¶303) and ¶282 voided
   # exactly that contact as an MM artefact: a geometry optimised with it as MM
-  # is not stationary once it is QM. That is the reactant's 113.1 kcal/mol drop
-  # at image 1, and it is ours, not ASH's.
+  # is not stationary once it is QM.
+  #
+  # ¶317 sized it: this is NOT the main term. The QM region is identical across
+  # all fourteen images, so it cannot produce any inter-image difference at all,
+  # and the reactant's relaxation is 99.4% MM (dQM -0.72 of dE -113.12). The
+  # 184-atom radius effect accounts for ~95 kcal/mol on its own - that is the
+  # product's figure, where there is no QM-region mismatch - leaving the
+  # reactant's extra ~17 for Ser186 and the older lineage. Still a defect, still
+  # ours, and still needs fixing; just not the big one.
   #
   # **So `step1` needs a 129-QM-atom re-minimisation of its reactant before it
   # is repeated at all**, whatever happens to the ASH defect. Not written here:

@@ -362,3 +362,24 @@ taken from file fetches and are unaffected; only the explanation was wrong.
 `: > $CCL` as the first command of every round and put `date` at the top, use a
 distinctive variable prefix rather than a bare letter, and probe a shell before
 trusting it.
+
+## ¶316 - "¶309's midpoint switch is not a no-op; it is where the defect lives"
+
+**Withdrawn in ¶317, 2026-11-23.** Decomposing the same run's energies into
+their xtb and OpenMM parts - from `Pooljob_image_N/energy`, already on disk -
+shows the ~100 kcal/mol is entirely MM, and that NEB image 13 reproduces
+`attackmin`'s own xtb and OpenMM components to 0.04 and 0.008 kcal/mol. A splice
+that returns an endpoint identical in both components is not corrupting the
+geometry it splices. ¶310 and ¶312 were right that the midpoint switch is a
+no-op here, and ¶316 overturned a correct conclusion from a pattern it had not
+decomposed.
+
+The real cause is ours: the NEB frees 665 active atoms where `attackmin` relaxed
+481, so 184 atoms move for the first time in the NEB and the MM energy falls
+~112 kcal/mol at image 1. ¶316's measurements all stand - the endpoints ARE
+correct, the interior images ARE ~100 kcal/mol below them, and `aspxtb8` really
+did run 124 QM atoms against the NEB's 129 - and so does its conclusion that
+nothing from job 33304392 is usable. Only the attribution was wrong.
+
+**The rule this earns:** do not attribute a magnitude to a mechanism before
+decomposing it, when the components are sitting in the run directory.
