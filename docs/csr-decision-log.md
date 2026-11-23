@@ -18058,6 +18058,77 @@ a cost rather than an energy - I extrapolated a rate across a change in the
 optimiser's constraint treatment when the measurement was twelve minutes away in
 a running job. Read `optimization_energies.log`; it has one line per step.
 
+**¶322 - ¶317 IS CONFIRMED BY AN INDEPENDENT MEASUREMENT, NOT JUST BY
+DECOMPOSITION. `attackmin9` converged in 53 steps and the product endpoint fell
+**98.70 kcal/mol** - of which **99.66 is MM and the QM term went UP 0.96** - and
+it landed BETWEEN the failed NEB's interior images. The endpoint came down to
+meet the path, which is what ¶317 said would happen and the sharpest test it
+could have had.** (2026-11-23, job 33317686)
+
+    geomeTRIC Geometry optimization converged in 53 steps!   converged: True
+    energy : -439.95772247274607
+    xtb energy    : -198.58029980898
+    OpenMM Energy : -241.37742266376608 Eh
+
+The two components sum to -439.95772247274608, i.e. to the printed total in the
+last digit, which is ¶317's identity holding on a run that was not used to
+derive it.
+
+## The drop, component by component
+
+    attackmin  (8 Å, 481 free)   total -439.80042578
+                                 xtb   -198.58182824   MM -241.21859754
+    attackmin9 (9 Å, 655 free)   total -439.95772247
+                                 xtb   -198.58029981   MM -241.37742266
+
+    total  -0.15729669 Eh  =  -98.70 kcal/mol
+    xtb    +0.00152843 Eh  =   +0.96      the QM energy goes UP
+    MM     -0.15882512 Eh  =  -99.66      all of it, and more
+
+**The QM term rising is the point.** If the 8 Å endpoint had been a poor
+CHEMICAL geometry the QM energy would have fallen too. It rises by ~1 kcal/mol,
+so the first shell was already where it should be and what moved was the MM
+environment - the 184 atoms ¶317 named, relaxing for the first time.
+
+## And it lands inside the failed NEB's interior band
+
+    NEB image 11   -439.965086    MM -241.38348747   (the lowest interior image)
+    attackmin9     -439.957722    MM -241.37742266
+    NEB image 12   -439.952664    MM -241.37104937
+
+`attackmin9`'s MM sits **3.8 kcal/mol** above image 11's and **4.0 below**
+image 12's, which satisfies ¶319's pre-registered condition ("the MM energies
+must come within a few kcal/mol of each other") on the product side. Its total is
+3.1 kcal/mol below image 12, which is what a converged minimum should be relative
+to a nearby interpolated point.
+
+**So the failed run's interior images were right and its endpoints were wrong**,
+exactly as ¶316 measured and ¶317 attributed. ¶317's number for the product
+side was a 95.58 kcal/mol gap between images 13 and 12; re-minimising closed
+98.70 of it and carried the endpoint 3.1 past image 12, which is the expected
+overshoot rather than a discrepancy.
+
+## Caveat kept explicit
+
+`attackmin9` relaxed **655** atoms and the NEB will free whatever it derives on
+`reactmin9`'s output - 665 on the old reactant. So this is a minimum of a region
+ten atoms narrower than the path's, which is ¶319's stated ten-atom tail and
+not a new problem. `frozen_check.py` on the finished pair is what sizes it, and
+it costs nothing.
+
+## State
+
+    attackmin9   DONE, 53 steps, ~13 min. 33317686
+    reactmin9    still running at 16:15, past attackmin9's step count - it has
+                 more to settle, being the endpoint that also gained Ser186's
+                 side chain in QM (124 → 129)
+    next, free    `frozen_check.py` on the two outputs with `--origin B:1:ZN`
+                 and `--actatoms` from reactmin9's `active_atoms`. Attempted
+                 here and it correctly refused: reactmin9's PDB does not exist
+                 yet
+    then          `step1` is submittable - `method: neb` now, ¶320 - and that is
+                 compute, so it is the user's call
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
