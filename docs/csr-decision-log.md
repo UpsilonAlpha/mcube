@@ -16802,6 +16802,155 @@ comparable start, so this should be hours rather than the 24 h wall, and a
 polling job that cannot act on what it sees is one this project has agreed not
 to run.
 
+**¶311 - THE TETRAHEDRAL INTERMEDIATE IS REAL. `attackmin` converged in 5.9
+minutes and 40 gradients with nothing constrained, and it held: O01-C4x 1.446 Å,
+C4x-N1x 1.485 Å, and the carbonyl now a single bond at C4x-O2x 1.334 Å. So the
+attack IS an elementary step, `step1` and `step2` stand, and the scan's point-11
+maximum (14.24 kcal/mol) is a barrier belonging to two real minima. AND the
+¶310 check FAILED: 30 atoms move outside the 476-atom region `step1` would use -
+Trp21 and two boundary waters - so `step1` cannot run at `actradius: 8`.**
+(2026-11-23, user: "schedule a wakeup to catch the finish")
+
+**No wakeup was scheduled, because there was nothing to catch.** Job 33303644
+started 09:55:02 and printed `[DONE] qmmm_attackmin` at **10:00:54** - 352.1 s
+of ASH walltime, "Converged! =D" from geomeTRIC after 342.8 s, 40 OpenMM
+position updates. It had been finished for 49 minutes when the request arrived.
+`aspxtb8`'s 103 steps were the estimate and this took 40, because it started
+0.004 Å from its own minimum along the driven coordinate.
+
+## The result, against the readings pre-registered in `site.yaml`
+
+Freely optimised, no restraints, no constraints, `rigid_water: false`:
+
+    pair                  aspxtb8     attackmin     pre-registered
+    O01 - C4x              3.626        1.446       1.45-1.55
+    C4x - N1x              1.371        1.485       1.48-1.55
+    C4x - O2x              1.212        1.334       (not registered)
+    Zn - O2x               2.211        1.860
+    Zn - O01               1.776        2.365
+    Ser186 OG - O01        2.672        3.042
+    Lys226 NZ - O01        5.177        5.251
+    Zn - His88 NE2         2.063        2.116
+    Zn - His164 NE2        1.997        1.978
+    Zn - Asp92 OD1         5.830        5.303
+
+**Reading 1 is met, with one honest qualification: O01-C4x came out 1.446, which
+is 0.004 Å BELOW the window I wrote.** That window's lower edge was the scan's
+own endpoint value, so landing just under it is the structure relaxing *into* the
+bond rather than away from it, and the independent evidence settles it: **C4x-O2x
+has gone 1.212 → 1.334**, which is a C-O single bond and not a carbonyl, so C4x
+is sp3. A collapse back to the Michaelis complex was the competing reading and
+would have shown O01-C4x past ~2.5 Å with the carbonyl restored near 1.21. It
+did the opposite.
+
+So the other two pre-registered outcomes are **excluded**: there is an
+intermediate, `step1`/`step2` are not void, and `ringopen` remains a separate
+scan. C4x-N1x at 1.485 is lengthened from 1.371 but intact, which is step 2
+primed and not step 2 happening.
+
+**And it barely moved from `scan_15`** (1.450 / 1.485 / 1.861 / 2.361 / 3.016 /
+5.254). The free optimisation shifted the driven coordinate by 0.004 Å and the
+rest by less. Two things follow: the constrained endpoint was already essentially
+stationary, so ¶309's objection to using it was correct in principle and small in
+magnitude; and **the intermediate's basin is shallow**, which is what makes the
+0.56 kcal/mol the scan reported at point 15 credible as a near-thermoneutral
+step rather than an artefact of the restraint.
+
+Every monitor the `attack` scan pre-registered also holds at the free minimum:
+the oxyanion is on the only metal present (Zn-O2x 1.860), the nucleophile has
+been handed off it (Zn-O01 1.776 → 2.365), Ser186 released after holding
+through the approach (2.672 → 3.042), Lys226 is not the proton partner
+(5.2-5.3 throughout), and Asp92 stays in the second shell (5.303, consistent
+with ¶244/¶253's 5.14 and with 6DQH).
+
+## The ¶310 check failed, exactly where it was predicted to
+
+¶310 pre-registered this and said a FAIL was now possible because `attackmin`'s
+region came out at 481 while `step1` derives 476 from the reactant. It failed:
+
+    atoms differing between aspxtb8 and attackmin      504  (was 474 for scan_15)
+    largest displacement                              2.229 Å
+    outside scan_attack's 476-atom region                30   → FAIL
+    outside attackmin's own 481-atom region              25   (max 0.043 Å)
+
+The 30 are **Trp21** (26 atoms, 0.49 Å at worst) and **two waters, HOH 7338 and
+HOH A4A8**. HOH 7338 is the same water that made `aspxtb8`'s region 479 against
+the scan's 476 in ¶309 - a third appearance, which is the point: these are
+whole residues sitting on the 8 Å line, and which side they fall on depends on
+the structure the radius is derived from.
+
+The 25 outside `attackmin`'s own 481 are not a contradiction and not atoms it
+moved: they are atoms the *scan* moved, inside 476, which `attackmin` then
+froze. Their 0.043 Å is inherited, not created.
+
+**One speculation of mine was wrong and is withdrawn before it reaches anything.**
+I suspected the active region might be centred on meropenem rather than the
+metal, because `actregion_origin` is unset everywhere and `resolve_actatoms`
+falls back to `boundary_excluded[0]`, and ASH printed the meropenem atoms as the
+boundary-exclusion list. Measured: **atom 4203 is `B:1:ZN`**, so the sphere is
+metal-centred as `running-on-bunya.md` says. The region reaching 15.68 Å from
+the Zn is whole-residue selection, not a displaced origin.
+
+## What it takes to fix, computed rather than guessed
+
+`actregiondefine` takes whole residues with any atom inside the radius, so the
+threshold is each offending residue's nearest approach to the Zn **in the
+reactant geometry `step1` derives on**:
+
+    Trp21        8.22 Å
+    HOH 7338     8.08 Å
+    HOH A4A8     8.48 Å
+
+Predicted region sizes and whether all 504 displaced atoms fall inside:
+
+    actradius   active atoms   displaced atoms outside
+      8.0           476              30      FAIL
+      8.5           582               0      pass, 0.02 Å of margin
+      9.0           665               0      pass, 0.52 Å of margin
+      9.5           732               0
+     10.0           799               0
+     12.0          1097               0
+
+**The prediction reproduces ASH's own number exactly at 8 Å - 476 atoms - which
+is why it is quoted here rather than being run first.** It still has to be
+confirmed by `actregiondefine` on Bunya before anything is submitted.
+
+**8.5 Å is the minimum and should not be chosen.** It clears the worst offender
+by 0.02 Å, and a 0.02 Å margin on a boundary residue is precisely the condition
+that produced this failure three times over. **9 Å** gives 0.52 Å of headroom at
+665 active atoms - 39% more than anything this project has optimised, but
+`¶141` established that the geomeTRIC grinding of ¶105 came from constrained
+waters rather than region size ("Remove the water constraints and they do not
+occur at all. `opt_coordsystem` and `actradius` were never needed"), and these
+NEBs constrain nothing. A NEB's cost is also in the 129 QM atoms, which
+`actradius` does not change.
+
+**Not proposed: splicing the reactant's frozen coordinates into the product.**
+It would make the endpoints agree exactly at no compute cost, and the NEB
+freezes those atoms anyway - but it manufactures a structure no stage produced,
+which is the "arbitrarily shifted" start this project has refused before.
+Widening the radius stays inside mcube's defaults.
+
+## Method note: the terminal was unavailable and the numbers were still measured
+
+The code-server pane is hidden, so the xterm has zero layout and typed input
+does not reach the shell - `squeue` and `frozen_check.py` could not be run.
+Everything above was computed by fetching the files over
+`vscode-remote-resource` and doing the arithmetic in the page, which needs no
+terminal. The method is validated by reproducing ASH's 476 exactly, and
+`docs/csr/frozen_check.py` is still owed a confirming run on Bunya. Worth
+recording in `running-on-bunya.md`: **a hidden pane can still read files, and
+cannot run commands.**
+
+## State
+
+    qmmm_attackmin   DONE, converged, 5.9 min, job 33303644
+    step1            BLOCKED on actradius: its 476-atom region excludes 30
+                     atoms that differ between its endpoints
+    step2            same, and still needs ringopen
+    ringopen         still unwritten; its start should be checked against the
+                     1.485 this chain actually produced, not 1.39
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
