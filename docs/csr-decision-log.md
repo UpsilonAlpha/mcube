@@ -19536,6 +19536,144 @@ saddlepoint.pdb` does not exist and `sections.py` refuses the section (D115's
 `if problems:` at line 325). **Whether to abandon the NEB for the scan → `ts`
 route is a methodological choice and the user's.**
 
+**¶336 - THE NEB IS ABANDONED AND `saddle1` IS RUNNING FROM THE SCAN'S MAXIMUM
+(33410206). The user's decision after ¶335: "Yes, scan then ts". 33404655
+cancelled at iteration 163 of 300. `saddle1` now takes
+`protdft/scan_attack/scan_11.pdb` at **8 Å, not 9** - and that radius change is
+the whole substance of this entry, because the radius was never a free parameter:
+it follows the lineage, and the lineage is now the scan's.** (2026-11-24, user:
+"Yes, scan then ts")
+
+## WHAT WAS SUBMITTED, AND WHAT THE GATES SAID FIRST
+
+    region_check.py docs/csr/site.yaml   ->  [OK] saddle1 ts pdb_file <- scan_attack
+    sections.py site.yaml saddle1 --dry-run
+                                         ->  DRY RUN, checks passed for ts_saddle1
+    sections.py site.yaml saddle1 --submit
+                                         ->  ts_saddle1  pdb=protdft/scan_attack/
+                                             scan_11.pdb  9 selectors checked
+                                             Submitted batch job 33410206
+
+**`region_check.py` (¶328) earned itself here.** It is the tool written for ¶320's
+trap - a `ts` refined with a different region from the path it came from - and
+this is the first time a `ts` section has been put through it before submission
+rather than after. It passes, and it passes *because* the radius was changed; at
+9 it would have been the FAIL it reports for `step2`.
+
+## THE RADIUS, WHICH IS THE ONLY REAL DECISION IN THIS ENTRY
+
+**9 Å existed for one reason and that reason is gone.** ¶317 found the NEB
+running at 9 while its endpoints had been minimised at 8; ¶319 fixed it by
+re-minimising the endpoints at 9 (`reactmin9`, `attackmin9`); `saddle1` inherited
+the 9 because it was to refine *that path's* saddlepoint. **With no path there are
+no endpoints to agree with, and what this structure has to be commensurable with
+is the profile it is the maximum of.**
+
+    scan_attack   ran at the base `actradius: 8` from
+                  `qmmm_aspxtb8/QM_MM_optimized.pdb` under `*qmreg_michrks`
+                  ->  476 active atoms
+    frozen_check  PASSED on `aspxtb8` vs `scan_attack/scan_15` at 8 Å: 474 atoms
+                  differed, every one inside the 476 - because a CONSTRAINED scan
+                  cannot move an atom outside its own region
+
+**Running the TS search at 9 would have put the saddle on a different surface from
+its own profile**, which is ¶320's trap entered from the other side. The 8 is
+written explicitly rather than left to the base block, because an INHERITED 8 is
+precisely what ¶320 was.
+
+## THE POINT, AND A NUMBER THAT IS NOT 14.24
+
+From `scan_energies.csv`, all 16 points `converged: True`:
+
+    point   O01-C4x(Å)   rel(kcal/mol)
+      0       3.6258         0.000
+      1       3.4808        -0.293   <- the scan's OWN lowest point
+      2       3.3358        -0.247
+      9       2.3205        12.197
+     10       2.1752        13.468
+     11       2.0302        14.237   <- the maximum, and `saddle1`'s input
+     12       1.8852        13.499
+     13       1.7401        10.751
+     15       1.4500         0.561
+
+**Points 1 and 2 sit BELOW point 0.** ¶308 quotes 14.24 as the barrier, measured
+from point 0; measured from the scan's own lowest point it is **14.53**. Small,
+and neither is quotable - but the project has been carrying 14.24 as "the scan's
+barrier" and that is the value relative to a point that is not the minimum.
+Recorded so the next person does not rediscover it.
+
+**¶308's two refusals are NOT waived by this move** - the maximum of a driven
+scan is not a transition state, and nothing here is quotable at this level of
+theory. **That is what this job is for.** `tsopt` + `freq` + an IRC is the step
+that turns the guess into a stationary point with one imaginary mode connecting
+the right two minima, and neither route had reached it.
+
+## WHY THIS IS NOT A RETREAT
+
+¶334 established that the field does this: Ackerman & Gatti trace their MEP on a
+finished relaxed-scan grid, and **Khrenova & Nemukhin 2018 and Levina et al. 2020,
+both on L1, a B3**, locate stationary points and take frequencies - our intended
+protocol exactly. ¶332 established why it works here where the NEB does not: the
+scan reuses ONE fragment across points so the environment stays in one basin,
+and its profile is smooth where the NEB's is a 10-12 kcal/mol sawtooth at the
+same level of theory and region size.
+
+So the chain is unchanged in kind and only in instrument: **scan to find the
+approximate saddle, `ts` to make it a real one, `sp` for the published energy.**
+
+## COST, AND WHY GFN2 AND NOT DFT
+
+`require.unset: [qm_engine]` is kept, so this runs at GFN2. That is a measured
+cost fact: ¶309 §5 measured **~1.8 h per DFT/MM gradient** on `aspdft` against
+GFN2's **2.80 s** (¶315), and a TS optimisation plus a Hessian plus an IRC is
+hundreds of gradients. `hessian_atoms` is the five reacting atoms, so at
+`freq_npoint: 2` a frequency job is ~30 gradients (`ts.py:161`), about 84 s -
+`ts.py:157` takes `hessatoms = hessian_atoms or qm_atoms`, so omitting it would
+build the Hessian over all 129 QM atoms, the same trap `numfreq: false` avoided
+on the NEBs. **The DFT level for the PUBLISHED stationary points is still
+undecided and is still the user's**; it belongs to `sp`, after this.
+
+## LEG 2 MOVED WITH IT, AND ONE ¶325 DECISION IS REVERSED
+
+**`ringopen` goes back to `attackmin`, the 8 Å free minimum.** ¶325 had moved it
+to `attackmin9` for one stated reason: `step2`'s NEB reactant had gone to 9 Å and
+leg 2's scan had to begin at the same file its NEB started from. **There is no
+`step2` any more.** Left on `attackmin9` the scan would re-minimise a 9 Å
+structure under an 8 Å region - harmless to a relative profile, since every
+point shares it, but it makes point 0 a different structure from the minimum it
+names and puts leg 2 on a different surface from leg 1. The arm is now one radius
+end to end: **`aspxtb8` → `attack` → `attackmin` → `ringopen` → `saddle2`, all 8 Å.**
+
+**`saddle2` follows `saddle1` to 8 Å, and its `pdb_file` is deliberately not a
+real file.** `require.same_as: {section: saddle1}` does not except `actradius`, so
+leaving the 9 would have been refused - correctly, since the two legs must be one
+surface. Its input is set to `protdft/scan_ringopen/scan_SET_FROM_CSV.pdb`, which
+`sections.py` refuses with "pdb_file missing": **`neb_step2/saddlepoint.pdb` became
+¶307's error the moment the NEB was abandoned - a path pointing at a lineage that
+exists in no run directory while LOOKING valid - and a path that is obviously
+wrong is safer than one that is quietly wrong.** Once `ringopen` runs, read its
+`scan_energies.csv`, take the highest `rel_kcal_mol`, and write that point's
+number in.
+
+## WHAT IS LEFT, AND WHAT IS NOT PROPOSED
+
+**`ringopen` is still UNSUBMITTED.** It is written, it validated, and it is now
+pointed at the right structure - and it is leg 2's ~1.3 h scan (16 points in
+01:46:27 on 8 cores for leg 1, ~6.7 min a point, 12 points here). **It is not
+submitted because it is a second job and the standing rule is to justify every
+one; it is the obvious next step and it is the user's to start.**
+
+**The NEB sections are left in place, not deleted.** `step1`, `step2`, `pstep1`,
+`pstep2` and `psaddle1`/`psaddle2` stay as written, with `maxiter: 300` and the 9
+Å endpoints. They record what was tried and measured (¶330, ¶335), and
+`reactmin9`/`attackmin9` remain real converged minima that cost two jobs. Nothing
+is gained by removing them and ¶335's trace would lose its referent.
+
+**`region_check.py`'s remaining FAIL is now moot rather than fixed**: it reports
+`step2 (product_pdb <- scan_ringopen)` at 8 against 9, and `step2` is a NEB on an
+abandoned route. **The check itself should not be relaxed to hide it** - it is
+correct about a section that is correctly dead.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**

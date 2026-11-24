@@ -1457,14 +1457,28 @@ sections:
       equals: {charge: 2, rigid_water: false}
       same_as: {section: attack, except: [pdb_file, atoms, end, points, monitor]}
     inputs:
-      pdb_file: protdft/qmmm_attackmin9/QM_MM_optimized.pdb
+      # ¶336: BACK TO `attackmin`, THE 8 Å FREE MINIMUM, reversing ¶325.
+      # ¶325 moved this to `attackmin9` for one stated reason - `step2`'s NEB
+      # reactant had gone to 9 Å (¶319) and leg 2's scan had to begin at the
+      # same file its NEB started from. **With the NEB abandoned (¶335) there is
+      # no `step2` to agree with, and the file this has to agree with is now
+      # `saddle2`, which follows `saddle1` to 8 Å.** Left on `attackmin9` the
+      # scan would re-minimise a 9 Å structure under an 8 Å region, freezing
+      # 189 atoms that were free in its own input - harmless to a relative
+      # profile, since every point shares it, but it makes point 0 a different
+      # structure from the minimum it names and puts leg 2 on a different
+      # surface from leg 1. The whole arm is now 8 Å: `aspxtb8` → `attack` →
+      # `attackmin` → `ringopen` → `saddle2`, one radius end to end.
+      pdb_file: protdft/qmmm_attackmin/QM_MM_optimized.pdb
       qm_residues: *qmreg_michrks
       charge: 2
       rigid_water: false
       atoms: [C:1:C4x, C:1:N1x]
       end: 2.80                # fully broken; `start` defaults to whatever
-                               # `attackmin9` holds (1.485 on `attackmin`, ¶311)
-      points: 12               # scan_00 .. scan_11, and `step2` names scan_11
+                               # `attackmin` holds (1.485, ¶311)
+      points: 12               # scan_00 .. scan_11. `saddle2` takes whichever
+                               # of them `scan_energies.csv` reports highest,
+                               # the way `saddle1` took `scan_11` (¶336)
       monitor:
         - [A:226:NZ, C:1:N1x]  # who protonates the leaving nitrogen
         - [A:92:OD2, C:1:N1x]
@@ -2116,14 +2130,28 @@ sections:
     submit: {partition: general, cores: 8, mem: 32G, time: "48:00:00"}
     require:
       unset: [qm_engine, restraints, opt_constraints, constraints]
-      equals: {charge: 2, rigid_water: false, actradius: 9,
+      equals: {charge: 2, rigid_water: false, actradius: 8,
                tsopt: true, freq: true}
       same_as: {section: saddle1, except: [pdb_file, hessian_atoms, monitor]}
     inputs:
-      pdb_file: protdft/neb_step2/saddlepoint.pdb
+      # **¶336: THIS SECTION CANNOT BE SUBMITTED YET, AND THE PATH BELOW IS
+      # DELIBERATELY NOT A REAL FILE.** `ringopen` has not run, so leg 2 has no
+      # profile and therefore no maximum. Once it has, read
+      # `protdft/scan_ringopen/scan_energies.csv`, take the point with the
+      # highest `rel_kcal_mol`, and put ITS number here - exactly as `saddle1`
+      # took `scan_11` from leg 1's 14.237 (¶336). `sections.py` refuses the
+      # section until then ("pdb_file missing"), which is the intended
+      # behaviour: ¶307's error was a path that pointed at a lineage existing in
+      # no run directory while LOOKING valid, and `neb_step2/saddlepoint.pdb`
+      # became exactly that when the NEB was abandoned. A path that is
+      # obviously wrong is safer than one that is quietly wrong.
+      pdb_file: protdft/scan_ringopen/scan_SET_FROM_CSV.pdb
       qm_residues: *qmreg_michrks
       charge: 2
-      actradius: 9
+      actradius: 8                  # follows `saddle1` (¶336); `require.same_as`
+                                    # does not except `actradius`, so a 9 here
+                                    # would be refused - which is how it should
+                                    # be, since the two legs are one surface
       rigid_water: false
       hessian_atoms: [C:1:C4x, C:1:N1x, A:226:NZ, B:1:ZN]
       monitor:
