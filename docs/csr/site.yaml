@@ -1911,7 +1911,7 @@ sections:
     require:
       unset: [qm_engine]
       equals: {charge: 2, images: 12, method: neb, interpolation: idpp,
-               actradius: 9, numfreq: false}
+               actradius: 9, numfreq: false, maxiter: 300}
     inputs:
       qm_residues: *qmreg_michrks
       charge: 2                # the endpoints' charge; stated per ¶152
@@ -1936,6 +1936,13 @@ sections:
                                # displaced atoms outside the 8 Å region, and 9
                                # is the first value with real margin (¶312)
       numfreq: false           # `saddle1` does the frequencies; see above
+      maxiter: 300             # ¶331, user: "Yes, maxiter 300". ASH's default is
+                               # 100 and 33319693 hit it at iteration 99 with dE
+                               # still falling (9.713 → 4.845 kcal/mol) and the
+                               # path still lengthening (dS 6.74 → 11.13), so it
+                               # stopped mid-rearrangement and returned NO
+                               # saddlepoint. At 28.3 s an iteration 300 is
+                               # ~2.4 h against the 48 h wall (¶330)
 
   step2:
     stage: neb
@@ -1943,7 +1950,7 @@ sections:
     require:
       unset: [qm_engine]
       equals: {charge: 2, images: 12, method: neb, interpolation: idpp,
-               actradius: 9, numfreq: false}
+               actradius: 9, numfreq: false, maxiter: 300}
     inputs:
       qm_residues: *qmreg_michrks
       charge: 2
@@ -1960,6 +1967,10 @@ sections:
       interpolation: idpp
       actradius: 9             # as step1; re-run frozen_check.py on THIS pair
       numfreq: false           # `saddle2` does the frequencies
+      maxiter: 300             # as step1 (¶331). Set here too rather than left
+                               # at ASH's 100: leg 2 is the same size of problem
+                               # and would hit the same wall, and the two legs
+                               # have to be one surface
 
   # Keys are bare names: sections.py writes each as <stage>_<name>, so a key
   # cannot be shared by two stages - `step1` is the NEB's, and the matching TS
