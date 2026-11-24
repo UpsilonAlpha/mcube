@@ -18868,6 +18868,113 @@ told them afterwards. The record was not at fault and neither was the user
 asking twice. **A question with two halves needs both halves answered, and the
 half that is already settled in the log is the cheaper one to deliver.**
 
+**¶332 - NO, THE TWO TERMS ARE NOT THE SAME KIND OF NUMBER - but a QM-only
+barrier is not available either, for three reasons, one of which this project has
+already measured. And the 18.6-21.2 kcal/mol of MM relaxation is a SAMPLING error,
+not a level-of-theory error: the scan and the NEB prove it, since the scan is
+smooth and the NEB is a sawtooth at the same level of theory, the same region
+size and the same system, differing only in whether the environment stays in one
+basin.** (2026-11-24, user: "should MM energies be treated as same as the QM
+energies? I'd imagine QM region energies are more accurate")
+
+## What the two terms are, from the run's own output
+
+    208: Embedding: elstat
+    497: Charges of QM atoms set to 0 (since Electrostatic Embedding)
+
+So in the decomposition ¶317 established (`total = xtb + OpenMM`, exact to the
+last digit):
+
+    "QM"   the QM subsystem computed IN THE FIELD of the MM point charges, so it
+           already contains the QM-MM electrostatic interaction
+    "MM"   the environment's own internal energy - MM-MM electrostatics, vdW and
+           bonded terms - with the QM atoms' charges zeroed, plus the QM-MM vdW
+           and boundary terms
+
+The second is therefore interpretable as environmental reorganisation, which is
+what licensed reading it that way in ¶331. The first is NOT "the chemistry
+alone".
+
+## The user's intuition is right where the chemistry is, and not in general
+
+GFN2 is the only thing in this calculation that can describe bond making and
+breaking, charge transfer, or the metal - for the reaction coordinate it is
+incomparably better than a force field. But for ~400 waters' mutual orientation
+TIP3P is a calibrated model and GFN2 is not obviously better, and this project
+has evidence GFN2 misbehaves on precisely this site: **¶245 measured it
+over-binding the zinc by 0.06-0.08 Å on both histidine nitrogens**, and ¶304
+records the CphA literature warning that semi-empirical methods need
+reparameterisation for an active-site metal. So "QM is more accurate" does not
+license trusting the QM number more everywhere.
+
+## Why a QM-only barrier is not available
+
+1. **It is not separable.** The QM energy is computed in the field of the MM
+   charges. Move an MM water and the QM number changes. Dropping the MM term does
+   not remove the environment, it hides it.
+2. **It is not boundary-invariant, and we MEASURED that.** Adding Ser186 to the
+   QM region (124 → 129 atoms) changes the QM energy by an arbitrary amount -
+   which is exactly why ¶323 refused to compare `reactmin9`'s total with
+   `aspxtb8`'s. A QM-only barrier would move if the boundary were redrawn with no
+   physical change.
+3. **Dropping MM asserts the environment does no work** along the reaction, and
+   that assertion is false by measurement: ~20 kcal/mol (¶331).
+
+## The 18.6-21.2 kcal/mol is a SAMPLING error, and the scan proves it
+
+665 active atoms, mostly water, have many near-degenerate minima separated by
+small barriers. The question is whether consecutive structures sit in the same
+one. Two instruments, same system, same level of theory, same region size:
+
+    scan_attack   `scan.py` reuses ONE `fragment` across points - each point
+                  starts from the previous point's geometry - so the environment
+                  stays in one basin.  PROFILE: 13.47 / 14.24 / 13.50, a clean
+                  single maximum (¶308)
+    step1 NEB     optimises its 12 interior images INDEPENDENTLY and in PARALLEL
+                  (one `Pooljob_image_N` each), so each falls into a different
+                  basin.  PROFILE: a 10-12 kcal/mol sawtooth, nine of twelve
+                  images below the frozen reactant (¶330)
+
+**The difference is continuity of the environment, not accuracy.** That is also
+the mechanism behind ¶330's "tangled images": independent parallel relaxation of
+a rugged MM landscape is what tangles them. It is the same finding from the other
+side.
+
+## AND ¶308's 14.24 CARRIES THE SAME TERM
+
+`scan.py` records `optimize()`'s return value as `energy_Eh` and differences it
+directly (`rel_kcal_mol = (energy - e_first) * HARTREE_TO_KCAL`), and that return
+is the QM/MM TOTAL. **So the project's benchmark number is a total, not a QM
+energy**, and is subject to this in full - it is only better behaved because the
+scan is sequential. ¶308 already refuses to quote it, for two other reasons ("the
+maximum of a driven scan is not a transition state"; "not quotable at this level
+of theory"), and this is a third.
+
+## What to do, and the precedent is the project's own
+
+The fix is not to reweight the terms - there is no principled weight. It is to
+construct the comparison so the MM term cancels:
+
+    ¶235 chose `actradius: 0` for `aspdft`/`aspxtb` precisely because "the frozen
+    term is a constant" in a single-structure optimisation
+
+So: optimise with a wide region, as now, and then SCORE the stationary points
+with a COMMON environment, so the environment's internal energy is identical
+across them and cancels exactly in differences. That is what `sp` is for, and
+`qm-levels.md` step 3 already prescribes `ts` then `sp`. **The barrier should
+come from there and not off the NEB's totals.**
+
+**The honest residual**, which must not be glossed: cancellation is exact only to
+the extent the structures share environment coordinates, and three freely
+optimised stationary points do not. Evaluating all three in one chosen
+environment (the TS's, say) introduces its own bias instead. The construction
+with no residual is a free energy, which the user has ruled out for the main
+goal - so the residual gets stated, and ¶331's 18.6-21.2 kcal/mol is its scale.
+
+**Not decided here.** Whether the published barrier is scored in a common frozen
+environment, and which one, is a methodological choice and the user's. Nothing in
+`site.yaml` is changed by this entry.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
