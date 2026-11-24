@@ -18749,6 +18749,125 @@ MaxF_CI to 0.026 inside the NEB may be work `saddle1` should be doing. Loosening
                  above the intermediate is not established
     needs        a decision: `maxiter` (defaults-only) and/or `tol_max_fci`
 
+**¶331 - `step1` RESUBMITTED with `maxiter: 300` (33404655), and the user had to
+ask TWICE why no MBL paper uses NEB. ¶207 answered that on 5 November and I never
+surfaced it: ¶309 ~S~4 reported only the "are we falling into the pitfalls" half.
+The answer is in this entry, and today's failed run turns ¶207's reason 4 from a
+worry into a measurement - **the MM term relaxes 18.6-21.2 kcal/mol along the
+path while the QM term rises 23.4, so the environmental reorganisation is the
+same size as the chemistry.**** (2026-11-24, user: "you still haven't answered my
+question about why previous mbl papers don't use neb and the pitfalls that may
+exist with it")
+
+## The resubmission
+
+    sbatch -J step1 -p general --cpus-per-task=12 --mem=32G -t 48:00:00
+           .../run.slurm neb neb_step1     ->  33404655, PD
+
+`maxiter: 300` on `step1` AND `step2`, pinned in both `require.equals` so it
+cannot drift back to ASH's 100. Everything else stays at mcube and ASH defaults -
+the climbing-image tolerance is untouched, which was the other half of the
+decision and the user took the defaults-only option.
+
+**The failed run's evidence is preserved first**, because ¶330 cites files the
+new run would overwrite in the same directory (¶329's reused-directory trap):
+`protdft/neb_step1_33319693/` now holds `knarr_MEP_FULL.xyz`, `knarr.energy` and
+the fourteen `img<N>.energy` files, 16 files and 17 MB. The 7.2 MB
+`step1-33319693.out` is already job-id-named and safe.
+
+## WHY NO MBL MECHANISM PAPER USES NEB
+
+Two separate things, and only the first is about NEB.
+
+**1. The field reports a FREE ENERGY, so a NEB barrier is not the same quantity.**
+Every MBL mechanism study in this project's survey: Xu-Xie-Guo 2006 on CphA is
+SCC-DFTB/MM MD with a potential-of-mean-force from umbrella sampling plus DFT,
+and it is the source of the ~14 kcal/mol we would compare against; SMB-1 and
+NDM-1 are the same group's protocol; the VIM-2 paper is *titled* "Free Energy
+Predictions"; IRE1 used metadynamics; Ackerman & Gatti used potential energy
+surfaces. **CI-NEB was OUR substitution** for Imhof's CPR-style path search,
+chosen in ¶1 on day one, and ¶32 was a user decision to replicate the published
+PMF. What dropped the PMF was the M-series, for cost.
+
+**2. The physics the free energy is integrating over is exactly what a single
+path cannot represent.** Three soft, multi-minimum degrees of freedom sit on top
+of this reaction:
+
+    bulk water          the nucleophile is a metal-bound hydroxide and waters
+                        enter and leave the zinc; ¶191 measured three resident
+                        at 100% occupancy and ¶256 found the zinc six-coordinate
+                        in 200 of 200 frames
+    a shared proton     which donor, and when - over a barrier of order kT
+    the metal's own     coordination number changes with treatment: 4-, 5- and
+    coordination        6-coordinate all appear in this project's own runs
+
+An MEP picks one arrangement of those and reports its energy. The experiment
+averages over all of them. That is the whole of it.
+
+## ¶207's FOUR PITFALLS, and where each stands today
+
+    1  the literature's barriers are free energies     STANDS IN FULL
+    2  NEB-CI returns ONE saddle                       RETIRED by the scan
+    3  the two-surfaces asymmetry is structural        species fixed, genus
+                                                       fixed and now TOOLED
+    4  the soft coordinates an MEP serves worst        half retired, half
+                                                       MEASURED today
+
+**2 is retired by measurement, not by argument.** Hydrolysis is at least two
+elementary steps, and one NEB over both returns one saddle and never finds the
+other, so the decomposition has to be known in advance (¶17). The attack scan
+measured it: a single maximum at point 11 (14.24 kcal/mol) with C4x-N1x
+lengthening 1.368 → 1.485 without breaking, so ring opening did not happen along
+the attack coordinate and is a separate step. Hence `step1` and `step2`, one per
+elementary step.
+
+**3 was one defect in three costumes and it took all three to see it.** Rigid
+waters (¶207), the 8-against-9 Å endpoints (¶317), and `saddle1`/`saddle2`
+inheriting `actradius: 8` from the base block (¶320). `rigid_water: false` closed
+the first; ¶319 fixed the endpoints and ¶330 proved it (image 0 and 13 now
+reproduce their own optimisations to 0.051 and 0.063 kcal/mol, against 113 and
+95); `region_check.py` (¶328) now checks the condition nothing checked.
+
+**4's sharp half is retired and its blunt half is now a number.** The shared
+proton was the sharp half and the scan answered it: Ser186 OG-O01 moves 2.813 →
+2.630 → 3.016 across the path while Lys226 NZ stays 5.2-5.4 Å throughout, so no
+proton is shared over a kT barrier in this step. Bulk water reorganisation is the
+blunt half, and **33319693 measured it**:
+
+    images 0 → 9    QM  +23.4 kcal/mol, monotonic
+                    MM  -18.6 (and -21.2 at image 10)
+    nine of twelve interior images sit BELOW the frozen reactant, by up to 8.7
+
+Both endpoints are now minima of the path's own region, verified to 0.06
+kcal/mol - so that MM drop is not an endpoint artefact. It is the path finding
+arrangements of the 665-atom active region that neither endpoint optimisation
+reached, worth up to ~21 kcal/mol. **The environmental reorganisation is the same
+size as the chemistry.** That is ¶207 reason 4 as a measurement, and it is the
+quantitative reason the field integrates over the environment instead of walking
+one path through it.
+
+## What follows for the paper, and it is not "stop"
+
+The chain is still worth running, because what it gives is the MECHANISM - which
+bond breaks when, what the saddle looks like, and what the IRC connects - and
+¶207 itself calls that "the paper's actual content". What it does NOT give is a
+number comparable to CphA's 14 kcal/mol.
+
+So the resolution ¶309 already recorded stands, and now has evidence behind it:
+**report a potential-energy barrier as a potential-energy barrier, and never set
+it beside a free energy as though the two were the same quantity.** The 18.6-21.2
+kcal/mol of MM reorganisation measured above is the argument for stating that as
+a limitation in the methods rather than a caveat in a footnote.
+
+## The reporting failure, which is mine
+
+¶207 wrote all of this down on 2026-11-05. On 2026-11-23 the user asked, in one
+sentence, both "are we falling into those pitfalls" and "no paper does NEB on
+MBLs for some reason" - and ¶309 ~S~4 answered only the first, as did everything I
+told them afterwards. The record was not at fault and neither was the user
+asking twice. **A question with two halves needs both halves answered, and the
+half that is already settled in the log is the cheaper one to deliver.**
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
