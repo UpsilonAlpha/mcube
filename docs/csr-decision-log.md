@@ -18975,6 +18975,121 @@ goal - so the residual gets stated, and ¶331's 18.6-21.2 kcal/mol is its scale.
 environment, and which one, is a methodological choice and the user's. Nothing in
 `site.yaml` is changed by this entry.
 
+**¶333 - MEASURED WHAT THE ENVIRONMENT IS ACTUALLY DOING, and it is NOT a
+structural rearrangement: 16-19 residues moving 0.1-1.2 Å, an ordered-water
+network reorganising its hydrogen bonds with the first shell following the
+nucleophile. Nothing leaves the site, no loop moves. **So the 18-21 kcal/mol is
+hydrogen-bond topology, not structure** - and "correctly minimised" means
+stationary, not optimal. The analysis also LOCATES ¶330's tangle: image 10's
+hydroxide sits 1.383 Å from the product's where images 9 and 11 sit at 0.618 and
+0.575, so it is further out than its neighbours on BOTH sides. And def2-SVP is
+step 3 of the sequence, not the path - which means it does not touch any of
+this.** (2026-11-24, user: "what actually is happening in the environment if it
+was already correctly minimised? what structural rearrangement is there")
+
+Measured with `docs/csr/mep_shift.py`, written for this and run on the preserved
+`protdft/neb_step1_33319693/knarr_MEP_FULL.xyz`. **Each image is compared against
+its OWN frozen source** - 1-6 against image 0, 7-12 against image 13 - because
+ASH switches the frozen environment at the midpoint (¶309), so differencing
+image 12 against image 0 would mix active-region relaxation with the 653-atom
+endpoint difference.
+
+## What moves, at a 0.1 Å threshold
+
+    image  vs   atoms  largest  the leader
+      1     0      9    0.235   Thr169 0.235, HOH3171 0.129
+      2     0     20    0.398   HOH 3171
+      3     0     44    0.656   HOH 3171
+      4     0     64    0.881   HOH 3171
+      5     0     79    1.068   HOH 3171
+      6     0     90    1.221   HOH 3171, then HOH A9CC 0.820
+      7    13     88    1.250   C:2:OH (the nucleophile)
+      8    13     80    0.913   C:2:OH
+      9    13     73    0.618   C:2:OH
+     10    13     83    1.383   C:2:OH          <- OUT OF ORDER
+     11    13     85    0.613   C:1:mer 0.613, C:2:OH 0.575
+     12    13     39    0.297   Ala224 0.297
+
+**Three facts and none of them is a rearrangement.** Of 47,979 atoms, 39-90 move
+past 0.1 Å. The largest displacement anywhere is 1.38 Å. The residues involved
+are 16-19, every one of them first or second shell: the ligand, the hydroxide,
+Asp92, Ser186, His88, His164, Asn225, the zinc itself (0.19-0.35 Å), Ala224,
+Thr169, and the ordered waters 3171, 1902, 3095, 2550, 371, A9CC.
+
+**The leader changes at the midpoint and that is physical, not an artefact.**
+Coming from the reactant, the water network moves and HOH 3171 leads it
+monotonically 0.13 → 1.22 Å. Coming from the product, the nucleophile itself is
+what is displaced. Each end sees "the thing not yet in place" as the mover.
+
+## So why 18-21 kcal/mol from motion this small
+
+Because MM energy is extremely sensitive to exactly this. A TIP3P hydrogen bond
+is ~5-7 kcal/mol; reorienting a handful of ordered waters in a buried network
+swings tens of kcal/mol with nothing moving a full Ångstrom. **And "correctly
+minimised" means the GRADIENT is small - it does not mean the water network found
+its global minimum.** With hundreds of waters in a 665-atom active region the
+number of near-degenerate hydrogen-bond topologies is astronomical, and geomeTRIC
+converges to whichever basin its starting geometry sat in. `reactmin9` and
+`attackmin9` are stationary points; they are not the lowest arrangement of their
+own water network, and nothing in the protocol ever claimed they were.
+
+That is the whole of ¶331's measurement, restated physically: the path visits a
+few different water topologies and their MM energies differ by ~20 kcal/mol.
+
+## It also locates ¶330's tangle, to one molecule
+
+    image  9  C:2:OH 0.618 Å from the product's hydroxide
+    image 10  C:2:OH 1.383
+    image 11  C:2:OH 0.575
+
+**Image 10's nucleophile is further from the product than both its neighbours**,
+which is what "out of order along the reaction coordinate" means concretely. And
+image 10 is exactly where ¶330 found MM lowest (-21.2) and QM anomalously low
+(+15.8). So the sawtooth, the tangle and this displacement are one observation
+seen three ways, and the fix is the one already running: `maxiter: 300`.
+
+## A side confirmation of ¶323's ten-atom tail
+
+Every image reports "6 OUTSIDE the active region" against the `active_atoms` file
+`reactmin9` wrote, Thr169 among them at a near-constant 0.22-0.25 Å. That is
+¶323's discrepancy made visible: the NEB derived its region on `reactmin9`'s
+OUTPUT, the file was derived on its INPUT, and the two differ by a handful of
+boundary atoms. Real, and 0.25 Å in size.
+
+## AND def2-SVP DOES NOT TOUCH ANY OF THIS
+
+The user is right that def2-SVP is the level for bond making and breaking, and
+the record is clear where it sits: `qm-levels.md` step 3, AFTER the path.
+scan/NEB at xTB to find the path and the approximate saddle, then `ts` with
+`qm_engine: dft` for the stationary points with frequencies and an IRC, then `sp`
+at a larger basis for the published energies. ¶309 ~S~5 costed DFT on the NEB
+itself and it is not available: `aspdft` measured **~1.8 h per DFT/MM gradient**,
+a 12-image NEB needs 12 gradients an iteration, so ~21 h an iteration and weeks
+per elementary step against a 48 h wall. `step1`/`step2` carry
+`require.unset: [qm_engine]` to keep it out.
+
+**So everything ¶332 said about GFN2's accuracy concerns the PATH, not the
+published barrier, and that entry did not separate them clearly enough.** But the
+more important point cuts the other way: **the QM level is irrelevant to the MM
+problem.** The environment is the same TIP3P/AMBER water network whatever the QM
+method is, and a def2-SVP single point on a geometry whose water topology differs
+from its reference inherits the whole 18-21 kcal/mol. def2-SVP buys accuracy in
+the chemistry and buys nothing at all here, which is exactly why ¶332's question
+- score the stationary points in a common environment, or not - is independent of
+the QM level and still has to be answered.
+
+## What is NOT established, and should not be asserted
+
+Whether these magnitudes match published values for an MBL. The CHARACTER is
+consistent with this project's own measurements - ¶191 found three waters
+resident at the zinc at 100% occupancy, ¶256 found it six-coordinate in 200 of
+200 frames, and ¶312 measured HOH 3171 as the second-largest mover between the
+endpoints at 1.695 Å, so the same water keeps appearing - and it is consistent
+with why the field uses PMFs at all (¶207 reason 4 names bulk water
+reorganisation). **But no published displacement for a named active-site water in
+a named MBL has been checked against these numbers.** That is a literature task,
+not a measurement, and it has not been done.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
