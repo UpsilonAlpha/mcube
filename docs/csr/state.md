@@ -688,8 +688,16 @@ disagrees with an entry below, this is newer.
                        MM -241.36924611).  9 Å, 665 active, 129 QM
     attackmin9   DONE  33317686, 53 steps.  -439.95772247  (xtb -198.58029981,
                        MM -241.37742266).  9 Å, 655 active, 129 QM
-    step1        RUNNING 33319693, `method: neb`, 665 active, 129 QM
-    saddle1      READY, needs step1's saddlepoint.pdb. Cannot be pre-submitted
+    step1        FAILED 33319693 at ASH's default maxiter=100 (¶330). 99 NEB
+                 iterations, 28.3 s each, no saddlepoint returned. The ENDPOINTS
+                 are proven - image 0 and 13 reproduce reactmin9/attackmin9 to
+                 0.051 and 0.063 kcal/mol - but the path is a sawtooth with
+                 images 10-12 out of order, and the QM term wobbles too, so it
+                 is tangled images rather than an ASH defect. Needs a decision
+                 on `maxiter` and possibly `tol_max_fci`
+    saddle1      READY but has NOTHING to refine: step1 returned no saddlepoint
+                 (¶330). Authorised by the user on 2026-11-23, moot until a path
+                 converges. Cannot be pre-submitted either (¶324)
     ringopen     READY on attackmin9, dry-run clean, NOT submitted
     step2        blocked: its product is still a constrained scan point
     saddle2      READY, needs step2

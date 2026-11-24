@@ -383,3 +383,23 @@ nothing from job 33304392 is usable. Only the attribution was wrong.
 
 **The rule this earns:** do not attribute a magnitude to a mechanism before
 decomposing it, when the components are sitting in the run directory.
+
+## ¶329 - "step1 NEB-CI converged in 46 iterations, against 63"
+
+**Withdrawn in ¶330, 2026-11-24.** The line was ASH's IDPP interpolation
+finishing - "converged in 46 iterations and **0 func. calls**", immediately
+followed by "Final path: Number of images: 14". A NEB cannot converge on zero
+energy evaluations, and 27930 path dimensions is 665 active atoms × 3 × 14
+images. The NEB proper began 33,000 lines later, ran 99 iterations and hit
+`maxiter=100` without converging, returning no saddlepoint. So the comparison
+with ¶315's 63 NEB iterations set an interpolation against a NEB, and the
+inference drawn from it - that corrected endpoints converge a path faster - has
+no support here either way.
+
+Everything else in ¶329 stands: the stale-file trap in the reused output
+directory, the polarizability message, and the instruction to resolve both by
+mtime.
+
+**The rule this earns:** a convergence line means nothing without its
+function-call count, and a progress table watched live is not identified until
+something in the output names it.

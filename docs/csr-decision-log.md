@@ -18507,7 +18507,9 @@ answer is the same as ¶319's: a free minimisation at 9 Å from `ringopen`'s las
 point becomes `step2`'s product. **Not a widening of `ringopen` to 9** - the
 output's own last sentence says why, and it is ¶317 from the other side.
 
-**¶329 - `step1` NEB-CI CONVERGED IN 46 ITERATIONS on the corrected endpoints,
+**[RETRACTED IN PART by ¶330 - the "46 iterations" was the IDPP
+interpolation, not the NEB. The NEB ran 99 and failed at maxiter. See
+`csr/retractions.md`.]** **¶329 - `step1` NEB-CI CONVERGED IN 46 ITERATIONS on the corrected endpoints,
 against 63 on the broken ones - but the barrier is not readable yet: the job was
 still in its post-NEB phase when the code-server session expired, and
 `saddlepoint.pdb` had not been written. Also found: the NEB output directory is
@@ -18596,6 +18598,156 @@ gradient (¶315), 6 per Hessian atom over 129 QM atoms is ~774 gradients and
     4  confirm `saddlepoint.pdb` post-dates this run, per the trap above
     5  `python sections.py site.yaml saddle1 --submit` - the user authorised it
        on 2026-11-23 ("Yes, submit saddle1") and that authorisation stands
+
+**¶330 - `step1` FAILED AT maxiter=100 AND MY ¶329 WAS WRONG: the "46
+iterations" I reported was the IDPP INTERPOLATION, not the NEB. The real NEB ran
+99 iterations, never converged, and returned no saddlepoint - so `saddle1` has
+nothing to refine. **But the endpoint fix is vindicated completely**: image 0 and
+image 13 reproduce `reactmin9` and `attackmin9` to **0.051 and 0.063 kcal/mol**,
+where the old run had them 113 and 95 kcal/mol out. The path itself is a
+sawtooth, and decomposition says the cause is TANGLED IMAGES, not ASH's midpoint
+switch.** (2026-11-24)
+
+## First, the retraction
+
+¶329 said "NEB-CI converged in 46 iterations, against 63 on the broken
+endpoints" and built an argument on it. The line it rested on reads:
+
+    732: Calculation successfully converged in 46 iterations and 0 func. calls!
+    734: Final path:
+    735: Number of images                      :    14
+    736: Number of dimensions (path)           : 27930
+
+**"0 func. calls" was the tell and I missed it.** A NEB cannot converge without
+energy evaluations; IDPP is a purely geometric interpolation, and 27930 = 665
+active atoms × 3 × 14 images. Everything I watched live - iterations 3, 5, 10,
+15, 25, 28, 29, 36, 40, 44 with a falling column I read as convergence - was the
+interpolation building the initial path. The NEB proper starts at line 34567
+("Starting climbing image as image 9") and the comparison with ¶315's 63 was
+between an interpolation and a NEB. Withdrawn in `csr/retractions.md`.
+
+## What actually happened
+
+    143985: 99  11.13    4.845     9   0.0045   0.1440   0.0128   0.3047   0.0052
+    143984: Thresholds:                  0.1300   0.2600   0.0130   0.0260
+    143988: Maximum number of iterations reached (100). Stopping optimization.
+    143996: Knarr failed to converge during the maxiter=100 given.
+    144005: label : NEB-CI calc (fail)
+    144007: [WARNING] NEB did not return a saddlepoint (not converged or CI disabled)
+
+    NEB job: 2804.49 s for 99 iterations = 28.3 s an iteration
+    whole job: 4863.9 s, 81.1 min, [DONE] at 17:58 on 23 Nov
+
+**Three of four criteria pass.** RMSF 0.0045 against 0.1300, MaxF 0.1440 against
+0.2600, RMSF_CI 0.0128 against 0.0130 - and **MaxF_CI 0.3047 against 0.0260**,
+11.7× over, oscillating all run (0.38, 1.56, 0.42, 1.06, 0.64, 0.34, 0.33, 0.30).
+`maxiter` was never set, so this was ASH's default of 100.
+
+**The climbing image was image 9 from iteration 12 to 99, never image 0**, and dE
+fell monotonically 9.713 → 4.845 kcal/mol, still falling at the last step. So
+¶323's pre-registered condition - the climbing image must not be image 0 - is
+MET, and the barrier estimate had not settled when the run stopped.
+
+## The endpoints are fixed, and this is the measurement that says so
+
+    image 0   -439.971046   vs reactmin9  -439.97112777   0.051 kcal/mol
+    image 13  -439.957622   vs attackmin9 -439.95772247   0.063 kcal/mol
+
+Against ¶317's 113 and 95 kcal/mol on the 8 Å endpoints. **¶319's fix did
+exactly what it was meant to do.** The reaction energy the NEB sees, +8.42
+kcal/mol, also reproduces the +8.41 computed from the two separate optimisations
+(¶323) to 0.01.
+
+## The path, and why it is unusable
+
+    image   dE      image   dE                 image   dE
+      0    0.00       5    -5.59                10   -5.41
+      1   -8.69       6    -5.80                11    3.29
+      2   -8.26       7    -4.09                12   -8.15
+      3   -7.56       8     0.82                13    8.42
+      4   -6.54       9     4.85  <- CI
+
+Images 9-12 zig-zag by 10-12 kcal/mol between neighbours, and nine of twelve
+interior images sit BELOW the frozen reactant. A converged MEP cannot look like
+this.
+
+## Decomposed, because ¶317's rule says to - and it clears ASH
+
+Each image's xtb energy is in `Pooljob_image_N/energy`, so QM and MM separate for
+free:
+
+    image    QM      MM        total        image    QM      MM       total
+      0     0.00    0.00       0.00            8   +20.58  -19.76    +0.82
+      1    +0.47   -9.15      -8.69            9   +23.41  -18.56    +4.85
+      5   +12.18  -17.77      -5.59           10   +15.83  -21.24    -5.41
+      7   +16.52  -20.61      -4.09           11   +20.13  -16.83    +3.29
+                                              12   +11.56  -19.71    -8.15
+                                              13   +13.51   -5.09    +8.42
+
+**The QM term wobbles as well as the MM term**, and that is what clears ASH's
+midpoint switch. The switch rebuilds each image's FROZEN environment from the
+nearer endpoint, which can only move the MM term - the QM atoms are all inside
+the active region and are carried by the path itself. If the switch were the
+cause, QM would be smooth and MM alone would jump. Instead QM goes 23.41 (image
+9) → 15.83 (10) → 20.13 (11) → 11.56 (12): **the geometries of images 10-12
+are out of order along the reaction coordinate.** The images are tangled, which
+is also what `dS` growing 6.74 → 11.13 and MaxF_CI oscillating say. **This is an
+unconverged path, not a defect** - and the smooth half is informative: images 0-9
+are a clean monotonic QM rise of **+23.4 kcal/mol** with MM relaxing **-18.6**.
+
+Recorded because the half-and-half geometry of the switch made it the obvious
+suspect, and one free measurement excluded it. ¶316 attributed a magnitude to a
+mechanism before decomposing and had to be retracted; this is that rule working.
+
+## A FOURTH ASH defect, and it defeats ¶320's fix by a new route
+
+    ASH_Results(label='NEB-CI calc (fail)', energy=None, qm_energy=None,
+                mm_energy=None, qmmm_energy=None, gradient=None, ...)
+
+**ASH's failure branch returns no energies at all** - `interface_knarr.py:619`,
+`ASH_Results(label="NEB-CI calc (fail)")` with nothing else. So
+`MEP_energies_dict` is absent, mcube's `result["mep_energies"]` is never set
+(confirmed: no `mep_energies` key under `neb_step1.results` in config.yaml), and
+**`check_path_shape` cannot run**, because mcube guards it with `if energies:`.
+
+¶318 found that diagnostic stranded behind the step that OOM-killed the job;
+¶320 moved it in front by splitting `nebts`. **It is still unreachable, now
+because a non-converged NEB discards the data it would read.** It would have
+fired here, reporting an interior image 8.69 kcal/mol below both endpoints. An
+81-minute run's entire energy profile survives only in the `.out` text and in
+`knarr_MEP_FULL.xyz`/`Pooljob_image_N/energy` on disk.
+
+And `knarr_MEP_FULL.xyz` confirms ¶317's mixed-units defect again: image 0 and
+image 13 in Eh, images 1-12 in eV, in the same file.
+
+## What this costs and what it needs
+
+Nothing is wasted: the endpoints are proven, the reaction energy is confirmed
+twice, and the QM half of the profile is clean. What is missing is a converged
+path and a saddlepoint.
+
+    `maxiter` is unset, so it ran ASH's default 100 and stopped mid-rearrangement
+    at 28.3 s an iteration - 300 iterations is ~2.4 h, well inside the 48 h wall
+
+**The second question is a tolerance, and it is the user's.** MaxF_CI's threshold
+is 0.0260 eV/Å and the climbing image is at 0.3047. But `saddle1` exists to
+optimise the TS properly with geomeTRIC and a partial Hessian - mcube's own
+`neb.py` docstring describes NEBTS as "a loose NEB-CI followed by a geomeTRIC TS
+optimisation", which is exactly the division ¶320 made explicit. So converging
+MaxF_CI to 0.026 inside the NEB may be work `saddle1` should be doing. Loosening
+`tol_max_fci` is outside mcube's defaults and is not changed here.
+
+## State
+
+    step1        33319693 DONE, failed at maxiter. No saddlepoint
+    saddle1      still unsubmittable - nothing to refine. The user's
+                 authorisation of 2026-11-23 stands and is moot until a path
+                 converges
+    endpoints    PROVEN. 0.051 and 0.063 kcal/mol. ¶319 is vindicated
+    the barrier  NOT measured. dE was 4.845 and still falling, and the HEI sits
+                 below the product endpoint, so even the sign of the barrier
+                 above the intermediate is not established
+    needs        a decision: `maxiter` (defaults-only) and/or `tol_max_fci`
 
 ## Resources (see `running-on-bunya.md`)
 
