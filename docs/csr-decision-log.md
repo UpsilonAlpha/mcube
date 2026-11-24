@@ -19395,6 +19395,147 @@ Peraro 2004 JACS (Q1/Q3), Xie/Liu/Yang 2004 JCP (the NEB-in-enzymes argument),
 and Medina & Jana 2022 ACS Catal's "water orientation" stage. **Those are the only
 places a genuine precedent for ¶333's observation could still be hiding.**
 
+**¶335 - `maxiter: 300` IS FALSIFIED AS A FIX, AT ITERATION 163 OF 300, AND THE
+EVIDENCE IS ¶331'S OWN HYPOTHESIS TURNED OVER. ¶331 raised the ceiling because
+33319693 "stopped mid-rearrangement" with dE still falling. **dE stopped falling
+at iteration ~122 and has RISEN since - 3.913 → 4.202 → 4.344 → 4.694 → 5.418 -
+while the path length dS has never stopped growing (6.74 → 14.11) and MaxF_CI
+has never come within 6× of its tolerance in 163 iterations.** The NEB is not
+converging slowly; it is OSCILLATING on a rugged surface with the optimiser
+pinned at its maximum step. This is ¶332's and ¶333's diagnosis arriving as a
+convergence trace.** (2026-11-24, 33404655 running on bun134, read live at
+1:31:36 / 162 iterations)
+
+## THE TRACE, WHICH IS THE WHOLE ARGUMENT
+
+Thresholds printed by ASH: RMSF 0.1300, MaxF 0.2600, RMSF_CI 0.0130, MaxF_CI
+0.0260. Every tenth iteration, then the last four:
+
+    it     dS       dE    CI     RMSF     MaxF  RMSF_CI  MaxF_CI    step
+    12   6.74    9.713     9   0.0189   0.4540   0.0247   0.3829  0.0051
+    22   7.84    7.115     9   0.0174   1.1681   0.0181   0.3809  0.0885
+    32   8.19    6.893     9   0.0104   0.6120   0.0282   0.7955  0.0923
+    42   8.47    6.679     9   0.0061   0.2289   0.0305   0.8697  0.0906
+    52   8.79    6.332     9   0.0051   0.1807   0.0207   0.5668  0.0916
+    62   9.09    6.036     9   0.0056   0.2724   0.0154   0.4198  0.0066
+    72   9.68    5.581     9   0.0044   0.1324   0.0120   0.3352  0.0949
+    82  10.18    5.364     9   0.0074   0.5430   0.0180   0.4173  0.0902
+    92  10.51    5.111     9   0.0035   0.1020   0.0076   0.1591  0.0977
+   102  11.22    4.797     9   0.0046   0.2294   0.0129   0.3329  0.0961
+   112  11.79    4.428     9   0.0069   0.1700   0.0108   0.1607  0.0952
+   122  12.18    3.913     9   0.0085   0.6845   0.0166   0.4006  0.0926   <- dE floor
+   132  12.60    4.202     9   0.0060   0.3061   0.0126   0.2320  0.0942
+   142  12.77    4.344     9   0.0031   0.1503   0.0125   0.2585  0.0041
+   152  13.31    4.694     9   0.0098   0.5847   0.0135   0.2955  0.0940
+   161  14.11   16.436     9   0.1370   8.7520   0.2197   5.3924  0.1000   <- excursion
+   162  13.91    5.418     9   0.0169   1.4483   0.0249   0.5025  0.0863
+   163  13.92    5.381     9   0.0077   0.6687   0.0214   0.5196  0.0145
+
+**Four readings, and each one kills a different hope.**
+
+1. **¶331's premise is gone.** dE falls to a floor of 3.913 at iteration 122 and
+   then climbs for forty iterations. "Still falling at 99" was true; "would keep
+   falling" was the inference, and it was wrong.
+2. **dS never stops growing.** 6.74 → 14.11 and still rising at 163. A converging
+   MEP settles its own length. This one keeps stretching, which is what a path
+   does when its images keep finding new environment basins to fall into
+   (¶332).
+3. **MaxF_CI, the one criterion ¶330 found nowhere near passing, is STILL nowhere
+   near passing.** Tolerance 0.0260; the best value in 163 iterations is 0.1591
+   at iteration 92, a factor of six out, and it is 0.5196 now. **¶330's single
+   failing criterion has not improved in 64 extra iterations.**
+4. **The optimiser is pinned at its maximum step.** The `step` column reads
+   0.0949, 0.0977, 0.0961, 0.0952, 0.0926, 0.0942, 0.0940 - essentially the
+   0.1000 cap, iteration after iteration - and iteration 161 took an excursion to
+   **MaxF 8.7520, dE 16.436** before recovering. An optimiser at full step with
+   intermittent blow-ups is not descending a basin; it is being dragged across a
+   rugged one.
+
+**The climbing image has been image 9 for all 163 iterations**, so ¶324's
+"CI must not be image 0" check passes and the tangle is not a CI-selection
+artefact.
+
+## AND THE CURRENT PROFILE IS STILL ¶330'S PROFILE
+
+    image   dE(kcal/mol)   state
+      0       0.00         frozen
+      1      -8.79         active
+      2      -8.44
+      3      -7.88
+      4      -6.89
+      5      -6.19
+      6      -6.89
+      7      -5.11
+      8       0.02
+      9      +5.48        <- CI
+     10      -5.99
+     11      +6.55        <- HIGHER than the climbing image
+     12      -8.13
+     13      +8.42         frozen
+
+**Nine of twelve interior images still sit below the frozen reactant, and image
+12 sits 16.5 kcal/mol below the product it is adjacent to.** The sawtooth
+¶330 measured, ¶332 explained and ¶333 localised to image 10's hydroxide is
+intact after 64 more iterations. **Note also that image 11 (+6.55) is now ABOVE
+the climbing image 9 (+5.48)** while ASH still reports dE as image 9's value -
+so the quantity in the dE column is the CI's energy, not the path's maximum,
+which is exactly why ¶324 wrote "use `max(mep_energies)`, never
+`saddlepoint_energy`".
+
+## ONE UNEXPLAINED ASH DISPLAY, RECORDED NOT DIAGNOSED
+
+The per-image `RMSF(eV/Ang)` and `MaxF(eV/Ang)` columns in "Overview of images"
+read **0.6174-0.6176 and 4.7154-4.7189 for ALL FOURTEEN images, frozen endpoints
+included**, while the convergence table on the same iteration reports RMSF 0.0138
+and MaxF 0.5456. Identical values on frozen and active images cannot both be
+per-image forces. Most likely the overview prints full-system forces (including
+the 47,314 frozen atoms) and the convergence table prints active-region projected
+forces - but **that is a guess and is not checked against `interface_knarr.py`.**
+Do not read the overview's force columns as per-image convergence. **Not counted
+as a fifth ASH defect until the source is read.**
+
+## WHAT THIS MEANS, AND IT IS NOT A SMALL THING
+
+**The NEB route to a saddle for this system is not working, and the reason is not
+a setting we have left wrong.** ¶318 closed the endpoint defect, ¶319 fixed the
+radius, ¶330 verified both endpoints to 0.06 kcal/mol of their own
+optimisations, ¶331 raised the ceiling - and the path still will not converge,
+because the 665-atom active region's MM surface is rugged enough that twelve
+independently and parallel-optimised images cannot stay in one basin (¶332).
+¶334 found the field's own statements of this: Bergonzo et al. **deliberately
+remove solvent from the NEB force calculation** because solvent "reacts
+independently"; Xie, Liu & Yang's enzyme NEB **excludes soft spectator degrees of
+freedom** and ramps rigidity "to maximize the opportunity of obtaining
+continuously changing environments along the path"; and **zero MBL mechanism
+papers use NEB at all** (¶331, evidenced in ¶334).
+
+**The alternative is already built, already run, and already smooth.** ¶332
+measured it: `scan_attack` reuses ONE fragment across points so the environment
+stays in one basin, and its profile is a clean single maximum - 13.47 / **14.24**
+/ 13.50 (¶308). `qm-levels.md` step 3 takes a structure into `ts` with
+`qm_engine: dft`, frequencies and an IRC; it does not care whether that structure
+came from a NEB saddlepoint or a scan maximum. **And ¶334 establishes that this
+is what the field does**: Ackerman & Gatti trace their MEP on a finished relaxed
+scan grid, and Khrenova & Nemukhin and Levina et al. - both on **L1, a B3** -
+locate stationary points and take frequencies, which is our intended protocol
+exactly.
+
+**So the live question is whether to keep spending on a path method the field
+does not use and our own surface will not support, when the scan has already
+given a maximum and `ts` can start from it.** ¶308's two refusals still stand
+("the maximum of a driven scan is not a transition state"; not quotable at this
+level of theory) - but `ts` with frequencies and an IRC is precisely what
+converts a scan maximum into a transition state, and that is the step neither
+route has reached.
+
+**NOT DECIDED HERE, AND NOT ACTED ON.** 33404655 is left running - it has ~137
+iterations and ~1.3 h to go, and letting it reach 300 completes the record that
+iteration count was never the problem. Nothing in `site.yaml` is changed, nothing
+is cancelled, and `saddle1` is not submitted: its input `protdft/neb_step1/
+saddlepoint.pdb` does not exist and `sections.py` refuses the section (D115's
+`if problems:` at line 325). **Whether to abandon the NEB for the scan → `ts`
+route is a methodological choice and the user's.**
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
