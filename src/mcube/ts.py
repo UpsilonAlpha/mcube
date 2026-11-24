@@ -116,7 +116,6 @@ def run(args) -> Dict[str, Any]:
     md = load_section(args.config, "md")
     qmmm_inputs = load_section(args.config, "qmmm").get("inputs") or {}
     inputs = stage_inputs(args.config, "ts", section)
-    result["qm_level"] = qm_level_label(qmmm_inputs)
     qmmm_inputs = qm_level_inputs(qmmm_inputs, inputs)  # qm_engine/dft_* may be set per section
 
     pdb_file, pdb_source = resolve_start_structure(
@@ -153,7 +152,6 @@ def run(args) -> Dict[str, Any]:
     act_inputs = {**qmmm_inputs, **{k: inputs[k] for k in ACT_KEYS if k in inputs}}
     actatoms = resolve_actatoms(args.config, act_inputs, mm, fragment,
                                 qm_atoms, boundary_excluded, pdb_file)
-    result.update(actatoms_record(mm, pdb_file, actatoms))
     hessatoms: List[int] = [int(a) for a in (inputs.get("hessian_atoms") or qm_atoms)]
     monitor = inputs.get("monitor") or []
     check_in_active([[a, a] for a in hessatoms], actatoms, "hessian_atoms")
@@ -177,6 +175,14 @@ def run(args) -> Dict[str, Any]:
         "hessian_atoms": hessatoms,
         "guess_distances": monitor_distances(fragment.coords, monitor),
     }
+    # These two were written ABOVE this dict and crashed every `ts` run with
+    # `UnboundLocalError: cannot access local variable 'result'` (job 33410206,
+    # D337) - so no `ts` section had ever reached a Hessian. `qm_level` is also
+    # recorded here rather than at the top because `qm_level_inputs` has applied
+    # the section's own `qm_engine`/`dft_*` by now, which is the level the run
+    # actually uses and what `neb.py` records.
+    result["qm_level"] = qm_level_label(qmmm_inputs)
+    result.update(actatoms_record(mm, pdb_file, actatoms))
 
     # ---------- 1. TS optimisation ----------
     ts_energy = None
