@@ -19090,6 +19090,311 @@ reorganisation). **But no published displacement for a named active-site water i
 a named MBL has been checked against these numbers.** That is a literature task,
 not a measurement, and it has not been done.
 
+**¶334 - THE LITERATURE CHECKED, AND THE FIRST THING IT FOUND IS MY OWN ERROR: I
+briefed the agent that "every mono-zinc precedent holds its metal at Zn2", which
+¶265 REFUTED on 14 November by the user's own counterexample, and the agent
+duly confirmed it. Beyond that: **¶331's "the field reports a free energy" is
+TOO STRONG and is corrected here** - about a third of MBL mechanism papers report
+potential-energy barriers, so a PE barrier is publishable in this field and only
+*NEB* is unprecedented (now searched systematically: ZERO hits, three routes).
+And the PE-vs-FE gap we are implicitly betting on **has been measured in CphA at
+6.3 and 13.2 kcal/mol** against Gatti's assumed 2-3, in the same enzyme,
+unreconciled. Our 18-21 kcal/mol has NO in-field comparator; outside the field it
+sits at the TOP of a 24-study survey.** (2026-11-24, user: "get an agent to
+check? keep in mind our system may be different to anything published")
+
+## FIRST, THE ERROR, BECAUSE IT IS THE SAME ONE ¶316 MADE
+
+I gave the agent, as the caveat to build its brief around: *every mono-zinc
+precedent (CphA, Sfh-I, GOB-18) holds its metal at Zn2, so nothing published
+matches us.* **¶265 refuted exactly that sentence ten days ago**, on a
+counterexample the USER named: mono-zinc **BcII** (B1) carries its single metal
+at **Zn1 / 3H**, and Bounaga 1998 published a Zn1 Lewis-acid hydroxide mechanism
+for it. `claims/mono-zinc-mbl-precedents-are-zn2-enzymes.md` carries
+`status: unsupported` and the heading "REFUTED 2026-11-14 (¶265)". I did not read
+it before briefing; I read `reference-structures.md:262`, which still states the
+refuted form, and repeated it.
+
+The agent then returned "**Your premise survives**" as its headline. It had no
+way to know better - a subagent sees only its brief. **So a brief that asserts
+the conclusion gets the conclusion back, and the record was RIGHT there in the
+argmap with `unsupported` on it.** That is the memory rule - check the record,
+not memory - failing at the one step where a second pair of eyes should have
+caught it. `retractions.md` carries this.
+
+**What survives is the NARROW form ¶265 already wrote**: no published mono-zinc
+mechanism operates at a **two-histidine** Zn1 site. BcII's Zn1 is three
+histidines; ours is two plus Arg90. Everything the agent found leaves that
+standing - and one find bears on it directly, below.
+
+## THE CORRECTION TO ¶331: A POTENTIAL-ENERGY BARRIER *IS* PUBLISHABLE HERE
+
+¶331 part 1 said "the field reports a FREE ENERGY, so a NEB barrier is not the
+same quantity". **The first clause is wrong.** Verified potential-energy MBL
+barriers, from relaxed PES scans or stationary-point/TS searches:
+
+    Ackerman & Gatti 2013   CphA B2    2D QM/MM PES, MEP traced on the grid
+    Khrenova & Nemukhin 2018 L1 B3     PES minima + saddle points, then TST
+    Levina/Khrenova 2020    L1 B3      stationary points, PBE0-D3:AMBER
+    Lai et al. 2025         NDM-1 B1   MP2 QM/MM opt + TS search, 18.62 kcal/mol
+    Melia et al. 2015      CphA B2    PES + saddle + freq + IRC, THEN a PMF
+    Park/Brothers/Merz 2005 CcrA B1    "potential energy profile"
+
+That is roughly a third of the field, and **two of them (Khrenova, Levina) are B3
+enzymes using precisely our intended protocol: PES → saddle point →
+frequencies.** So `qm-levels.md` step 3 is not an outlier, and ¶331's conclusion
+("report a potential-energy barrier as a potential-energy barrier") is on firmer
+ground than ¶331 itself knew.
+
+**¶331's actual claim stands and is now evidenced.** Europe PMC full-text search
+for `"metallo-beta-lactamase"`/`"metallo-β-lactamase"` crossed with each of
+`"nudged elastic band"`, `"string method"` and `"conjugate peak refinement"`
+returned **0 hits each**, corroborated by OpenAlex full-corpus and targeted web
+search. Co-occurrences were reference-list citations only. **Caveat the agent
+stated and I keep: Europe PMC full text is the open-access subset, so a paywalled
+NEB paper that flagged it in neither title nor abstract could hide.** Confidence
+high, not absolute.
+
+## THE NUMBER ¶331 AND ¶332 BOTH NEEDED: WHAT PE MINUS FE ACTUALLY COSTS
+
+**Melia, C.; Ferrer, S.; Moliner, V.; Bertran, J.** *Arch. Biochem. Biophys.*
+2015, 582, 116. DOI 10.1016/j.abb.2015.01.013. N220G CphA, B2, mono-zinc -
+**potential AND free energy barriers for the same reaction in the same enzyme**:
+
+                   ΔE(act)   ΔG(act)   ΔG corrected
+    Imipenem        45.5     39.2     32.6
+    Cefotaxime      53.1     39.9     35.6
+
+**PE minus FE = 6.3 and 13.2 kcal/mol.** Against which Ackerman & Gatti 2013, in
+the SAME ENZYME, justify a PE-only treatment thus: *"entropic contributions to
+the reactions that occur in the active site of this enzyme are very small (at
+most 2-3 kcal/mol)"*.
+
+**2-3 assumed against 6.3-13.2 measured, same enzyme, and the two are not
+reconcilable at face value.** Two caveats the agent attached: Melia's absolute
+barriers are far above CphA's experimental ~14, and the authors themselves judge
+the explored mechanism unfavourable. But the SPREAD is the quantity we need, and
+it is the only direct measurement of it in this field. **This is the price of the
+conversion ¶331 promised to state as a limitation, and it is 2-4× what the field's
+own PE papers assume.**
+
+## OUR 18-21 kcal/mol: NO IN-FIELD COMPARATOR, AND AT THE TOP OF THE GENERAL RANGE
+
+**Inside the MBL literature: nobody reports the MM term separately.** One paper
+addresses the issue at all - Ackerman & Gatti 2013, as an assertion about what
+its PES contains: *"during the following geometry optimization the entire protein
+and solvent reorganize... the final PES includes also the contribution from the
+reorganization energy of the protein and solvent"* - and never separates or
+quantifies it. Its own caveat: *"no extensive sampling of the degrees of freedom
+perpendicular to the reaction coordinates"*. **So ¶331's 18.6-21.2 has no
+like-for-like number to be compared against, in this field, at all.**
+
+Outside it, ours is 75-88 kJ/mol, and the methodology literature prices it:
+
+**Ryde, U.** *JCTC* 2017, 13, 5745. DOI 10.1021/acs.jctc.7b00826. Table 1
+compiles the standard deviation *s* of QM/MM energies across independently
+minimised snapshots from **24 published studies**: *"s ranges from 0.6 to 97
+kJ/mol and 73% of the studies have at least one series of energies with s > 10
+kJ/mol."* **Our 75-88 kJ/mol maps onto the single largest entry in that survey.**
+Precedented, but at the extreme.
+
+**And Ryde independently supports ¶333's premise**, which ¶333 argued from TIP3P
+alone: *"the addition or removal of a single hydrogen bond far from the active
+site affects the energy by ~20 kJ/mol in a way that most likely is irrelevant for
+the reaction."* 20 kJ/mol = **4.8 kcal/mol**, against ¶333's "a TIP3P hydrogen
+bond is ~5-7". **So our arithmetic - about four hydrogen bonds' worth - is
+confirmed from outside, by a source arguing the resulting energy change is
+mechanistically IRRELEVANT.** Also: *"it is very hard to ensure that the
+surrounding enzyme remain in the same local minima throughout a reaction
+sequence."*
+
+**Kastner & Sherwood 2010** (*Mol. Phys.* 108, 293; DOI
+10.1080/00268970903446764) is the direct precedent for an environment term
+dominating: the environment-interaction term **83.3 kJ/mol ~= 19.9 kcal/mol
+EXCEEDS the entire ribosome-catalysed barrier of 73.1 kJ/mol**, barrier spread
+across 10 snapshots is 51.5 and 71.6 kJ/mol, and single MM residues contribute
++39.4 / -14.4 kJ/mol. Their sentence closest to ours: *"The geometric data of the
+atoms directly involved in the transition are uncorrelated with the activation
+barrier... the differences in the activation barriers between the snapshots must
+be caused by interactions with the environment."*
+
+**THE COUNTERPOINT THAT SHARPENS OUR RESULT, and it must not be skipped.
+Ganguly, Boulanger & Thiel** *JCTC* 2017, 13, 2954; DOI 10.1021/acs.jctc.7b00016:
+environment terms of **160-200 kcal/mol absolute** that collapse to **under 1
+kcal/mol in the relative barrier** - *"large in absolute terms, but they do not
+change much during the reaction"*. **So a huge environment energy is NORMAL and is
+not itself an error. In a well-behaved calculation it CANCELS between states.
+Ours has not cancelled. That is the sharpest available framing of ¶331's
+measurement, and it is the agent's inference, not any paper's claim.**
+
+**The real anomaly is non-cancellation at THIS geometric similarity.** Every
+published spread verified is across independent MD snapshots drawn nanoseconds
+apart (Ryde's survey, von der Esch's 150 paths at sigma 5.40 kcal/mol, Klahn
+2005's 30 kcal/mol ground-state variation). **Ours is between geometries whose
+largest displacement is 1.38 Å with 39-90 of 47,979 atoms past 0.1 Å
+(¶333).** No primary source reports environment-energy scatter of our size
+between geometries that similar. **Absence of a matching precedent at our level
+of similarity points at per-image independent relaxation into distinct basins -
+¶332's diagnosis - rather than at a documented physical effect.**
+
+## FOUR PAPERS THAT DESCRIBE OUR FAILURE MODE IN PRINT
+
+1. **Lai et al. 2025** (NDM-1, MP2 QM/MM; DOI 10.1002/jcc.27544) states it as an
+   acknowledged limitation of our exact class of method: *"Limited by the geometry
+   optimization method used here, the dynamics and reorganization of the solvent
+   water molecules in response to the chemical changes in the lactam cannot be
+   adequately described."*
+2. **Bergonzo et al. 2009** (partial NEB; DOI 10.1002/qua.22405) **deliberately
+   engineers what we are suffering**: solvent is excluded from the NEB force
+   calculation because *"diffusion of water molecules... precludes overlapping
+   between structures"*, and *"Eliminating solvent from the NEB force calculation
+   is important because this allows the solvent environment to react
+   independently to the conformational change that is being studied."* **"React
+   independently" IS our per-image environment relaxation.** They report no
+   energy spread and draw no comparability conclusion.
+3. **Xie, Liu & Yang 2004** (NEB adapted for enzymes; DOI 10.1063/1.1691404,
+   ABSTRACT ONLY) presupposes the problem in its own fixes: *"soft spectator
+   degrees of freedom are excluded from path definitions"* and a multistage
+   strategy with *"gradually decreasing rigidity... to maximize the opportunity of
+   obtaining continuously changing environments along the path."* **That last
+   clause only makes sense if by default the environment does NOT change
+   continuously image to image.** Highest-value retrieval outstanding.
+4. **Dietschreit, von der Esch & Ochsenfeld 2022** (*PCCP* 24; DOI
+   10.1039/D1CP05007A, verified only against a submitted manuscript in a thesis):
+   adiabatic mapping gave 91.6 kJ/mol against 130.2 along the minimum FREE energy
+   path, and *"predictions of reaction barriers or even reaction mechanisms based
+   on minimal energy paths can be misleading"* because *"the minimised reactant
+   geometries also correspond to many different local minima."*
+
+## THREE STRUCTURAL FINDS THAT ARE NEW TO THIS RECORD
+
+**1. A mono-zinc, Zn1-SITE B3 EXISTS, and it is the closest configurational match
+ever found to CSR-1.** **Hu, Z.; Periyannan, G.; Bennett, B.; Crowder, M. W.**
+*JACS* 2008, 130, 14207; DOI 10.1021/ja8035916. ABSTRACT ONLY. L1 is B3:
+*"Mononuclear Zn(II)-containing L1, which binds Zn(II) in the consensus Zn1 site,
+was shown to be slightly active; however, this enzyme did not stabilize a
+nitrocefin-derived reaction intermediate"*, and *"the metal ion in the Zn1 site is
+essential for catalysis in L1 and that the metal ion in the Zn2 site is crucial
+for stabilization of the nitrocefin-derived reaction intermediate."*
+
+**This frames the question the RQK triad has to answer, and sharpens it into a
+testable one:** in a B3 enzyme with Zn1 occupied and Zn2 empty, the anionic
+intermediate is NOT stabilised. CSR-1 is that configuration - and hydrolyses
+meropenem. **So either the Arg/Gln/Lys set does the job Zn2 does in L1, or CSR-1
+does not form the same intermediate.** Differences to state plainly: engineered
+metal-loading of a canonical di-zinc enzyme, not a natural Zn1-only enzyme; Zn2
+ligands still canonical DHH, not RQK; purely experimental, no QM/MM, no water
+analysis. **UNVERIFIED - abstract only.**
+
+**2. A non-canonical Zn1 of TWO HISTIDINES AND A WATER, which bears on novelty
+clause 2.** **Cheng, Z.; VanPelt, J.; et al.** *Biochemistry* 2018, 57; DOI
+10.1021/acs.biochem.8b00728, SPS-1. ABSTRACT ONLY: *"the Zn1 metal ion is
+coordinated by two histidine residues and a water molecule, which is held in
+position by a hydrogen bond network"*, and *"The Zn1 metal is displaced nearly 1 Å
+from the position reported in other MBLs."*
+
+Our M1 is two histidines **plus Arg90**, so the ligand sets are not identical -
+but **this is the nearest published Zn1 ligand set to ours and nothing in the
+argmap had it.** `the-novelty-is-a-monometallic-m1-site-with-two-histidines-and-
+an-arginine` clause 2 must be checked against it before the claim is made.
+**Also a useful yardstick: our zinc moves 0.19-0.35 Å along the path (¶333),
+well inside the ~1 Å the Zn1 position varies across MBLs.** Subclass of SPS-1
+NOT verified. **UNVERIFIED - abstract only.**
+
+**3. In CphA the nucleophilic water sits IN THE VACANT METAL SITE.** Ackerman &
+Gatti 2013, verbatim: *"The position of Wat1 is also close to the Zn1 site, which
+in CphA is not occupied by a metal ion. This particular location of Wat1 may
+explain the observation that the binding of a second Zn at the Zn1 site (by
+perhaps disturbing the exact positioning of Wat1) suppresses the activity of B2
+MβLs."* Cross-checked by them against Sfh-I crystallography. **The structural
+mirror image of ours: their vacancy hosts the nucleophile, ours is the opposite
+site.** No paper makes the inference to CSR-1; it is ours to make or refuse.
+
+**And a negative that costs us a precedent:** **Breece et al. 2012** (*J. Inorg.
+Biochem.* 111, 182; DOI 10.1016/j.jinorgbio.2011.12.013, abstract) - *"Zn(II)
+appears to show no preference for the Zn(1) (3H) or Zn(2) (DCH) sites"* in BcII.
+**So mono-zinc BcII is a site MIXTURE, not a clean Zn1 species.** That weakens
+¶265's counterexample without restoring the refuted node: Bounaga's published
+Zn1 mechanism still exists. It is a reason to re-examine
+`b1-monozinc-bcii-carries-its-metal-at-zn1`, not to reverse it.
+
+## ON MEROPENEM SPECIFICALLY, WHICH IS OUR SUBSTRATE
+
+**Das, C. K.; Nair, N. N.** *PCCP* 2017, 19, 13111; DOI 10.1039/C6CP08769H, free
+at arXiv:1702.01239. NDM-1, B1, **di-zinc**, Car-Parrinello QM/MM metadynamics.
+Ring opening **20 kcal/mol, "computed to be identical (20 kcal mol-1) for both
+cephalexin and meropenem"**; N3 protonation 9; and a **bulk water W2 diffusing in
+after ring opening at a 13 kcal/mol free-energy barrier**, then coordinating Zn1.
+Meropenem-specific and worth our attention: *"a water chain connecting Lys211 to
+C5 was absent unlike in the case of cephalexin... the bulky R2 group of meropenem
+could result in large steric effect"*. **Their water motion is bulk→metal, far
+larger than 1 Å and a different phenomenon from ours** - but it is the only
+di-zinc meropenem barrier set in hand, and 20 kcal/mol for ring opening is the
+number `step2` will have to be read against.
+
+## Q3 CAME BACK EMPTY, AND THAT IS THE ANSWER
+
+**No primary source reports a quantified ~1 Å displacement of a
+crystallographically resolved water along a nucleophilic-attack coordinate in any
+metalloenzyme.** Searched Europe PMC including full text, OpenAlex, and general
+web from several framings. **Absence of evidence, stated as such.** MBL water
+reorganisation in print is water ENTRY from bulk, metal COORDINATION, or CHANNEL
+opening coupled to loop motion - all much larger than 1 Å and usually with real
+conformational change. **Hydrogen-bond-network reorganisation among pre-existing
+ordered waters with NO conformational change is not a described MBL mechanism
+element.** ¶333's measurement is in a genuine gap.
+
+The nearest miss is **Dal Peraro, Llarrull, Rothlisberger, Vila & Carloni**,
+*JACS* 2004, 126, 12661; DOI 10.1021/ja048071b, mononuclear BcII, ABSTRACT ONLY:
+*"This water molecule binds the zinc ion in the first step of the reaction,
+expanding the zinc coordination number"*, and *"The modeled Michaelis complexes
+for other substrates are also characterized by the presence of an ordered water
+molecule in the same position."* **No displacement in Ångstroms is given in the
+abstract.** The single most on-point paper not read.
+
+## THREE THINGS NOT TO CITE, AND ONE NOT TO BUILD
+
+1. **arXiv:1709.10499** (Swinburne & Kermode, *PRB* 2017) - the "a total energy
+   cannot be defined in hybrid QM/MM" paper. **Read in full; it does NOT
+   transfer.** Its argument is specific to **abrupt force-mixing**, where DFT
+   forces are used with no energy functional anywhere. Our additive QM/MM has a
+   defined, additive total (¶317 measured it to the last digit). **Citing it for
+   non-additivity would misrepresent it.**
+2. **"Mu & Xu 2020 report barrier variation across MD structures as <1
+   kcal/mol"** - **UNVERIFIABLE AND APPARENTLY NONEXISTENT.** It came from a
+   web-search summary; the SI was retrieved and grepped in full and contains
+   nothing resembling it. **Flagged because it would have been the single most
+   directly competing number to our 18-21.**
+3. **18.5 and 17.9 kcal/mol are mis-citations of Mu & Xu 2020.** The real
+   headline is **19.2** (corrected PMF, first step). 18.56 is a Table S2
+   **gas-phase truncated-active-site non-catalysed** DFT TS energy. 17.9 is not
+   found anywhere.
+4. **DO NOT BUILD** the one constructive idea in the methods literature -
+   Swinburne & Kermode's virtual-work line integration of forces along a modified
+   NEB, which would sidestep differencing independently minimised totals
+   altogether. It is apt, and it is NEW LOGIC IN A PIPELINE THE USER HAS RULED
+   OFF LIMITS without express permission. **Recorded as an option, not acted on.**
+
+## WHAT THIS CHANGES, AND WHAT IT DOES NOT
+
+**Nothing in `site.yaml`.** No job is submitted or cancelled on the strength of
+this. `step1` 33404655 continues.
+
+**It changes two things in the record**: ¶331's first clause, corrected above,
+and the standing of my own brief, in `retractions.md`.
+
+**It leaves ¶332's open question exactly where ¶332 left it** - whether the
+published barrier is scored in a common frozen environment - and it now has
+Ganguly's answer in principle (in a well-behaved calculation the environment
+cancels) without an MBL precedent for the construction. **Still the user's
+decision.**
+
+**Three retrievals would settle the rest in about fifteen minutes of
+institutional access**, and all three are paywalled to automated fetching: Dal
+Peraro 2004 JACS (Q1/Q3), Xie/Liu/Yang 2004 JCP (the NEB-in-enzymes argument),
+and Medina & Jana 2022 ACS Catal's "water orientation" stage. **Those are the only
+places a genuine precedent for ¶333's observation could still be hiding.**
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**

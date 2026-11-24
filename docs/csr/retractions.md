@@ -403,3 +403,55 @@ mtime.
 **The rule this earns:** a convergence line means nothing without its
 function-call count, and a progress table watched live is not identified until
 something in the output names it.
+
+## The brief I gave the literature agent - "every mono-zinc precedent holds its metal at Zn2"
+
+**Withdrawn 2026-11-24, in ¶334, against ¶265.** I briefed a literature agent
+with that sentence as the caveat to build its search around, and it returned
+"**Your premise survives**" as its headline finding. The premise had been
+**REFUTED ten days earlier, on 2026-11-14, by a counterexample the USER named**:
+mono-zinc **BcII** (B1) carries its single metal at **Zn1 / 3H**, and Bounaga et
+al. 1998 published a Zn1 Lewis-acid hydroxide mechanism for that species.
+`claims/mono-zinc-mbl-precedents-are-zn2-enzymes.md` carries `status:
+unsupported` and the heading "REFUTED 2026-11-14 (¶265)".
+
+I did not read that node before briefing. I read `reference-structures.md:262`,
+which still states the refuted form - "every mono-zinc MBL in the literature
+carries its metal in the Zn2-site (GOB-18, Sfh-I, CphA), so none of those
+analogies transfers" - and repeated it as settled.
+
+**What survives, and it is ¶265's own narrow form:** no published mono-zinc
+mechanism operates at a **two-histidine** Zn1 site. BcII's Zn1 is three
+histidines; CSR-1's M1 is two plus Arg90. Everything the agent found leaves that
+standing, and one find (SPS-1's two-histidine-plus-water Zn1, ¶334) bears on it
+directly and must be checked before the claim is made.
+
+**The rule this earns, and it is two rules.** A subagent sees only its brief, so
+**a brief that asserts a conclusion gets the conclusion back** - any premise
+handed to an agent as a caveat must be read out of the argmap first, not out of
+memory, and the argmap's `status:` field is the thing to read. And a refuted
+claim has to be struck wherever it is WRITTEN, not only where it was refuted:
+¶265 updated the claim node and left `reference-structures.md` stating the
+refuted form, which is what I then read.
+
+## ¶331 - "the field reports a FREE ENERGY, so a NEB barrier is not the same quantity"
+
+**First clause withdrawn in ¶334, 2026-11-24.** About a third of MBL mechanism
+papers report **potential-energy** barriers, from relaxed PES scans or
+stationary-point/TS searches: Ackerman & Gatti 2013 (CphA), Khrenova & Nemukhin
+2018 and Levina et al. 2020 (both L1, **B3**, and both using our intended PES →
+saddle point → frequencies protocol), Lai et al. 2025 (NDM-1, 18.62 kcal/mol),
+Melia et al. 2015 (CphA) and Park, Brothers & Merz 2005 (CcrA). So a
+potential-energy barrier is a publishable quantity in this field, and
+`qm-levels.md` step 3 is not an outlier.
+
+**¶331's actual claim stands and is now evidenced rather than asserted**: zero
+MBL mechanism papers use NEB, CI-NEB, a string method or conjugate peak
+refinement, across three independent search routes. It is *NEB* that is
+unprecedented here, not a potential-energy path. ¶331's conclusion - report a
+potential-energy barrier as a potential-energy barrier and never set it beside a
+free energy - is unaffected and better supported than ¶331 knew.
+
+**The rule this earns:** "no paper does X" and "no paper reports quantity Y" are
+different claims with different evidence, and conflating them overstates the
+first while hiding that the second was never searched.

@@ -1,7 +1,7 @@
 ---
 type: claim
 status: unsupported
-entries: [¶107, ¶124, ¶265]
+entries: [¶107, ¶124, ¶265, ¶334]
 checked: [¶107, ¶124]
 ---
 
@@ -51,6 +51,35 @@ three histidines; CSR-1 is two plus an arginine. So the precedent transfers
 the metal position and the nucleophile, not the ligand set - which is a
 weaker claim than this node made and does not carry
 [[thesis-mechanism-differs-from-canonical-b3]] on its own.
+
+**Two additions from the ¶334 literature pass, pulling opposite ways, and
+NEITHER restores this node.**
+
+**The counterexample is weaker than ¶265 thought.** Breece et al. 2012 (*J.
+Inorg. Biochem.* 111, 182; DOI 10.1016/j.jinorgbio.2011.12.013, **abstract
+only**) report by XAS that in BcII *"Zn(II) appears to show no preference for the
+Zn(1) (3H) or Zn(2) (DCH) sites"*. **So mono-zinc BcII is a site MIXTURE, not a
+clean Zn1 species** - which is a reason to re-examine
+[[b1-monozinc-bcii-carries-its-metal-at-zn1]], not to reverse it: Bounaga's
+published Zn1 mechanism exists either way, and a refutation does not un-refute
+because its subject turns out to be heterogeneous.
+
+**And a B3 Zn1-only case now exists, which cuts against this node from the other
+side.** Hu, Periyannan, Bennett & Crowder, *JACS* 2008, 130, 14207; DOI
+10.1021/ja8035916, **abstract only**: mono-Zn L1 loaded at the consensus **Zn1**
+site is *"slightly active"* but *"did not stabilize a nitrocefin-derived reaction
+intermediate"*, and *"the metal ion in the Zn2 site is crucial for stabilization"*
+of it. **An engineered metal-loading state of a canonical di-zinc B3, not a
+natural Zn1-only enzyme, and with canonical DHH Zn2 ligands rather than RQK** -
+but it is the closest configurational match to CSR-1 in the literature, and it
+makes this node's premise false for B3 as well as B1.
+
+**What it hands the project instead is a sharper question than this node ever
+asked:** in a B3 with Zn1 occupied and Zn2 empty, the anionic intermediate is NOT
+stabilised - yet CSR-1 is that configuration and hydrolyses meropenem. **So
+either the RQK triad does Zn2's job, or CSR-1 does not form the same
+intermediate.** That is testable and it is the thesis's business
+([[thesis-lys226-restrains-asp92-in-place-of-zn2]]).
 
 ## Supports
 - [[thesis-mechanism-differs-from-canonical-b3]]

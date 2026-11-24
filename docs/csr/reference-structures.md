@@ -258,11 +258,27 @@ Three consequences, all of them load-bearing:
    ¶276:** 6NC5 measures 4.20, not 2.80. The observation that restraining a
    carboxylate rotates OD1 onto the metal stands; the distance does not. See `## Standing constraints` in the
    decision log and `LIGAND_MAX` in `preprocess.py`.
-3. **CSR-1 is a Zn1-site enzyme, and every mononuclear MBL in the literature is
-   Zn2-site** (GOB-18, Sfh-I, CphA), so none of those analogies transfers
-   cleanly — which is why the thermolysin and carboxypeptidase A rows below,
-   mononuclear hydrolases with one zinc doing both jobs, carry the criteria
-   instead (¶124).
+3. ~~**CSR-1 is a Zn1-site enzyme, and every mononuclear MBL in the literature
+   is Zn2-site.**~~ **WITHDRAWN, ¶334.** The second clause was refuted in ¶265
+   by the counterexample the user named - mono-zinc **BcII** (B1) carries its
+   metal at **Zn1 / 3H**, with a published Zn1 hydroxide mechanism (Bounaga
+   1998) - and `claims/mono-zinc-mbl-precedents-are-zn2-enzymes.md` has carried
+   `status: unsupported` since 2026-11-14. **This line was left standing and I
+   then read it back as settled when briefing a literature agent, which returned
+   the refuted premise confirmed** (`retractions.md`). ¶334 also adds a B3
+   case: mono-Zn **L1 loaded at Zn1** is slightly active but does NOT stabilise
+   the nitrocefin intermediate (Hu 2008, abstract only).
+
+   **The form that survives, from ¶265:** no published mono-zinc mechanism
+   operates at a **two-histidine** Zn1 site - BcII's is three histidines, ours
+   is two plus Arg90. **Check SPS-1 before relying on even that**: its Zn1 is
+   "two histidine residues and a water molecule" (Cheng 2018, abstract only,
+   ¶334), the nearest published ligand set to ours.
+
+   The first clause stands, and so does the reason for the rows below: the
+   thermolysin and carboxypeptidase A rows, mononuclear hydrolases with one zinc
+   doing both jobs, carry the criteria because no MBL analogy transfers cleanly
+   (¶124).
 
 `6DN4` is the apo/second CSR-1 entry used as a cross-check in ¶120.
 

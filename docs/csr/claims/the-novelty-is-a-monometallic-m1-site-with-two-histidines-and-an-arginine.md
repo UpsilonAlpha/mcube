@@ -1,7 +1,7 @@
 ---
 type: claim
 status: open
-entries: [¶265, ¶279]
+entries: [¶265, ¶279, ¶334]
 ---
 
 # The novel object is a monometallic site at M1 made of two histidines and an arginine, not monometallic catalysis as such
@@ -27,6 +27,29 @@ clauses survive, and each is checkable:
 and has not: no reaction coordinate has been computed
 ([[no-reaction-coordinate-has-ever-been-computed]]) and there is no usable
 Michaelis complex ([[no-usable-michaelis-complex-exists-yet]]).
+
+**¶334 PUTS A NAMED PAPER IN FRONT OF BOTH CLAUSE 1 AND CLAUSE 2, and both
+must be checked before either is asserted.**
+
+**Clause 1 now has a B3 Zn1-only precedent.** Mono-Zn **L1** loaded at the
+consensus Zn1 site (Hu et al., *JACS* 2008, 130, 14207; DOI
+10.1021/ja8035916, **abstract only**) is slightly active and does **not**
+stabilise the nitrocefin intermediate. It is an engineered metal-loading state
+of a di-zinc enzyme with canonical DHH at Zn2, so clause 1 as written - "no
+monometallic B3 **mechanism** at M1 is reported" - survives, because no mechanism
+was computed for it. **But the clause can no longer be stated as though the
+configuration were unknown, and the paper is a direct challenge to the thesis:
+in L1, Zn1-only does not stabilise the intermediate.**
+
+**Clause 2 is the one at risk.** SPS-1 (Cheng, VanPelt et al., *Biochemistry*
+2018, 57; DOI 10.1021/acs.biochem.8b00728, **abstract only**) has a Zn1 site of
+*"two histidine residues and a water molecule, which is held in position by a
+hydrogen bond network"*, with the metal *"displaced nearly 1 Å from the position
+reported in other MBLs"*. **Two histidines and no third protein ligand is the
+nearest published Zn1 ligand set to CSR-1's two-plus-Arg90, and the subclass of
+SPS-1 is not yet verified.** If it is B3, clause 2 needs rewording to the
+difference that remains - the arginine - rather than the absence of a precedent.
+**Resolve this from the primary paper before the claim goes in a draft.**
 
 **Clauses 1 and 2 are structural and nearly in hand.** Clause 2 in particular
 needs no barrier - it is a statement about the ligand set of an occupied site,
