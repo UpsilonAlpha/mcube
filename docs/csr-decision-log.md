@@ -19674,6 +19674,115 @@ is gained by removing them and ¶335's trace would lose its referent.
 abandoned route. **The check itself should not be relaxed to hide it** - it is
 correct about a section that is correctly dead.
 
+**¶337 - `ts` HAD NEVER RUN, AND IT COULD NOT HAVE: `ts.py` used its `result`
+dict eighteen lines before creating it, so EVERY `ts` submission dies in under a
+second with `UnboundLocalError`. Job 33410206 was the first `ts` job this project
+has ever submitted, which is why nobody had seen it. Fixed, tested, pushed - and
+the resubmission (33410233) then got all the way to the TS optimisation's first
+step and was **OOM-KILLED at 32G**. So the stage works and the resource does
+not.** (2026-11-24, after ¶336's route change)
+
+## THE BUG, AND WHY IT SURVIVED
+
+    File "/scratch/user/uquadhik/mcube/src/mcube/ts.py", line 119, in run
+      result["qm_level"] = qm_level_label(qmmm_inputs)
+    UnboundLocalError: cannot access local variable 'result' where it is not
+      associated with a value
+
+Two statements sat ABOVE the `result: Dict[str, Any] = {...}` that creates it at
+line 175: `result["qm_level"] = ...` at 119 and
+`result.update(actatoms_record(mm, pdb_file, actatoms))` at 156. **Both move
+below the assignment.**
+
+**`qm_level` also changes meaning for the better.** At line 119 it read
+`qmmm_inputs` BEFORE line 120 applied `qm_level_inputs`, so it recorded the BASE
+qmmm level rather than the section's own `qm_engine`/`dft_*`. Read where `result`
+is built, it records the level the run actually uses - which is what `neb.py:197`
+has always done. So the fix corrects a silent mis-recording as well as a crash.
+
+**It survived because the stage is new ground.** `qm-levels.md` has prescribed
+`scan`/`neb` → `ts` → `sp` for weeks and the chain never got past the path, so
+`ts` was written, reviewed, commented, given `require` blocks in four sections
+(`saddle1`, `saddle2`, `psaddle1`, `psaddle2`) - and never executed. **¶320 and
+¶336 both reasoned carefully about `saddle1`'s region and radius while the
+section could not have run at any region or radius.** Reading a section's config
+proves nothing about whether its code runs.
+
+## THE TEST, AND WHY IT IS STATIC
+
+`tests/test_result_binding.py` walks the AST of every function in every
+`src/mcube/*.py` and fails any that LOADS `result` before binding it.
+
+**It is static deliberately.** A `ts` test needs ASH, OpenMM, a run directory and
+a structure; this needs none of them, runs anywhere in 0.24 s, and covers the
+DEFECT CLASS rather than the one line that failed. It carries two self-tests - the
+¶337 shape must fail the checker, the corrected shape must pass - so a broken
+checker cannot pass silently. **Checked across the 16 functions in `src/mcube`
+that bind `result`: `ts.py` was the only offender.** `19 passed in 0.24s` on
+Bunya under the ASH environment's pytest.
+
+What it deliberately does NOT catch: a `result` bound on only one branch of an
+`if`. `ast` sees the assignment and the check passes; catching that needs flow
+analysis, which is `ruff F821`'s job and is noted in the file.
+
+## THE RESUBMISSION GOT FURTHER THAN ANYTHING HAS, AND THEN RAN OUT OF MEMORY
+
+33410233, the same section with the fix in place:
+
+    [INFO] TS guess: protdft/scan_attack/scan_11.pdb (from ts_saddle1.inputs.pdb_file)
+    [INFO] QM atoms: 129
+    ... MM system built, QM region built, boundary made, QM charges zeroed ...
+    [STEP] Partial Hessian for the TS optimisation  ->  completed, with a full
+           vibrational analysis and thermochemistry printed
+    Step    0 : Gradient = 6.494e-03/9.485e-02 (rms/max) Energy = -439.7428967638
+    slurm_script: line 103: 331737 Killed    mcube "$STAGE" ...
+    error: Detected 1 oom_kill event in StepId=33410233.batch
+
+**One good sanity check inside that.** Step 0's energy, **-439.7428967638 Eh**,
+against `scan_energies.csv`'s point 11 at **-439.74296311 Eh**: a difference of
+6.6e-5 Eh = **0.04 kcal/mol**. The `ts` stage reproduces the scan's own energy
+for the scan's own structure at the scan's own region - so ¶336's radius choice
+is confirmed by measurement rather than only by argument, and the QM region, the
+charge and the active region all resolved the same way the scan resolved them.
+
+**And then it died on memory, which is NOT explained by region size.** The
+puzzle to record honestly: `aspxtb8`, `reactmin9` and `attackmin9` all ran
+geomeTRIC optimisations with ActiveRegion at **479, 665 and 665** active atoms in
+**32G** and converged. This section's active region is the scan's **476** - the
+smallest of the four - and it OOM-killed at the same 32G. **So it is the TS
+machinery, not the system size.** Candidates not distinguished: geomeTRIC's
+`TSOpt` mode-following storage, the `restHessian`/model-Hessian construction, or
+`NumFreq`'s retained Hessian. **This is not diagnosed and must not be asserted.**
+
+**MaxRSS was NOT obtained.** The code-server terminal wedged while running the
+full test suite and stopped executing commands entirely - `echo` produced no
+file - so `sacct -j 33410233 --format=MaxRSS` never ran. **The number that would
+size the request is therefore missing, and the next run should be the one that
+measures it.**
+
+## WHAT IS PENDING, AND IT IS THE USER'S
+
+**`saddle1` needs more memory than 32G and the amount is unmeasured.** Raising
+`submit.mem` is a resource change, not a method change - but the user was offered
+"raise the memory" once before, for `nebts`, and chose to split the method
+instead (¶320), so it is not assumed here. **Nothing in `site.yaml`'s submit
+block is changed by this entry.**
+
+The disciplined form of the next attempt: raise `mem`, and read `MaxRSS` off the
+run whether it succeeds or fails, so the third attempt is sized from a
+measurement instead of a guess.
+
+**Also still pending and unchanged by this entry:** `ringopen` is written,
+validated, repointed at `attackmin` (¶336) and UNSUBMITTED; `saddle2` cannot be
+submitted until `ringopen`'s profile names its maximum; and the DFT level for the
+published stationary points remains undecided and belongs to `sp`.
+
+**The full test suite did not complete.** `tests/test_result_binding.py` passed
+on Bunya (19 tests). The whole suite was started, blocked the terminal for over
+three minutes, and was interrupted - so **`ts.py`'s change is covered by its own
+test and by a successful 33410233 run to Step 0, but not by a full-suite pass.**
+That is a gap, not a result, and it is recorded as one.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
