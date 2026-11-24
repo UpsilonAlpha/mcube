@@ -2030,18 +2030,78 @@ sections:
   # `pdb_file`. `require` compares two sections' inputs and knows nothing about
   # which section produced a file, so the match above is maintained by hand and
   # that `sections.py` gate remains proposed and unbuilt.
+  # **¶336: THIS SECTION'S INPUT MOVED FROM THE NEB'S SADDLEPOINT TO THE SCAN'S
+  # MAXIMUM, and its radius from 9 Å to 8, on the user's decision to abandon the
+  # NEB ("Yes, scan then ts").** ¶335 measured why: at iteration 163 of 300 the
+  # path's dE had bottomed at 122 and was rising, dS had never stopped growing,
+  # and MaxF_CI had never come within 6× of its tolerance. 33404655 was cancelled.
+  #
+  # **The radius follows the lineage, and that is the whole reason it changed.**
+  # The 9 Å existed because ¶317/¶319 found the NEB's endpoints minimised at 8
+  # while the path ran at 9; with the NEB gone there are no endpoints to match,
+  # and what this structure must be commensurable with is **the scan it came
+  # from**. `scan_attack` ran at the base `actradius: 8` from
+  # `qmmm_aspxtb8/QM_MM_optimized.pdb` under `*qmreg_michrks`, giving **476**
+  # active atoms, and `frozen_check.py` PASSED on that pair at 8 Å - 474 atoms
+  # differed and every one was inside the 476, because a constrained scan cannot
+  # move an atom outside its own region. **Running the TS search at 9 would put
+  # the saddle on a different surface from the profile it is the maximum of**,
+  # which is ¶320's trap entered from the other side. `region_check.py` is the
+  # gate for exactly this and is run before submission.
+  #
+  # **Which point, and from the run's own record.** `scan_energies.csv` has all
+  # 16 points `converged: True` and one clean maximum:
+  #
+  #     point   O01-C4x(Å)   rel(kcal/mol)
+  #       9       2.3205        12.197
+  #      10       2.1752        13.468
+  #      11       2.0302        14.237   <- the maximum, and this section's input
+  #      12       1.8852        13.499
+  #      13       1.7401        10.751
+  #
+  # **One number to carry, because it is not 14.237.** Points 1 and 2 sit BELOW
+  # point 0 (-0.293 and -0.247 kcal/mol), so the scan's own lowest point is point
+  # 1 at 3.4808 Å, not point 0. Against that minimum the scan's apparent barrier
+  # is **14.53**, not 14.24. Small, but ¶308's 14.24 is quoted from point 0 and
+  # the difference is real; the barrier this section produces must be read against
+  # a free minimum, not against either.
+  #
+  # **¶308's two refusals still stand and are not waived by this move**: the
+  # maximum of a driven scan is not a transition state, and nothing here is
+  # quotable at this level of theory. **That is what `tsopt`, `freq` and the IRC
+  # are for** - they are the step that converts this guess into a stationary
+  # point with one imaginary mode connecting the right two minima, and neither
+  # route has reached it yet. ¶334 adds that this is also what the field does:
+  # Ackerman & Gatti trace their MEP on a finished relaxed-scan grid, and
+  # Khrenova & Nemukhin 2018 and Levina et al. 2020 - both on **L1, a B3** -
+  # locate stationary points and take frequencies.
+  #
+  # **`unset: [qm_engine]` is kept, so this runs at GFN2 and NOT at DFT.** That is
+  # deliberate and it is a cost fact, not a preference: ¶309 ~S~5 measured **~1.8 h
+  # per DFT/MM gradient** on `aspdft`, and a TS optimisation plus a Hessian plus
+  # an IRC is hundreds of gradients. At GFN2's measured **2.80 s** (¶315) the
+  # whole section is cheap. **The DFT level for the published stationary points is
+  # still undecided and is the user's** - it belongs to `sp`, after this.
+  #
+  # **`hessian_atoms` is the five reacting atoms and must stay stated.**
+  # `ts.py:157` takes `hessatoms = hessian_atoms or qm_atoms`, so omitting it
+  # would build a numerical Hessian over all 129 QM atoms - the same trap
+  # `numfreq: false` avoids on the NEBs. At `freq_npoint: 2` the five give
+  # ~30 gradients a frequency job (`ts.py:161`), about 84 s.
   saddle1:
     stage: ts
     submit: {partition: general, cores: 8, mem: 32G, time: "48:00:00"}
     require:
       unset: [qm_engine, restraints, opt_constraints, constraints]
-      equals: {charge: 2, rigid_water: false, actradius: 9,
+      equals: {charge: 2, rigid_water: false, actradius: 8,
                tsopt: true, freq: true}
     inputs:
-      pdb_file: protdft/neb_step1/saddlepoint.pdb
-      qm_residues: *qmreg_michrks   # step1's region; the base block has none
+      pdb_file: protdft/scan_attack/scan_11.pdb
+      qm_residues: *qmreg_michrks   # the scan's region; the base block has none
       charge: 2
-      actradius: 9                  # step1's radius, NOT the base block's 8
+      actradius: 8                  # the SCAN's radius (= the base default),
+                                    # stated rather than inherited so it cannot
+                                    # drift: ¶320's trap was an inherited 8
       rigid_water: false
       hessian_atoms: [C:2:O01, C:1:C4x, C:1:O2x, C:1:N1x, B:1:ZN]
       monitor:
