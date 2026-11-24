@@ -679,28 +679,62 @@ Every one of these was a *reading* failure, not a computing failure.
 
 ## 4. The plan (audit `audit-2026-11-02.md`, adopted in ¶178)
 
-### 4z. THE MECHANISM CHAIN, as of 2026-11-23 — read this before touching leg 1
+### 4z. THE MECHANISM CHAIN, as of 2026-11-24 — read this before touching leg 1
 
-The one place the live chain is stated. Written after ¶317-¶327 rebuilt it; if it
-disagrees with an entry below, this is newer.
+The one place the live chain is stated. Rewritten after ¶335-¶337 **abandoned
+the NEB**; if it disagrees with an entry below, this is newer.
 
+**THE ROUTE IS NOW `scan` → `ts` → `sp`, AT 8 Å THROUGHOUT.** The user decided
+this on 2026-11-24 ("Yes, scan then ts") after ¶335 measured the NEB oscillating
+rather than converging: at iteration 163 of 300 its dE had bottomed at ~122 and
+was rising, dS had never stopped growing (6.74 → 14.11), and MaxF_CI had never
+come within 6× of its tolerance. ¶334 then found that **no MBL mechanism paper
+uses NEB at all**, while about a third of the field reports potential-energy
+barriers from relaxed scans or TS searches - including Khrenova & Nemukhin 2018
+and Levina 2020 on **L1, a B3**, using this exact protocol.
+
+    LEG 1 (nucleophilic attack)
+    aspxtb8      DONE  the Michaelis minimum, 8 Å, 479 active
+    attack       DONE  33...  16 points, ALL converged, 8 Å, 476 active, 129 QM.
+                       Clean single maximum: point 11 at 2.0302 Å, 14.237
+                       kcal/mol from point 0 (10 and 12 at 13.468/13.499).
+                       NOTE points 1-2 are BELOW point 0 (-0.293, -0.247), so
+                       against the scan's own lowest point the figure is 14.53
+    saddle1      OOM   33410233 at 32G (¶337). Takes `scan_attack/scan_11.pdb` at
+                       8 Å. Reached the TS optimisation's Step 0 - Energy
+                       -439.7428967638 against the scan point's -439.74296311,
+                       **0.04 kcal/mol**, so region, charge and QM region all
+                       resolve as the scan's did - then was OOM-killed. NOT
+                       explained by region size: the 8/9 Å minimisations ran
+                       479-665 active atoms in the same 32G. MaxRSS NOT
+                       obtained. **Needs a `submit.mem` decision from the user**
+    LEG 2 (ring opening)
+    attackmin    the 8 Å free minimum, and `ringopen`'s input again (¶336
+                       reversed ¶325, whose reason was `step2`'s NEB reactant)
+    ringopen     READY on attackmin, 8 Å, NOT submitted. ~1.3 h for 12 points
+    saddle2      BLOCKED and deliberately un-submittable: its `pdb_file` is
+                       `scan_SET_FROM_CSV.pdb` until `ringopen`'s own
+                       `scan_energies.csv` names its highest point (¶336)
+
+    ABANDONED, kept on disk and in site.yaml as the record of what was measured
     reactmin9    DONE  33317685, 61 steps.  -439.97112777  (xtb -198.60188166,
                        MM -241.36924611).  9 Å, 665 active, 129 QM
     attackmin9   DONE  33317686, 53 steps.  -439.95772247  (xtb -198.58029981,
                        MM -241.37742266).  9 Å, 655 active, 129 QM
-    step1        FAILED 33319693 at ASH's default maxiter=100 (¶330). 99 NEB
-                 iterations, 28.3 s each, no saddlepoint returned. The ENDPOINTS
-                 are proven - image 0 and 13 reproduce reactmin9/attackmin9 to
-                 0.051 and 0.063 kcal/mol - but the path is a sawtooth with
-                 images 10-12 out of order, and the QM term wobbles too, so it
-                 is tangled images rather than an ASH defect. Needs a decision
-                 on `maxiter` and possibly `tol_max_fci`
-    saddle1      READY but has NOTHING to refine: step1 returned no saddlepoint
-                 (¶330). Authorised by the user on 2026-11-23, moot until a path
-                 converges. Cannot be pre-submitted either (¶324)
-    ringopen     READY on attackmin9, dry-run clean, NOT submitted
-    step2        blocked: its product is still a constrained scan point
-    saddle2      READY, needs step2
+    step1        FAILED twice. 33319693 hit ASH's maxiter=100 (¶330); 33404655
+                       was given maxiter 300 and CANCELLED at iteration 163
+                       (¶335). Endpoints were proven to 0.051/0.063 kcal/mol -
+                       the endpoints were never the problem
+    step2        never ran. `region_check.py` still FAILS it (8 against 9) and
+                       that FAIL is now moot rather than fixed. Do not relax the
+                       check to hide it
+
+**`ts` HAD NEVER BEEN RUN BY ANYTHING BEFORE 2026-11-24, and it was broken.**
+`ts.py` used its `result` dict eighteen lines before creating it, so every `ts`
+submission died in under a second with `UnboundLocalError` (¶337, fixed in
+a2fb1dd with `tests/test_result_binding.py`). **¶320 and ¶336 both reasoned
+carefully about `saddle1`'s region while the code could not have run at any
+region. Reading a section's config proves nothing about whether its code runs.**
 
 **The reaction energy, and it is the first usable number from this chain:**
 **+8.41 kcal/mol** for the tetrahedral intermediate above the Michaelis complex
