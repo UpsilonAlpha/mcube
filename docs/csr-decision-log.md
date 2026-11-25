@@ -19783,6 +19783,97 @@ three minutes, and was interrupted - so **`ts.py`'s change is covered by its own
 test and by a successful 33410233 run to Step 0, but not by a full-suite pass.**
 That is a gap, not a result, and it is recorded as one.
 
+**¶338 - `saddle1` RESUBMITTED AT 128G (33419978), AND ¶337'S MISSING NUMBER IS
+NOW READ: `MaxRSS` for 33410233 was **33528476K = 31.98 GiB against a 32G
+request, in 70 seconds**. That number is CENSORED AT THE CEILING - it says the
+job reached the limit, not where it would have levelled off - so it is a FLOOR on
+what the stage needs and 128G remains a bound rather than a measurement.**
+(2026-11-24, user: "yes do that")
+
+## THE MEASUREMENT, AND WHY IT IS NOT THE ANSWER
+
+    $ sacct -j 33410233 -o JobID,MaxRSS,State,Elapsed,ReqMem
+    33410233                  OUT_OF_ME+   00:01:10        32G
+    33410233.ba+  33528476K   OUT_OF_ME+   00:01:10
+    33410233.ex+               COMPLETED   00:01:10
+
+**An OOM kill always reports a `MaxRSS` at the limit, because the limit is where
+it was killed.** So this closes ¶337's gap only in the weak sense: we now know the
+job really did exhaust 32G rather than dying of something else wearing an OOM
+mask, and we know it did so **in 70 seconds** - across the partial Hessian, the
+full vibrational analysis and the TS optimisation's Step 0, all of which
+completed. What we still do NOT know is the requirement. **128G is 4× the floor
+and nothing more principled than that.**
+
+**The useful case is now the SUCCESS case.** If 33419978 completes, its `MaxRSS`
+is uncensored and is the real figure, and every later `ts` section - `saddle2`,
+`psaddle1`, `psaddle2` - can be sized from it instead of from a guess. If it
+OOMs again, its `MaxRSS` will read ~128G and be just as censored as this one, and
+**the next step then is to diagnose the consumer rather than to double again**:
+geomeTRIC's `TSOpt` mode-following storage, the `restHessian`/model-Hessian
+construction, or `NumFreq`'s retained Hessian. Those three remain undistinguished
+candidates (¶337) and must not be asserted.
+
+**Still not region size.** `aspxtb8`, `reactmin9` and `attackmin9` ran geomeTRIC
+with ActiveRegion at 479, 665 and 665 active atoms inside this same 32G and
+converged; this section's region is the scan's **476**, the smallest of the four.
+The 70-second figure sharpens that: the minimisations ran for hours in 32G, so
+whatever this stage allocates, it allocates it at the TS machinery's start.
+
+## WHAT WAS SUBMITTED, AND THE GATES AGAIN IN ORDER
+
+    region_check.py $CCM/site.yaml --only saddle1
+        ->  [OK] saddle1 ts pdb_file <- scan_attack
+            "No strict-stage differences: every `neb` endpoint and `ts` guess
+             runs the region of the run that produced it."
+    sections.py $CCM/site.yaml saddle1 --dry-run
+        ->  DRY RUN - config.yaml not touched. Checks passed for: ts_saddle1
+    sections.py $CCM/site.yaml saddle1 --submit
+        ->  ts_saddle1  pdb=protdft/scan_attack/scan_11.pdb  9 selectors checked
+            Submitted batch job 33419978
+
+`cores` stays at **8**. The failure was a memory event; nothing reported a
+parallel-efficiency problem, and raising cores as well would have changed two
+things at once and left neither tested. `mem` is the only field that moved.
+
+## A MECHANICAL LESSON WORTH KEEPING
+
+**¶337 recorded `MaxRSS` as unobtainable because the code-server terminal had
+wedged. That was wrong as a conclusion: Slurm accounting outlives the shell.**
+`sacct` still held the record a session later, on a different node (bun149 →
+bun153), and one command recovered it. **A number lost to a dead terminal is not
+lost - it is deferred.** The standing practice is now: when a shell dies before
+an accounting query, note the job id and run the query from the next session
+rather than writing the number off.
+
+## THE NEB, SINCE IT WAS ASKED
+
+**Nothing about the NEB is deleted and the decision is reversible.** `step1`,
+`step2`, `pstep1`, `pstep2` remain in `site.yaml` with `maxiter: 300` and their 9
+Å endpoints, and `reactmin9`/`attackmin9` remain real converged minima. What was
+abandoned is the ROUTE, on three grounds, in order of weight:
+
+1. **It was measured as not converging, not merely as slow** (¶335). At iteration
+   163 of 300, `dE` had bottomed near iteration 122 and was RISING again (3.913 →
+   5.381); `dS` had never stopped growing (6.74 → 14.11); `MaxF_CI`'s best value
+   anywhere in the run was 0.1591 against a 0.0260 tolerance, and it sat at the
+   optimiser's maximum step. Nine of twelve interior images were still below the
+   frozen reactant. More iterations were not going to fix a path moving away from
+   its own tolerance.
+2. **The same system gives a smooth profile under a scan** (¶332): the scan reuses
+   one fragment across points so the environment stays in one basin, where the
+   NEB's own profile was a 10-12 kcal/mol sawtooth at the same level of theory
+   and the same region size.
+3. **The field does not use NEB for this** (¶334): zero MBL mechanism papers use
+   it, across three search routes, while about a third report potential-energy
+   barriers from relaxed scans and TS searches - Khrenova & Nemukhin 2018 and
+   Levina 2020 among them, on **L1, a B3**, with our exact scan → saddle →
+   frequencies protocol.
+
+**¶308's refusals are not waived by any of this** - the maximum of a driven scan
+is not a transition state, and nothing is quotable at GFN2. That is precisely
+what 33419978 exists to fix, and what the NEB never reached.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
