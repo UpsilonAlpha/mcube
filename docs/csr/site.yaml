@@ -2104,7 +2104,28 @@ sections:
   # ~30 gradients a frequency job (`ts.py:161`), about 84 s.
   saddle1:
     stage: ts
-    submit: {partition: general, cores: 8, mem: 32G, time: "48:00:00"}
+    # **¶338: mem 32G → 128G, and 128G IS A BOUND, NOT A MEASUREMENT.** 33410233
+    # reached the TS optimisation's Step 0 and was OOM-killed at 32G (¶337), and
+    # how much it actually needed is UNKNOWN: the terminal wedged before `sacct`
+    # could be run, so `MaxRSS` was never read. It is not region size - `aspxtb8`,
+    # `reactmin9` and `attackmin9` ran geomeTRIC with ActiveRegion at 479, 665 and
+    # 665 active atoms in this same 32G and converged, against this section's 476,
+    # the smallest of the four - so it is the TS machinery itself: geomeTRIC's
+    # `TSOpt` mode-following storage, the `restHessian`/model-Hessian
+    # construction, or `NumFreq`'s retained Hessian. Those are candidates, not a
+    # diagnosis, and none of them has been shown to be the consumer.
+    #
+    # **So the obligation on this run is to MEASURE it: `sacct -j <id>
+    # --format=JobID,MaxRSS,State,Elapsed` whether it succeeds or fails.** A third
+    # attempt must be sized from that number. Do NOT simply double again - a
+    # request that is never measured is a guess that grows, and 4× is already
+    # the largest jump this project has made on no evidence.
+    #
+    # `cores` stays at 8: the OOM was a memory event, nothing reported a
+    # parallel-efficiency problem, and more cores on the same node would raise the
+    # request without testing the thing that failed. 128G on 8 cores may queue
+    # longer than 32G did.
+    submit: {partition: general, cores: 8, mem: 128G, time: "48:00:00"}
     require:
       unset: [qm_engine, restraints, opt_constraints, constraints]
       equals: {charge: 2, rigid_water: false, actradius: 8,
