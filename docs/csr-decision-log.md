@@ -19874,6 +19874,150 @@ abandoned is the ROUTE, on three grounds, in order of weight:
 is not a transition state, and nothing is quotable at GFN2. That is precisely
 what 33419978 exists to fix, and what the NEB never reached.
 
+**¶339 - THE MEMORY QUESTION IS SETTLED AND THE METHOD QUESTION IS NOT. 33419978
+ran 30 minutes at **MaxRSS 90801304K = 86.6 GiB under a 128G cap**, so the
+requirement is now MEASURED and 32G was never within 2.7× of it. It then FAILED
+on `tsopt_maxiter: 100`, not on memory - and the trace it left is the important
+result: **the TS optimisation descended 20.65 kcal/mol from the scan point, 18.41
+of it in the MM term, ending 6.38 kcal/mol BELOW the Michaelis reactant, with TWO
+negative Hessian eigenvalues.** A saddle below its own reactant is not a
+transition state for that reaction.** (2026-11-25)
+
+## THE MEMORY NUMBER, WHICH IS THE ONE GOOD OUTCOME
+
+    $ sacct -j 33419978 -o JobID,MaxRSS,State,Elapsed,ReqMem
+    33419978                    FAILED   00:30:17       128G
+    33419978.ba+  90801304K     FAILED   00:30:17
+
+**86.6 GiB, uncensored**, because the job died of something else with headroom to
+spare. ¶338 asked for exactly this and it is now in hand: `saddle2`, `psaddle1`
+and `psaddle2` should carry 128G, and nothing in this family should ever be
+offered 32G again. ¶337's reasoning was right about the kind of cause - the TS
+machinery, not region size - and the magnitude is now attached to it: the same
+476-atom active region that minimised inside 32G for hours needs 2.7× that to
+build and follow a TS Hessian.
+
+## THE PROXIMATE FAILURE, AND WHY MORE ITERATIONS IS NOT OBVIOUSLY THE FIX
+
+    Maximum iterations reached (100); increase --maxiter for more
+      File "/scratch/user/uquadhik/mcube/src/mcube/ts.py", line 203, in run
+        opt = Optimizer(fragment=fragment, theory=qmmm_theory, TSOpt=True,
+    geometric.errors.GeomOptNotConvergedError: Optimizer.optimizeGeometry()
+      failed to converge.
+
+The exception propagates out of `ts.py:203`, so **nothing was saved**: no result
+file, no frequencies, no IRC. The geometry is not lost, though -
+`protdft/ts_saddle1/geometric_OPTtraj_Full.xyz` and `geometric_OPTtraj_optim.xyz`
+hold the trajectory, so a restart need not begin again from `scan_11`.
+
+At step 100 the convergence line looks encouraging and **that reading is a trap**:
+
+    Step  100 : Displace = 1.268e-04/1.817e-03 (rms/max) Trust = 1.260e-04 (-)
+                Grad = 9.789e-05/1.022e-03 (rms/max)
+                E (change) = -439.7758110241 (-5.758e-06) Quality = 0.627
+
+Gradient RMS is inside tolerance, the displacements are tiny, the energy is flat
+to ~1e-6 Eh - and the trust radius has collapsed to 1.26e-04 with a step rejected
+at 97 on `Quality = -1.054`. **It is crawling, and the next section says it is
+crawling in the wrong place.**
+
+## WHAT IT ACTUALLY DID, WHICH IS ¶317'S DEFECT IN A NEW STAGE
+
+From `optimization_energies.log`, first recorded iteration against last:
+
+                     QM (Eh)           MM (Eh)          QM/MM (Eh)
+    iteration 0   -198.5710136616  -241.1718831022   -439.7428967638
+    last          -198.5745850180  -241.2012260062   -439.7758110241
+    Δ            -0.0035713564    -0.0293429039     -0.0329142603
+    Δ kcal/mol        -2.24           -18.41            -20.65
+
+**18.41 of the 20.65 kcal/mol is MM.** And from `scan_energies.csv`, whose point 0
+is the Michaelis reactant at **-439.76565081**:
+
+    scan point 0  (reactant)        -439.76565081     0.000 kcal/mol
+    scan point 11 (the TS guess)    -439.74296311   +14.237
+    saddle1 final                   -439.77581102    -6.38   <- BELOW the reactant
+
+**The structure the TS search is converging on sits 6.38 kcal/mol below the
+minimum it is supposed to be a barrier over.** It began 14.24 above it, exactly
+reproducing the scan point (¶337, to 0.04 kcal/mol), and descended past it.
+
+**This is the signature of ¶317.** There, every interior NEB image came out
+~100 kcal/mol below both endpoints and all of it was in the MM term. Same term,
+same direction, same stage-handoff shape, one tenth the magnitude - and this time
+the region is NOT mismatched: `region_check.py` passed `saddle1` against
+`scan_attack` before submission (¶336), both at 8 Å with the same 476 active
+atoms. **So the region rule of §4z is satisfied and the pathology appeared anyway.
+That is new, and it means the rule is necessary but not sufficient.**
+
+## THE HESSIAN, AND A CORRECTION MADE WITHIN THE HOUR
+
+The two lowest eigenvalues of geomeTRIC's updated Hessian, by print:
+
+    print  2 .. 97    one negative throughout, e.g. 97: -8.899e-03  +2.751e-03
+    print 98          -1.244e-02  -1.039e-03   <- a SECOND negative appears
+    print 99, 100     -1.447e-02  +2.130e-03   <- back to one
+    print 101         -1.200e-02  -1.538e-03
+    print 102, 103    -1.276e-02  -7.342e-03   <- ends with two, the second
+                                                  grown 7×
+
+**For 96 prints it was a clean first-order saddle; in the last six it acquires a
+second negative mode that deepens.** I reported "one negative eigenvalue" to the
+user from print 99/100 before reading print 103, and corrected it immediately.
+**The mechanical lesson, after ¶337's: a `tail` that lands mid-run is not the
+final state. Count the prints and read the LAST one.**
+
+This is also the optimiser's UPDATED model Hessian, not a converged `NumFreq`
+result - `freq` never ran. **The mode count is therefore indicative, not
+established, in either direction.**
+
+## WHAT IS NOT DETERMINED, AND MUST NOT BE ASSERTED
+
+Two readings fit the 18.41 kcal/mol, and nothing in hand separates them:
+
+1. **The scan's environment was never relaxed to this depth.** ¶332 records that
+   the scan reuses ONE fragment across points, which is what makes its profile
+   smooth; the same property means each point's environment is relaxed only
+   locally from its predecessor, while the TS optimiser had 100 free steps at one
+   geometry. On this reading the scan's barrier and this saddle are simply not on
+   a common footing.
+2. **The TS search left the reaction's environment basin altogether** and is
+   following a soft MM mode, which would also explain the second negative
+   eigenvalue appearing late.
+
+**`scan_energies.csv` records only the total `energy_Eh` - there is no QM/MM split
+per point - so the measurement that would separate these is not available.** The
+discriminating test is cheap and is the obvious next diagnostic: score scan point
+0 and the final TS geometry with the SAME treatment and compare their MM terms,
+or re-minimise the reactant with the freedom this run had and see whether it
+falls the same ~18 kcal/mol. **Until that is done, neither reading is the record's
+position.**
+
+## ¶332 IS NOW UNAVOIDABLE
+
+¶332's open question - whether the published barrier is scored in a common frozen
+environment - has been carried as a decision for the user for several entries.
+**It now has a number attached: 18.41 kcal/mol of MM relaxation inside one stage
+handoff, against ¶334's finding that in a well-behaved QM/MM calculation such
+terms cancel to under 1 kcal/mol (Ganguly), and ¶333's ~20 kJ/mol per hydrogen
+bond.** It is no longer a precaution about method; it is the largest single term
+in the barrier.
+
+**Nothing is changed in `site.yaml` by this entry.** Raising `tsopt_maxiter` is a
+departure from the mcube default and the user authorises those (the NEB's
+`maxiter: 300` went the same way at ¶331) - and on this trace it is not clearly
+the right move anyway, since the run was descending below its own reactant while
+it crawled.
+
+## LEG 2 IS RUNNING AND IS UNAFFECTED
+
+`ringopen` was submitted as **33573971** after `region_check.py` returned
+`[OK] ringopen scan pdb_file <- qmmm_attackmin` - the first independent check of
+¶336's leg-2 repointing - and `sections.py` passed 14 selectors on
+`protdft/qmmm_attackmin/QM_MM_optimized.pdb`. It is a `scan`, not a `ts`, so
+nothing above bears on whether it completes; whether its profile is COMPARABLE to
+anything is the same open question as leg 1's.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
