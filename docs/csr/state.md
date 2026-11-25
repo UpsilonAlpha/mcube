@@ -679,10 +679,17 @@ Every one of these was a *reading* failure, not a computing failure.
 
 ## 4. The plan (audit `audit-2026-11-02.md`, adopted in ¶178)
 
-### 4z. THE MECHANISM CHAIN, as of 2026-11-24 — read this before touching leg 1
+### 4z. THE MECHANISM CHAIN, as of 2026-11-25 — read this before touching leg 1
 
 The one place the live chain is stated. Rewritten after ¶335-¶337 **abandoned
-the NEB**; if it disagrees with an entry below, this is newer.
+the NEB**, updated at ¶339; if it disagrees with an entry below, this is newer.
+
+**THE OPEN PROBLEM IS NO LONGER THE PATH METHOD - IT IS THE MM TERM.** ¶339's
+`saddle1` run descended **20.65 kcal/mol below the scan point it started from,
+18.41 of it in the MM term**, finishing **6.38 kcal/mol BELOW the Michaelis
+reactant**. Regions matched (`region_check.py` passed it at 8 Å before
+submission), so ~S~4z's region rule is **necessary but not sufficient**. Read ¶339
+before touching either leg.
 
 **THE ROUTE IS NOW `scan` → `ts` → `sp`, AT 8 Å THROUGHOUT.** The user decided
 this on 2026-11-24 ("Yes, scan then ts") after ¶335 measured the NEB oscillating
@@ -700,18 +707,34 @@ and Levina 2020 on **L1, a B3**, using this exact protocol.
                        kcal/mol from point 0 (10 and 12 at 13.468/13.499).
                        NOTE points 1-2 are BELOW point 0 (-0.293, -0.247), so
                        against the scan's own lowest point the figure is 14.53
-    saddle1      OOM   33410233 at 32G (¶337). Takes `scan_attack/scan_11.pdb` at
-                       8 Å. Reached the TS optimisation's Step 0 - Energy
-                       -439.7428967638 against the scan point's -439.74296311,
-                       **0.04 kcal/mol**, so region, charge and QM region all
-                       resolve as the scan's did - then was OOM-killed. NOT
-                       explained by region size: the 8/9 Å minimisations ran
-                       479-665 active atoms in the same 32G. MaxRSS NOT
-                       obtained. **Needs a `submit.mem` decision from the user**
+    saddle1      FAILED twice, and the second failure is a RESULT, not a
+                       resource problem. 33410233 OOM-killed at 32G (¶337).
+                       33419978 at 128G ran 30 min, **MaxRSS 86.6 GiB** - so the
+                       memory question is MEASURED and settled, and every `ts`
+                       section should carry 128G. It died on `tsopt_maxiter: 100`
+                       (`GeomOptNotConvergedError`, nothing saved; the geometry
+                       survives in `ts_saddle1/geometric_OPTtraj_Full.xyz`).
+                       **But it should not simply be rerun longer (¶339):**
+                         iteration 0   -439.7428967638  = scan point 11, to 0.04
+                         last          -439.7758110241  = 6.38 kcal/mol BELOW
+                                                          scan point 0
+                         ΔQM -2.24 kcal/mol, **ΔMM -18.41 kcal/mol**
+                       Two negative Hessian eigenvalues at the end (one for the
+                       first 96 prints), from the optimiser's MODEL Hessian -
+                       `freq` never ran, so the mode count is indicative only.
+                       **Needs a METHOD decision from the user, not a resource
+                       one**, and it is ¶332's: what environment the barrier is
+                       scored in
     LEG 2 (ring opening)
     attackmin    the 8 Å free minimum, and `ringopen`'s input again (¶336
                        reversed ¶325, whose reason was `step2`'s NEB reactant)
-    ringopen     READY on attackmin, 8 Å, NOT submitted. ~1.3 h for 12 points
+    ringopen     RUNNING 33573971, submitted 2026-11-25 on the user's word.
+                       `region_check.py` returned [OK] against `qmmm_attackmin` -
+                       the first independent check of ¶336's leg-2 repointing -
+                       and 14 selectors passed. ~1.3 h for 12 points. A `scan`,
+                       so ¶339's finding does not bear on whether it COMPLETES;
+                       whether its profile is comparable to anything is the same
+                       open question as leg 1's
     saddle2      BLOCKED and deliberately un-submittable: its `pdb_file` is
                        `scan_SET_FROM_CSV.pdb` until `ringopen`'s own
                        `scan_energies.csv` names its highest point (¶336)
