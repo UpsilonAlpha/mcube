@@ -97,22 +97,35 @@ report "ASH working files (xtb_, gradient, pcgrad...)" . "${PRUNE[@]}" \
 # restart need not begin again from the scan point. Sweeping it would be the one
 # irreversible thing this script can do.
 #
-# So a directory holding geomeTRIC trajectories is swept only if it also holds a
-# converged structure. No `QM_MM_optimized.pdb` means the run did not finish and
-# its trajectories stay (D342).
+# So a directory holding geomeTRIC trajectories is swept only if it also holds
+# the structures that supersede them. There are two shapes of that, because the
+# two stages save geometries differently:
+#   qmmm  writes one `QM_MM_optimized.pdb` on convergence
+#   scan  writes one `scan_NN.pdb` PER POINT, every point, as it goes
+#         (scan.py: `name = f"scan_{n:02d}.pdb"`, then `write_pdb(...)`)
+# A scan directory therefore has every geometry it produced even though it never
+# writes a `QM_MM_optimized.pdb`, and an earlier version of this guard protected
+# all of them for nothing - 412 MB of the 537 MB it was holding (D343).
+#
+# Anything with neither marker did not finish and its trajectories stay.
 UNCONV=()
 while IFS= read -r d; do
     [ -z "$d" ] && continue
     [ -f "$d/QM_MM_optimized.pdb" ] && continue
+    compgen -G "$d/scan_*.pdb" > /dev/null && continue
     UNCONV+=( -path "$d" -prune -o )
-    echo "keeping trajectories (no converged PDB): ${d#./}"
+    echo "keeping trajectories (no converged or per-point PDB): ${d#./}"
 done < <(find . -type f \( -name 'geometric_OPTtraj*' -o -name 'HT.v_*.txt' \) \
              -printf '%h\n' 2>/dev/null | sort -u)
 [ "${#UNCONV[@]}" -gt 0 ] && echo
 
+# `geometric_OPTtraj.vdata_first` is geomeTRIC's own history data and matched
+# NONE of the globs here until D343 - 61 MB of it sat in two directories that
+# every previous sweep walked straight past. It is regenerable working state: a
+# restart begins from a PDB, not from the trust-radius history.
 report "geomeTRIC optimisation trajectories" . "${PRUNE[@]}" "${UNCONV[@]}" \
     \( -name 'geometric_OPTtraj*.xyz' -o -name 'geometric_OPTtraj.tmp' \
-       -o -name 'HT.v_*.txt' \) -type f -print
+       -o -name 'geometric_OPTtraj.vdata*' -o -name 'HT.v_*.txt' \) -type f -print
 
 # 3. Runs that were killed or cancelled and produced nothing usable.
 # Before removing the killed scans, keep their energy tables: a few kB each, and
