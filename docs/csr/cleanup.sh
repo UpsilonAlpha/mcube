@@ -88,7 +88,29 @@ report "ASH working files (xtb_, gradient, pcgrad...)" . "${PRUNE[@]}" \
        -o -name '*.engrad' -o -name 'ActiveRegion.xyz' \) -type f -print
 
 # 2. geomeTRIC trajectories: large, and superseded by the final PDB once converged.
-report "geomeTRIC optimisation trajectories" . "${PRUNE[@]}" \
+#
+# "once converged" is the whole premise and it does NOT hold for a run that
+# failed. A `ts` or `neb` that dies - on maxiter, on OOM, on anything - writes
+# no final PDB at all: the exception propagates out of the stage and nothing is
+# saved (D339, job 33419978 on `tsopt_maxiter`). Its trajectory is then the ONLY
+# copy of the geometry it reached, and D339 names that file as the reason a
+# restart need not begin again from the scan point. Sweeping it would be the one
+# irreversible thing this script can do.
+#
+# So a directory holding geomeTRIC trajectories is swept only if it also holds a
+# converged structure. No `QM_MM_optimized.pdb` means the run did not finish and
+# its trajectories stay (D342).
+UNCONV=()
+while IFS= read -r d; do
+    [ -z "$d" ] && continue
+    [ -f "$d/QM_MM_optimized.pdb" ] && continue
+    UNCONV+=( -path "$d" -prune -o )
+    echo "keeping trajectories (no converged PDB): ${d#./}"
+done < <(find . -type f \( -name 'geometric_OPTtraj*' -o -name 'HT.v_*.txt' \) \
+             -printf '%h\n' 2>/dev/null | sort -u)
+[ "${#UNCONV[@]}" -gt 0 ] && echo
+
+report "geomeTRIC optimisation trajectories" . "${PRUNE[@]}" "${UNCONV[@]}" \
     \( -name 'geometric_OPTtraj*.xyz' -o -name 'geometric_OPTtraj.tmp' \
        -o -name 'HT.v_*.txt' \) -type f -print
 

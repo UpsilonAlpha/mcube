@@ -20343,6 +20343,137 @@ Recorded; no decision taken.
     unchanged     `freq` never ran; the two-negative-eigenvalue reading is the
                   optimiser's model Hessian and indicative only
 
+**¶342 - NO, THERE IS NO REASON TO RUN THE SCAN REVERSED, and the user asking
+caught the same error twice in one session: I proposed a job as the answer to a
+question the data already answers. Plus the argmap updated, and scratch is at
+81% with a deletion trap in `cleanup.sh` that would have destroyed `saddle1`'s
+only surviving geometry.** (2026-11-26, user: "is there a reason to run it
+reversed if we already think it's incorrect?")
+
+## THE REVERSE SCAN IS REDUNDANT AND IS NOT BEING RUN
+
+¶341 closed by recommending it, on Lonsdale, Harvey & Mulholland's rule that
+adiabatic mapping *"should be repeated in forward and reverse directions"*.
+**That recommendation is withdrawn.** The reverse scan is an INDIRECT diagnostic:
+hysteresis between the two directions is how you INFER that the profile relaxed
+onto a conformationally distinct path. **We already have the direct
+measurement.** `saddle1` started from a scan point and found 18.41 kcal/mol of MM
+relaxation at a FIXED reaction coordinate (¶341: O01-C4x 2.0304 → 2.0156 Å over
+101 frames). That is not evidence that the scan's points might be unrelaxed - it
+is the amount by which they are.
+
+So a reverse scan would spend ~1.6 h of wall (`ringopen`'s measured rate) to
+reach by inference a conclusion already held by measurement. **The one honest
+argument for it is presentational** - hysteresis is the form of evidence the
+field recognises - and it does not survive, because the decomposition is both
+stronger and already in hand.
+
+## THE PATTERN, WHICH IS THE REAL FINDING OF THIS ENTRY
+
+Twice in one session I answered a question with a new calculation when the
+existing data already answered it:
+
+    ¶340   proposed a free 8 Å reactant minimum     user: "why is the reference
+            as leg 1's reference                      necessary?"      -> it wasn't
+    ¶341   proposed a reverse scan as the            user: "is there a reason
+            comparability test                        ...?"            -> there isn't
+
+Both times the user's one-line question was the correction, and both times the
+refuting evidence was already on disk. This is adjacent to ¶317's rule (*do not
+attribute a magnitude to a mechanism before decomposing it, when the components
+are sitting in the run directory*) but distinct, and it is about proposing
+compute rather than about explaining it.
+
+**THE RULE: before proposing a job, name the existing measurement that fails to
+answer the question. If no existing measurement fails, there is no job.** A job
+proposed without that sentence is a guess wearing a method's clothes.
+
+## THE ARGMAP, UPDATED RATHER THAN EXTENDED
+
+`check.py` section (4) already flags supported nodes citing entries
+`retractions.md` lists as overturned, and it reports **no findings** - no node
+cited ¶316, ¶331, ¶334's protocol claim or the Ganguly paper. **The withdrawn
+citations lived only in the log, which is why nothing caught them.** Two changes,
+validator clean afterwards (34 notes, no findings):
+
+**1. A new node, `our-stage-energies-are-not-on-a-common-surface`** (observation,
+`ours`, ¶333/¶339/¶341). It carries the fixed-coordinate measurement, the smooth
+front-loaded MM descent, ¶333's 9 Å companion result, Ryde's **local-minima
+problem** with its 0.6-97 kJ/mol published spread, the field's four remedies and
+Calixto's 0.8-1.6 kcal/mol cost for freezing above 6 Å. It states explicitly
+what it does NOT say: no individual run is wrong, only the differences between
+them. Supports `no-reaction-coordinate-has-ever-been-computed` and
+`convergence-gates-must-not-encode-science-criteria`.
+
+**2. `no-reaction-coordinate-has-ever-been-computed` was STALE in all three of
+its grounds** and still `status: supported`. It said `neb` has never completed
+(true), `ts` has never run (**false** - twice, ¶337 and ¶339), and
+`scan_attack/scan_15.pdb` "has never existed, because the scan was never run"
+(**false** - ¶308, 16 points, all converged). The claim itself still holds, so
+per the README it was updated rather than voided: same headline, new grounds,
+¶207's diagnosis kept because it is still the best thing in the node, and
+¶334's withdrawn protocol claim marked in place.
+
+**This is the fourth time a node or file has been found asserting something the
+log had already overturned**, and the pattern is always the same: the refutation
+is written where it was discovered and not where the claim lives.
+
+## SCRATCH IS AT 81% AND NOTHING HAS BEEN DELETED
+
+    rquota:   scratch  244 GB / 300    687,125 files / 1,000,000
+              home      38 GB /  50
+
+**56 GB and 313,000 inodes of headroom.** This matters more than it looks: ¶101
+recorded that an over-quota write **fails silently** - it leaves the existing
+file untouched rather than truncating - "so a run looks finished and is not".
+
+**`cleanup.sh` is the instrument and it already exists** (list-by-default, never
+deletes without `--delete`, protects every `*_results/` directory, every
+converged structure and every result table, with a `SKIP` for runs in progress).
+**But its category 2 is UNSAFE for this run directory as it stands**, and this
+is the thing to fix before anything is deleted:
+
+    report "geomeTRIC optimisation trajectories" ...
+        -name 'geometric_OPTtraj*.xyz' ...
+    # header: "large, and superseded by the final PDB once converged"
+
+**`saddle1` did NOT converge and NO final PDB was written** - the exception
+propagated out of `ts.py:203`, so nothing was saved (¶339). The final geometry
+exists **only** in `protdft/ts_saddle1/geometric_OPTtraj_Full.xyz` (159 MB) and
+`geometric_OPTtraj_optim.xyz` (2.6 MB, active region only). ¶339 records that
+trajectory as the reason a restart need not begin again from `scan_11`.
+**Running `cleanup.sh --delete` on `CSR_mich` today would delete it.**
+
+So the order is: **extract the last full frame to a PDB first, then clean.** The
+script's premise - convergence leaves a final PDB - is sound for `qmmm` and
+`scan` and false for a failed `ts` or `neb`, which is a documented caveat it does
+not yet carry.
+
+**Nothing was deleted and no measurement of where the space has gone was
+obtained.** A `du -sh` over the whole scratch was started, is still walking
+687,000 files, and has the shell blocked; a `Ctrl+C` sent at it missed because
+the xterm textarea had lost focus, which is ¶337's failure mode again. The
+run-directory breakdown that would make a deletion list is therefore still
+unmeasured, and the candidates below are from the log, not from today:
+
+    recorded as deletable   `relaxbox_NPT*.dcd` ×12, ~7.1 GB - "box
+                            equilibration, not production", with
+                            `relaxbox_NPT_lastframe.pdb` kept as `md.results`
+                            records it
+    do NOT delete           `qmmm_aspqm_results` - job 32384737's cancelled
+                            5.16 ps is kept DELIBERATELY as a `resume: true`
+                            guard; removing it changes behaviour
+    do NOT delete yet       `protdft/ts_saddle1/geometric_OPTtraj_Full.xyz` -
+                            the only copy of `saddle1`'s geometry until a frame
+                            is extracted
+    needs measuring         the abandoned NEB output (33304392, 33319693,
+                            33404655). ¶317 read its components from
+                            `Pooljob_image_N/energy` and they are recorded, so
+                            the data is captured - but ¶338 keeps the NEB
+                            reversible, and what a restart needs is the
+                            ENDPOINTS (`reactmin9`/`attackmin9`), not the failed
+                            path. Likely the largest single win; unmeasured
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
