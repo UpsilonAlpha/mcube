@@ -2,8 +2,8 @@
 type: observation
 status: supported
 evidence: ours
-entries: [¶1, ¶17, ¶144, ¶207, ¶308, ¶339, ¶341]
-checked: [¶144, ¶341]
+entries: [¶1, ¶17, ¶144, ¶207, ¶308, ¶339, ¶341, ¶344]
+checked: [¶144, ¶341, ¶344]
 ---
 
 # No reaction coordinate has ever been computed in this project
@@ -25,7 +25,20 @@ and the sections are kept in `site.yaml` so the decision is reversible (¶338).
 strain out of the geometry the scan handed it
 ([[our-stage-energies-are-not-on-a-common-surface]], ¶341). So the obstacle is
 no longer "no path method has completed" but **"no two stages here produce
-numbers that can be subtracted"**, which ¶332 has to settle first.
+numbers that can be subtracted"**, which ¶332 had to settle first.
+
+**¶344 settled ¶332, and it changes what this node means for leg 1.** The
+relaxation was located radially and it is far-field, so the scan's own profile is
+internally comparable and the barrier is taken from it
+([[the-barrier-is-scored-along-the-scan]]). **This claim therefore stops being an
+obstacle to remove on leg 1 and becomes a LIMITATION TO STATE**: leg 1 will
+report a potential-energy barrier from adiabatic mapping, with no saddle
+optimisation, no frequencies and no IRC, because a free TS optimisation at 8 Å
+in this system drains the far field in preference to climbing. ¶334 evidenced
+that about a third of MBL mechanism papers report potential-energy barriers, so
+the quantity is publishable; what is not available is a verified transition
+state. **Leg 2 is untouched by this and has no barrier at all** - `ringopen`
+climbs monotonically to 53.03 kcal/mol with no interior maximum (¶341).
 
 **The diagnosis worth keeping** (¶207): each blocker was investigated on its
 own terms rather than as a question about the endpoint. Asp92's coordination

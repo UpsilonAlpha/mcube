@@ -439,8 +439,11 @@ refuted form, which is what I then read.
 **First clause withdrawn in ¶334, 2026-11-24.** About a third of MBL mechanism
 papers report **potential-energy** barriers, from relaxed PES scans or
 stationary-point/TS searches: Ackerman & Gatti 2013 (CphA), Khrenova & Nemukhin
-2018 and Levina et al. 2020 (both L1, **B3**, and both using our intended PES →
-saddle point → frequencies protocol), Lai et al. 2025 (NDM-1, 18.62 kcal/mol),
+2018 and Levina et al. 2020 (both L1, **B3**; the parenthetical that used to
+stand here, that they use our intended PES → saddle point → frequencies
+protocol, is **ITSELF WITHDRAWN - see the ¶334 entry below in this same file**,
+and was repeated here for two days after being retracted seventeen lines down),
+Lai et al. 2025 (NDM-1, 18.62 kcal/mol),
 Melia et al. 2015 (CphA) and Park, Brothers & Merz 2005 (CcrA). So a
 potential-energy barrier is a publishable quantity in this field, and
 `qm-levels.md` step 3 is not an outlier.
@@ -523,3 +526,37 @@ inference from them was wrong.
 **The rule this earns, and it is the third time this file has had to say a
 version of it:** before writing an entry, grep THIS FILE for every entry id the
 draft cites. ¶340 cited ¶316 and ¶331 and both are listed here.
+
+## ¶333 - the first/second-shell movers, used to explain `saddle1`'s MM term
+
+**Over-generalised; the scope was narrowed in ¶344, 2026-11-26.** ¶333's own
+measurement is correct and is not withdrawn: on `step1`'s NEB, 39-90 of 47,979
+atoms move past 0.1 Å, the largest displacement is 1.38 Å, and the movers are
+16-19 residues **every one of them first or second shell** - the ligand, the
+hydroxide, Asp92, Ser186, His88, His164, Asn225, the zinc, Ala224, Thr169 and six
+ordered waters.
+
+**What is wrong is carrying it onto `saddle1`.** ¶341 and the argmap node
+`our-stage-energies-are-not-on-a-common-surface` both did, the node in the words
+*"¶333 measured the same thing one stage up"*. **It is not the same thing.**
+¶344 measured `saddle1`'s displacements radially and they are the opposite shape:
+
+    scan_00 → scan_11   85% of the squared displacement INSIDE 6 Å of Zn1,
+    (chemistry moves)   4% in 8-12 Å, decaying monotonically outward
+    scan_11 → saddle1   **0.6%** inside 6 Å, **88% in 8-12 Å**; every reacting
+    (chemistry FIXED)   atom under 0.031 Å, largest mover Trp21 0.517 Å at 8.78 Å
+
+Both readings are right for their own instrument, and the difference has a cause:
+the NEB's images have genuinely different chemistry, so the first shell must
+move, while `saddle1` held O01-C4x at 2.02 Å and so could only move environment.
+**¶333 is evidence about a reacting path; it is not evidence about what a free
+optimisation does at fixed chemistry**, and the two must not be pooled as "the
+environment relaxes" because they settle ¶332 in opposite directions - a
+first-shell term is chemistry and cannot be frozen away, a far-field term is
+Ryde's and cancels.
+
+**The rule this earns:** a displacement measurement belongs to the instrument
+that produced it. Before reusing one as the explanation of a second run, check
+that the second run was free to move the same atoms - `saddle1` was not, by
+construction, because its reaction coordinate was fixed.
+

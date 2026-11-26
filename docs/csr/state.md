@@ -682,10 +682,28 @@ Every one of these was a *reading* failure, not a computing failure.
 ### 4z. THE MECHANISM CHAIN, as of 2026-11-26 — read this before touching leg 1
 
 The one place the live chain is stated. Rewritten after ¶335-¶337 **abandoned
-the NEB**, corrected at ¶341; if it disagrees with an
+the NEB**, corrected at ¶341 and ¶344; if it disagrees with an
 entry below, this is newer.
 
-**THE OPEN PROBLEM IS THE ENVIRONMENT, AND IT HAS A NAME IN THE LITERATURE
+**¶332 IS SETTLED (¶344): THE BARRIER IS SCORED ALONG THE SCAN, AND THE `ts`
+STAGE IS OFF LEG 1.** The 18.41 kcal/mol was located radially and it is
+**far-field**: 88% of the squared displacement sits in the **8-12 Å** shell on a
+hydrophobic cluster (Trp21 0.517 Å at 8.78 Å, Leu42 0.136, Phe18 0.105) while
+**every reacting atom held under 0.031 Å** - the nucleophile 0.014, the zinc
+0.010, Ser186 0.017, Asp92 0.027. The scan's own motion is the radial opposite:
+**85% inside 6 Å**, decaying outward. So the far field does not move with the
+reaction (0.246 Å max across the whole 1.60 Å coordinate change), its strain is
+the same at both ends of the scan, and it **cancels in the difference by
+construction**. No frozen environment, no splice, no reactant minimum, no
+reverse scan. Leg 1 is `scan` → `sp` on `scan_01`/`scan_11`/`scan_15` at one
+inherited level, barrier **14.53 kcal/mol at GFN2** pending DFT single points.
+A free optimisation releases that strain at one point only, which is the whole
+defect - so the `ts` stage is the wrong instrument here, not merely unconverged,
+and `qm-levels.md` step 3 is skipped for leg 1 (stated as a departure). Nothing
+submitted; the go-ahead and the `submit` block are the user's. Measured with
+`shell_shift.py`; read ¶344 before touching either leg.
+
+**THE PROBLEM THAT WAS OPEN UNTIL ¶344, AND ITS NAME IN THE LITERATURE
 (¶341).** `saddle1` **held O01-C4x at 2.02 Å (+-0.07) across all 101 frames** -
 0.015 Å start to finish - while its MM term fell 18.41 kcal/mol **smoothly, with
 no discontinuity**, the largest single step -6.75 kcal/mol at the first step and
@@ -704,8 +722,9 @@ field's four remedies, none of which we do:** free energies; keep the
 surroundings fixed; **run the coordinate forward AND backward** (Lonsdale, Harvey
 & Mulholland, Chem Soc Rev 2012, 41, 3025: *"When this occurs, the energies
 obtained should not be used"*, and adiabatic mapping *"should be repeated in
-forward and reverse directions"* - one job, never done here); average over
-snapshots. Freezing is cheap: Calixto, JCTC 2017, 13, 5486 puts the cost at
+forward and reverse directions"* - **withdrawn as redundant at ¶342**, since
+hysteresis only INFERS what ¶341 measured directly, and ¶344 then located it);
+average over snapshots. Freezing is cheap: Calixto, JCTC 2017, 13, 5486 puts the cost at
 **0.8 kcal/mol average, 1.6 maximum** above a 6 Å free region, so **our 8 Å is
 above their overconstraint threshold**. Read ¶341 before touching either leg.
 
@@ -768,16 +787,26 @@ and Levina 2020 on **L1, a B3**, using this exact protocol.
                        on the first step against ΔQM +1.49, under 1 kcal/mol
                        every step after the ninth. It drained the scan's own
                        unrelaxed environment at fixed geometry. **Needs a
-                       METHOD decision from the user, not a resource one**, and
-                       it is ¶332's: what environment the barrier is scored in.
-                       Raising `tsopt_maxiter` would buy more of the same
+                       **¶344 SETTLED IT AND THIS SECTION IS RETIRED FOR LEG
+                       1.** The 18.41 kcal/mol is far-field - 88% of the squared
+                       displacement in the 8-12 Å shell, every reacting atom
+                       under 0.031 Å - so a free TS optimisation here will
+                       always prefer draining the far field (18 kcal/mol
+                       available) to climbing (14 away). **The wrong
+                       instrument, not an unconverged run.** Raising
+                       `tsopt_maxiter` buys more of the same. Do not resubmit
+                       leg 1's `ts` without a reason that answers ¶344
     LEG 2 (ring opening)
     attackmin    the 8 Å free minimum, and `ringopen`'s input again (¶336
                        reversed ¶325, whose reason was `step2`'s NEB reactant).
                        **-439.80042578 (xtb -198.58182824, MM -241.21859754),
-                       481 free.** ¶340 makes this the most informative number
-                       on leg 1: it is what a FREE 8 Å minimisation does, and
-                       the reactant has never had one
+                       481 free.** ¶340's framing of this as "the most
+                       informative number on leg 1" is WITHDRAWN (¶341): it is a
+                       different chemical structure relaxing 481 atoms against
+                       the scan's 476, so its 21.82 kcal/mol is not a clean
+                       statement about any reference. ¶344: it is a FREE
+                       minimisation, so by that entry it cannot enter a barrier
+                       at all
     ringopen     RUNNING 33573971, submitted 2026-11-25 on the user's word.
                        `region_check.py` returned [OK] against `qmmm_attackmin` -
                        the first independent check of ¶336's leg-2 repointing -

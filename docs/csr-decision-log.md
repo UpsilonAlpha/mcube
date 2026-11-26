@@ -20580,6 +20580,188 @@ and QM/MM MD trajectories that `cleanup.sh` protects deliberately** (`QM_MM.dcd`
 and the `*_results/` directories), which is the right default and is where a
 further decision would have to be made deliberately rather than by a sweep.
 
+**¶344 - ¶332 IS SETTLED, BY MEASUREMENT, AND THE ANSWER IS NOT "FREEZE IT".
+`saddle1`'s 18.41 kcal/mol lives **8-12 Å from the zinc**, on a hydrophobic
+cluster - Trp21 0.517 Å, Leu42 0.136, Phe18 0.105 - while **the whole active site
+holds to 0.031 Å**. The scan's motion is the exact radial opposite: 85% of it
+inside 6 Å, decaying outward. So the contaminating term is far-field, it does not
+move with the reaction, and the scan never releases it - which means the scan's
+own profile IS the common environment ¶332 asked for, and the published barrier
+comes from `scan` → `sp`, with the `ts` stage OFF leg 1's critical path.**
+(2026-11-26, user: "leave space, settle ¶332")
+
+## THE MEASUREMENT, AND IT IS THE ONE ¶317's RULE DEMANDED
+
+¶317 earned the rule *do not attribute a magnitude to a mechanism before
+decomposing it, when the components are sitting in the run directory*. The
+components were: `scan_attack/scan_11.pdb` and the `saddle1_laststep.pdb`
+preserved at ¶343, both 47,979 atoms in one order. What had never been measured
+is **where, radially, the 18.41 kcal/mol lives** - and that is the whole of
+¶332, because every argument for freezing an outer region is an argument about
+DISTANCE from the active site.
+
+Measured with `docs/csr/shell_shift.py`, new, written for this and verified on a
+six-atom fixture with known distances and displacements first. Shell edges are
+3 / 6 / 8 / 12 / 16 Å from Zn1; `sum d^2` is the sum of squared displacements,
+which is where the strain is.
+
+    shell/Å      atoms   ----- scan_00 → scan_11 -----   -- scan_11 → saddle1 final --
+                          sum d^2        max   moved      sum d^2       max   moved
+     0-3          12-14     10.32      1.657      14         0.00     0.014       7
+     3-6             90      5.11      0.882      90         0.01     0.031      41
+     6-8            142      1.76      0.420     142         0.18     0.366      41
+    8-12            538      0.75      0.246     180       **1.55**   0.517     121
+    12-16         ~1030      0.28      0.225      14         0.03     0.125      13
+    >16         ~46160      0.000      0.000       0        0.000     0.000       0
+    ------------------------------------------------------------------------------
+    total                   18.22      1.657     440         1.77     0.517     223
+
+**The two processes are radially INVERTED, and that is the finding.**
+
+    the reaction (3.63 → 2.03 Å)     85% of the motion inside 6 Å, 4% in 8-12,
+                                   monotonically decaying outward
+    the free optimisation          **0.6%** inside 6 Å, **88% in 8-12 Å**,
+    (coordinate FIXED at 2.02)     maximum displacement at 8.78 Å
+
+Everything beyond 16 Å moved **exactly 0.000 Å** in both comparisons - 46,160
+atoms - which is the frozen set and is also an independent check that the atom
+ordering is consistent and ¶343's frame extraction was faithful. A mismatch
+would have lit up those 46,160 rows.
+
+## WHAT MOVED, AND IT IS NOWHERE NEAR THE REACTION
+
+    A:21:TRP    0.517 Å   8.78 Å from Zn      A:92:ASP   0.027 Å   4.70 Å
+    A:42:LEU    0.136     10.37              A:226:LYS  0.018     4.77
+    A:18:PHE    0.105      9.40              A:186:SER  0.017     3.07
+    D:A9CC:HOH  0.076      7.03              C:2:OH     0.014     1.94
+    C:1:mer     0.071      9.68              D:3171:HOH 0.012     3.93
+    A:41:ASN    0.062     10.16              A:164:HIS  0.010     3.00
+                                             B:1:ZN     0.010     0.00
+                                             A:88:HIS   0.006     3.15
+
+Left column: a **hydrophobic cluster 8.8-10.4 Å out** - Trp21, Leu42, Phe18 with
+Asn41 - plus the ligand's far tail. Right column: **every reacting atom, and not
+one of them moved past 0.031 Å.** The nucleophile moved 0.014 Å. The zinc moved
+0.010 Å. His88, His164, Ser186, Asp92, Lys226 - all under 0.03 Å, across an
+18.41 kcal/mol fall in the MM term.
+
+## WHY THAT SETTLES ¶332
+
+¶332 asked whether the published barrier is scored in a common FROZEN
+environment, and which one. **It does not need one**, and the reason is now
+measured rather than argued:
+
+1. **The far-field cluster does not move with the reaction.** Across the whole
+   1.60 Å change in the reaction coordinate, the 8-12 Å shell moved at most
+   **0.246 Å**, against 1.657 Å inside 3 Å. So whatever MM strain it carries is
+   **the same at both ends of the scan** and cancels in the difference by
+   construction. That is not an assumption about cancellation - it is a
+   displacement measurement, and it is why the scan is smooth where the NEB was a
+   sawtooth (¶332's own diagnosis, now with the mechanism located in space).
+2. **A free optimisation releases that strain at ONE point only.** That is the
+   entire defect: `saddle1` fell 20.65 kcal/mol below the scan maximum and 6.38
+   below scan point 0 not because its chemistry improved - the chemistry did not
+   move - but because it was the only structure in the comparison allowed to find
+   the far field's minimum. The defect is not in the scan; it is in **differencing
+   a freely optimised point against a scan point.**
+3. **So the fix is to stop doing that, not to freeze anything.** A frozen-splice
+   construction - putting one structure's far field onto another's - is what
+   ¶332 itself flagged as "introduc[ing] its own bias instead", and this
+   measurement says it would be solving a problem the scan does not have.
+4. **And it passes the literature's test on the literature's own terms.** Ryde's
+   criterion is explicitly about distance: *"the addition or removal of a single
+   hydrogen bond FAR FROM THE ACTIVE SITE affects the energy by ~20 kJ/mol in a
+   way that most likely is irrelevant for the reaction."* Our contaminating term
+   is 9-12 Å out, on a hydrophobic cluster, with the active site held to 0.03 Å.
+   It is Ryde's term, named and located. Calixto's 6.00 Å free-region threshold
+   is met with room to spare: the chemistry is inside 6 Å and we free 8.
+
+## THE SETTLEMENT
+
+**Leg 1's barrier is the difference of `sp` single points on the SCAN's own
+geometries, at one level for all of them, and no freely optimised stationary
+point enters it.**
+
+    reactant      `scan_01` (-0.293 kcal/mol, the profile's OWN lowest point;
+                  ¶308 and §4z already record points 1-2 below point 0) - with
+                  `scan_00` scored too, so the choice of reference is visible
+                  rather than assumed
+    maximum       `scan_11`, 14.237 kcal/mol at O01-C4x 2.0302 Å
+    intermediate  `scan_15`, 0.561 kcal/mol at 1.45 Å, which is also
+                  `ringopen`'s input and verified to 0.065 kcal/mol (¶341)
+    barrier       14.237 - (-0.293) = **14.53 kcal/mol at GFN2**, pending the
+                  single points that replace GFN2 with DFT
+
+**The level must be IDENTICAL across all four and is therefore inherited, not
+stated.** This config sets no `sp_functional`/`sp_basis` anywhere, so every `sp`
+section in it runs at mcube's default; a barrier is a difference, and a level
+named per-section is how two points stop being comparable. ¶235's precedent is
+the same thought one stage down.
+
+**Nothing is changed in `site.yaml` by this entry and nothing is submitted.**
+Two things are deliberately left to the user: the go-ahead, and the resource
+request. No `sp` section in this config has ever carried a `submit` block, so
+they would default to `sections.py`'s 8 cores / 16G, and `sp.py` measures **56 GB
+for ~120 QM atoms** on 16 cores at 96% CPU - we have 129. Writing a number here
+would be ¶338's error ("a request that is never measured is a guess that
+grows") in the one place the measurement already exists but has never been
+applied to this config.
+
+## WHAT THIS RETIRES, AND WHAT IT COSTS
+
+    retired   the `ts` stage on LEG 1. Not "unconverged" - **the wrong
+              instrument**. A free TS optimisation at 8 Å in this system will
+              always prefer draining the far field to climbing, because the far
+              field has 18 kcal/mol to give and the saddle is 14 away. Raising
+              `tsopt_maxiter` buys more of the same, which ¶341 suspected and
+              this measures
+    retired   the frozen-splice construction, and with it the last reason to
+              want a free reactant minimum (¶340, withdrawn) or a reverse scan
+              (¶342, withdrawn). All three were answers to a question the scan
+              does not pose
+    retired   `qm-levels.md` step 3 **for leg 1 only** - the DFT re-optimisation
+              of each stationary point. It is a free optimisation and inherits
+              the same defect. Leg 1 goes step 2 → step 4. **This is a departure
+              from the documented sequence and is stated as one**
+    the cost  the barrier is a potential-energy barrier from ADIABATIC MAPPING,
+              not a saddle verified by frequencies. ¶308's refusal 1 - "the
+              maximum of a driven scan is not a transition state" - STANDS, and
+              becomes a limitation to state rather than a reason to keep hunting
+              a saddle. ¶334 evidenced that about a third of MBL mechanism
+              papers report potential-energy barriers, so the quantity is
+              publishable in this field
+    answered  ¶308's refusal 3 - "it is a total, not a QM energy" - which was
+              ¶332's question. Within one scan the MM term is a near-constant
+              and cancels; THAT is what the radial measurement establishes
+    still     ¶308's refusal 2, "not quotable at this level of theory". That is
+    open      exactly what the single points are for, and it is the one named
+              failure of an existing measurement that justifies them (¶342's
+              rule)
+    unchanged report a potential-energy barrier AS one and **never set it beside
+              a free energy** (¶331's conclusion, unaffected by its own partial
+              withdrawal). CphA's ~14 kcal/mol is a PMF; Melia 2015 measures
+              PE - FE at **6.3-13.2 kcal/mol** in that same enzyme
+
+## TWO CAVEATS FOUND ON THE WAY, BOTH WORTH THE SPACE
+
+1. **`scan_attack/optimization_energies.log` does NOT reconcile with
+   `scan_energies.csv` and must not be used.** It has the decomposition we would
+   want - `Iteration / QM-energy / MM-Energy / QM/MM-Energy` per row - but only
+   **three** optimisation blocks in 99 lines for a 16-point scan. Block 0's final
+   total (-439.7552155) matches CSV point 14 (-439.75521548) exactly; blocks 1 and
+   2 (-439.7576010, -439.7591292) match **no CSV point at all**, and block 2 ran
+   94 iterations. So the file is a partial or overwritten record of unknown
+   provenance. **The scan's per-point MM/QM split is therefore NOT recoverable
+   from the run directory**, and the radial measurement above is what stands in
+   for it. Anyone reaching for that file should stop here.
+2. **¶333's finding has been over-generalised, including by me.** ¶333 measured
+   the NEB's movers as first and second shell and that is correct for the NEB -
+   whose images have genuinely different chemistry, so of course the first shell
+   moves. It was then carried forward as the explanation of `saddle1`'s MM term
+   too (¶341, and the argmap node's "¶333 measured the same thing one stage
+   up"). **It is not the same thing**: `saddle1` held the chemistry fixed, and its
+   movers are 8-12 Å out. Corrected in `retractions.md` and in the node.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
