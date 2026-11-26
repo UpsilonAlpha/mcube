@@ -679,17 +679,40 @@ Every one of these was a *reading* failure, not a computing failure.
 
 ## 4. The plan (audit `audit-2026-11-02.md`, adopted in ¶178)
 
-### 4z. THE MECHANISM CHAIN, as of 2026-11-25 — read this before touching leg 1
+### 4z. THE MECHANISM CHAIN, as of 2026-11-26 — read this before touching leg 1
 
 The one place the live chain is stated. Rewritten after ¶335-¶337 **abandoned
-the NEB**, updated at ¶339; if it disagrees with an entry below, this is newer.
+the NEB**, updated at ¶339 and corrected at ¶340; if it disagrees with an
+entry below, this is newer.
 
-**THE OPEN PROBLEM IS NO LONGER THE PATH METHOD - IT IS THE MM TERM.** ¶339's
-`saddle1` run descended **20.65 kcal/mol below the scan point it started from,
-18.41 of it in the MM term**, finishing **6.38 kcal/mol BELOW the Michaelis
-reactant**. Regions matched (`region_check.py` passed it at 8 Å before
-submission), so ~S~4z's region rule is **necessary but not sufficient**. Read ¶339
-before touching either leg.
+**THE OPEN PROBLEM IS NOT `saddle1` - IT IS THE REACTANT REFERENCE.** ¶339 read
+`saddle1`'s 18.41 kcal/mol MM descent as a defect of the TS run. ¶340 compared it
+with `attackmin`, which has been on disk since ¶311, and the comparison inverts
+the reading:
+
+    scan point 11 (the TS guess)   -439.74289676    +14.28 kcal/mol
+    saddle1 final (step 100)       -439.77581102     -6.38
+    attackmin (8 Å, 481 free)      -439.80042578    -21.82
+
+**`attackmin` - leg 1's PRODUCT, freely minimised - is 21.82 kcal/mol below the
+reference, and `saddle1` finishes 15.45 kcal/mol ABOVE it.** Two structures
+cannot both sit far below the reactant unless the reactant is measured
+differently from both, and it is: **scan point 0 is the only structure on leg 1
+never freely minimised at 8 Å with 129 QM atoms.** `aspxtb8`, which it descends
+from, ran **124**. ¶316 named that defect and fixed it for the NEB only
+(`reactmin9`); ¶331 measured the mechanism - near-degenerate MM water topologies
+~20 kcal/mol apart - and it was filed as a NEB finding. **Neither travelled to
+the scan route.** `attackmin`'s counterpart from point 0 does not exist, and no
+leg-1 energy means anything until it does. Read ¶340 before touching either leg.
+
+**AND THE STARTING POINTS ARE NOT EQUILIBRATED, in the sense the word implies
+(¶340).** Leg 1's lineage carries **no QM/MM MD at all** - `aspxtb` and `aspxtb8`
+both set `skip_equilibrate: true` and are 0 K optimisations - while `aspqm2`, the
+sibling that did run 50 ps from the same `relax10` frame, **chelated Asp92 onto
+Zn1 within 8 ps** (¶232). `eqqm` is still written and unsubmitted, and `relax10`
+holds five restraints outside the user's 3 Å metal rule, the attack distance
+among them. ¶273's phrase "a QM/MM equilibrated one" is carrying a 0 K
+minimisation and should not.
 
 **THE ROUTE IS NOW `scan` → `ts` → `sp`, AT 8 Å THROUGHOUT.** The user decided
 this on 2026-11-24 ("Yes, scan then ts") after ¶335 measured the NEB oscillating
@@ -701,7 +724,10 @@ barriers from relaxed scans or TS searches - including Khrenova & Nemukhin 2018
 and Levina 2020 on **L1, a B3**, using this exact protocol.
 
     LEG 1 (nucleophilic attack)
-    aspxtb8      DONE  the Michaelis minimum, 8 Å, 479 active
+    aspxtb8      DONE  8 Å, 479 active, but **124 QM atoms, not leg 1's 129**,
+                       and `skip_equilibrate: true` - a 0 K optimisation, built
+                       as the GFN2 arm of a GFN2-vs-DFT comparison (¶274), not as
+                       an equilibration. It is the reactant ONLY by inheritance
     attack       DONE  33...  16 points, ALL converged, 8 Å, 476 active, 129 QM.
                        Clean single maximum: point 11 at 2.0302 Å, 14.237
                        kcal/mol from point 0 (10 and 12 at 13.468/13.499).
@@ -722,19 +748,32 @@ and Levina 2020 on **L1, a B3**, using this exact protocol.
                        Two negative Hessian eigenvalues at the end (one for the
                        first 96 prints), from the optimiser's MODEL Hessian -
                        `freq` never ran, so the mode count is indicative only.
-                       **Needs a METHOD decision from the user, not a resource
-                       one**, and it is ¶332's: what environment the barrier is
-                       scored in
+                       **¶340 RE-READS THIS AND IT IS NOT THE ANOMALY.**
+                       `attackmin` relaxed 29.31 kcal/mol of MM from the same
+                       scan point and lands 15.45 kcal/mol BELOW this run's
+                       final energy. So `saddle1` did less than the project's
+                       own data already did twice; the reference is what is
+                       wrong. **Needs a METHOD decision from the user, not a
+                       resource one**, and it is ¶332's: what environment the
+                       barrier is scored in. A free 8 Å reactant minimum is
+                       necessary first but is NOT sufficient (¶340) - it falls
+                       into its own water basin, not the saddle's
     LEG 2 (ring opening)
     attackmin    the 8 Å free minimum, and `ringopen`'s input again (¶336
-                       reversed ¶325, whose reason was `step2`'s NEB reactant)
+                       reversed ¶325, whose reason was `step2`'s NEB reactant).
+                       **-439.80042578 (xtb -198.58182824, MM -241.21859754),
+                       481 free.** ¶340 makes this the most informative number
+                       on leg 1: it is what a FREE 8 Å minimisation does, and
+                       the reactant has never had one
     ringopen     RUNNING 33573971, submitted 2026-11-25 on the user's word.
                        `region_check.py` returned [OK] against `qmmm_attackmin` -
                        the first independent check of ¶336's leg-2 repointing -
                        and 14 selectors passed. ~1.3 h for 12 points. A `scan`,
-                       so ¶339's finding does not bear on whether it COMPLETES;
-                       whether its profile is comparable to anything is the same
-                       open question as leg 1's
+                       so neither ¶339's nor ¶340's finding bears on whether it
+                       COMPLETES; whether its profile is comparable to anything
+                       is the same open question as leg 1's. **Status unread
+                       since 2026-11-25** - the bun153 code-server session
+                       returns HTTP 503
     saddle2      BLOCKED and deliberately un-submittable: its `pdb_file` is
                        `scan_SET_FROM_CSV.pdb` until `ringopen`'s own
                        `scan_energies.csv` names its highest point (¶336)

@@ -20018,6 +20018,145 @@ it crawled.
 nothing above bears on whether it completes; whether its profile is COMPARABLE to
 anything is the same open question as leg 1's.
 
+**¶340 - ¶339 WAS RIGHT THAT SOMETHING IS WRONG AND WRONG ABOUT WHAT. `saddle1`
+IS NOT ANOMALOUS; THE REACTANT REFERENCE IS.** Asked whether this is the NEB's
+problem again, I compared `saddle1`'s final energy with `attackmin`'s - a run
+that has sat on disk since ¶311 and that nobody had ever compared with the scan -
+and **`attackmin`, a free 8 Å minimum, is 21.82 kcal/mol BELOW scan point 0,
+with 29.31 kcal/mol of MM relaxation against scan point 11.** `saddle1`'s 18.41
+is SMALLER than that, and `saddle1` finishes **15.45 kcal/mol ABOVE** `attackmin`.
+So the TS run did nothing the project's own data had not already done twice.
+**What is anomalous is scan point 0: it is the only structure on leg 1 that has
+never been freely minimised at 8 Å with 129 QM atoms.** (2026-11-26, user: "same
+issue as with the NEB then? ... are you sure the starting points are properly
+equilibrated?")
+
+## THE MEASUREMENT, ALL OF IT FROM FILES ALREADY WRITTEN
+
+Energies relative to `scan_attack`'s point 0, the structure every leg-1 number
+has been quoted against:
+
+    scan point 11 (the TS guess)   -439.74289676    +14.28 kcal/mol
+    saddle1 final (step 100)       -439.77581102     -6.38
+    attackmin (8 Å, 481 free)      -439.80042578    -21.82   <- the free minimum
+    saddle1 final vs attackmin                       +15.45
+
+Components, against scan point 11, whose split `saddle1`'s iteration 0 gives:
+
+                  ΔQM        ΔMM       total
+    saddle1     -2.24      -18.41     -20.65
+    attackmin   -6.79      -29.31     -36.10
+    attackmin vs saddle1   ΔMM -10.90
+
+¶317's identity holds on all three: the xtb and OpenMM components sum to the
+printed total to the last digit, checked.
+
+**Read that table the right way round.** ¶339 said a saddle below its own
+reactant is not a transition state, and that is still true - but the fault is in
+the word "reactant". `attackmin` is leg 1's PRODUCT, freely minimised, and it is
+21.82 kcal/mol below the reference, which would make the nucleophilic attack
+wildly exergonic for a tetrahedral intermediate. Two structures cannot both be
+far below the reactant unless the reactant is being measured differently from
+both of them. **It is.**
+
+## WHY, AND THE RECORD ALREADY SAID IT - ABOUT THE NEB
+
+Three things compound, and none of them is new:
+
+1. **`aspxtb8` ran 124 QM atoms; leg 1 runs 129.** ¶316 called this "A SEPARATE
+   DEFECT, WHICH IS OURS" and wrote the consequence out in full: *"A geometry
+   optimised with [the Ser186 contact] as MM is not stationary once it is QM, and
+   it relaxes as soon as the active region may move - which is the reactant's
+   113.1 kcal/mol drop at image 1."* **The fix was applied to the NEB arm only**
+   (`reactmin9`, 9 Å, 129 QM). The scan arm never got it: `attack` still starts
+   from `qmmm_aspxtb8/QM_MM_optimized.pdb`, the 124-atom minimum.
+2. **A converged scan point is not a relaxed structure in the MM sense.** ¶331
+   measured and explained exactly this: *"'correctly minimised' means the
+   GRADIENT is small - it does not mean the water network found its global
+   minimum ... the path visits a few different water topologies and their MM
+   energies differ by ~20 kcal/mol."* Written about the NEB at 9 Å. **It is the
+   same number we are now looking at, 18-29 kcal/mol, at 8 Å, in two more
+   stages.** I filed it as a NEB finding and did not carry it across.
+3. **`scan.py` reuses ONE fragment across points** (¶332), so each point is
+   relaxed locally from its predecessor. `attack` holds nothing else - `require`
+   has `unset: [restraints, constraints, opt_constraints]`, `rigid_water: false`,
+   and `held` is therefore empty, so the only constraint is the driven distance.
+   The points are honest constrained minima; they are just all in the basin
+   `aspxtb8` handed them.
+
+**So: same issue as the NEB, and more specifically than ¶339 put it.** Not
+"¶317's signature in a new stage" but ¶316's and ¶331's defect, unfixed on this
+route because the route changed and the fix did not travel with it.
+
+## THE STRUCTURE THAT DOES NOT EXIST
+
+    attackmin   qmmm, pdb_file scan_attack/scan_15.pdb, *qmreg_michrks,
+                actradius 8, nothing constrained          EXISTS, converged
+    (none)      the same, from scan_attack/scan_00.pdb    DOES NOT EXIST
+
+There is **no free 8 Å minimum of the reactant**. `reactmin9` is the 9 Å one,
+built for the NEB and abandoned with it. `attackmin`'s counterpart at the other
+end of leg 1 was never written, and that single absence is what every leg-1
+energy has been quoted against.
+
+**Nothing is submitted and no section is added.** The obvious repair is a copy of
+`attackmin` with `pdb_file` pointing at point 0 instead of point 15 - one key
+different, and `attackmin`'s own `require.same_as: {section: aspxtb8, except:
+[pdb_file, qm_residues]}` gate would enforce the rest. It is mcube as it stands,
+no new logic. But it is a job, and it is the user's to authorise.
+
+## AND IT DOES NOT, ON ITS OWN, FIX THE BARRIER
+
+Stated so this is not mistaken for a solution. A free reactant minimum fixes the
+REFERENCE: it makes the two ends of leg 1 comparable. It does **not** make the
+reactant and the saddle sit in the same water basin, because ¶331's near-
+degeneracy is exactly the problem - geomeTRIC lands in whichever basin it
+started from, and a freely minimised reactant will fall ~20 kcal/mol into ITS
+own basin with no guarantee it is the saddle's. **¶332's question is still the one
+that decides the published barrier**, and it is still the user's: whether every
+stationary point is scored in one common environment. What has changed is that
+the number attached to it is now measured three independent ways rather than
+once (¶331 at 9 Å, `attackmin` at 8 Å, `saddle1` at 8 Å).
+
+Also unchanged: `freq` never ran, so ¶339's two-negative-eigenvalue reading is
+still the optimiser's model Hessian and still indicative only.
+
+## ARE THE STARTING POINTS EQUILIBRATED? NO, AND THE RECORD SAYS SO IN FOUR PLACES
+
+Asked directly, and traced rather than asserted. Leg 1's lineage is
+**crystal → preprocess → `relax10` → `aspxtb` → `aspxtb8` → `attack` → `saddle1`**:
+
+1. **There is no QM/MM MD anywhere in it.** `aspxtb8` and `aspxtb` both set
+   `skip_equilibrate: true` - they are 0 K geometry optimisations. ¶274 says so
+   in its own heading, "Why `aspxtb8` is only a geometry optimisation": it was
+   built as the GFN2 arm of a GFN2-vs-DFT comparison, not as an equilibration.
+2. **The sibling that DID run QM/MM MD from the same frame disagrees with it.**
+   `aspqm2` (50 ps, GFN2, from `relax10`'s last frame) **chelated Asp92 onto Zn1
+   within 8 ps** (¶232), and ¶244's minimisation deliberately kept it out. The
+   project's own reading was that the chelate "needs thermal energy". So at 300 K
+   the active site goes somewhere `aspxtb8` does not.
+3. **`eqqm` - 50 ps of QM/MM MD from `eq6`, the frame that passed the
+   equilibration gate - was written and has never been submitted.** It is still
+   the one run that would say whether the gate-passing frame behaves like
+   `relax10`'s.
+4. **`relax10` carries five restraints that the user's own 3 Å metal rule
+   excludes**, audited in this log: the O01-C4x attack restraint at 3.47 Å (not a
+   metal pair), the Lys226-Asp92 salt bridge at 2.79 (not a metal pair), and the
+   Zn-Asp92 terms at 3.81-5.15 and Zn-O1x at 3.82 (metal pairs, 0.8-2.1 Å
+   outside 3). The 10 ns that `aspxtb8` descends from held the attack distance.
+
+**None of this is new information and none of it was acted on.** ¶273 called the
+WT start "a QM/MM equilibrated one, not a rebuilt one"; on this trace that phrase
+is carrying a 0 K optimisation, and it should not. Recorded as a correction to
+¶273's wording, not to its decision.
+
+## LEG 2
+
+`ringopen` 33573971 was RUNNING at last contact. Its status is unread: the
+code-server session on bun153 returns HTTP 503, so Bunya is unreachable from
+here until the user opens a new one. Nothing above needed it - every number in
+this entry came from files already quoted in this log.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
