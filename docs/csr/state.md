@@ -754,8 +754,14 @@ and Levina 2020 on **L1, a B3**, using this exact protocol.
                                                           scan point 0
                          ΔQM -2.24 kcal/mol, **ΔMM -18.41 kcal/mol**
                        Two negative Hessian eigenvalues at the end (one for the
-                       first 96 prints), from the optimiser's MODEL Hessian -
-                       `freq` never ran, so the mode count is indicative only.
+                       first 96 prints), from the optimiser's MODEL Hessian.
+                       **¶343: a NumFreq DID run** - `ASH_NumFreq.result`, five
+                       reacting atoms, **one** negative frequency at
+                       **-55.59 cm-1**, describing the STARTING geometry. Far
+                       too soft for a C-O bond-forming coordinate, but ASH
+                       discarded it as one of 6 unprojected TR modes, so it is
+                       NOT determined either way (¶343). What never ran is a
+                       freq on a CONVERGED saddle.
                        **¶341 DECOMPOSED IT: the chemistry never moved.**
                        O01-C4x 2.0304 → 2.0156 Å over 101 frames, range
                        1.94-2.07; MM fell smoothly with NO discontinuity, -6.75

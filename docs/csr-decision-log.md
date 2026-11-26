@@ -20474,6 +20474,112 @@ unmeasured, and the candidates below are from the log, not from today:
                             ENDPOINTS (`reactmin9`/`attackmin9`), not the failed
                             path. Likely the largest single win; unmeasured
 
+**¶343 - CLEANED UP, AND THE CLEANUP FOUND A FREQUENCY CALCULATION ¶339 SAID DID
+NOT EXIST. `ASH_NumFreq.result` is on disk in `ts_saddle1` and holds a real
+NumFreq over the five reacting atoms with **exactly one negative frequency,
+-55.59 cm-1**. 1.67 GB and ~1,520 inodes reclaimed, two more bugs fixed in
+`cleanup.sh`, and CSR turns out to be 26 of the 242 GB.** (2026-11-26, user:
+"be wary of space on bunya, delete or archive redundant/superceded jobs that
+have the relevant features recorded")
+
+## ¶339 AND §4z WERE WRONG THAT `freq` NEVER RAN
+
+`protdft/ts_saddle1/ASH_NumFreq.result`, 18 kB, written at the run's start:
+
+    freq_atoms    [4203, 4208, 4209, 4210, 4255]   Zn, C4x, O2x, N1x, O01
+    frequencies   **-55.59**, 154.68, 184.56, 185.59, 248.07, 294.96,
+                  412.47, 483.70, 522.50, 640.95, 821.58, 911.87,
+                  941.33, 1207.33, 1521.99 cm-1
+    TRmodenum 6   freq_projection FALSE
+
+So the five-atom partial Hessian ran and converged, exactly as `site.yaml`:2100
+intends (*"`hessian_atoms` is the five reacting atoms and must stay stated"*),
+and `Hessian_partial_TS` (52 MB) and `smallhessian` are beside it. **What never
+ran is a frequency analysis of a CONVERGED saddle**, because the run never
+converged - a different and much weaker statement than "`freq` never ran".
+Corrected in §4z.
+
+**ONE negative frequency, and it is far too soft to be this reaction.** A C-O
+bond-forming nucleophilic addition carries an imaginary mode of several hundred
+i cm-1. **-55.59 cm-1 is loose-motion territory**, and it describes scan point
+11 - the geometry the TS search was handed.
+
+**But do not over-read it, for a stated reason.** `freq_TRmodenum: 6` with
+`freq_projection: false` means ASH classed the six lowest modes as translations
+and rotations and left them out of the thermochemistry block, which starts at
+412.47 cm-1 - **so the -55.59 is among the six it discarded**. For a five-atom
+fragment anchored in a protein there are no genuine translations or rotations to
+project, so that classification is an approximation that does not hold here.
+**Whether -55.59 is a real mode or an artefact of an unprojected partial Hessian
+is NOT determined**, and it must not be quoted either way. What it does do is
+agree with everything else in ¶341: nothing at the scan maximum looks like a
+reaction coordinate, and the optimiser went and relaxed the environment instead.
+
+## THE GEOMETRY WAS PRESERVED BEFORE ANYTHING WAS DELETED
+
+    protdft/ts_saddle1/saddle1_laststep.pdb   3.8 MB, 47,979 atoms
+
+Built by writing the last frame of `geometric_OPTtraj_Full.xyz` into
+`scan_attack/scan_11.pdb`'s records, so it is a directly usable `pdb_file` and
+not a bare XYZ. **Verified independently after writing** by re-parsing columns
+31-54 of the result: 47,979 atoms, O01-C4x **2.0153 Å** against the trajectory's
+2.0156 (PDB's three decimals), Zn-O2x 1.9664. Only then was the 159 MB
+trajectory removed.
+
+## WHAT WAS RECLAIMED
+
+    pass 1, 13 CSR run directories          1,084 MB   1,511 files
+    ts_saddle1/geometric_OPTtraj_Full.xyz     159 MB       1
+    pass 2, after the two fixes below         426 MB      12
+    ------------------------------------------------------------
+                                            ~1.67 GB  ~1,524 files
+
+    rquota  before  244 GB  687,125 files
+            after   242 GB  685,839 files
+
+## TWO MORE BUGS IN `cleanup.sh`, BOTH FOUND BY MEASURING WHAT IT DECLINED
+
+¶342's guard was correct and too broad. Running it and then measuring what it
+had left behind - 537 MB in 127 files - showed both faults:
+
+1. **`scan` directories were protected for nothing.** The guard asked for a
+   `QM_MM_optimized.pdb`; a `scan` never writes one, it writes `scan_NN.pdb` per
+   point, every point, as it goes (`scan.py`: `name = f"scan_{n:02d}.pdb"` then
+   `write_pdb`). **412 MB of the 537 was scan trajectories whose every geometry
+   was already saved beside them** - 167 MB in `CSR_gln93/scan_zngln`, 158 MB in
+   `CSR_mich/scan_attack`, 87 MB in `scan_posepull`. The guard now accepts
+   per-point PDBs as the superseding structures.
+2. **`geometric_OPTtraj.vdata_first` matched none of the globs at all** -
+   `geometric_OPTtraj*.xyz`, `.tmp` and `HT.v_*.txt` all miss it - so 61 MB in
+   two directories had been walked past by every sweep this project has ever
+   run. It is geomeTRIC's trust-radius history, regenerable, and a restart
+   begins from a PDB.
+
+**Verified against a fixture covering all three shapes** before either ran on
+real data: a finished scan loses its trajectory and vdata and keeps every
+`scan_NN.pdb`; a converged `qmmm` loses its trajectory and keeps
+`QM_MM_optimized.pdb`; a failed `ts` with neither marker keeps both files.
+`protdft/ts_saddle1` is still protected by the guard and keeps
+`optimization_energies.log`, `geometric_OPTtraj.log`, `optim.xyz`,
+`QMregion.xyz`, the Hessian files and the new PDB.
+
+## AND CSR IS NOT WHERE THE SPACE IS
+
+    /scratch/user/uquadhik/CSR     26 GB of 242      CSR_mich 17 G, CSR_prod 5.2 G
+    everything else               ~216 GB            rfd4, BindCraft2, potts_*,
+                                                     ProteinEBM, skempi_*, channel,
+                                                     AANCA, pmhc, glp1r_md, ...
+
+**So the CSR cleanup is done and it was worth ~1.7 GB; the quota pressure is
+elsewhere and is not mine to clear.** Those directories belong to other projects
+whose records I cannot check for "the relevant features recorded", and two of
+them (`rfd4`, `AANCA`) had jobs RUNNING during this cleanup - 33793958, 33786888,
+33794584 - so sweeping them could have corrupted live work. Nothing outside
+`$CSROUT/CSR` was touched, listed or deleted. **What remains in CSR is mostly MD
+and QM/MM MD trajectories that `cleanup.sh` protects deliberately** (`QM_MM.dcd`
+and the `*_results/` directories), which is the right default and is where a
+further decision would have to be made deliberately rather than by a sweep.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
