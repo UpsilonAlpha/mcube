@@ -682,31 +682,39 @@ Every one of these was a *reading* failure, not a computing failure.
 ### 4z. THE MECHANISM CHAIN, as of 2026-11-26 — read this before touching leg 1
 
 The one place the live chain is stated. Rewritten after ¶335-¶337 **abandoned
-the NEB**, updated at ¶339 and corrected at ¶340; if it disagrees with an
+the NEB**, corrected at ¶341; if it disagrees with an
 entry below, this is newer.
 
-**THE OPEN PROBLEM IS NOT `saddle1` - IT IS THE REACTANT REFERENCE.** ¶339 read
-`saddle1`'s 18.41 kcal/mol MM descent as a defect of the TS run. ¶340 compared it
-with `attackmin`, which has been on disk since ¶311, and the comparison inverts
-the reading:
+**THE OPEN PROBLEM IS THE ENVIRONMENT, AND IT HAS A NAME IN THE LITERATURE
+(¶341).** `saddle1` **held O01-C4x at 2.02 Å (+-0.07) across all 101 frames** -
+0.015 Å start to finish - while its MM term fell 18.41 kcal/mol **smoothly, with
+no discontinuity**, the largest single step -6.75 kcal/mol at the first step and
+every step after the ninth under 1 kcal/mol. The first step traded ΔQM **+1.49**
+for ΔMM **-6.75**. So there was no basin hop and no roll-back: **the run relaxed
+strain the SCAN's handoff geometry was carrying, and that strain is in every scan
+point.** Its final structure is at the scan maximum's place on the reaction
+coordinate and 20.65 kcal/mol lower, so **the two energies are not on a common
+surface.**
 
-    scan point 11 (the TS guess)   -439.74289676    +14.28 kcal/mol
-    saddle1 final (step 100)       -439.77581102     -6.38
-    attackmin (8 Å, 481 free)      -439.80042578    -21.82
+This is Ryde's **"local-minima problem"** (JCTC 2017, 13, 5745): *"very hard to
+ensure that the surrounding enzyme remain in the same local minima throughout a
+reaction sequence"*, ~20 kJ/mol per far-field hydrogen bond, and a compiled
+spread of 0.6-97 kJ/mol across 24 studies - our 86 kJ/mol is inside it. **The
+field's four remedies, none of which we do:** free energies; keep the
+surroundings fixed; **run the coordinate forward AND backward** (Lonsdale, Harvey
+& Mulholland, Chem Soc Rev 2012, 41, 3025: *"When this occurs, the energies
+obtained should not be used"*, and adiabatic mapping *"should be repeated in
+forward and reverse directions"* - one job, never done here); average over
+snapshots. Freezing is cheap: Calixto, JCTC 2017, 13, 5486 puts the cost at
+**0.8 kcal/mol average, 1.6 maximum** above a 6 Å free region, so **our 8 Å is
+above their overconstraint threshold**. Read ¶341 before touching either leg.
 
-**`attackmin` - leg 1's PRODUCT, freely minimised - is 21.82 kcal/mol below the
-reference, and `saddle1` finishes 15.45 kcal/mol ABOVE it.** Two structures
-cannot both sit far below the reactant unless the reactant is measured
-differently from both, and it is: **scan point 0 is the only structure on leg 1
-never freely minimised at 8 Å with 129 QM atoms.** `aspxtb8`, which it descends
-from, ran **124**. ¶316 named that defect and fixed it for the NEB only
-(`reactmin9`); ¶331 measured the mechanism - near-degenerate MM water topologies
-~20 kcal/mol apart - and it was filed as a NEB finding. **Neither travelled to
-the scan route.** `attackmin`'s counterpart from point 0 does not exist, and no
-leg-1 energy means anything until it does. Read ¶340 before touching either leg.
+**¶340's claim that the reactant reference is what is wrong is WITHDRAWN**, as is
+its proposed free 8 Å reactant minimum - it would move the inconsistency, not
+remove it. See `retractions.md`.
 
 **AND THE STARTING POINTS ARE NOT EQUILIBRATED, in the sense the word implies
-(¶340).** Leg 1's lineage carries **no QM/MM MD at all** - `aspxtb` and `aspxtb8`
+(¶340, the part of it that stands).** Leg 1's lineage carries **no QM/MM MD at all** - `aspxtb` and `aspxtb8`
 both set `skip_equilibrate: true` and are 0 K optimisations - while `aspqm2`, the
 sibling that did run 50 ps from the same `relax10` frame, **chelated Asp92 onto
 Zn1 within 8 ps** (¶232). `eqqm` is still written and unsubmitted, and `relax10`
@@ -748,16 +756,15 @@ and Levina 2020 on **L1, a B3**, using this exact protocol.
                        Two negative Hessian eigenvalues at the end (one for the
                        first 96 prints), from the optimiser's MODEL Hessian -
                        `freq` never ran, so the mode count is indicative only.
-                       **¶340 RE-READS THIS AND IT IS NOT THE ANOMALY.**
-                       `attackmin` relaxed 29.31 kcal/mol of MM from the same
-                       scan point and lands 15.45 kcal/mol BELOW this run's
-                       final energy. So `saddle1` did less than the project's
-                       own data already did twice; the reference is what is
-                       wrong. **Needs a METHOD decision from the user, not a
-                       resource one**, and it is ¶332's: what environment the
-                       barrier is scored in. A free 8 Å reactant minimum is
-                       necessary first but is NOT sufficient (¶340) - it falls
-                       into its own water basin, not the saddle's
+                       **¶341 DECOMPOSED IT: the chemistry never moved.**
+                       O01-C4x 2.0304 → 2.0156 Å over 101 frames, range
+                       1.94-2.07; MM fell smoothly with NO discontinuity, -6.75
+                       on the first step against ΔQM +1.49, under 1 kcal/mol
+                       every step after the ninth. It drained the scan's own
+                       unrelaxed environment at fixed geometry. **Needs a
+                       METHOD decision from the user, not a resource one**, and
+                       it is ¶332's: what environment the barrier is scored in.
+                       Raising `tsopt_maxiter` would buy more of the same
     LEG 2 (ring opening)
     attackmin    the 8 Å free minimum, and `ringopen`'s input again (¶336
                        reversed ¶325, whose reason was `step2`'s NEB reactant).
@@ -771,12 +778,19 @@ and Levina 2020 on **L1, a B3**, using this exact protocol.
                        and 14 selectors passed. ~1.3 h for 12 points. A `scan`,
                        so neither ¶339's nor ¶340's finding bears on whether it
                        COMPLETES; whether its profile is comparable to anything
-                       is the same open question as leg 1's. **Status unread
-                       since 2026-11-25** - the bun153 code-server session
-                       returns HTTP 503
-    saddle2      BLOCKED and deliberately un-submittable: its `pdb_file` is
-                       `scan_SET_FROM_CSV.pdb` until `ringopen`'s own
-                       `scan_energies.csv` names its highest point (¶336)
+                       is the same open question as leg 1's.
+                       **COMPLETED 01:35:38, MaxRSS 1.4 GiB, all 12 points
+                       converged.** Point 0 -439.80043617 against `attackmin`'s
+                       -439.80042578, 0.065 kcal/mol - the handoff is clean
+    saddle2      BLOCKED, and ¶341 changes the reason. The CSV now exists and
+                       **has no maximum in it**: `ringopen` climbs
+                       MONOTONICALLY 0 → 53.03 kcal/mol over C4x-N1x
+                       1.4855 → 2.80 Å and is still rising at the last point,
+                       so the highest point is the terminal ENDPOINT, not an
+                       interior maximum. `scan_SET_FROM_CSV.pdb` stays unset.
+                       Chemically this is C-N cleavage to an amide ANION with no
+                       proton delivered - ¶1's question 1 - and more scan range
+                       does not fix it. No decision taken
 
     ABANDONED, kept on disk and in site.yaml as the record of what was measured
     reactmin9    DONE  33317685, 61 steps.  -439.97112777  (xtb -198.60188166,

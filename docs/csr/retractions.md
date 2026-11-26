@@ -455,3 +455,71 @@ free energy - is unaffected and better supported than ¶331 knew.
 **The rule this earns:** "no paper does X" and "no paper reports quantity Y" are
 different claims with different evidence, and conflating them overstates the
 first while hiding that the second was never searched.
+
+## ¶334 - "Khrenova & Nemukhin 2018 and Levina 2020 use our exact scan → saddle → frequencies protocol"
+
+**Unverified, flagged in ¶341, 2026-11-26.** That both papers are on L1, a B3,
+and report potential-energy barriers stands. **What their PROTOCOL was is not
+known to us.** Levina 2020 (RSC Adv 10, 8664, PMC9050041) states its QM
+subsystem, functional and embedding and then defers the rest verbatim - *"Other
+details of QM/MM computational protocol are presented in ref. 54"* - to Khrenova
+& Nemukhin 2018 (JPCB 122, 1378, 10.1021/acs.jpcb.7b10188), which is **closed
+with no repository copy**. Levina states no MD length, no equilibration, no
+restraints, no frozen atoms and no active radius. So **whether that lineage froze
+its environment is unknown**, and the claim must not be repeated - in particular
+not as precedent for our own treatment of the environment - until the 2018 paper
+is read. The same group's readable 2022 paper (Krivitskaya & Khrenova, Molecules
+27, 7031, PMC9610450) runs 10 ns classical MD, frames from the last 2 ns, then
+QM/MM MD with umbrella sampling and **no frozen shell and no ad-hoc zinc
+restraints** - a different method, and not evidence about 2018.
+
+## ¶334 / ¶339 / ¶340 - "in a well-behaved QM/MM calculation the MM terms cancel to under 1 kcal/mol (Ganguly)"
+
+**Withdrawn in ¶341, 2026-11-26.** The paper is Ganguly, Boulanger & Thiel, JCTC
+2017, 13, 2954 (10.1021/acs.jctc.7b00016), and it says a different thing,
+verbatim: *"the inclusion of MM-DO polarization changes the QM energy of the
+transition state relative to the reactant typically by less than 1 kcal/mol."*
+That is **MM polarization's effect on the QM energy**, not the MM energy term
+cancelling between reactant and transition state. **Do not cite it for anything
+about the size of our MM term.** What the literature does offer in its place:
+Ryde, JCTC 2017, 13, 5745 - the **"local-minima problem"**, with ~20 kJ/mol per
+far-field hydrogen bond and a compiled spread of 0.6-97 kJ/mol across 24 studies;
+and Calixto, Ramos & Fernandes, JCTC 2017, 13, 5486 - freezing outside a 6 Å free
+region costs 0.8 kcal/mol on average, 1.6 maximum.
+
+## ¶340 - "the reactant reference is what is wrong, and a free 8 Å reactant minimum is necessary"
+
+**Withdrawn in ¶341, 2026-11-26.** The decomposition ¶340 did not do was in the
+run directory. `saddle1` **held O01-C4x at 2.02 Å (+-0.07) across all 101
+frames** - 0.015 Å start to finish - while the MM term fell 18.41 kcal/mol
+**smoothly, no discontinuity anywhere**, the largest single step -6.75 kcal/mol
+at the first step and every step after the ninth row under 1 kcal/mol. So there
+was no basin hop and no roll-back toward the reactant: the run relaxed strain the
+**scan's handoff geometry** was carrying, and that strain is in every scan point,
+not in point 0 specially. A free reactant minimum moves the inconsistency rather
+than removing it.
+
+**Also wrong in ¶340, and each one a repeat:**
+- It cited **¶316's attribution of the NEB's ~113 kcal/mol drop to the 124-vs-129
+  QM-region mismatch. ¶317 withdrew that** (the cause was active-region size, 665
+  free against 481 relaxed) and this file already listed it. That is the fifth
+  re-derivation of a retracted claim.
+- It attributed a magnitude to a mechanism **before decomposing it**, which is
+  verbatim the rule ¶317 earned. And the mechanism named cannot apply: scan point
+  11 and `saddle1` both ran 129 QM atoms and 476 active atoms.
+- It attributed ¶333's water-topology measurement to ¶331.
+- It read `attackmin` as evidence about the reference. `attackmin` is a
+  **different chemical structure** (O01-C4x 1.4855 Å against 3.63) relaxing
+  **481** atoms against the scan's **476**, so its 21.82 kcal/mol is not a clean
+  statement about anything.
+
+**What stands in ¶340:** the equilibration trace. Leg 1's lineage carries no
+QM/MM MD (`aspxtb`/`aspxtb8` both `skip_equilibrate: true`), `aspqm2` chelated
+Asp92 onto Zn1 within 8 ps from the same `relax10` frame, `eqqm` is written and
+unsubmitted, and `relax10` holds five restraints outside the 3 Å metal rule. The
+`attackmin` and `saddle1` energies themselves are correct as numbers; only the
+inference from them was wrong.
+
+**The rule this earns, and it is the third time this file has had to say a
+version of it:** before writing an entry, grep THIS FILE for every entry id the
+draft cites. ¶340 cited ¶316 and ¶331 and both are listed here.

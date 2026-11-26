@@ -20157,6 +20157,192 @@ code-server session on bun153 returns HTTP 503, so Bunya is unreachable from
 here until the user opens a new one. Nothing above needed it - every number in
 this entry came from files already quoted in this log.
 
+**¶341 - ¶340 REPEATED THREE DOCUMENTED MISTAKES AND ITS CENTRAL CLAIM IS
+WITHDRAWN. The decomposition it should have done first was in the run directory,
+and it says the opposite: `saddle1` held the reaction coordinate at 2.02 Å and
+drained 18.41 kcal/mol of MM strain the SCAN handed it, smoothly and with no
+basin change. A free reactant minimum would NOT have fixed it.** (2026-11-26,
+user: "why is the reference necessary? ... make sure you're not repeating any old
+mistakes")
+
+## THE MISTAKES, NAMED FIRST
+
+1. **¶340 quoted a WITHDRAWN attribution.** It cited ¶316 for the claim that the
+   124-vs-129 QM-region mismatch caused the reactant's ~113 kcal/mol drop at NEB
+   image 1. **¶317 withdrew exactly that**, and `retractions.md` lists it: the
+   cause was ACTIVE-REGION SIZE - the NEB freed 665 atoms where `attackmin`
+   relaxed 481, so 184 atoms moved for the first time. `retractions.md`'s own
+   preamble says this failure mode had already caused four re-derivations. Five.
+2. **¶340 attributed a magnitude to a mechanism without decomposing it** - which
+   is, verbatim, the rule ¶317 earned: *"do not attribute a magnitude to a
+   mechanism before decomposing it, when the components are sitting in the run
+   directory."* They were. And the mechanism named cannot apply: between scan
+   point 11 and `saddle1`'s final geometry the QM region is 129 in BOTH and the
+   active region 476 in BOTH. Nothing mismatched across that step.
+3. **¶340 misattributed the water-topology measurement to ¶331.** It is ¶333's.
+4. **¶340 over-read `attackmin`.** `attackmin` is a DIFFERENT CHEMICAL STRUCTURE -
+   the tetrahedral intermediate at O01-C4x 1.4855 Å against the Michaelis
+   complex's 3.63 - and it relaxed **481** atoms against the scan's **476**. A
+   tetrahedral intermediate lying below the Michaelis complex is a statement
+   about the reaction, not about the reference. The 21.82 kcal/mol was reported
+   as though it were clean and it is not.
+5. **The agent brief asserted its conclusion.** ¶265's rule: *"a brief that
+   asserts a conclusion gets the conclusion back - any premise handed to an agent
+   as a caveat must be read out of the argmap first, not out of memory."* I
+   handed it ¶317's withdrawn ~100 kcal/mol attribution as a premise.
+
+## THE DECOMPOSITION, WHICH SETTLES IT
+
+`protdft/ts_saddle1/optimization_energies.log`, 101 recorded rows, every
+per-step MM change computed:
+
+    largest single MM step        -6.75 kcal/mol, at the FIRST step
+    steps with |ΔMM| > 1 kcal/mol  5, ALL within the first nine rows (-11.70)
+    every later step              < 1 kcal/mol, ~90 of them (-6.7 in total)
+    discontinuity anywhere        NONE
+
+**And the first step's trade is the clearest number in the run: ΔMM -6.75 while
+ΔQM +1.49.** The optimiser paid 1.49 kcal/mol of chemistry to buy 6.75 of
+environment, on move one.
+
+Then the reaction coordinate itself, O01-C4x, measured across all 101 frames of
+`geometric_OPTtraj_Full.xyz` (47,979 atoms, indices 4255/4208; frame 0 reads
+2.0304 against the scan's 2.0302, so the mapping is confirmed):
+
+    frame    0    1    2    5   10   20   50  100
+    O01-C4x 2.0304 1.9449 2.0697 1.9967 2.0316 1.9909 1.9967 2.0156
+
+**It never moves. 0.015 Å from start to finish, range 1.94-2.07.** So the run did
+NOT roll back downhill toward the reactant, and it did NOT hop basins - a hop
+would show as a step in the MM trace and there is none.
+
+**What `saddle1` actually did: it held the chemistry where the scan put it and
+spent 100 steps relaxing an environment that was carrying ~18 kcal/mol of MM
+strain when the scan handed it over.** Its final structure is at the same point
+on the reaction coordinate as the scan maximum and 20.65 kcal/mol lower, because
+one has a relaxed environment and the other does not. **The two energies are not
+on a common surface. That is the whole finding.**
+
+## SO WHY THE REFERENCE IS NOT NECESSARY, WHICH WAS THE QUESTION
+
+¶340 proposed a free 8 Å minimum of the reactant and called it necessary. **It
+is not, and it would not have helped.** The strain is in EVERY scan point, not
+in point 0 specially. Putting the reactant on the relaxed surface while the
+scan's profile stays on the unrelaxed one does not make them comparable; it moves
+the inconsistency. ¶340's own caveat - that a freely minimised reactant falls
+into its own basin, not the saddle's - should have been read as refuting
+"necessary" rather than qualifying it.
+
+## WHAT THE LITERATURE SAYS, AND IT HAS A NAME FOR THIS
+
+Agent search, three routes, reported with gaps stated. **No paper names this
+signature and no published instance of a QM/MM saddle finishing below its
+reactant was found.** What IS named is the mechanism:
+
+**Ryde, JCTC 2017, 13, 5745 (10.1021/acs.jctc.7b00826)** - the **"local-minima
+problem"**, verbatim: *"it is very hard to ensure that the surrounding enzyme
+remain in the same local minima throughout a reaction sequence"*, and *"the
+addition or removal of a single hydrogen bond far from the active site affects
+the energy by ~20 kJ/mol in a way that most likely is irrelevant for the
+reaction."* Its Table 1 compiles σ across 24 studies: **0.6 to 97 kJ/mol**, 73%
+with at least one series above 10. Our 20.65 kcal/mol = 86 kJ/mol is **inside
+the range the field has seen** - but always reported as snapshot-to-snapshot
+scatter, never as one optimisation descending through it.
+
+Named remedies, all four from Ryde: free energies instead of minimised energies;
+**keep most of the surroundings fixed**; **run the coordinate forth and back**;
+repeat over MD snapshots and average. **We do none of them.**
+
+**Lonsdale, Harvey & Mulholland, Chem Soc Rev 2012, 41, 3025 (PMC3371381)** is
+the direct prescription and we have never followed it: *"Discontinuities are
+however frequently observed, due to structural relaxation to a conformationally
+distinct reaction path"*; *"When this occurs, the energies obtained should not be
+used"*; *"adiabatic mapping should be repeated in forward and reverse
+directions"*; and on stationary points, *"Without this confidence, comparing
+their energies is essentially meaningless."* **Running `attack` backwards from
+scan_15 is the field's own test and it is one job.**
+
+**Sun & Ryde, JCTC 2025, 21, 7711 (PMC12355682)** quantifies the frozen-versus-
+relaxed choice on SARS-CoV-2 Mpro: ΔE‡ **44 (relaxed) vs 70 kJ/mol (fixed)**;
+setups differing by up to 88 kJ/mol in ΔE‡; re-randomising water placement alone
+worth up to 57. For a solvent-exposed site they conclude *"QM/MM calculations
+with minimized structures cannot be recommended."* **And they give a diagnostic
+that lands on us:** an MM contribution amounting to half to a third of the total
+*"indicates that the QM region is too small or that the MM region is not enough
+relaxed."* Ours dominates the descent 8:1.
+
+**Calixto, Ramos & Fernandes, JCTC 2017, 13, 5486 (10.1021/acs.jctc.7b00768,
+abstract only - closed)** is the one piece of good news: below a **6.00 Å** free
+region models are overconstrained; above it, freezing changes the barrier by
+**0.8 kcal/mol on average, 1.6 maximum**. **Our 8 Å is above their threshold, so
+the region SIZE is defensible** and freezing the outside is cheap in error.
+
+## TWO CITATIONS IN THIS LOG ARE WRONG AND MUST STOP BEING USED
+
+1. **The Ganguly citation.** ¶334, ¶339 and ¶340 all lean on it for "in a
+   well-behaved QM/MM calculation the MM terms cancel to under 1 kcal/mol".
+   The paper is **Ganguly, Boulanger & Thiel, JCTC 2017, 13, 2954
+   (10.1021/acs.jctc.7b00016)** and it says something else, verbatim: *"the
+   inclusion of MM-DO polarization changes the QM energy of the transition state
+   relative to the reactant typically by less than 1 kcal/mol."* That is **MM
+   POLARIZATION's effect on the QM energy**, not the MM term cancelling.
+   **Withdrawn as support for anything about our MM term.**
+2. **¶334's "Khrenova & Nemukhin 2018 and Levina 2020 use our exact scan →
+   saddle → frequencies protocol" is UNVERIFIED**, and that sentence is in
+   `state.md` §4z. Levina 2020 (RSC Adv 10, 8664, PMC9050041) states its QM
+   subsystem, functional and embedding and then defers everything else - *"Other
+   details of QM/MM computational protocol are presented in ref. 54"* - to
+   Khrenova & Nemukhin 2018 (JPCB 122, 1378, 10.1021/acs.jpcb.7b10188), which is
+   **closed with no repository copy**. It states **no** MD length, equilibration,
+   restraints, frozen atoms or active radius. So whether that L1 lineage froze
+   its environment **is not known to us**, and ¶334's claim about their protocol
+   must not be repeated until the 2018 paper is read. The same group's readable
+   2022 paper (Krivitskaya & Khrenova, Molecules 27, 7031, PMC9610450) runs
+   **10 ns classical MD, frames from the last 2 ns, then QM/MM MD and umbrella
+   sampling, with no frozen shell and no ad-hoc zinc restraints** - a different
+   machine from ours, and not evidence for the 2018 protocol.
+
+**Highest-value unread paper, flagged for institutional access: Kalita, Ramos-
+Guzman, Hanzevacki, Hinchliffe, Spencer & Mulholland, ACS Catal 2026, 16, 21177
+(10.1021/acscatal.6c04439)** - L1, a **B3**, with a **carbapenem**, QM/MM, from
+the Mulholland group. CC BY and still 403 to automated fetching. It is the
+closest published match to this system that exists.
+
+## LEG 2 COMPLETED, AND IT HAS NO MAXIMUM
+
+`ringopen` **33573971 COMPLETED**, 01:35:38, MaxRSS 1.4 GiB, all 12 points
+converged. Point 0 reads **-439.80043617** against `attackmin`'s -439.80042578,
+0.065 kcal/mol - the handoff is clean. But the profile is **monotonically uphill
+over the whole range**:
+
+    C4x-N1x  1.4855 → 2.80 Å in 12 points
+    rel      0.0  2.66  8.64  15.92  23.35  30.14  36.70  42.66  46.38
+             48.66  50.73  53.03 kcal/mol, still climbing at the last point
+
+**So `saddle2` has nothing to take: the highest point is the terminal endpoint,
+not an interior maximum.** ¶336's `scan_SET_FROM_CSV.pdb` stays unset for a new
+reason - not "the CSV does not exist yet" but "the CSV has no maximum in it".
+Chemically this is the C-N bond breaking to an amide ANION with no proton
+delivered, which is ¶1's question 1 and is not something more scan range fixes.
+Recorded; no decision taken.
+
+## STATE
+
+    established   saddle1 held O01-C4x at 2.02 Å (+-0.07) for 101 frames and
+                  relaxed 18.41 kcal/mol of MM smoothly, no discontinuity, no
+                  roll-back. The scan's handoff geometry carries that strain
+    withdrawn     ¶340's "the reactant reference is what is wrong" and its
+                  proposed free 8 Å reactant minimum. Not necessary
+    withdrawn     the Ganguly citation for MM-term cancellation; ¶334's claim
+                  about Khrenova/Levina's protocol
+    the field's   consistent frozen partition (Calixto: 8 Å is safe, 0.8-1.6
+    own answers   kcal/mol); forward-AND-BACKWARD scans (Lonsdale, never done
+                  here, one job); snapshot averaging; or free energies
+    still open    ¶332, unchanged and now with the field behind it: what
+                  environment the barrier is scored in. **The user's call**
+    unchanged     `freq` never ran; the two-negative-eigenvalue reading is the
+                  optimiser's model Hessian and indicative only
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
