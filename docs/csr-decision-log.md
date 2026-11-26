@@ -20762,6 +20762,95 @@ applied to this config.
    up"). **It is not the same thing**: `saddle1` held the chemistry fixed, and its
    movers are 8-12 Å out. Corrected in `retractions.md` and in the node.
 
+**¶345 - ¶344's SETTLEMENT IS NOW FOUR SECTIONS IN `site.yaml` AND IN
+`CSR_mich/config.yaml`, with resources MEASURED rather than chosen: this
+project's own `sacct` already held the answer, and it says 64 cores / 128G, not
+the 16 / 64G that took three hours. `region_check.py --strict` passes all four.
+Nothing submitted.** (2026-11-26, user: "Set them up")
+
+## THE FOUR SECTIONS
+
+    sp_bar00   protdft/scan_attack/scan_00.pdb    0.000 kcal/mol   3.6259 Å
+    sp_bar01   protdft/scan_attack/scan_01.pdb   -0.293            3.4809 Å
+    sp_bar11   protdft/scan_attack/scan_11.pdb   14.237            2.0302 Å
+    sp_bar15   protdft/scan_attack/scan_15.pdb    0.561            1.4500 Å
+
+`bar01` is the reactant reference - the profile's own lowest point - and `bar00`
+is scored beside it **so the choice shows up in the results rather than in a log
+entry**. `bar15` is the tetrahedral intermediate and is also `ringopen`'s point 0
+(¶341, 0.065 kcal/mol). GFN2 barrier 14.237 - (-0.293) = **14.53 kcal/mol**,
+which these four replace with DFT.
+
+**`require.same_as: {section: bar00, except: [pdb_file]}` on the other three.**
+A barrier is a difference, so a level, charge or QM region named per section is
+how two points stop being comparable (¶323). `qm_residues: *qmreg_michrks` -
+129 atoms, the region the scan itself ran - and **no `actradius`, because a
+single point has no active region**: nothing is optimised, so there is nothing to
+freeze and a radius written there would read as though there were.
+
+## THE RESOURCES WERE ALREADY MEASURED, IN THIS PROJECT, AND NOBODY HAD LOOKED
+
+¶338's rule is *a request that is never measured is a guess that grows*, and
+¶344 declined to write a number for that reason. The number existed:
+
+    job            section      cores   ReqMem    MaxRSS      elapsed
+    30207244       spco0           64     128G   67.8 GiB    00:26:17
+    30207245       spco4           64     128G   68.0 GiB    00:25:33
+    30207246       spco8           64     128G   68.1 GiB    00:25:54
+    31185324       spref           16      64G   42.9 GiB    03:01:51
+    31185325       spr229          16      64G   42.9 GiB    03:06:14
+    30053828       csr_cleanR      16      96G   56.5 GiB    09:51:17  (mixed)
+
+**64 cores ran 7× faster on 4× the cores**, which is superlinear and therefore
+not a parallel-scaling result at all: the 16-core jobs were **memory-starved**.
+`pyscf_memory` (`qmmm.py`:604) hands PySCF **80% of `$SLURM_MEM_PER_NODE`**, and
+0.8 × 64G = 51 GB sent the density-fitting integrals to disk, which is the one
+thing its docstring warns about. The 64-core jobs were allowed 102 GB and kept
+them in RAM.
+
+So: **64 cores, 128G, 8 h** - the configuration three jobs measured at 68 GiB,
+leaving ~60 GiB of headroom, which is the point, because our QM region is 129
+atoms against those runs' smaller inherited one. 8 h is against a measured 26
+min. `sections.py` printed the four lines verbatim:
+
+    sbatch -J bar00 -p general --cpus-per-task=64 --mem=128G -t 08:00:00 \
+           .../run.slurm sp sp_bar00
+
+**`sp_memory` and `mult` are deliberately unset**, so `pyscf_memory` resolves
+from the job and prints what it resolved; naming it in `site.yaml` would let the
+two disagree silently. `sp_cores` comes from the existing `*sp_only` anchor - the
+same one `co0/4/8` used for the jobs measured above.
+
+## THE GATES
+
+`sections.py site.yaml bar00 bar01 bar11 bar15` wrote all four to
+`CSR_mich/config.yaml` (**0 selectors checked each, which is correct**: an `sp`
+has no `atoms` or `monitor`, it scores a geometry). `region_check.py --strict`:
+
+    [OK]  bar00  sp  pdb_file  <- scan_attack
+    [OK]  bar01  sp  pdb_file  <- scan_attack
+    [OK]  bar11  sp  pdb_file  <- scan_attack
+    [OK]  bar15  sp  pdb_file  <- scan_attack
+
+**One standing FAIL in that output and it is NOT from this change:** `step2`
+(`product_pdb <- scan_ringopen`), the abandoned NEB's leg-2 product. `step2` was
+retired at ¶335-¶337 and is kept only so the decision is reversible (¶338), so
+the FAIL is a property of a retired section and was there before these four were
+written. **Recorded because it matters operationally: `region_check --strict`
+now exits FAIL on this run directory for a stage nobody intends to run**, and
+anyone reading it as a verdict on a new section will be misled. Do not "fix" it
+by widening a consumer - the tool says so itself, and that is ¶317 from the
+other side.
+
+Also informational, and already known: `attack (pdb_file <- qmmm_aspxtb8)` is
+listed as a region-widening re-minimisation, which is the 124 → 129 QM change at
+the scan's head (¶341).
+
+## NOT SUBMITTED
+
+Four jobs, ~26 min each on this measurement, independent. `sections.py` printed
+the `sbatch` lines; none was run.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**

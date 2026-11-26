@@ -682,7 +682,7 @@ Every one of these was a *reading* failure, not a computing failure.
 ### 4z. THE MECHANISM CHAIN, as of 2026-11-26 — read this before touching leg 1
 
 The one place the live chain is stated. Rewritten after ¶335-¶337 **abandoned
-the NEB**, corrected at ¶341 and ¶344; if it disagrees with an
+the NEB**, corrected at ¶341, ¶344 and ¶345; if it disagrees with an
 entry below, this is newer.
 
 **¶332 IS SETTLED (¶344): THE BARRIER IS SCORED ALONG THE SCAN, AND THE `ts`
@@ -699,9 +699,22 @@ reverse scan. Leg 1 is `scan` → `sp` on `scan_01`/`scan_11`/`scan_15` at one
 inherited level, barrier **14.53 kcal/mol at GFN2** pending DFT single points.
 A free optimisation releases that strain at one point only, which is the whole
 defect - so the `ts` stage is the wrong instrument here, not merely unconverged,
-and `qm-levels.md` step 3 is skipped for leg 1 (stated as a departure). Nothing
-submitted; the go-ahead and the `submit` block are the user's. Measured with
-`shell_shift.py`; read ¶344 before touching either leg.
+and `qm-levels.md` step 3 is skipped for leg 1 (stated as a departure). Measured
+with `shell_shift.py`; read ¶344 before touching either leg.
+
+**¶345: THE FOUR SECTIONS EXIST AND ARE UNSUBMITTED.** `sp_bar00` / `sp_bar01` /
+`sp_bar11` / `sp_bar15` on `scan_00` / `scan_01` / `scan_11` / `scan_15`, written
+to `site.yaml` and to `CSR_mich/config.yaml`, tied by
+`require.same_as: {section: bar00, except: [pdb_file]}`, `*qmreg_michrks`, no
+`actradius`. **64 cores / 128G / 8 h, measured not chosen**: `sacct` on this
+project's own `spco0/4/8` (30207244/45/46) read **67.8-68.1 GiB in ~26 min** at
+64/128G, against 42.9 GiB in **3h02** at 16/64G - superlinear, so the 16-core
+jobs were memory-starved, since `pyscf_memory` gives PySCF 80% of the request
+and 0.8 × 64G spilled the density-fitting integrals to disk. `region_check.py
+--strict` returns [OK] on all four. **The one FAIL in that output is `step2`
+(`product_pdb <- scan_ringopen`), the ABANDONED NEB's, and it predates these
+sections** - `--strict` therefore exits FAIL on this run directory for a stage
+nobody intends to run, which must not be read as a verdict on a new section.
 
 **THE PROBLEM THAT WAS OPEN UNTIL ¶344, AND ITS NAME IN THE LITERATURE
 (¶341).** `saddle1` **held O01-C4x at 2.02 Å (+-0.07) across all 101 frames** -
