@@ -3831,6 +3831,124 @@ sections:
       <<: *sp_only
       pdb_file: protdft/coscan/scan_08.pdb   # Zn-O2x 4.00 A
 
+  # ======================================================================
+  # ¶344: LEG 1'S PUBLISHED BARRIER. Four single points, one level, and
+  # SCAN GEOMETRIES ONLY.
+  #
+  # ¶332 asked what environment the barrier is scored in. ¶344 settled it by
+  # measuring where `saddle1`'s 18.41 kcal/mol actually lives, with
+  # `docs/csr/shell_shift.py`: **88% of the squared displacement sits in the
+  # 8-12 Å shell**, on a hydrophobic cluster - Trp21 0.517 Å at 8.78 Å from Zn1,
+  # Leu42 0.136, Phe18 0.105, Asn41 0.062 - while **every reacting atom holds
+  # under 0.031 Å**: the nucleophile 0.014, the zinc 0.010, His164 0.010,
+  # Ser186 0.017, Asp92 0.027, His88 0.006. The scan's own motion is the radial
+  # opposite, 85% inside 6 Å and decaying outward.
+  #
+  # So the far field does not move with the reaction - 0.246 Å at most across
+  # the whole 1.60 Å change in the coordinate, against 1.657 Å inside 3 Å - and
+  # its strain is therefore the same at both ends of the scan, where it cancels
+  # in the difference by construction. **A FREELY OPTIMISED STRUCTURE MUST NOT
+  # ENTER THIS COMPARISON.** It is the only structure in it allowed to find the
+  # far field's own minimum, which is why `saddle1` finished 6.38 kcal/mol below
+  # its own reactant - and why `ts` is off leg 1 and `qm-levels.md` step 3 (the
+  # DFT re-optimisation of each stationary point) is skipped here. Step 3 is
+  # itself a free optimisation and inherits the whole defect. **That is a
+  # departure from the documented sequence and is stated as one.**
+  #
+  # **The four geometries, and why four:**
+  #   scan_00   the scan's first point,        0.000 kcal/mol at O01-C4x 3.6259 Å
+  #   scan_01   the profile's OWN lowest,     -0.293            at 3.4809 Å
+  #   scan_11   the maximum,                  14.237            at 2.0302 Å
+  #   scan_15   the tetrahedral intermediate,  0.561            at 1.4500 Å
+  # `scan_01` is scored ALONGSIDE `scan_00` so the choice of reactant reference
+  # is visible in the results rather than argued in a log entry: points 1-2 lie
+  # below point 0 (¶308, §4z), so the profile brackets its own minimum and
+  # ¶340's free reactant minimum was never needed. `scan_15` is also
+  # `ringopen`'s own point 0, verified to 0.065 kcal/mol (¶341), so leg 2 hangs
+  # off the same file. GFN2 barrier for reference: 14.237 - (-0.293) =
+  # **14.53 kcal/mol**, which these four replace with DFT.
+  #
+  # **`require.same_as` ties the other three to `bar00` with only `pdb_file`
+  # excepted, and that is the science rather than tidiness.** A barrier is a
+  # difference, and a level, charge or QM region named per-section is exactly how
+  # two points stop being comparable; ¶323 refused to compare `reactmin9`'s
+  # total with `aspxtb8`'s for that reason. `qm_residues` is `*qmreg_michrks`,
+  # the region the scan itself ran, so each geometry is scored with the region
+  # that produced it (§4z's rule).
+  #
+  # **No `actradius` here, deliberately: a single point has no active region.**
+  # Nothing is optimised, so there is nothing to freeze and nothing to relax, and
+  # a radius written here would read as though there were.
+  #
+  # **The resources are MEASURED, not chosen.** ¶338's rule - "a request that is
+  # never measured is a guess that grows" - and for once the measurement already
+  # existed, in this project's own `sacct` records for DFT/MM single points:
+  #     30207244/45/46  spco0/4/8   64 cores, 128G  →  67.8-68.1 GiB, ~26 min
+  #     31185324/25     spref/r229  16 cores,  64G  →  42.9 GiB,  3h02-3h06
+  # **64 cores ran 7× faster on 4× the cores**, so the 16-core jobs were starved
+  # rather than CPU-bound: `pyscf_memory` hands PySCF 80% of the job's memory,
+  # and 0.8 × 64G sent the density-fitting integrals to disk. Hence 64 and 128G -
+  # the configuration three jobs measured at 68 GiB, leaving ~60 GiB of
+  # headroom, which is the point: our QM region is **129 atoms** against those
+  # runs' smaller inherited region. `time` is 8 h against a measured 26 min.
+  #
+  # **`sp_memory` and `mult` are deliberately unset.** `pyscf_memory` resolves
+  # memory from $SLURM_MEM_PER_NODE and prints what it resolved; naming it here
+  # would let the two disagree silently. `sp_cores` comes from `*sp_only`, the
+  # same anchor `co0/4/8` used for the jobs measured above.
+  #
+  # **Submit each separately - they must not share a section.** ¶110: a shared
+  # section overwrites its own results once per run, and four barrier points
+  # written into one key would leave one number and no barrier.
+  # ======================================================================
+  bar00:
+    stage: sp
+    submit: &bar_submit {partition: general, cores: 64, mem: 128G, time: "08:00:00"}
+    require:
+      equals: {charge: 2, rigid_water: false}
+    inputs:
+      <<: *sp_only
+      pdb_file: protdft/scan_attack/scan_00.pdb   # 0.000 kcal/mol, 3.6259 Å
+      qm_residues: *qmreg_michrks
+      charge: 2
+      rigid_water: false
+
+  bar01:                        # the reactant reference: the profile's own lowest
+    stage: sp
+    submit: *bar_submit
+    require:
+      same_as: {section: bar00, except: [pdb_file]}
+    inputs:
+      <<: *sp_only
+      pdb_file: protdft/scan_attack/scan_01.pdb   # -0.293 kcal/mol, 3.4809 Å
+      qm_residues: *qmreg_michrks
+      charge: 2
+      rigid_water: false
+
+  bar11:                        # the maximum: leg 1's barrier top
+    stage: sp
+    submit: *bar_submit
+    require:
+      same_as: {section: bar00, except: [pdb_file]}
+    inputs:
+      <<: *sp_only
+      pdb_file: protdft/scan_attack/scan_11.pdb   # 14.237 kcal/mol, 2.0302 Å
+      qm_residues: *qmreg_michrks
+      charge: 2
+      rigid_water: false
+
+  bar15:                        # the tetrahedral intermediate, = `ringopen` point 0
+    stage: sp
+    submit: *bar_submit
+    require:
+      same_as: {section: bar00, except: [pdb_file]}
+    inputs:
+      <<: *sp_only
+      pdb_file: protdft/scan_attack/scan_15.pdb   # 0.561 kcal/mol, 1.4500 Å
+      qm_residues: *qmreg_michrks
+      charge: 2
+      rigid_water: false
+
   # ---- The GFN2-vs-DFT cluster benchmark (P1, open since ¶9; built ¶188) ----
   #
   # The question: does GFN2-xTB hold meropenem's 6-(1-hydroxyethyl) oxygen O1x
