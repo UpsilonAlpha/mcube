@@ -1,8 +1,8 @@
 ---
 type: claim
 status: supported
-entries: [¶235, ¶308, ¶332, ¶341, ¶344]
-checked: [¶344]
+entries: [¶235, ¶308, ¶332, ¶341, ¶344, ¶346]
+checked: [¶344, ¶346]
 ---
 
 # Leg 1's barrier is scored along the scan, and no freely optimised structure enters it
@@ -67,7 +67,9 @@ region at 0.8 kcal/mol average, 1.6 maximum, and the chemistry here is inside
     maximum       `scan_11`, 14.237 kcal/mol at O01-C4x 2.0302 Å
     intermediate  `scan_15`, 0.561 kcal/mol at 1.45 Å, also `ringopen`'s input,
                   verified to 0.065 kcal/mol
-    barrier       **14.53 kcal/mol at GFN2**, pending `sp` single points
+    barrier       **14.53 kcal/mol at GFN2**; the DFT value comes from
+                  jobs 33876755/56/57/58, submitted and running at ¶346,
+                  as `bar11 - bar01`
     level         identical across all four and therefore INHERITED, never
                   stated per section: a barrier is a difference
 

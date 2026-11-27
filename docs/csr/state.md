@@ -682,7 +682,7 @@ Every one of these was a *reading* failure, not a computing failure.
 ### 4z. THE MECHANISM CHAIN, as of 2026-11-26 — read this before touching leg 1
 
 The one place the live chain is stated. Rewritten after ¶335-¶337 **abandoned
-the NEB**, corrected at ¶341, ¶344 and ¶345; if it disagrees with an
+the NEB**, corrected at ¶341, ¶344, ¶345 and ¶346; if it disagrees with an
 entry below, this is newer.
 
 **¶332 IS SETTLED (¶344): THE BARRIER IS SCORED ALONG THE SCAN, AND THE `ts`
@@ -702,19 +702,35 @@ defect - so the `ts` stage is the wrong instrument here, not merely unconverged,
 and `qm-levels.md` step 3 is skipped for leg 1 (stated as a departure). Measured
 with `shell_shift.py`; read ¶344 before touching either leg.
 
-**¶345: THE FOUR SECTIONS EXIST AND ARE UNSUBMITTED.** `sp_bar00` / `sp_bar01` /
+**¶345: THE FOUR SECTIONS EXIST, AND ¶346 SUBMITTED THEM.** `sp_bar00` / `sp_bar01` /
 `sp_bar11` / `sp_bar15` on `scan_00` / `scan_01` / `scan_11` / `scan_15`, written
 to `site.yaml` and to `CSR_mich/config.yaml`, tied by
 `require.same_as: {section: bar00, except: [pdb_file]}`, `*qmreg_michrks`, no
 `actradius`. **64 cores / 128G / 8 h, measured not chosen**: `sacct` on this
 project's own `spco0/4/8` (30207244/45/46) read **67.8-68.1 GiB in ~26 min** at
-64/128G, against 42.9 GiB in **3h02** at 16/64G - superlinear, so the 16-core
-jobs were memory-starved, since `pyscf_memory` gives PySCF 80% of the request
-and 0.8 × 64G spilled the density-fitting integrals to disk. `region_check.py
+64/128G. **The clause that used to stand here - that the 16-core jobs at 3h02
+were memory-starved, read off a superlinear speed-up - is WITHDRAWN at ¶346**:
+those jobs are the Arg229 charge-deletion pair (¶152), not the same calculation,
+so the ratio measures nothing about cores or memory. The choice stands on older
+and better evidence: **¶60 measured DFT at 96.2% CPU efficiency on 16 CPUs and
+56 GB of 96**, and ¶62 chose 64 cores on that basis for `spco0/4/8` themselves.
+`region_check.py
 --strict` returns [OK] on all four. **The one FAIL in that output is `step2`
 (`product_pdb <- scan_ringopen`), the ABANDONED NEB's, and it predates these
 sections** - `--strict` therefore exits FAIL on this run directory for a stage
 nobody intends to run, which must not be read as a verdict on a new section.
+
+**¶346: SUBMITTED AND RUNNING** - `33876755` bar00, `33876756` bar01,
+`33876757` bar11, `33876758` bar15, all four RUNNING at 64 cores / 128G from
+10:36 on 2026-11-27, no queue wait, via `sections.py --submit` after a
+`--dry-run` that passed all four. From `bar11`'s log: the geometry line names its
+own section (`from sp_bar11.inputs.pdb_file`), `PySCF single point: 64 threads,
+max_memory 104857 MB` (102.4 GiB, 80% of 128G), the formula carries **one zinc**,
+`Charge: 2 Mult: 1`, and `Embedding: elstat` with QM charges zeroed, so ¶317's
+decomposition holds. **DO NOT `git pull` in `$CSROUT/mcube` until these finish** -
+Bunya is at 915c8ed and `src/mcube/*.py` is imported live by four running jobs.
+The barrier is `bar11 - bar01`. **No further job follows from these finishing**;
+the next thing is a decision about leg 2, which still has no interior maximum.
 
 **THE PROBLEM THAT WAS OPEN UNTIL ¶344, AND ITS NAME IN THE LITERATURE
 (¶341).** `saddle1` **held O01-C4x at 2.02 Å (+-0.07) across all 101 frames** -

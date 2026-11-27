@@ -560,3 +560,41 @@ that produced it. Before reusing one as the explanation of a second run, check
 that the second run was free to move the same atoms - `saddle1` was not, by
 construction, because its reaction coordinate was fixed.
 
+## ¶345 - "the 16-core jobs were memory-starved", read off a superlinear speed-up
+
+**Withdrawn at ¶346, 2026-11-27. The resource choice it justified is NOT
+withdrawn - it has better evidence, two months older.**
+
+¶345 compared `sacct` rows and wrote: **64 cores ran 7× faster on 4× the cores,
+which is superlinear and therefore not a parallel-scaling result at all: the
+16-core jobs were memory-starved**, since `pyscf_memory` hands PySCF 80% of the
+request and 0.8 × 64G = 51 GB sent the density-fitting integrals to disk.
+
+    30207244/45/46  spco0/4/8   64 cores, 128G  →  67.8-68.1 GiB, ~26 min
+    31185324/25     spref/r229  16 cores,  64G  →  42.9 GiB,   3h02-3h06
+
+**The two sides are not the same calculation.** 30207244/45/46 are the
+carbonyl-scan DFT single points of ¶62; **31185324/25 are the Arg229
+charge-deletion pair of ¶152** - a different QM setup on a different structure,
+resubmitted after that entry's 8-second failure. A ratio between two different
+calculations is evidence about their difference and about nothing else, so it
+cannot show that cores helped, that memory hurt, or that anything was starved.
+
+**What is still true, and was never in doubt:** `pyscf_memory` does hand PySCF
+80% of `$SLURM_MEM_PER_NODE`, and the four `sp_bar*` jobs were observed taking
+`max_memory 104857 MB` (102.4 GiB) at 128G, so they will not spill. That is a
+statement about our jobs, not a diagnosis of anyone else's.
+
+**What the 64/128G choice actually rests on**, and it predates ¶345 by two
+months: ¶60 measured job 30053828 by `seff` at **96.2% CPU efficiency on 16
+CPUs, 56 GB of 96**, and concluded that DFT *"genuinely saturates what it is
+given"* and *"wants tens of GB for density-fitting integrals"*; ¶62 then chose
+**64 cores each** for `spco0/4/8` on exactly that basis. The 128G follows from
+those jobs' measured 67.8-68.1 GiB plus headroom for a **129-atom** region
+against their smaller one.
+
+**The rule this earns:** a speed-up ratio is only evidence about the variable you
+changed if nothing else changed - check that both sides ran the same calculation
+before explaining the ratio. And before measuring a resource, grep the log for
+the entry that chose it: ¶345 spent a `sacct` pass re-deriving ¶60 and ¶62's
+answer by a worse route, and the detour is where the bad mechanism entered.

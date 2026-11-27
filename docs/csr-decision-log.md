@@ -20851,6 +20851,118 @@ the scan's head (¶341).
 Four jobs, ~26 min each on this measurement, independent. `sections.py` printed
 the `sbatch` lines; none was run.
 
+**¶346 - THE FOUR BARRIER SINGLE POINTS ARE SUBMITTED AND RUNNING. And
+checking ¶346's own citations before writing it caught an over-reading in ¶345
+from yesterday: the resources are right, but the REASON given for them was drawn
+from an uncontrolled comparison.** (2026-11-27, user: "Submit them")
+
+    job        section     node     cores  mem    state at 10:36
+    33876755   sp_bar00    bun091     64   128G   RUNNING
+    33876756   sp_bar01    bun091     64   128G   RUNNING
+    33876757   sp_bar11    bun091     64   128G   RUNNING
+    33876758   sp_bar15    bun093     64   128G   RUNNING
+
+All four started immediately - no queue wait - so the wall clock is the ~26 min
+of ¶345's measurement and not 26 min plus a queue.
+
+## SUBMITTED BY THE SCRIPT'S OWN PATH, NOT BY A TYPED `sbatch`
+
+`sections.py` already has `--dry-run` and `--submit`; ¶345 did not use them
+because it stopped before submitting. `--dry-run` first:
+
+    DRY RUN - config.yaml not touched. Checks passed for:
+      sp_bar00, sp_bar01, sp_bar11, sp_bar15
+
+then `--submit`, which ran the four lines it had printed. **The resources come
+from `site.yaml`'s `submit` block and the script path from the script, so a job
+cannot carry resources that disagree with the section documenting them.** A
+hand-typed `sbatch` can. ¶152 is the nearest precedent and it was a NAME drift
+rather than a resource one - the section was written `sp_sp_qmmm_ref` and the job
+was handed `sp_qmmm_ref`, so two jobs died in 8 s - but the shape is the same:
+the submission and the config said different things.
+
+## WHAT THE RUN-TIME LOG CONFIRMS
+
+    [INFO] Geometry: .../protdft/scan_attack/scan_11.pdb
+           (from sp_bar11.inputs.pdb_file)
+    [INFO] PySCF single point: 64 threads, max_memory 104857 MB
+    QM/MM object selected to use 64 cores
+    Formula: Cl28C1358Zn1Na26S6N383O14946H31231   Label: scan_11
+    Charge: 2   Mult: 1
+    Embedding: elstat
+    Charges of QM atoms set to 0 (since Electrostatic Embedding)
+
+**The geometry line names the section it came from**, so one place says which
+structure the calculation used and that place is the section - §4z's rule
+enforced by the program rather than by a reader. **104857 MB is 102.4 GiB**, i.e.
+80% of 128G, which is `pyscf_memory` resolving from the job as intended, and
+comfortably above the 56-68 GiB that DFT single points of this kind have been
+measured to use, so the density-fitting integrals stay in RAM. **`Zn1`**: one
+zinc, the mono-zinc WT and not an inherited di-zinc topology. **`Charge: 2
+Mult: 1`** as `require.equals` demanded. And **`elstat` with QM charges zeroed**,
+which is ¶317's identity - the QM/MM total decomposes exactly into a QM term and
+an OpenMM term, so a barrier that looks wrong can be taken apart the way ¶344
+took `saddle1` apart.
+
+The only string matching `error` in `bar11`'s 624 lines is OpenMM's
+`Ewald error tolerance: 0.0005`. No traceback. `bar11` was in `Running SCF`.
+
+## ¶345's STARVATION CLAIM IS WITHDRAWN; THE 64/128G CHOICE IS NOT
+
+`retractions.md`'s rule is *before writing an entry, grep THIS FILE for every
+entry id the draft cites*. This draft cited ¶110 for "each section gets its own
+result key". **¶110 is the wrong entry and is itself superseded** (¶126): it is
+the 50 ps Arg229-in-QM run. The rule is ¶53's - *"four separate
+`qmmm_sp_dft_*` sections, because a shared one would overwrite its own results
+three times"* - restated at ¶62 for `spco0/4/8` themselves.
+
+Following that citation into ¶62 is what exposed the larger problem. ¶62 is
+where **30207244/45/46** were submitted, and it already justified 64 cores:
+*"**64 cores each**, which the ¶60 measurements justify: DFT ran at 96%
+efficiency on 16 and is the one stage that scales."* ¶60 measured job 30053828
+by `seff` at **96.2% CPU efficiency on 16 CPUs, 56 GB of 96**, and concluded
+*"DFT wants tens of GB for density-fitting integrals"*.
+
+So ¶345 re-derived a resource choice this project made and measured two months
+earlier - and in re-deriving it reached for a mechanism the comparison cannot
+support. ¶345 read 64 cores at ~26 min against 16 cores at 3h02 as **7× faster
+on 4× the cores, therefore superlinear, therefore memory-starved**. The two sides
+are **not the same calculation**: 30207244/45/46 are the carbonyl-scan single
+points (¶62), while 31185324/25 are the **Arg229 charge-deletion pair** (¶152),
+a different QM setup on a different structure. A ratio between two different
+calculations measures their difference, not the effect of cores or of memory.
+
+**What survives, and it is enough:** 64 cores because ¶60 measured DFT at 96.2%
+efficiency and ¶62 called it the one stage that scales; 128G because `spco0/4/8`
+measured 67.8-68.1 GiB at that request and ¶60 measured 56 GB on a related job,
+so 128G leaves real headroom for our **129-atom** region against those runs'
+smaller one. Both halves are measured; neither needs the starvation story. The
+starvation claim is withdrawn in `retractions.md`.
+
+**The rule this earns:** a speed-up ratio is only evidence about the variable you
+changed if nothing else changed. Before explaining a ratio, check that both
+sides ran the same calculation - and before re-measuring a resource, grep the log
+for the entry that chose it, because ¶60 and ¶62 had already done this work and
+¶345 spent a `sacct` pass arriving at their answer by a worse route.
+
+## DO NOT `git pull` IN `$CSROUT/mcube` WHILE THESE RUN
+
+Bunya's checkout is at **915c8ed**, one commit behind `fix/pipeline-review`
+(`96ad499` is ¶345's log and state entries, docs only, which no running job
+reads). **The pull waits anyway**, because `src/mcube/*.py` is imported live by
+four running jobs and a pull rewrites those files underneath them. Pull once the
+four finish. Nothing is scheduled to watch them; Slurm accounting outlives the
+shell, so they can be read back by id at any time.
+
+## WHAT COMES BACK
+
+Four `sp` totals, each in its own result key (¶53, ¶62). The barrier is
+`bar11 - bar01`; `bar00` makes the reference choice visible; `bar15` is leg 2's
+handoff point. **No further job is implied by these finishing** - ¶344 retired
+`ts` on leg 1 and `qm-levels.md` step 3, and leg 2 still has no interior maximum
+to score (¶341). The next thing after these numbers is a decision about leg 2,
+not a submission.
+
 ## Resources (see `running-on-bunya.md`)
 
 **¶20 – Job resources.**
